@@ -1,38 +1,33 @@
 # QaaS.Probes.Playwright
 
-Playwright browser automation probe for QaaS. Record browser flows, replay them headlessly as part of QaaS test sessions.
+Playwright browser automation probe for QaaS. Record browser flows, replay them as part of QaaS test sessions.
 
 ## Quick Start
 
 ### 1. Install Chromium (one time)
-
 ```bash
 dotnet run --project QaaS.Probes.Playwright.Recorder -- install
 ```
 
 ### 2. Record a flow
-
 ```bash
-dotnet run --project QaaS.Probes.Playwright.Recorder -- record login https://my-app.com
+dotnet run --project QaaS.Probes.Playwright.Recorder
 ```
-
-A browser opens. Click around — fill forms, navigate, submit. Close the browser when done. A C# flow class is saved to `Flows/LoginFlow.cs`.
+Interactive mode asks you: URL, flow name, where to save. A browser opens — click around, close it when done. A C# flow class is saved automatically.
 
 ### 3. Use in your QaaS project
 
-Reference the package:
-
+Add the reference:
 ```xml
 <PackageReference Include="QaaS.Probes.Playwright" Version="1.0.0" />
 ```
 
-Add the probe to your `test.qaas.yaml`:
-
+Add to your `test.qaas.yaml`:
 ```yaml
 Sessions:
   - Name: MySession
     Probes:
-      - Name: BrowserSetup
+      - Name: BrowserFlow
         Probe: PlaywrightFlowProbe
         ProbeConfiguration:
           BaseUrl: https://my-app.com
@@ -40,42 +35,19 @@ Sessions:
 ```
 
 Run:
-
 ```bash
 dotnet run -- run test.qaas.yaml
 ```
 
-## How It Works
-
-The recorder wraps Playwright's built-in `codegen` tool and saves the output as a C# class:
-
-```csharp
-public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>
-{
-    public override async Task RunAsync(IPage page)
-    {
-        await page.GotoAsync("https://my-app.com/login");
-        await page.GetByLabel("Username").FillAsync("admin");
-        await page.GetByLabel("Password").FillAsync("secret");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
-    }
-}
-
-public record LoginFlowConfig { }
-```
-
-The probe discovers the class by name, binds config from YAML, and calls `RunAsync` with a Playwright page.
-
 ## Passing Configuration
 
-Add properties to the config record and use `Configuration.Property` in the flow:
+Each flow has a typed config record. Add properties, reference them in the flow, pass values from YAML:
 
 ```csharp
 public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>
 {
     public override async Task RunAsync(IPage page)
     {
-        await page.GotoAsync("https://my-app.com/login");
         await page.GetByLabel("Username").FillAsync(Configuration.Username);
         await page.GetByLabel("Password").FillAsync(Configuration.Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
@@ -89,27 +61,48 @@ public record LoginFlowConfig
 }
 ```
 
-YAML:
-
 ```yaml
 ProbeConfiguration:
   BaseUrl: https://my-app.com
   Flows: [LoginFlow]
   FlowConfiguration:
-    Username: admin
-    Password: secret123
+    LoginFlow:
+      Username: admin
+      Password: secret123
 ```
 
-This uses QaaS's `BindToObject<T>()` — same mechanism as all QaaS hooks. Supports nested objects, arrays, dictionaries, enums, validation attributes.
+Uses QaaS's `BindToObject<T>()` — supports nested objects, arrays, dictionaries, enums, validation attributes. Same mechanism as all QaaS hooks.
 
-## Complex Configuration
+## Multiple Flows with Separate Configs
+
+Each flow gets its own section under FlowConfiguration:
+
+```yaml
+ProbeConfiguration:
+  BaseUrl: https://my-app.com
+  SetupFlows: [LoginFlow]
+  Flows: [AddTodosFlow, CompleteTodosFlow, DeleteCompletedFlow]
+  FlowConfiguration:
+    LoginFlow:
+      Username: admin
+      Password: secret
+    AddTodosFlow:
+      Items: [Buy groceries, Walk the dog, Write QaaS probe]
+    CompleteTodosFlow:
+      ItemsToComplete: [Buy groceries]
+    DeleteCompletedFlow:
+      ExpectedRemaining: 2
+```
+
+All flows share one browser — login cookies carry to subsequent flows.
+
+## Complex Configuration (Arrays of Objects)
 
 Same pattern as `CreateRabbitMqExchanges` with its `Exchanges[]` array:
 
 ```csharp
 public record CreateMissionsFlowConfig
 {
-    [Required, MinLength(1)]
     public MissionConfig[]? Missions { get; set; }
 }
 
@@ -125,64 +118,36 @@ public record TeamConfig
     public string Lead { get; set; } = null!;
     public string[] Members { get; set; } = [];
 }
-
-public class CreateMissionsFlow : BasePlaywrightFlow<CreateMissionsFlowConfig>
-{
-    public override async Task RunAsync(IPage page)
-    {
-        foreach (var mission in Configuration.Missions!)
-        {
-            await page.GetByLabel("Name").FillAsync(mission.Name);
-            await page.GetByLabel("Priority").SelectOptionAsync(mission.Priority);
-            await page.GetByLabel("Lead").FillAsync(mission.Team.Lead);
-
-            foreach (var member in mission.Team.Members)
-            {
-                await page.GetByLabel("Add Member").FillAsync(member);
-                await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
-            }
-
-            await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
-        }
-    }
-}
 ```
 
 ```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  SetupFlows: [LoginFlow]
-  Flows: [CreateMissionsFlow]
-  FlowConfiguration:
-    Username: admin
-    Password: secret
+FlowConfiguration:
+  CreateMissionsFlow:
     Missions:
       - Name: Alpha Strike
         Priority: High
         Team:
           Lead: John
           Members: [Alice, Bob]
-      - Name: Beta Recon
-        Priority: Low
-        Team:
-          Lead: Jane
-          Members: [Charlie]
 ```
 
-## Setup Flows
+## Environments
 
-Use `SetupFlows` for actions that run once before the main flows. Both share the same browser context — login cookies carry over.
+Change one line to switch environments:
 
 ```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  SetupFlows: [LoginFlow]
-  Flows: [CreateMissionFlow, VerifyDashboardFlow]
+BaseUrl: https://staging.my-app.com   # staging
+BaseUrl: https://my-app.com           # production
+```
+
+Or use QaaS overwrite arguments:
+```bash
+dotnet run -- run test.qaas.yaml -r ProbeConfiguration:BaseUrl=https://staging.my-app.com
 ```
 
 ## Debugging
 
-Set `Headless: false` to watch the browser. Asset blocking and animation disabling are automatically turned off. SlowMo defaults to 1 second between steps.
+Set `Headless: false` to watch the browser. Everything adjusts automatically:
 
 ```yaml
 ProbeConfiguration:
@@ -192,17 +157,22 @@ ProbeConfiguration:
   Flows: [LoginFlow]
 ```
 
+- Browser becomes visible
+- 1 second delay between flows so you can watch
+- Images and CSS load normally
+- Browser stays open after completion
+
 ## Configuration Reference
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `BaseUrl` | *(required)* | Target site URL |
-| `Flows` | *(required)* | Flow class names to run |
-| `SetupFlows` | `[]` | Flows that run once before main flows |
-| `FlowConfiguration` | `{}` | Passed to each flow's `Configuration` via `BindToObject<T>()` |
-| `Headless` | `true` | Invisible browser. `false` = visible + SlowMo + full CSS |
-| `KeepOpen` | `false` | Keep browser open after completion (with `Headless: false`) |
-| `SlowMo` | `0` | Delay between steps in ms. Auto 1000 when `Headless: false` |
+| `BaseUrl` | *(required)* | Target URL — probe navigates here first |
+| `Flows` | `[]` | Flow class names to run in order |
+| `SetupFlows` | `[]` | Flows that run once before main flows (login, etc) |
+| `FlowConfiguration` | `{}` | Per-flow config sections, bound via `BindToObject<T>()` |
+| `Headless` | `true` | Invisible browser. `false` = visible + auto SlowMo |
+| `KeepOpen` | `false` | Keep browser open (only with `Headless: false`) |
+| `SlowMo` | `0` | Delay between flows in ms. Auto 1000 when visible |
 | `BlockAssets` | `true` | Block images/fonts in headless mode |
 | `DisableAnimations` | `true` | Kill CSS animations in headless mode |
 | `DefaultTimeout` | `30000` | Max ms to wait for elements |
@@ -214,3 +184,9 @@ dotnet restore QaaS.Probes.Playwright.slnx
 dotnet build QaaS.Probes.Playwright.slnx -c Release
 dotnet test QaaS.Probes.Playwright.slnx -c Release
 ```
+
+## Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — How the probe works internally
+- [RECORDING.md](RECORDING.md) — How to record and parameterize flows
+- [QAAS-CONTEXT.md](QAAS-CONTEXT.md) — QaaS platform context for developers

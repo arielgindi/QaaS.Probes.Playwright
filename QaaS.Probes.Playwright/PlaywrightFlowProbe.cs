@@ -13,27 +13,45 @@ using QaaS.Probes.Playwright.Engine;
 namespace QaaS.Probes.Playwright;
 
 /// <summary>
-/// QaaS probe that discovers and runs Playwright flow classes.
+/// QaaS probe that runs recorded Playwright browser flows.
 ///
-/// Flow classes implement <see cref="IPlaywrightFlow"/> and are referenced by name in YAML.
-/// The probe handles browser lifecycle, performance optimizations, and passes
-/// the <c>FlowConfiguration</c> YAML section to each flow for typed config binding.
+/// How it works:
+/// 1. QaaS Runner discovers this probe by class name (PlaywrightFlowProbe)
+/// 2. Runner passes ProbeConfiguration from YAML → LoadAndValidateConfiguration
+/// 3. We bind our own config (BaseUrl, Headless, Flows, etc.) and save the raw IConfiguration
+/// 4. At runtime, we launch Chromium, navigate to BaseUrl, then run each flow in order
+/// 5. Each flow gets the FlowConfiguration subsection for its own typed config binding
+/// 6. All flows share one browser page — cookies and session state persist across flows
+///
+/// The raw IConfiguration is saved because FlowConfiguration is a dynamic subsection
+/// whose type depends on which flow is running — we can't bind it at probe config time.
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    // Saved so we can extract the FlowConfiguration subsection at runtime,
-    // since BaseProbe only binds the probe-level config.
     private IConfiguration _rawConfiguration = null!;
+
+    /// <summary>
+    /// We set ErrorOnUnknownConfiguration=false because the YAML contains FlowConfiguration
+    /// which is NOT a property on PlaywrightFlowConfig — it's consumed by the flow classes.
+    /// Without this, QaaS's binder would throw when it encounters FlowConfiguration.
+    /// </summary>
+    protected override BinderOptions GetConfigurationBinderOptions() => new()
+    {
+        ErrorOnUnknownConfiguration = false
+    };
 
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
+        // Save the raw IConfiguration so we can extract FlowConfiguration subsection later.
+        // BaseProbe.LoadAndValidateConfiguration only binds PlaywrightFlowConfig fields.
         _rawConfiguration = configuration;
         return base.LoadAndValidateConfiguration(configuration);
     }
 
     public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
     {
-        // Task.Run avoids deadlocks when called from a thread with a SynchronizationContext
+        // Task.Run ensures we're on a threadpool thread without a SynchronizationContext.
+        // This prevents deadlocks when Playwright posts async continuations.
         Task.Run(() => RunAsync()).GetAwaiter().GetResult();
     }
 
@@ -48,7 +66,9 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             return;
         }
 
-        // When the browser is visible, show everything naturally
+        // When the browser is visible, make it watchable:
+        // - SlowMo defaults to 1s between flows so you can follow along
+        // - Asset blocking and animation disabling are skipped so the site looks normal
         var visible = !Configuration.Headless;
         var slowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : visible ? 1000 : 0;
 
@@ -61,7 +81,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var page = await ctx.NewPageAsync();
         page.SetDefaultTimeout(Configuration.DefaultTimeout);
 
-        // Headless optimizations — skip things the user can't see anyway
+        // Headless optimizations — skip visual things nobody can see
         if (!visible && Configuration.BlockAssets)
             await page.RouteAsync("**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}",
                 r => r.AbortAsync());
@@ -72,7 +92,13 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
                 Content = "*, *::before, *::after { transition: none !important; animation: none !important; }"
             });
 
-        // The FlowConfiguration YAML section is passed to each flow for typed config binding
+        // Navigate to BaseUrl once — all flows start from here
+        Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
+        await page.GotoAsync(Configuration.BaseUrl);
+
+        // FlowConfiguration is a YAML subsection inside ProbeConfiguration.
+        // Each flow gets either its own named subsection (FlowConfiguration:LoginFlow:)
+        // or the shared root (FlowConfiguration:) if no named section exists.
         var flowConfig = _rawConfiguration.GetSection("FlowConfiguration");
 
         // Setup flows run once — login, cookie consent, etc.
@@ -84,7 +110,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             await ResolveAndConfigure(name, flowConfig).RunAsync(page);
         }
 
-        // Main flows
+        // Main flows run in order, same page, same cookies
         foreach (var name in flowNames)
         {
             Context.Logger.LogInformation("Running: {Name}", name);
@@ -101,11 +127,24 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         }
     }
 
+    /// <summary>
+    /// Discovers a flow class by name, sets its context and BaseUrl,
+    /// and binds its configuration from the FlowConfiguration YAML section.
+    ///
+    /// Config resolution: tries FlowConfiguration:{name} first (per-flow config),
+    /// falls back to FlowConfiguration root (shared config).
+    /// This lets you put LoginFlow and CreateMissionFlow config in separate sections
+    /// or share a single section if all flows use the same config shape.
+    /// </summary>
     private IPlaywrightFlow ResolveAndConfigure(string name, IConfiguration flowConfig)
     {
         var flow = FlowDiscovery.Resolve(name);
         flow.Context = Context;
-        flow.LoadAndValidateConfiguration(flowConfig);
+        flow.BaseUrl = Configuration.BaseUrl;
+
+        var specificSection = flowConfig.GetSection(name);
+        flow.LoadAndValidateConfiguration(specificSection.Exists() ? specificSection : flowConfig);
+
         return flow;
     }
 }

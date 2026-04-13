@@ -4,43 +4,75 @@ using System.ComponentModel.DataAnnotations;
 namespace QaaS.Probes.Playwright.Configuration;
 
 /// <summary>
-/// Configuration for the PlaywrightFlowProbe, bound from YAML <c>ProbeConfiguration</c>.
+/// Probe-level configuration bound from YAML ProbeConfiguration section.
+///
+/// Note: FlowConfiguration is NOT listed here — it's a separate YAML subsection
+/// that gets passed directly to each flow's own typed config record.
+/// We set ErrorOnUnknownConfiguration=false in the probe so this doesn't crash
+/// when FlowConfiguration is present in the YAML.
 /// </summary>
 public class PlaywrightFlowConfig
 {
+    /// <summary>
+    /// The website URL. The probe navigates here before running any flows.
+    /// All flows can access this via the BaseUrl property.
+    /// Change this to switch between environments (staging, production, etc).
+    /// </summary>
     [Required]
     public string BaseUrl { get; set; } = null!;
 
     /// <summary>
-    /// When true (default), the browser runs invisibly. Set to false to watch the flow
-    /// execute — this also auto-enables SlowMo (1s) and disables asset blocking.
+    /// When true (default), the browser runs invisibly in the background.
+    /// When false, you see the browser — and these things change automatically:
+    ///   - SlowMo defaults to 1000ms (so you can watch)
+    ///   - BlockAssets and DisableAnimations are turned off (so the site looks normal)
     /// </summary>
     [DefaultValue(true)]
     public bool Headless { get; set; } = true;
 
-    /// <summary>Block images, fonts, and icons in headless mode for faster execution.</summary>
+    /// <summary>
+    /// Block images, fonts, and icons in headless mode.
+    /// Saves network time since nobody is looking at the browser anyway.
+    /// Auto-disabled when Headless is false.
+    /// </summary>
     [DefaultValue(true)]
     public bool BlockAssets { get; set; } = true;
 
-    /// <summary>Disable CSS transitions and animations in headless mode.</summary>
+    /// <summary>
+    /// Disable CSS transitions and animations in headless mode.
+    /// Prevents flaky waits on animated elements.
+    /// Auto-disabled when Headless is false.
+    /// </summary>
     [DefaultValue(true)]
     public bool DisableAnimations { get; set; } = true;
 
+    /// <summary>Max time in ms to wait for any element before failing.</summary>
     [DefaultValue(30000)]
     public int DefaultTimeout { get; set; } = 30000;
 
-    /// <summary>Delay between steps in ms. Defaults to 1000 when Headless is false.</summary>
+    /// <summary>
+    /// Delay between flows in ms. Defaults to 1000 when Headless is false.
+    /// Set explicitly to override the auto behavior.
+    /// </summary>
     [DefaultValue(0)]
     public int SlowMo { get; set; }
 
-    /// <summary>Keep the browser open after completion (only works with Headless: false).</summary>
+    /// <summary>
+    /// Keep the browser window open after all flows finish.
+    /// Only works when Headless is false — useful for inspecting the final page state.
+    /// </summary>
     [DefaultValue(false)]
     public bool KeepOpen { get; set; }
 
-    /// <summary>Flows that run once before the main flows (login, cookie consent, etc).
-    /// Share the same browser context so cookies carry over.</summary>
+    /// <summary>
+    /// Flows that run once before the main Flows (e.g. login, cookie consent).
+    /// They share the same browser context so cookies carry over to main flows.
+    /// </summary>
     public string[]? SetupFlows { get; set; }
 
-    /// <summary>Main flows to execute. Each is a C# class name implementing IPlaywrightFlow.</summary>
+    /// <summary>
+    /// Main flows to execute in order. Each is a C# class name implementing IPlaywrightFlow.
+    /// They share the same browser page — navigation state, cookies, localStorage persist.
+    /// </summary>
     public string[]? Flows { get; set; }
 }

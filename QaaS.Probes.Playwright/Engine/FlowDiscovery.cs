@@ -4,13 +4,22 @@ namespace QaaS.Probes.Playwright.Engine;
 
 /// <summary>
 /// Finds IPlaywrightFlow implementations by class name across all loaded assemblies.
-/// Same discovery pattern as QaaS's HookProvider — scan assemblies, match by name.
-/// Results are cached after first scan.
+///
+/// This mirrors QaaS's own HookProvider pattern: scan assemblies for types implementing
+/// the target interface, match by class name (case-insensitive), instantiate via Activator.
+///
+/// Results are cached after first scan so repeated lookups are fast.
+/// Flow classes can live in any referenced assembly — the probe project, a shared NuGet
+/// package, or the test project itself.
 /// </summary>
 public static class FlowDiscovery
 {
     private static readonly Dictionary<string, Type> Cache = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Finds and instantiates a flow by class name.
+    /// Throws InvalidOperationException with a helpful message if not found.
+    /// </summary>
     public static IPlaywrightFlow Resolve(string name)
     {
         var type = FindType(name)
@@ -27,6 +36,8 @@ public static class FlowDiscovery
         if (Cache.TryGetValue(name, out var cached))
             return cached;
 
+        // Scan all loaded assemblies for IPlaywrightFlow implementations.
+        // This is the same approach QaaS uses in HookProvider to find probes/generators/assertions.
         var flowInterface = typeof(IPlaywrightFlow);
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
@@ -45,7 +56,7 @@ public static class FlowDiscovery
             }
             catch (ReflectionTypeLoadException)
             {
-                // Some assemblies can't be fully loaded — skip
+                // Some assemblies (e.g. native interop) can't enumerate types — skip them
             }
         }
 
