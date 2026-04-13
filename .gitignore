@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.DotSettings
+*.DotSettings.user
+TestResults/
+Flows/*.flow.yaml
