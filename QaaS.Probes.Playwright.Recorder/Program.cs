@@ -2,18 +2,15 @@ namespace QaaS.Probes.Playwright.Recorder;
 
 /// <summary>
 /// CLI that wraps Playwright codegen and saves the output as a C# flow class
-/// ready for PlaywrightFlowProbe. Two modes:
+/// ready for PlaywrightFlowProbe. Uses the system-installed Google Chrome so
+/// no extra browser download is needed. Two modes:
 ///   dotnet run                                 → interactive
 ///   dotnet run -- record &lt;name&gt; &lt;url&gt;          → quick record
-///   dotnet run -- install                      → install Chromium
 /// </summary>
 public static class Program
 {
     public static int Main(string[] args)
     {
-        if (args is ["install"])
-            return Microsoft.Playwright.Program.Main(["install", "chromium"]);
-
         if (args is ["record", var name, var url, ..])
             return Record(name, url, GetFlag(args, "--output-dir") ?? "Flows");
 
@@ -58,7 +55,7 @@ public static class Program
             ConsoleUi.Info(">>> Browser is opening — do your thing, then CLOSE the browser when done.\n");
 
             var exit = Microsoft.Playwright.Program.Main(
-                ["codegen", "--target", "csharp-nunit", "--output", tmp, url]);
+                ["codegen", "--channel", "chrome", "--target", "csharp-nunit", "--output", tmp, url]);
 
             if (exit != 0 || !File.Exists(tmp))
             {
@@ -128,7 +125,8 @@ public static class Program
         Console.WriteLine("    dotnet run                                          Interactive mode");
         Console.WriteLine("    dotnet run -- record <name> <url>                   Quick record");
         Console.WriteLine("    dotnet run -- record <name> <url> --output-dir Dir  Record to folder");
-        Console.WriteLine("    dotnet run -- install                               Install Chromium");
+        Console.WriteLine();
+        Console.WriteLine("  Uses your system-installed Google Chrome.");
         Console.WriteLine();
         return exitCode;
     }

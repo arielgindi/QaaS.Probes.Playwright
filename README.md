@@ -4,18 +4,14 @@ Playwright browser automation probe for QaaS. Record browser flows, replay them 
 
 ## Quick Start
 
-### 1. Install Chromium (one time)
-```bash
-dotnet run --project QaaS.Probes.Playwright.Recorder -- install
-```
-
-### 2. Record a flow
+### 1. Record a flow
 ```bash
 dotnet run --project QaaS.Probes.Playwright.Recorder
 ```
+Uses your system Google Chrome — no extra browser to install.
 Interactive mode asks you: URL, flow name, where to save. A browser opens — click around, close it when done. A C# flow class is saved automatically.
 
-### 3. Use in your QaaS project
+### 2. Use in your QaaS project
 
 Add the reference:
 ```xml
