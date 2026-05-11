@@ -75,4 +75,28 @@ public class PlaywrightFlowConfig
     /// They share the same browser page — navigation state, cookies, localStorage persist.
     /// </summary>
     public string[]? Flows { get; set; }
+
+    /// <summary>
+    /// CDP endpoint of the cluster Chromium (OpenShift). Used by default unless the
+    /// env var BROWSER_MODE=local switches to local mode.
+    /// Example: "http://chrome.qaas.internal:9222".
+    /// </summary>
+    public string? RemoteBrowserUrl { get; set; }
+
+    /// <summary>
+    /// CDP endpoint of a Chrome already running on the developer's machine.
+    /// Used only when BROWSER_MODE=local. When set, the probe ATTACHES to this
+    /// browser instead of launching a fresh one — your auth/cookies/fingerprint persist.
+    ///
+    /// Start your Chrome with:
+    ///   chrome --remote-debugging-port=9222 --user-data-dir=/path/to/profile
+    /// </summary>
+    public string? LocalBrowserUrl { get; set; }
+
+    /// <summary>
+    /// Override the local Chrome binary path (escape hatch for non-standard installs).
+    /// Used only when BROWSER_MODE=local AND LocalBrowserUrl is unset.
+    /// When unset, Playwright finds Chrome in the standard OS install location.
+    /// </summary>
+    public string? BrowserExecutablePath { get; set; }
 }

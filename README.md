@@ -39,6 +39,31 @@ Run:
 dotnet run -- run test.qaas.yaml
 ```
 
+## Local vs Cluster Browser
+
+The probe runs against either a Chrome in your cluster (default) or a Chrome on your laptop, controlled by one env var.
+
+```yaml
+ProbeConfiguration:
+  BaseUrl: https://my-app.com
+  RemoteBrowserUrl: http://chrome.qaas.internal:9222   # cluster Chrome (default mode)
+  LocalBrowserUrl:  http://localhost:9222              # optional: attach to your local Chrome
+  BrowserExecutablePath: /opt/google/chrome/chrome     # optional: custom Chrome binary
+  Flows: [LoginFlow]
+```
+
+**Cluster mode** (default, used in CI): no env var. The probe connects via CDP to `RemoteBrowserUrl`.
+
+**Local mode** (development on your laptop): `export BROWSER_MODE=local`. Then:
+- `LocalBrowserUrl` set → **attaches** to your already-running Chrome (auth/cookies/fingerprint persist between runs)
+- else `BrowserExecutablePath` set → launches that exact binary
+- else → launches the system-installed Chrome
+
+To attach to your local Chrome, start it once with:
+```bash
+google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/chrome-qaas-dev"
+```
+
 ## Passing Configuration
 
 Each flow has a typed config record. Add properties, reference them in the flow, pass values from YAML:

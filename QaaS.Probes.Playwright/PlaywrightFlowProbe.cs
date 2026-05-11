@@ -19,15 +19,23 @@ namespace QaaS.Probes.Playwright;
 /// 1. QaaS Runner discovers this probe by class name (PlaywrightFlowProbe)
 /// 2. Runner passes ProbeConfiguration from YAML → LoadAndValidateConfiguration
 /// 3. We bind our own config (BaseUrl, Headless, Flows, etc.) and save the raw IConfiguration
-/// 4. At runtime, we launch Chromium, navigate to BaseUrl, then run each flow in order
+/// 4. At runtime, we get a Chromium browser (local launch OR remote CDP connection),
+///    navigate to BaseUrl, then run each flow in order
 /// 5. Each flow gets the FlowConfiguration subsection for its own typed config binding
 /// 6. All flows share one browser page — cookies and session state persist across flows
+///
+/// Two modes (controlled by the BROWSER_MODE env var):
+///   - Default          → connect to RemoteBrowserUrl (cluster Chromium in OpenShift)
+///   - BROWSER_MODE=local → attach to LocalBrowserUrl if set, else launch
+///                          BrowserExecutablePath, else launch the system Chrome
 ///
 /// The raw IConfiguration is saved because FlowConfiguration is a dynamic subsection
 /// whose type depends on which flow is running — we can't bind it at probe config time.
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
+    private const string BrowserModeEnvVar = "BROWSER_MODE";
+
     private IConfiguration _rawConfiguration = null!;
 
     /// <summary>
@@ -72,16 +80,17 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var visible = !Configuration.Headless;
         var slowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : visible ? 1000 : 0;
 
-        Context.Logger.LogInformation("Starting Playwright (headless={Headless})", Configuration.Headless);
         var timer = Stopwatch.StartNew();
 
         using var pw = await Microsoft.Playwright.Playwright.CreateAsync();
-        await using var browser = await pw.Chromium.LaunchAsync(new() { Headless = Configuration.Headless });
+        await using var browser = await GetBrowserAsync(pw);
         await using var ctx = await browser.NewContextAsync();
         var page = await ctx.NewPageAsync();
         page.SetDefaultTimeout(Configuration.DefaultTimeout);
 
-        // Headless optimizations — skip visual things nobody can see
+        // Headless optimizations — skip visual things nobody can see.
+        // Note: when connected via CDP, the actual headless mode is controlled by how
+        // Chrome was launched in the container. Headless here still gates these tweaks.
         if (!visible && Configuration.BlockAssets)
             await page.RouteAsync("**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}",
                 r => r.AbortAsync());
@@ -125,6 +134,48 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
             await page.PauseAsync();
         }
+    }
+
+    /// <summary>
+    /// Resolves the browser based on the BROWSER_MODE env var:
+    ///   unset   → cluster mode, attach to RemoteBrowserUrl
+    ///   "local" → local mode: attach to LocalBrowserUrl if set, else launch Chrome
+    /// </summary>
+    private async Task<IBrowser> GetBrowserAsync(IPlaywright pw)
+    {
+        var isLocal = string.Equals(
+            Environment.GetEnvironmentVariable(BrowserModeEnvVar),
+            "local", StringComparison.OrdinalIgnoreCase);
+
+        // Cluster mode — always attach via CDP. RemoteBrowserUrl is required.
+        if (!isLocal)
+        {
+            if (string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl))
+                throw new InvalidOperationException(
+                    "Cluster mode is active but RemoteBrowserUrl is not set in YAML. " +
+                    $"Set RemoteBrowserUrl or run with {BrowserModeEnvVar}=local.");
+
+            Context.Logger.LogInformation("Cluster mode → {Url}", Configuration.RemoteBrowserUrl);
+            return await pw.Chromium.ConnectOverCDPAsync(Configuration.RemoteBrowserUrl);
+        }
+
+        // Local mode — attach to a running Chrome if a URL is given (keeps auth/fingerprint),
+        // otherwise launch a fresh one (from BrowserExecutablePath if set, else system Chrome).
+        if (!string.IsNullOrWhiteSpace(Configuration.LocalBrowserUrl))
+        {
+            Context.Logger.LogInformation("Local mode (attach) → {Url}", Configuration.LocalBrowserUrl);
+            return await pw.Chromium.ConnectOverCDPAsync(Configuration.LocalBrowserUrl);
+        }
+
+        var launch = new BrowserTypeLaunchOptions
+        {
+            Headless = Configuration.Headless,
+            ExecutablePath = Configuration.BrowserExecutablePath,
+            Channel = string.IsNullOrWhiteSpace(Configuration.BrowserExecutablePath) ? "chrome" : null,
+        };
+        Context.Logger.LogInformation("Local mode (launch) → {Source}",
+            launch.ExecutablePath ?? "system Chrome");
+        return await pw.Chromium.LaunchAsync(launch);
     }
 
     /// <summary>
