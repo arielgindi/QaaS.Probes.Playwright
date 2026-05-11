@@ -13,125 +13,57 @@ using QaaS.Probes.Playwright.Engine;
 namespace QaaS.Probes.Playwright;
 
 /// <summary>
-/// QaaS probe that runs recorded Playwright browser flows.
-///
-/// How it works:
-/// 1. QaaS Runner discovers this probe by class name (PlaywrightFlowProbe)
-/// 2. Runner passes ProbeConfiguration from YAML → LoadAndValidateConfiguration
-/// 3. We bind our own config (BaseUrl, Headless, Flows, etc.) and save the raw IConfiguration
-/// 4. At runtime, we get a Chromium browser (local launch OR remote CDP connection),
-///    navigate to BaseUrl, then run each flow in order
-/// 5. Each flow gets the FlowConfiguration subsection for its own typed config binding
-/// 6. All flows share one browser page — cookies and session state persist across flows
-///
-/// Two modes (controlled by the BROWSER_MODE env var):
-///   - Default            → connect to RemoteBrowserUrl (cluster Chromium in OpenShift)
-///   - BROWSER_MODE=local → connect to LocalBrowserUrl (Chrome on the developer's laptop)
-/// Both URLs default to baked-in values (see DefaultRemoteBrowserUrl / DefaultLocalBrowserUrl);
-/// projects only set them in YAML when overriding.
-///
-/// The raw IConfiguration is saved because FlowConfiguration is a dynamic subsection
-/// whose type depends on which flow is running — we can't bind it at probe config time.
+/// Runs Playwright browser flows against either a cluster Chromium (default) or
+/// a local Chrome on the developer's laptop (env: BROWSER_MODE=local). Local mode
+/// auto-launches Chrome if it isn't running, so subsequent runs reuse it.
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    // Built-in defaults — every project using this probe gets these for free.
-    // Override per-project by setting RemoteBrowserUrl/LocalBrowserUrl in YAML.
-    private const string DefaultRemoteBrowserUrl = "http://chrome.qaas.internal:9222";
-    private const string DefaultLocalBrowserUrl  = "http://localhost:9222";
-
-    private const string BrowserModeEnvVar = "BROWSER_MODE";
+    private const string DefaultLocalBrowserUrl = "http://localhost:9222";
+    private static readonly TimeSpan LocalStartupTimeout = TimeSpan.FromSeconds(60);
 
     private IConfiguration _rawConfiguration = null!;
 
-    /// <summary>
-    /// We set ErrorOnUnknownConfiguration=false because the YAML contains FlowConfiguration
-    /// which is NOT a property on PlaywrightFlowConfig — it's consumed by the flow classes.
-    /// Without this, QaaS's binder would throw when it encounters FlowConfiguration.
-    /// </summary>
-    protected override BinderOptions GetConfigurationBinderOptions() => new()
-    {
-        ErrorOnUnknownConfiguration = false
-    };
+    protected override BinderOptions GetConfigurationBinderOptions() =>
+        new() { ErrorOnUnknownConfiguration = false };
 
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
-        // Save the raw IConfiguration so we can extract FlowConfiguration subsection later.
-        // BaseProbe.LoadAndValidateConfiguration only binds PlaywrightFlowConfig fields.
         _rawConfiguration = configuration;
         return base.LoadAndValidateConfiguration(configuration);
     }
 
-    public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
-    {
-        // Task.Run ensures we're on a threadpool thread without a SynchronizationContext.
-        // This prevents deadlocks when Playwright posts async continuations.
-        Task.Run(() => RunAsync()).GetAwaiter().GetResult();
-    }
+    public override void Run(IImmutableList<SessionData> _, IImmutableList<DataSource> __) =>
+        Task.Run(RunAsync).GetAwaiter().GetResult();
 
     private async Task RunAsync()
     {
         var setupNames = Configuration.SetupFlows ?? [];
-        var flowNames = Configuration.Flows ?? [];
-
+        var flowNames  = Configuration.Flows ?? [];
         if (setupNames.Length == 0 && flowNames.Length == 0)
         {
             Context.Logger.LogWarning("No flows configured");
             return;
         }
 
-        // When the browser is visible, make it watchable:
-        // - SlowMo defaults to 1s between flows so you can follow along
-        // - Asset blocking and animation disabling are skipped so the site looks normal
         var visible = !Configuration.Headless;
-        var slowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : visible ? 1000 : 0;
+        var slowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : (visible ? 1000 : 0);
 
         var timer = Stopwatch.StartNew();
-
         using var pw = await Microsoft.Playwright.Playwright.CreateAsync();
-        await using var browser = await GetBrowserAsync(pw);
+        await using var browser = await ConnectBrowserAsync(pw);
         await using var ctx = await browser.NewContextAsync();
         var page = await ctx.NewPageAsync();
         page.SetDefaultTimeout(Configuration.DefaultTimeout);
 
-        // Headless optimizations — skip visual things nobody can see.
-        // Note: when connected via CDP, the actual headless mode is controlled by how
-        // Chrome was launched in the container. Headless here still gates these tweaks.
-        if (!visible && Configuration.BlockAssets)
-            await page.RouteAsync("**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}",
-                r => r.AbortAsync());
+        await ApplyHeadlessOptimizations(page, visible);
 
-        if (!visible && Configuration.DisableAnimations)
-            await page.AddStyleTagAsync(new()
-            {
-                Content = "*, *::before, *::after { transition: none !important; animation: none !important; }"
-            });
-
-        // Navigate to BaseUrl once — all flows start from here
         Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
         await page.GotoAsync(Configuration.BaseUrl);
 
-        // FlowConfiguration is a YAML subsection inside ProbeConfiguration.
-        // Each flow gets either its own named subsection (FlowConfiguration:LoginFlow:)
-        // or the shared root (FlowConfiguration:) if no named section exists.
         var flowConfig = _rawConfiguration.GetSection("FlowConfiguration");
-
-        // Setup flows run once — login, cookie consent, etc.
-        // They share the same browser context so cookies carry to main flows.
-        foreach (var name in setupNames)
-        {
-            Context.Logger.LogInformation("Setup: {Name}", name);
-            if (slowMo > 0) await Task.Delay(slowMo);
-            await ResolveAndConfigure(name, flowConfig).RunAsync(page);
-        }
-
-        // Main flows run in order, same page, same cookies
-        foreach (var name in flowNames)
-        {
-            Context.Logger.LogInformation("Running: {Name}", name);
-            if (slowMo > 0) await Task.Delay(slowMo);
-            await ResolveAndConfigure(name, flowConfig).RunAsync(page);
-        }
+        await RunFlows(setupNames, flowConfig, page, slowMo, label: "Setup");
+        await RunFlows(flowNames,  flowConfig, page, slowMo, label: "Running");
 
         Context.Logger.LogInformation("Done — {Ms}ms", timer.ElapsedMilliseconds);
 
@@ -142,61 +74,65 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         }
     }
 
-    /// <summary>
-    /// Resolves the browser based on the BROWSER_MODE env var:
-    ///   unset   → cluster mode, attach to RemoteBrowserUrl (defaults baked in)
-    ///   "local" → local mode, attach to LocalBrowserUrl (defaults baked in)
-    /// YAML overrides the defaults only when needed.
-    /// </summary>
-    private async Task<IBrowser> GetBrowserAsync(IPlaywright pw)
+    private async Task ApplyHeadlessOptimizations(IPage page, bool visible)
     {
-        var isLocal = string.Equals(
-            Environment.GetEnvironmentVariable(BrowserModeEnvVar),
-            "local", StringComparison.OrdinalIgnoreCase);
-
-        var url = isLocal
-            ? FirstNonEmpty(Configuration.LocalBrowserUrl,  DefaultLocalBrowserUrl)
-            : FirstNonEmpty(Configuration.RemoteBrowserUrl, DefaultRemoteBrowserUrl);
-
-        if (!string.IsNullOrWhiteSpace(url))
-        {
-            Context.Logger.LogInformation("{Mode} mode → {Url}", isLocal ? "Local" : "Cluster", url);
-            return await pw.Chromium.ConnectOverCDPAsync(url);
-        }
-
-        // Both URL fields explicitly cleared in YAML → launch a fresh Chrome locally.
-        var launch = new BrowserTypeLaunchOptions
-        {
-            Headless = Configuration.Headless,
-            ExecutablePath = Configuration.BrowserExecutablePath,
-            Channel = string.IsNullOrWhiteSpace(Configuration.BrowserExecutablePath) ? "chrome" : null,
-        };
-        Context.Logger.LogInformation("Local mode (launch) → {Source}",
-            launch.ExecutablePath ?? "system Chrome");
-        return await pw.Chromium.LaunchAsync(launch);
+        if (visible) return;
+        if (Configuration.BlockAssets)
+            await page.RouteAsync("**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}", r => r.AbortAsync());
+        if (Configuration.DisableAnimations)
+            await page.AddStyleTagAsync(new()
+            {
+                Content = "*, *::before, *::after { transition: none !important; animation: none !important; }"
+            });
     }
 
-    private static string? FirstNonEmpty(string? a, string? b) =>
-        !string.IsNullOrWhiteSpace(a) ? a : b;
+    private async Task RunFlows(string[] names, IConfiguration flowConfig, IPage page, int slowMo, string label)
+    {
+        foreach (var name in names)
+        {
+            Context.Logger.LogInformation("{Label}: {Name}", label, name);
+            if (slowMo > 0) await Task.Delay(slowMo);
+            await ResolveAndConfigure(name, flowConfig).RunAsync(page);
+        }
+    }
 
-    /// <summary>
-    /// Discovers a flow class by name, sets its context and BaseUrl,
-    /// and binds its configuration from the FlowConfiguration YAML section.
-    ///
-    /// Config resolution: tries FlowConfiguration:{name} first (per-flow config),
-    /// falls back to FlowConfiguration root (shared config).
-    /// This lets you put LoginFlow and CreateMissionFlow config in separate sections
-    /// or share a single section if all flows use the same config shape.
-    /// </summary>
     private IPlaywrightFlow ResolveAndConfigure(string name, IConfiguration flowConfig)
     {
         var flow = FlowDiscovery.Resolve(name);
         flow.Context = Context;
         flow.BaseUrl = Configuration.BaseUrl;
-
-        var specificSection = flowConfig.GetSection(name);
-        flow.LoadAndValidateConfiguration(specificSection.Exists() ? specificSection : flowConfig);
-
+        var section = flowConfig.GetSection(name);
+        flow.LoadAndValidateConfiguration(section.Exists() ? section : flowConfig);
         return flow;
+    }
+
+    private async Task<IBrowser> ConnectBrowserAsync(IPlaywright pw)
+    {
+        if (BrowserModeResolver.FromEnvironment() == BrowserMode.Local)
+        {
+            var url = string.IsNullOrWhiteSpace(Configuration.LocalBrowserUrl)
+                ? DefaultLocalBrowserUrl : Configuration.LocalBrowserUrl!;
+            await LocalChromeLauncher.EnsureRunningAsync(
+                url, Configuration.BrowserExecutablePath, LocalStartupTimeout, Context.Logger);
+            return await AttachAsync(pw, url, "Local");
+        }
+
+        if (string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl))
+            throw new InvalidOperationException(
+                "Cluster mode is active but RemoteBrowserUrl is not set in YAML. " +
+                $"Set ProbeConfiguration.RemoteBrowserUrl or run with {BrowserModeResolver.EnvVar}=local.");
+
+        return await AttachAsync(pw, Configuration.RemoteBrowserUrl, "Cluster");
+    }
+
+    private async Task<IBrowser> AttachAsync(IPlaywright pw, string url, string mode)
+    {
+        Context.Logger.LogInformation("{Mode} mode → {Url}", mode, url);
+        try { return await pw.Chromium.ConnectOverCDPAsync(url); }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to connect to {mode.ToLowerInvariant()} Chrome at {url}. {ex.Message}", ex);
+        }
     }
 }

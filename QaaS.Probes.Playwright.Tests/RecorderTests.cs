@@ -3,7 +3,7 @@ using QaaS.Probes.Playwright.Recorder;
 namespace QaaS.Probes.Playwright.Tests;
 
 [TestFixture]
-public class RecorderTests
+public class FlowCodeGeneratorTests
 {
     [Test]
     public void ExtractActions_FullCodegenOutput_ReturnsOnlyActionLines()
@@ -13,7 +13,6 @@ public class RecorderTests
             [TestFixture]
             public class Tests : PageTest
             {
-                [Test]
                 public async Task MyTest()
                 {
                     await Page.GotoAsync("https://example.com");
@@ -23,7 +22,7 @@ public class RecorderTests
             }
             """;
 
-        var result = Program.ExtractActions(code);
+        var result = FlowCodeGenerator.ExtractActions(code);
 
         Assert.That(result, Has.Count.EqualTo(3));
         Assert.That(result[0], Does.StartWith("await page.GotoAsync"));
@@ -32,24 +31,35 @@ public class RecorderTests
     }
 
     [Test]
-    public void ExtractActions_NormalizesPageToLowercase()
-    {
-        var code = """await Page.GotoAsync("https://x.com");""";
-        var result = Program.ExtractActions(code);
-        Assert.That(result[0], Does.StartWith("await page."));
-    }
+    public void ExtractActions_NormalizesPageToLowercase() =>
+        Assert.That(FlowCodeGenerator.ExtractActions("""await Page.GotoAsync("https://x.com");""")[0],
+            Does.StartWith("await page."));
 
     [Test]
-    public void ExtractActions_EmptyInput_ReturnsEmpty()
-    {
-        Assert.That(Program.ExtractActions(""), Is.Empty);
-    }
+    public void ExtractActions_EmptyInput_ReturnsEmpty() =>
+        Assert.That(FlowCodeGenerator.ExtractActions(""), Is.Empty);
+
+    [TestCase("login-flow", "LoginFlow")]
+    [TestCase("add-to-cart", "AddToCart")]
+    [TestCase("LoginFlow",  "LoginFlow")]
+    [TestCase("--login",    "Login")]      // empty segments are filtered
+    [TestCase("login_",     "Login")]
+    [TestCase("a b c",      "ABC")]
+    public void ToPascalCase_Converts(string input, string expected) =>
+        Assert.That(FlowCodeGenerator.ToPascalCase(input), Is.EqualTo(expected));
 
     [Test]
-    public void ToPascalCase_Converts()
+    public void ToPascalCase_NoUsableChars_Throws() =>
+        Assert.Throws<ArgumentException>(() => FlowCodeGenerator.ToPascalCase("---"));
+
+    [Test]
+    public void Render_ProducesCompilableShape()
     {
-        Assert.That(Program.ToPascalCase("login-flow"), Is.EqualTo("LoginFlow"));
-        Assert.That(Program.ToPascalCase("add-to-cart"), Is.EqualTo("AddToCart"));
-        Assert.That(Program.ToPascalCase("LoginFlow"), Is.EqualTo("LoginFlow"));
+        var generated = FlowCodeGenerator.Render("LoginFlow",
+            ["await page.GotoAsync(\"x\");", "await page.ClickAsync(\"#go\");"]);
+
+        Assert.That(generated, Does.Contain("public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>"));
+        Assert.That(generated, Does.Contain("await page.GotoAsync"));
+        Assert.That(generated, Does.Contain("public record LoginFlowConfig"));
     }
 }

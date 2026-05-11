@@ -41,31 +41,29 @@ dotnet run -- run test.qaas.yaml
 
 ## Local vs Cluster Browser
 
-The probe ships with sensible defaults — **no YAML needed** for the common cases.
+The probe runs against either a Chromium in your cluster (default) or a Chrome on
+your laptop, controlled by the `BROWSER_MODE` environment variable.
 
-**Cluster mode** (default, used in CI): the probe connects via CDP to the built-in
-`DefaultRemoteBrowserUrl` (the org's Chrome pod in OpenShift). No env var, no YAML.
+| Env | Behavior |
+|---|---|
+| unset (or `cluster` / `remote`) | Connect via CDP to `RemoteBrowserUrl` from YAML. Used in CI. |
+| `local` | Attach to a local Chrome at `LocalBrowserUrl` (default `http://localhost:9222`). Auto-launches Chrome from the standard install path if it isn't running. |
 
-**Local mode** (development on your laptop): `export BROWSER_MODE=local`. The probe
-attaches to your local Chrome at the built-in `DefaultLocalBrowserUrl`
-(`http://localhost:9222`). Start your Chrome once a day:
-```bash
-google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/chrome-qaas-dev"
-```
-Attaching keeps your auth/cookies/fingerprint between runs.
+Anything else (`true`, `1`, typos) is rejected with a clear error — no silent fallthrough.
 
-**Overrides** (rare — only when you need something non-standard):
 ```yaml
 ProbeConfiguration:
   BaseUrl: https://my-app.com
-  RemoteBrowserUrl: http://other-cluster:9222   # override cluster URL for this project
-  LocalBrowserUrl:  http://localhost:9333       # override local URL (custom port)
-  BrowserExecutablePath: /opt/google/chrome/chrome   # use specific Chrome binary
+  RemoteBrowserUrl: http://chrome.qaas.internal:9222  # required when not in local mode
+  LocalBrowserUrl:  http://localhost:9222             # optional override
+  BrowserExecutablePath: /opt/google/chrome/chrome    # optional, only used in local mode
   Flows: [LoginFlow]
 ```
 
-To change the built-in defaults for everyone using this probe, edit the constants at
-the top of `PlaywrightFlowProbe.cs` — one change, every project picks it up.
+**Local mode caveats**
+- First time, the probe finds Chrome at the standard OS path (Program Files / `/Applications` / `/usr/bin`) and starts it detached with `--remote-debugging-port=9222 --user-data-dir=~/.qaas/chrome-profile`. Chrome stays alive after your test exits; subsequent runs reuse it. If your org shows a fingerprint/permission dialog on every new browser launch, you'll only see it once per Chrome lifetime.
+- If Chrome lives somewhere unusual, set `BrowserExecutablePath`. The error message lists every path that was tried.
+- On Linux/macOS, Chrome is launched via `nohup … &` to survive parent SIGHUP. Closing the terminal that started `dotnet` will *not* kill it; killing your user session will.
 
 ## Passing Configuration
 

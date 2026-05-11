@@ -1,101 +1,63 @@
-using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace QaaS.Probes.Playwright.Configuration;
 
 /// <summary>
-/// Probe-level configuration bound from YAML ProbeConfiguration section.
-///
-/// Note: FlowConfiguration is NOT listed here — it's a separate YAML subsection
-/// that gets passed directly to each flow's own typed config record.
-/// We set ErrorOnUnknownConfiguration=false in the probe so this doesn't crash
-/// when FlowConfiguration is present in the YAML.
+/// Probe-level configuration bound from the YAML ProbeConfiguration section.
+/// FlowConfiguration is NOT a property here — it's a sibling subsection passed
+/// to each flow's own typed config record.
 /// </summary>
 public class PlaywrightFlowConfig
 {
-    /// <summary>
-    /// The website URL. The probe navigates here before running any flows.
-    /// All flows can access this via the BaseUrl property.
-    /// Change this to switch between environments (staging, production, etc).
-    /// </summary>
+    /// <summary>The site URL. The probe navigates here before running any flows.</summary>
     [Required]
     public string BaseUrl { get; set; } = null!;
 
     /// <summary>
-    /// When true (default), the browser runs invisibly in the background.
-    /// When false, you see the browser — and these things change automatically:
-    ///   - SlowMo defaults to 1000ms (so you can watch)
-    ///   - BlockAssets and DisableAnimations are turned off (so the site looks normal)
+    /// Behaviour switch for "is a human watching?". When false (default), the probe
+    /// blocks asset requests and disables CSS animations for speed. Note: this does
+    /// NOT control the actual headless mode of the remote/launched Chrome — that's
+    /// decided by how Chrome was started (cluster image, local install).
     /// </summary>
-    [DefaultValue(true)]
     public bool Headless { get; set; } = true;
 
-    /// <summary>
-    /// Block images, fonts, and icons in headless mode.
-    /// Saves network time since nobody is looking at the browser anyway.
-    /// Auto-disabled when Headless is false.
-    /// </summary>
-    [DefaultValue(true)]
+    /// <summary>Block images/fonts in headless mode for speed. Ignored when Headless=false.</summary>
     public bool BlockAssets { get; set; } = true;
 
-    /// <summary>
-    /// Disable CSS transitions and animations in headless mode.
-    /// Prevents flaky waits on animated elements.
-    /// Auto-disabled when Headless is false.
-    /// </summary>
-    [DefaultValue(true)]
+    /// <summary>Disable CSS animations in headless mode to avoid flaky waits.</summary>
     public bool DisableAnimations { get; set; } = true;
 
-    /// <summary>Max time in ms to wait for any element before failing.</summary>
-    [DefaultValue(30000)]
+    /// <summary>Max time (ms) for any single Playwright wait.</summary>
     public int DefaultTimeout { get; set; } = 30000;
 
-    /// <summary>
-    /// Delay between flows in ms. Defaults to 1000 when Headless is false.
-    /// Set explicitly to override the auto behavior.
-    /// </summary>
-    [DefaultValue(0)]
+    /// <summary>Delay (ms) before each flow. Defaults to 1000 when Headless=false so a human can watch.</summary>
     public int SlowMo { get; set; }
 
-    /// <summary>
-    /// Keep the browser window open after all flows finish.
-    /// Only works when Headless is false — useful for inspecting the final page state.
-    /// </summary>
-    [DefaultValue(false)]
+    /// <summary>Keep the browser open after flows finish (Headless=false only). Useful for inspecting state.</summary>
     public bool KeepOpen { get; set; }
 
-    /// <summary>
-    /// Flows that run once before the main Flows (e.g. login, cookie consent).
-    /// They share the same browser context so cookies carry over to main flows.
-    /// </summary>
+    /// <summary>Flows that run once before the main Flows (login, cookie consent, etc).</summary>
     public string[]? SetupFlows { get; set; }
 
-    /// <summary>
-    /// Main flows to execute in order. Each is a C# class name implementing IPlaywrightFlow.
-    /// They share the same browser page — navigation state, cookies, localStorage persist.
-    /// </summary>
+    /// <summary>Main flows to execute in order. Class names of types implementing IPlaywrightFlow.</summary>
     public string[]? Flows { get; set; }
 
     /// <summary>
-    /// Override the cluster CDP endpoint. Used in default (cluster) mode.
-    /// Leave unset to use the probe's built-in default (DefaultRemoteBrowserUrl).
+    /// CDP endpoint of the cluster Chromium. Used in default (cluster) mode.
+    /// Example: "http://chrome.qaas.internal:9222". Required when BROWSER_MODE is unset.
     /// </summary>
     public string? RemoteBrowserUrl { get; set; }
 
     /// <summary>
-    /// Override the local CDP endpoint. Used when BROWSER_MODE=local.
-    /// Leave unset to use the probe's built-in default (DefaultLocalBrowserUrl,
-    /// typically http://localhost:9222).
-    ///
-    /// Start your local Chrome with:
-    ///   chrome --remote-debugging-port=9222 --user-data-dir=/path/to/profile
+    /// CDP endpoint of a Chrome on the developer's laptop. Used when BROWSER_MODE=local.
+    /// Defaults to http://localhost:9222. The probe auto-launches Chrome at this port if
+    /// it isn't already running.
     /// </summary>
     public string? LocalBrowserUrl { get; set; }
 
     /// <summary>
-    /// Custom Chrome binary path (escape hatch for non-standard installs).
-    /// Only used when BROWSER_MODE=local AND both URL fields are explicitly cleared,
-    /// which makes the probe launch a fresh Chrome instead of attaching.
+    /// Path to a Chrome binary. Used as the launch target in local mode when the standard
+    /// install locations don't contain Chrome. Ignored in cluster mode.
     /// </summary>
     public string? BrowserExecutablePath { get; set; }
 }

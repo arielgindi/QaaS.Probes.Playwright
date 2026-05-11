@@ -1,44 +1,30 @@
-using Microsoft.Extensions.Configuration;
-using QaaS.Probes.Playwright.Configuration;
+using QaaS.Probes.Playwright.Engine;
 
 namespace QaaS.Probes.Playwright.Tests;
 
 [TestFixture]
-public class PlaywrightFlowConfigTests
+public class BrowserModeResolverTests
 {
-    [Test]
-    public void Defaults_AllBrowserFields_AreNull()
+    [TestCase(null,       BrowserMode.Cluster)]
+    [TestCase("",         BrowserMode.Cluster)]
+    [TestCase("   ",      BrowserMode.Cluster)]
+    [TestCase("local",    BrowserMode.Local)]
+    [TestCase("LOCAL",    BrowserMode.Local)]
+    [TestCase(" Local ",  BrowserMode.Local)]
+    [TestCase("cluster",  BrowserMode.Cluster)]
+    [TestCase("remote",   BrowserMode.Cluster)]
+    public void Parse_KnownValues(string? input, BrowserMode expected) =>
+        Assert.That(BrowserModeResolver.Parse(input), Is.EqualTo(expected));
+
+    [TestCase("true")]
+    [TestCase("1")]
+    [TestCase("on")]
+    [TestCase("localhost")]
+    [TestCase("yes")]
+    public void Parse_UnknownValue_ThrowsWithHelpfulMessage(string input)
     {
-        var cfg = new PlaywrightFlowConfig();
-        Assert.Multiple(() =>
-        {
-            Assert.That(cfg.RemoteBrowserUrl, Is.Null);
-            Assert.That(cfg.LocalBrowserUrl, Is.Null);
-            Assert.That(cfg.BrowserExecutablePath, Is.Null);
-        });
-    }
-
-    [Test]
-    public void Binds_AllBrowserFields_FromYamlLikeConfig()
-    {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["BaseUrl"]               = "https://example.com",
-                ["RemoteBrowserUrl"]      = "http://chrome.qaas.internal:9222",
-                ["LocalBrowserUrl"]       = "http://localhost:9222",
-                ["BrowserExecutablePath"] = "/opt/google/chrome/chrome",
-            })
-            .Build();
-
-        var bound = new PlaywrightFlowConfig();
-        config.Bind(bound);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(bound.RemoteBrowserUrl,      Is.EqualTo("http://chrome.qaas.internal:9222"));
-            Assert.That(bound.LocalBrowserUrl,       Is.EqualTo("http://localhost:9222"));
-            Assert.That(bound.BrowserExecutablePath, Is.EqualTo("/opt/google/chrome/chrome"));
-        });
+        var ex = Assert.Throws<InvalidOperationException>(() => BrowserModeResolver.Parse(input));
+        Assert.That(ex!.Message, Does.Contain("BROWSER_MODE"));
+        Assert.That(ex.Message,  Does.Contain("local"));
     }
 }
