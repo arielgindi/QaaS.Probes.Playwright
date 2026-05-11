@@ -41,28 +41,31 @@ dotnet run -- run test.qaas.yaml
 
 ## Local vs Cluster Browser
 
-The probe runs against either a Chrome in your cluster (default) or a Chrome on your laptop, controlled by one env var.
+The probe ships with sensible defaults — **no YAML needed** for the common cases.
 
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  RemoteBrowserUrl: http://chrome.qaas.internal:9222   # cluster Chrome (default mode)
-  LocalBrowserUrl:  http://localhost:9222              # optional: attach to your local Chrome
-  BrowserExecutablePath: /opt/google/chrome/chrome     # optional: custom Chrome binary
-  Flows: [LoginFlow]
-```
+**Cluster mode** (default, used in CI): the probe connects via CDP to the built-in
+`DefaultRemoteBrowserUrl` (the org's Chrome pod in OpenShift). No env var, no YAML.
 
-**Cluster mode** (default, used in CI): no env var. The probe connects via CDP to `RemoteBrowserUrl`.
-
-**Local mode** (development on your laptop): `export BROWSER_MODE=local`. Then:
-- `LocalBrowserUrl` set → **attaches** to your already-running Chrome (auth/cookies/fingerprint persist between runs)
-- else `BrowserExecutablePath` set → launches that exact binary
-- else → launches the system-installed Chrome
-
-To attach to your local Chrome, start it once with:
+**Local mode** (development on your laptop): `export BROWSER_MODE=local`. The probe
+attaches to your local Chrome at the built-in `DefaultLocalBrowserUrl`
+(`http://localhost:9222`). Start your Chrome once a day:
 ```bash
 google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/chrome-qaas-dev"
 ```
+Attaching keeps your auth/cookies/fingerprint between runs.
+
+**Overrides** (rare — only when you need something non-standard):
+```yaml
+ProbeConfiguration:
+  BaseUrl: https://my-app.com
+  RemoteBrowserUrl: http://other-cluster:9222   # override cluster URL for this project
+  LocalBrowserUrl:  http://localhost:9333       # override local URL (custom port)
+  BrowserExecutablePath: /opt/google/chrome/chrome   # use specific Chrome binary
+  Flows: [LoginFlow]
+```
+
+To change the built-in defaults for everyone using this probe, edit the constants at
+the top of `PlaywrightFlowProbe.cs` — one change, every project picks it up.
 
 ## Passing Configuration
 

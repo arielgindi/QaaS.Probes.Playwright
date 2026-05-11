@@ -25,15 +25,21 @@ namespace QaaS.Probes.Playwright;
 /// 6. All flows share one browser page — cookies and session state persist across flows
 ///
 /// Two modes (controlled by the BROWSER_MODE env var):
-///   - Default          → connect to RemoteBrowserUrl (cluster Chromium in OpenShift)
-///   - BROWSER_MODE=local → attach to LocalBrowserUrl if set, else launch
-///                          BrowserExecutablePath, else launch the system Chrome
+///   - Default            → connect to RemoteBrowserUrl (cluster Chromium in OpenShift)
+///   - BROWSER_MODE=local → connect to LocalBrowserUrl (Chrome on the developer's laptop)
+/// Both URLs default to baked-in values (see DefaultRemoteBrowserUrl / DefaultLocalBrowserUrl);
+/// projects only set them in YAML when overriding.
 ///
 /// The raw IConfiguration is saved because FlowConfiguration is a dynamic subsection
 /// whose type depends on which flow is running — we can't bind it at probe config time.
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
+    // Built-in defaults — every project using this probe gets these for free.
+    // Override per-project by setting RemoteBrowserUrl/LocalBrowserUrl in YAML.
+    private const string DefaultRemoteBrowserUrl = "http://chrome.qaas.internal:9222";
+    private const string DefaultLocalBrowserUrl  = "http://localhost:9222";
+
     private const string BrowserModeEnvVar = "BROWSER_MODE";
 
     private IConfiguration _rawConfiguration = null!;
@@ -138,8 +144,9 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
     /// <summary>
     /// Resolves the browser based on the BROWSER_MODE env var:
-    ///   unset   → cluster mode, attach to RemoteBrowserUrl
-    ///   "local" → local mode: attach to LocalBrowserUrl if set, else launch Chrome
+    ///   unset   → cluster mode, attach to RemoteBrowserUrl (defaults baked in)
+    ///   "local" → local mode, attach to LocalBrowserUrl (defaults baked in)
+    /// YAML overrides the defaults only when needed.
     /// </summary>
     private async Task<IBrowser> GetBrowserAsync(IPlaywright pw)
     {
@@ -147,26 +154,17 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             Environment.GetEnvironmentVariable(BrowserModeEnvVar),
             "local", StringComparison.OrdinalIgnoreCase);
 
-        // Cluster mode — always attach via CDP. RemoteBrowserUrl is required.
-        if (!isLocal)
-        {
-            if (string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl))
-                throw new InvalidOperationException(
-                    "Cluster mode is active but RemoteBrowserUrl is not set in YAML. " +
-                    $"Set RemoteBrowserUrl or run with {BrowserModeEnvVar}=local.");
+        var url = isLocal
+            ? FirstNonEmpty(Configuration.LocalBrowserUrl,  DefaultLocalBrowserUrl)
+            : FirstNonEmpty(Configuration.RemoteBrowserUrl, DefaultRemoteBrowserUrl);
 
-            Context.Logger.LogInformation("Cluster mode → {Url}", Configuration.RemoteBrowserUrl);
-            return await pw.Chromium.ConnectOverCDPAsync(Configuration.RemoteBrowserUrl);
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            Context.Logger.LogInformation("{Mode} mode → {Url}", isLocal ? "Local" : "Cluster", url);
+            return await pw.Chromium.ConnectOverCDPAsync(url);
         }
 
-        // Local mode — attach to a running Chrome if a URL is given (keeps auth/fingerprint),
-        // otherwise launch a fresh one (from BrowserExecutablePath if set, else system Chrome).
-        if (!string.IsNullOrWhiteSpace(Configuration.LocalBrowserUrl))
-        {
-            Context.Logger.LogInformation("Local mode (attach) → {Url}", Configuration.LocalBrowserUrl);
-            return await pw.Chromium.ConnectOverCDPAsync(Configuration.LocalBrowserUrl);
-        }
-
+        // Both URL fields explicitly cleared in YAML → launch a fresh Chrome locally.
         var launch = new BrowserTypeLaunchOptions
         {
             Headless = Configuration.Headless,
@@ -177,6 +175,9 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             launch.ExecutablePath ?? "system Chrome");
         return await pw.Chromium.LaunchAsync(launch);
     }
+
+    private static string? FirstNonEmpty(string? a, string? b) =>
+        !string.IsNullOrWhiteSpace(a) ? a : b;
 
     /// <summary>
     /// Discovers a flow class by name, sets its context and BaseUrl,
