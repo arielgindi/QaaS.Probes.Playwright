@@ -37,29 +37,43 @@ dotnet run -- run test.qaas.yaml
 
 ## Local vs Cluster Browser
 
-The probe runs against either a Chromium in your cluster (default) or a Chrome on
-your laptop, controlled by the `BROWSER_MODE` environment variable.
+Controlled by the `ENV` environment variable.
 
-| Env | Behavior |
+| `ENV` | Behavior |
 |---|---|
-| unset (or `cluster` / `remote`) | Connect via CDP to `RemoteBrowserUrl` from YAML. Used in CI. |
-| `local` | Attach to a local Chrome at `LocalBrowserUrl` (default `http://localhost:9222`). Auto-launches Chrome from the standard install path if it isn't running. |
+| unset (or `cluster` / `remote`) | Connect via CDP to `RemoteBrowserUrl` (defaults to `BrowserDefaults.RemoteUrl`). Used in CI inside OpenShift. |
+| `local` | Attach to a local Chrome at `LocalBrowserUrl` (defaults to `http://localhost:9222`). Auto-launches Chrome from the standard install path if it isn't running. |
 
-Anything else (`true`, `1`, typos) is rejected with a clear error — no silent fallthrough.
+Anything else (typos like `true`, `1`, etc.) throws — no silent fallthrough.
+
+`Headless: false` also forces local mode automatically (cluster Chrome runs in a headless container and can't show a window).
 
 ```yaml
 ProbeConfiguration:
   BaseUrl: https://my-app.com
-  RemoteBrowserUrl: http://chrome.qaas.internal:9222  # required when not in local mode
-  LocalBrowserUrl:  http://localhost:9222             # optional override
-  BrowserExecutablePath: /opt/google/chrome/chrome    # optional, only used in local mode
+  Headless: false               # visible browser → local mode automatically + SlowMo 2000
   Flows: [LoginFlow]
+  # Optional overrides:
+  # RemoteBrowserUrl: ws://chrome.<other-ns>.svc:3000?token=...
+  # LocalBrowserUrl:  http://localhost:9222
+  # BrowserExecutablePath: C:\Program Files\Google\Chrome\Application\chrome.exe
 ```
 
-**Local mode caveats**
-- First time, the probe finds Chrome at the standard OS path (Program Files / `/Applications` / `/usr/bin`) and starts it detached with `--remote-debugging-port=9222 --user-data-dir=~/.qaas/chrome-profile`. Chrome stays alive after your test exits; subsequent runs reuse it. If your org shows a fingerprint/permission dialog on every new browser launch, you'll only see it once per Chrome lifetime.
-- If Chrome lives somewhere unusual, set `BrowserExecutablePath`. The error message lists every path that was tried.
-- On Linux/macOS, Chrome is launched via `nohup … &` to survive parent SIGHUP. Closing the terminal that started `dotnet` will *not* kill it; killing your user session will.
+**Local mode notes**
+- Chrome opens with a dedicated profile at `~/.qaas/chrome-profile`. Persistent — log in once per site, sessions stay between runs. (Chrome 136+ blocks `--remote-debugging-port` on your default Chrome profile, so we use a separate one.)
+- The probe attaches to the existing default context (your cookies/sessions), not an incognito-like new context.
+- On Linux/macOS, Chrome is launched via `nohup … &` so it survives the test process.
+
+## Built-in defaults — single source of truth
+
+`BrowserDefaults.cs` holds the cluster URL and other constants. Edit them once for your org:
+
+```csharp
+public const string RemoteUrl =
+    "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=internal";
+```
+
+After you fork this repo, replace `<your-namespace>` with your actual OpenShift namespace. Every test repo that consumes this package inherits it automatically — no per-project YAML config needed.
 
 ## Passing Configuration
 
@@ -194,7 +208,7 @@ ProbeConfiguration:
 | `FlowConfiguration` | `{}` | Per-flow config sections, bound via `BindToObject<T>()` |
 | `Headless` | `true` | Invisible browser. `false` = visible + auto SlowMo |
 | `KeepOpen` | `false` | Keep browser open (only with `Headless: false`) |
-| `SlowMo` | `0` | Delay between flows in ms. Auto 1000 when visible |
+| `SlowMo` | `0` | Delay (ms) between every Playwright action. Auto 2000 when Headless=false |
 | `BlockAssets` | `true` | Block images/fonts in headless mode |
 | `DisableAnimations` | `true` | Kill CSS animations in headless mode |
 | `DefaultTimeout` | `30000` | Max ms to wait for elements |
