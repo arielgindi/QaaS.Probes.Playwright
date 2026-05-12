@@ -3,13 +3,13 @@ namespace QaaS.Probes.Playwright.Engine;
 public enum BrowserMode { Cluster, Local }
 
 /// <summary>
-/// Resolves the BROWSER_MODE env var to a typed mode. Strict: anything other than
+/// Resolves the ENV env var to a typed mode. Strict: anything other than
 /// "local", "cluster", "remote" (or empty/unset) throws — silent fallthrough on a typo
 /// would route a developer's tests to the wrong endpoint.
 /// </summary>
 public static class BrowserModeResolver
 {
-    public const string EnvVar = "BROWSER_MODE";
+    public const string EnvVar = "ENV";
 
     public static BrowserMode FromEnvironment() => Parse(Environment.GetEnvironmentVariable(EnvVar));
 

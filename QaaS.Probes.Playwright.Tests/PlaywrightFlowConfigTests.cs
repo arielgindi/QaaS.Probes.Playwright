@@ -24,7 +24,7 @@ public class BrowserModeResolverTests
     public void Parse_UnknownValue_ThrowsWithHelpfulMessage(string input)
     {
         var ex = Assert.Throws<InvalidOperationException>(() => BrowserModeResolver.Parse(input));
-        Assert.That(ex!.Message, Does.Contain("BROWSER_MODE"));
+        Assert.That(ex!.Message, Does.Contain(BrowserModeResolver.EnvVar));
         Assert.That(ex.Message,  Does.Contain("local"));
     }
 }
