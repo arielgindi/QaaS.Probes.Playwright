@@ -6,7 +6,7 @@ namespace QaaS.Probes.Playwright.Tests;
 public class FlowCodeGeneratorTests
 {
     [Test]
-    public void ExtractActions_FullCodegenOutput_ReturnsOnlyActionLines()
+    public void ExtractActions_DropsInitialGotoAsync_KeepsRest()
     {
         var code = """
             using Microsoft.Playwright;
@@ -24,16 +24,20 @@ public class FlowCodeGeneratorTests
 
         var result = FlowCodeGenerator.ExtractActions(code);
 
-        Assert.That(result, Has.Count.EqualTo(3));
-        Assert.That(result[0], Does.StartWith("await page.GotoAsync"));
-        Assert.That(result[1], Does.Contain("FillAsync"));
-        Assert.That(result[2], Does.Contain("ClickAsync"));
+        Assert.That(result, Has.Count.EqualTo(2));     // initial GotoAsync stripped
+        Assert.That(result[0], Does.Contain("FillAsync"));
+        Assert.That(result[1], Does.Contain("ClickAsync"));
     }
 
     [Test]
     public void ExtractActions_NormalizesPageToLowercase() =>
-        Assert.That(FlowCodeGenerator.ExtractActions("""await Page.GotoAsync("https://x.com");""")[0],
+        Assert.That(
+            FlowCodeGenerator.ExtractActions("""await Page.ClickAsync("#go");""")[0],
             Does.StartWith("await page."));
+
+    [Test]
+    public void ExtractActions_OnlyInitialGoto_ReturnsEmpty() =>
+        Assert.That(FlowCodeGenerator.ExtractActions("""await Page.GotoAsync("https://x.com");"""), Is.Empty);
 
     [Test]
     public void ExtractActions_EmptyInput_ReturnsEmpty() =>

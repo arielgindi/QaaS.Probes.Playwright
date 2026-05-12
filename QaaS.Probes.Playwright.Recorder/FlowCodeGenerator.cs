@@ -2,12 +2,25 @@ namespace QaaS.Probes.Playwright.Recorder;
 
 internal static class FlowCodeGenerator
 {
-    /// <summary>Pulls the recorded "await page.X()" lines out of Playwright codegen output.</summary>
-    public static List<string> ExtractActions(string csharpCode) =>
-        [.. csharpCode.Split('\n')
+    /// <summary>
+    /// Pulls the recorded "await page.X()" lines out of Playwright codegen output.
+    /// Drops the initial GotoAsync(url) — Playwright codegen always emits one for the
+    /// starting URL, but the probe navigates to Configuration.BaseUrl before flows run,
+    /// so the hardcoded recorded URL would override the YAML env config.
+    /// </summary>
+    public static List<string> ExtractActions(string csharpCode)
+    {
+        var lines = csharpCode.Split('\n')
             .Select(l => l.Trim())
             .Where(l => l.StartsWith("await Page.") || l.StartsWith("await page."))
-            .Select(l => l.Replace("await Page.", "await page."))];
+            .Select(l => l.Replace("await Page.", "await page."))
+            .ToList();
+
+        if (lines.Count > 0 && lines[0].StartsWith("await page.GotoAsync"))
+            lines.RemoveAt(0);
+
+        return lines;
+    }
 
     /// <summary>"add-to-cart" / "my_flow" / "  hi  " → "AddToCart" / "MyFlow" / "Hi".</summary>
     public static string ToPascalCase(string name)
