@@ -106,11 +106,17 @@ public static class LocalChromeLauncher
 
         if (OperatingSystem.IsWindows())
         {
+            // ArgumentList handles spaces/quoting on Windows itself — pass paths raw.
             psi.FileName = exe;
-            foreach (var a in ChromeArgs(port, dataDir)) psi.ArgumentList.Add(a);
+            psi.ArgumentList.Add($"--remote-debugging-port={port}");
+            psi.ArgumentList.Add("--remote-allow-origins=*");
+            psi.ArgumentList.Add($"--user-data-dir={dataDir}");
+            psi.ArgumentList.Add("--no-first-run");
+            psi.ArgumentList.Add("--no-default-browser-check");
         }
         else
         {
+            // Build a shell command string — shell-quote everything with spaces.
             var args = string.Join(" ", ChromeArgs(port, dataDir));
             psi.FileName = "/bin/sh";
             psi.ArgumentList.Add("-c");
@@ -124,6 +130,9 @@ public static class LocalChromeLauncher
     private static IEnumerable<string> ChromeArgs(int port, string dataDir) =>
     [
         $"--remote-debugging-port={port}",
+        // Chrome 111+ rejects CDP WebSocket handshakes without this — silent
+        // "port open but never answers" symptom otherwise.
+        "--remote-allow-origins=*",
         $"--user-data-dir={Quote(dataDir)}",
         "--no-first-run",
         "--no-default-browser-check",
