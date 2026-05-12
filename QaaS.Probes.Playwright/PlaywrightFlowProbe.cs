@@ -52,20 +52,18 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         using var pw = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var browser = await ConnectBrowserAsync(pw);
 
-        // Reuse the browser's existing default context when attaching to a real
-        // Chrome — that's where the user's cookies/sessions/extensions live.
-        // NewContextAsync() would create an incognito-like context with empty state.
-        // Only create a new context as a fallback (e.g., a launched Browserless
-        // instance with no default context).
+        // Reuse the existing default context (user's cookies/sessions/extensions live here).
+        // NewContextAsync() would create an empty incognito-like context.
         var existingContext = browser.Contexts.FirstOrDefault();
         var ctx = existingContext ?? await browser.NewContextAsync();
         var ownsContext = existingContext is null;
 
-        var page = await ctx.NewPageAsync();
-        page.SetDefaultTimeout(Configuration.DefaultTimeout);
-
+        IPage? page = null;
         try
         {
+            page = await ctx.NewPageAsync();
+            page.SetDefaultTimeout(Configuration.DefaultTimeout);
+
             await ApplyHeadlessOptimizations(page, visible);
 
             Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
@@ -77,20 +75,28 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
             Context.Logger.LogInformation("Done — {Ms}ms", timer.ElapsedMilliseconds);
 
-            if (visible && Configuration.KeepOpen)
+            if (visible && Configuration.KeepOpen && IsInteractiveConsole())
             {
                 Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
                 await page.PauseAsync();
             }
+            else if (Configuration.KeepOpen)
+            {
+                Context.Logger.LogWarning(
+                    "KeepOpen=true ignored — running headless or non-interactively (e.g. CI). " +
+                    "PauseAsync would hang forever.");
+            }
         }
         finally
         {
-            // Close the tab we opened so we don't leave debris in the user's Chrome.
-            if (!Configuration.KeepOpen) await page.CloseAsync();
-            // Dispose the context only if we created it — never the user's default one.
+            if (page is not null && !Configuration.KeepOpen) await page.CloseAsync();
             if (ownsContext) await ctx.DisposeAsync();
         }
     }
+
+    /// <summary>True only when running with a real TTY — CI/redirected pipes return false.</summary>
+    private static bool IsInteractiveConsole() =>
+        Environment.UserInteractive && !Console.IsInputRedirected && !Console.IsOutputRedirected;
 
     private async Task ApplyHeadlessOptimizations(IPage page, bool visible)
     {
@@ -143,7 +149,22 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
         var clusterUrl = string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl)
             ? BrowserDefaults.RemoteUrl : Configuration.RemoteBrowserUrl;
+        EnsureNoTemplatePlaceholder(clusterUrl);
         return await AttachAsync(pw, clusterUrl, "Cluster");
+    }
+
+    /// <summary>
+    /// Catches the common forget-to-edit case where BrowserDefaults.RemoteUrl still
+    /// contains a "&lt;your-namespace&gt;"-style placeholder. Without this check, the
+    /// failure surfaces as a generic DNS / connection error 60s later.
+    /// </summary>
+    private static void EnsureNoTemplatePlaceholder(string url)
+    {
+        if (System.Text.RegularExpressions.Regex.IsMatch(url, "<[^>]+>"))
+            throw new InvalidOperationException(
+                $"Browser URL contains an unresolved placeholder: '{url}'. " +
+                "Edit Engine/BrowserDefaults.cs and replace the <...> token with your real value, " +
+                "or set ProbeConfiguration.RemoteBrowserUrl in YAML.");
     }
 
     /// <summary>
@@ -161,11 +182,26 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         {
             SlowMo = slowMo > 0 ? slowMo : (float?)null
         };
-        try { return await pw.Chromium.ConnectOverCDPAsync(url, options); }
-        catch (Exception ex)
+
+        // Retry with backoff — Browserless rolling restarts and brief network blips
+        // would otherwise fail the run on a transient. Total cap ~3s.
+        const int maxAttempts = 3;
+        Exception? lastEx = null;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            throw new InvalidOperationException(
-                $"Failed to connect to {mode.ToLowerInvariant()} Chrome at {url}. {ex.Message}", ex);
+            try { return await pw.Chromium.ConnectOverCDPAsync(url, options); }
+            catch (Exception ex)
+            {
+                lastEx = ex;
+                if (attempt == maxAttempts) break;
+                Context.Logger.LogWarning("CDP connect attempt {N}/{Max} failed: {Msg}",
+                    attempt, maxAttempts, ex.Message);
+                await Task.Delay(500 * attempt);
+            }
         }
+
+        throw new InvalidOperationException(
+            $"Failed to connect to {mode.ToLowerInvariant()} Chrome at {url} after {maxAttempts} attempts. " +
+            $"{lastEx?.Message}", lastEx);
     }
 }

@@ -32,6 +32,12 @@ public static class LocalChromeLauncher
         await using var _ = await AcquireLockAsync(Path.Combine(profileDir, ".launch.lock"), ct);
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
+        if (executablePathOverride is not null && !File.Exists(executablePathOverride))
+            throw new FileNotFoundException(
+                $"BrowserExecutablePath does not exist: '{executablePathOverride}'. " +
+                "Check the path in YAML, or leave it unset to auto-detect Chrome.",
+                executablePathOverride);
+
         var exe = executablePathOverride ?? FindChrome()
             ?? throw new InvalidOperationException(NotFoundMessage());
 

@@ -73,12 +73,18 @@ public static class Program
 
             Directory.CreateDirectory(outDir);
             var existed = File.Exists(outPath);
-            // Auto-derive namespace by walking up from outDir until we find a .csproj
-            // and using its RootNamespace + the relative folder path.
-            var ns = FlowCodeGenerator.DeriveNamespace(outDir);
-            File.WriteAllText(outPath, FlowCodeGenerator.Render(className, actions, ns));
 
-            PrintNextSteps(className, url, outPath, existed, actions.Count);
+            // Protect manual edits: never overwrite an existing flow file. Write to
+            // `<Name>.recorded.cs` instead — user merges the new actions into the
+            // existing file (which has their parameterization).
+            var writePath = existed
+                ? Path.Combine(outDir, $"{className}.recorded.cs")
+                : outPath;
+
+            var ns = FlowCodeGenerator.DeriveNamespace(outDir);
+            File.WriteAllText(writePath, FlowCodeGenerator.Render(className, actions, ns));
+
+            PrintNextSteps(className, url, writePath, existed, actions.Count);
             return 0;
         }
         finally
@@ -90,8 +96,11 @@ public static class Program
     private static void PrintNextSteps(string className, string url, string outPath, bool existed, int actionCount)
     {
         ConsoleUi.Separator();
-        ConsoleUi.Success($"{(existed ? "UPDATED" : "SAVED")} {outPath}");
-        ConsoleUi.Info($"{actionCount} actions recorded\n");
+        ConsoleUi.Success($"SAVED {outPath}");
+        ConsoleUi.Info($"{actionCount} actions recorded");
+        if (existed)
+            ConsoleUi.Info("(existing flow preserved — merge new actions into the original by hand)");
+        Console.WriteLine();
 
         var baseUrl = TryGetAuthority(url);
         ConsoleUi.Info("Next steps:\n");
