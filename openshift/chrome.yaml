@@ -1,0 +1,118 @@
+# Browserless Chrome for OpenShift — easy-mode (no auth, no secrets, no NetworkPolicy).
+# Add a Secret + NetworkPolicy later if you decide you need them.
+#
+#   oc new-project internal-chrome
+#   oc apply -f chrome.yaml
+#
+# Consumers connect with:
+#   ws://chrome.internal-chrome.svc.cluster.local:3000?token=internal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chrome
+  labels:
+    app: chrome
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chrome
+  template:
+    metadata:
+      labels:
+        app: chrome
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: chrome
+          image: 8200artifactory.d8200.mil/docker-images-local/browserless/chromium:v2.8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: cdp
+              containerPort: 3000
+          env:
+            # Non-secret. Browserless requires a token to be set; we use a fixed
+            # well-known value. Everyone with cluster access can drive Chrome.
+            - name: TOKEN
+              value: "internal"
+            - name: CONCURRENT
+              value: "5"
+            - name: TIMEOUT
+              value: "600000"
+            - name: MAX_QUEUE_LENGTH
+              value: "10"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chrome
+  labels:
+    app: chrome
+spec:
+  selector:
+    app: chrome
+  ports:
+    - name: cdp
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chrome
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: chrome
+---
+# Exposes Chrome outside the cluster. Connect from your Windows laptop with:
+#   wss://chrome-internal-chrome.apps.<cluster-domain>?token=internal
+# Get the exact URL after apply:
+#   oc get route chrome -o jsonpath='{.spec.host}'
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: chrome
+  labels:
+    app: chrome
+spec:
+  to:
+    kind: Service
+    name: chrome
+  port:
+    targetPort: cdp
+  # Edge TLS: OpenShift router terminates HTTPS using the cluster's wildcard cert,
+  # talks plain HTTP to the pod inside the cluster. Your laptop uses wss://.
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
