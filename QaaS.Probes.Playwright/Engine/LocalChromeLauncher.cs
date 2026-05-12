@@ -24,8 +24,7 @@ public static class LocalChromeLauncher
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
         var uri = ParseOrThrow(cdpUrl);
-        var profileDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qaas", "chrome-profile");
+        var profileDir = BrowserDefaults.ChromeProfileDir;
         Directory.CreateDirectory(profileDir);
 
         // Cross-process lock so parallel runs don't both spawn against the same profile.

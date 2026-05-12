@@ -54,11 +54,26 @@ public static class Program
 
             ConsoleUi.Info(">>> Browser is opening — do your thing, then CLOSE the browser when done.\n");
 
-            var exit = Microsoft.Playwright.Program.Main(
-                ["codegen",
-                 "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
-                 "--viewport-size", QaaS.Probes.Playwright.Engine.BrowserDefaults.RecorderViewport,
-                 "--target", "csharp-nunit", "--output", tmp, url]);
+            // Share auth state across recording sessions: first time, codegen starts
+            // fresh (you log in once); every recording after, cookies/localStorage
+            // load automatically and you're already signed in.
+            var authPath = QaaS.Probes.Playwright.Engine.BrowserDefaults.AuthStatePath;
+            Directory.CreateDirectory(Path.GetDirectoryName(authPath)!);
+
+            var codegenArgs = new List<string>
+            {
+                "codegen",
+                "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
+                "--viewport-size", QaaS.Probes.Playwright.Engine.BrowserDefaults.RecorderViewport,
+                "--target", "csharp-nunit",
+                "--output", tmp,
+                "--save-storage", authPath,
+            };
+            if (File.Exists(authPath))
+                codegenArgs.AddRange(["--load-storage", authPath]);
+            codegenArgs.Add(url);
+
+            var exit = Microsoft.Playwright.Program.Main([.. codegenArgs]);
 
             if (exit != 0 || !File.Exists(tmp))
             {
