@@ -12,6 +12,7 @@ public static class LocalChromeLauncher
 {
     // Static reuse — the poll loop shouldn't allocate a socket every 300ms.
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private static readonly string[] WindowsChromeFolders = ["ProgramFiles", "ProgramFilesX86", "LocalApplicationData"];
 
     public static async Task EnsureRunningAsync(
         string cdpUrl,
@@ -106,8 +107,10 @@ public static class LocalChromeLauncher
     {
         var psi = new ProcessStartInfo
         {
-            UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardOutput = true, RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
         };
 
         if (OperatingSystem.IsWindows())
@@ -137,10 +140,9 @@ public static class LocalChromeLauncher
     private static IEnumerable<string> Candidates()
     {
         if (OperatingSystem.IsWindows())
-            return new[] { "ProgramFiles", "ProgramFilesX86", "LocalApplicationData" }
-                .Select(f => Path.Combine(
-                    Environment.GetFolderPath(Enum.Parse<Environment.SpecialFolder>(f)),
-                    @"Google\Chrome\Application\chrome.exe"));
+            return WindowsChromeFolders.Select(f => Path.Combine(
+                Environment.GetFolderPath(Enum.Parse<Environment.SpecialFolder>(f)),
+                @"Google\Chrome\Application\chrome.exe"));
 
         if (OperatingSystem.IsMacOS())
         {

@@ -47,7 +47,7 @@ public static class FlowDiscovery
     {
         try { return asm.GetTypes(); }
         catch (ReflectionTypeLoadException ex) { return ex.Types; }
-        catch (FileNotFoundException)          { return []; }
-        catch (TypeLoadException)              { return []; }
+        catch (FileNotFoundException) { return []; }
+        catch (TypeLoadException) { return []; }
     }
 }

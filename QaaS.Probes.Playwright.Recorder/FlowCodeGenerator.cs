@@ -4,11 +4,10 @@ internal static class FlowCodeGenerator
 {
     /// <summary>Pulls the recorded "await page.X()" lines out of Playwright codegen output.</summary>
     public static List<string> ExtractActions(string csharpCode) =>
-        csharpCode.Split('\n')
+        [.. csharpCode.Split('\n')
             .Select(l => l.Trim())
             .Where(l => l.StartsWith("await Page.") || l.StartsWith("await page."))
-            .Select(l => l.Replace("await Page.", "await page."))
-            .ToList();
+            .Select(l => l.Replace("await Page.", "await page."))];
 
     /// <summary>"add-to-cart" / "my_flow" / "  hi  " → "AddToCart" / "MyFlow" / "Hi".</summary>
     public static string ToPascalCase(string name)

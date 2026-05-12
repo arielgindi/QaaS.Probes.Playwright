@@ -5,14 +5,14 @@ namespace QaaS.Probes.Playwright.Tests;
 [TestFixture]
 public class BrowserModeResolverTests
 {
-    [TestCase(null,       BrowserMode.Cluster)]
-    [TestCase("",         BrowserMode.Cluster)]
-    [TestCase("   ",      BrowserMode.Cluster)]
-    [TestCase("local",    BrowserMode.Local)]
-    [TestCase("LOCAL",    BrowserMode.Local)]
-    [TestCase(" Local ",  BrowserMode.Local)]
-    [TestCase("cluster",  BrowserMode.Cluster)]
-    [TestCase("remote",   BrowserMode.Cluster)]
+    [TestCase(null, BrowserMode.Cluster)]
+    [TestCase("", BrowserMode.Cluster)]
+    [TestCase("   ", BrowserMode.Cluster)]
+    [TestCase("local", BrowserMode.Local)]
+    [TestCase("LOCAL", BrowserMode.Local)]
+    [TestCase(" Local ", BrowserMode.Local)]
+    [TestCase("cluster", BrowserMode.Cluster)]
+    [TestCase("remote", BrowserMode.Cluster)]
     public void Parse_KnownValues(string? input, BrowserMode expected) =>
         Assert.That(BrowserModeResolver.Parse(input), Is.EqualTo(expected));
 
@@ -25,6 +25,6 @@ public class BrowserModeResolverTests
     {
         var ex = Assert.Throws<InvalidOperationException>(() => BrowserModeResolver.Parse(input));
         Assert.That(ex!.Message, Does.Contain(BrowserModeResolver.EnvVar));
-        Assert.That(ex.Message,  Does.Contain("local"));
+        Assert.That(ex.Message, Does.Contain("local"));
     }
 }

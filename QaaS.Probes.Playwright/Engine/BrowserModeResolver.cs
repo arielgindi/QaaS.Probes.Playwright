@@ -18,8 +18,8 @@ public static class BrowserModeResolver
         if (string.IsNullOrWhiteSpace(value)) return BrowserMode.Cluster;
         return value.Trim().ToLowerInvariant() switch
         {
-            "local"                => BrowserMode.Local,
-            "cluster" or "remote"  => BrowserMode.Cluster,
+            "local" => BrowserMode.Local,
+            "cluster" or "remote" => BrowserMode.Cluster,
             _ => throw new InvalidOperationException(
                 $"Unknown {EnvVar} value '{value}'. Use 'local' or leave unset (default = cluster).")
         };

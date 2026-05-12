@@ -41,10 +41,10 @@ public class FlowCodeGeneratorTests
 
     [TestCase("login-flow", "LoginFlow")]
     [TestCase("add-to-cart", "AddToCart")]
-    [TestCase("LoginFlow",  "LoginFlow")]
-    [TestCase("--login",    "Login")]      // empty segments are filtered
-    [TestCase("login_",     "Login")]
-    [TestCase("a b c",      "ABC")]
+    [TestCase("LoginFlow", "LoginFlow")]
+    [TestCase("--login", "Login")]      // empty segments are filtered
+    [TestCase("login_", "Login")]
+    [TestCase("a b c", "ABC")]
     public void ToPascalCase_Converts(string input, string expected) =>
         Assert.That(FlowCodeGenerator.ToPascalCase(input), Is.EqualTo(expected));
 

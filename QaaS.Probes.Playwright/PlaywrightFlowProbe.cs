@@ -14,8 +14,8 @@ namespace QaaS.Probes.Playwright;
 
 /// <summary>
 /// Runs Playwright browser flows against either a cluster Chromium (default) or
-/// a local Chrome on the developer's laptop (env: BROWSER_MODE=local). Local mode
-/// auto-launches Chrome if it isn't running, so subsequent runs reuse it.
+/// a local Chrome on the developer's laptop (env: ENV=local). Local mode auto-launches
+/// Chrome if it isn't running, so subsequent runs reuse it.
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
@@ -38,7 +38,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     private async Task RunAsync()
     {
         var setupNames = Configuration.SetupFlows ?? [];
-        var flowNames  = Configuration.Flows ?? [];
+        var flowNames = Configuration.Flows ?? [];
         if (setupNames.Length == 0 && flowNames.Length == 0)
         {
             Context.Logger.LogWarning("No flows configured");
@@ -73,7 +73,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
             var flowConfig = _rawConfiguration.GetSection("FlowConfiguration");
             await RunFlows(setupNames, flowConfig, page, slowMo, label: "Setup");
-            await RunFlows(flowNames,  flowConfig, page, slowMo, label: "Running");
+            await RunFlows(flowNames, flowConfig, page, slowMo, label: "Running");
 
             Context.Logger.LogInformation("Done — {Ms}ms", timer.ElapsedMilliseconds);
 
