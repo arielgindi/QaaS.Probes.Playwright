@@ -46,7 +46,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         }
 
         var visible = !Configuration.Headless;
-        var slowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : (visible ? 1000 : 0);
+        var slowMo = EffectiveSlowMo();
 
         var timer = Stopwatch.StartNew();
         using var pw = await Microsoft.Playwright.Playwright.CreateAsync();
@@ -146,14 +146,20 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         return await AttachAsync(pw, clusterUrl, "Cluster");
     }
 
+    /// <summary>
+    /// Resolved SlowMo (ms) between every Playwright action. Explicit YAML value wins;
+    /// otherwise defaults to 2000ms when Headless=false (so a human can watch), 0 when headless.
+    /// </summary>
+    private int EffectiveSlowMo() =>
+        Configuration.SlowMo > 0 ? Configuration.SlowMo : (!Configuration.Headless ? 2000 : 0);
+
     private async Task<IBrowser> AttachAsync(IPlaywright pw, string url, string mode)
     {
         Context.Logger.LogInformation("{Mode} mode → {Url}", mode, url);
+        var slowMo = EffectiveSlowMo();
         var options = new BrowserTypeConnectOverCDPOptions
         {
-            // Playwright applies SlowMo between EVERY action (click, type, etc.) —
-            // not just between flows. Set in YAML when you want to watch tests run.
-            SlowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : (float?)null
+            SlowMo = slowMo > 0 ? slowMo : (float?)null
         };
         try { return await pw.Chromium.ConnectOverCDPAsync(url, options); }
         catch (Exception ex)

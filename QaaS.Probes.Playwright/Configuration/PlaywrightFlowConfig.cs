@@ -30,7 +30,10 @@ public class PlaywrightFlowConfig
     /// <summary>Max time (ms) for any single Playwright wait.</summary>
     public int DefaultTimeout { get; set; } = 30000;
 
-    /// <summary>Delay (ms) before each flow. Defaults to 1000 when Headless=false so a human can watch.</summary>
+    /// <summary>
+    /// Delay (ms) between every Playwright action (click, type, fill, etc.) so a human
+    /// can watch. Defaults to 2000 when Headless=false, 0 otherwise. Set explicitly to override.
+    /// </summary>
     public int SlowMo { get; set; }
 
     /// <summary>Keep the browser open after flows finish (Headless=false only). Useful for inspecting state.</summary>
