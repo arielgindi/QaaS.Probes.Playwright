@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
-using QaaS.Probes.Playwright;
 using QaaS.Probes.Playwright.Engine;
 
 namespace QaaS.Probes.Playwright.Tests;

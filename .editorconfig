@@ -1,0 +1,11 @@
+root = true
+
+[*.cs]
+# Treat unused imports as warnings so dotnet format will remove them
+dotnet_diagnostic.IDE0005.severity = warning
+# Sort System.* first
+dotnet_sort_system_directives_first = true
+# Remove unused private members
+dotnet_diagnostic.IDE0051.severity = warning
+# Remove unused parameters
+dotnet_diagnostic.IDE0060.severity = warning
