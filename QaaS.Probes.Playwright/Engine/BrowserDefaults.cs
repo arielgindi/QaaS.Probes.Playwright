@@ -22,6 +22,9 @@ public static class BrowserDefaults
     /// <summary>Playwright channel name used by the recorder's codegen.</summary>
     public const string ChromeChannel = "chrome";
 
+    /// <summary>Viewport size the recorder opens Chrome with. Default 1280x720 was too cramped.</summary>
+    public const string RecorderViewport = "1920,1080";
+
     /// <summary>Time the probe waits for an auto-launched Chrome to expose CDP.</summary>
     public static readonly TimeSpan LocalStartupTimeout = TimeSpan.FromSeconds(60);
 }

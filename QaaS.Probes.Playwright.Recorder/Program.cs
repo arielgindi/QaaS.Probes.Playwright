@@ -55,7 +55,9 @@ public static class Program
             ConsoleUi.Info(">>> Browser is opening — do your thing, then CLOSE the browser when done.\n");
 
             var exit = Microsoft.Playwright.Program.Main(
-                ["codegen", "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
+                ["codegen",
+                 "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
+                 "--viewport-size", QaaS.Probes.Playwright.Engine.BrowserDefaults.RecorderViewport,
                  "--target", "csharp-nunit", "--output", tmp, url]);
 
             if (exit != 0 || !File.Exists(tmp))
