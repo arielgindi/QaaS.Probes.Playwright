@@ -51,25 +51,44 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var timer = Stopwatch.StartNew();
         using var pw = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var browser = await ConnectBrowserAsync(pw);
-        await using var ctx = await browser.NewContextAsync();
+
+        // Reuse the browser's existing default context when attaching to a real
+        // Chrome — that's where the user's cookies/sessions/extensions live.
+        // NewContextAsync() would create an incognito-like context with empty state.
+        // Only create a new context as a fallback (e.g., a launched Browserless
+        // instance with no default context).
+        var existingContext = browser.Contexts.FirstOrDefault();
+        var ctx = existingContext ?? await browser.NewContextAsync();
+        var ownsContext = existingContext is null;
+
         var page = await ctx.NewPageAsync();
         page.SetDefaultTimeout(Configuration.DefaultTimeout);
 
-        await ApplyHeadlessOptimizations(page, visible);
-
-        Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
-        await page.GotoAsync(Configuration.BaseUrl);
-
-        var flowConfig = _rawConfiguration.GetSection("FlowConfiguration");
-        await RunFlows(setupNames, flowConfig, page, slowMo, label: "Setup");
-        await RunFlows(flowNames,  flowConfig, page, slowMo, label: "Running");
-
-        Context.Logger.LogInformation("Done — {Ms}ms", timer.ElapsedMilliseconds);
-
-        if (visible && Configuration.KeepOpen)
+        try
         {
-            Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
-            await page.PauseAsync();
+            await ApplyHeadlessOptimizations(page, visible);
+
+            Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
+            await page.GotoAsync(Configuration.BaseUrl);
+
+            var flowConfig = _rawConfiguration.GetSection("FlowConfiguration");
+            await RunFlows(setupNames, flowConfig, page, slowMo, label: "Setup");
+            await RunFlows(flowNames,  flowConfig, page, slowMo, label: "Running");
+
+            Context.Logger.LogInformation("Done — {Ms}ms", timer.ElapsedMilliseconds);
+
+            if (visible && Configuration.KeepOpen)
+            {
+                Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
+                await page.PauseAsync();
+            }
+        }
+        finally
+        {
+            // Close the tab we opened so we don't leave debris in the user's Chrome.
+            if (!Configuration.KeepOpen) await page.CloseAsync();
+            // Dispose the context only if we created it — never the user's default one.
+            if (ownsContext) await ctx.DisposeAsync();
         }
     }
 

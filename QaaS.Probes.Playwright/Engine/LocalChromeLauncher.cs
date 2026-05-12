@@ -23,19 +23,19 @@ public static class LocalChromeLauncher
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
         var uri = ParseOrThrow(cdpUrl);
-        var lockDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qaas");
-        Directory.CreateDirectory(lockDir);
+        var profileDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qaas", "chrome-profile");
+        Directory.CreateDirectory(profileDir);
 
         // Cross-process lock so parallel runs don't both spawn against the same profile.
-        await using var _ = await AcquireLockAsync(Path.Combine(lockDir, "launch.lock"), ct);
+        await using var _ = await AcquireLockAsync(Path.Combine(profileDir, ".launch.lock"), ct);
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
         var exe = executablePathOverride ?? FindChrome()
             ?? throw new InvalidOperationException(NotFoundMessage());
 
         logger.LogInformation("Local Chrome not running at {Url} — starting {Exe}", cdpUrl, exe);
-        LaunchDetached(exe, uri.Port);
+        LaunchDetached(exe, uri.Port, profileDir);
         await WaitForReachableAsync(cdpUrl, startupTimeout, ct);
     }
 
@@ -97,9 +97,12 @@ public static class LocalChromeLauncher
         public ValueTask DisposeAsync() { fs.Dispose(); return ValueTask.CompletedTask; }
     }
 
-    // POSIX: detach via `nohup ... &` so Chrome survives SIGHUP when the launching shell closes.
+    // Chrome 136+ refuses --remote-debugging-port on the DEFAULT user-data-dir for
+    // security. We must use a dedicated profile dir (~/.qaas/chrome-profile).
+    // It's persistent — log in once, sessions/cookies/bookmarks stay between runs.
+    // POSIX: detach via `nohup ... &` so Chrome survives SIGHUP.
     // Windows: Process.Start already outlives the parent.
-    private static void LaunchDetached(string exe, int port)
+    private static void LaunchDetached(string exe, int port, string profileDir)
     {
         var psi = new ProcessStartInfo
         {
@@ -107,23 +110,19 @@ public static class LocalChromeLauncher
             RedirectStandardOutput = true, RedirectStandardError = true,
         };
 
-        // We deliberately DO NOT pass --user-data-dir so Chrome uses the user's
-        // default profile (bookmarks, extensions, logins). Caveat: if Chrome is
-        // already running with that profile, this launch is a silent no-op
-        // (Chrome's single-instance-per-profile lock). The wait loop times out
-        // and the error tells the user to close Chrome first.
         if (OperatingSystem.IsWindows())
         {
             psi.FileName = exe;
             psi.ArgumentList.Add($"--remote-debugging-port={port}");
             psi.ArgumentList.Add("--remote-allow-origins=*");
+            psi.ArgumentList.Add($"--user-data-dir={profileDir}");
             psi.ArgumentList.Add("--no-first-run");
             psi.ArgumentList.Add("--no-default-browser-check");
         }
         else
         {
             var args = $"--remote-debugging-port={port} --remote-allow-origins=* " +
-                       "--no-first-run --no-default-browser-check";
+                       $"--user-data-dir={Quote(profileDir)} --no-first-run --no-default-browser-check";
             psi.FileName = "/bin/sh";
             psi.ArgumentList.Add("-c");
             psi.ArgumentList.Add($"nohup {Quote(exe)} {args} </dev/null >/dev/null 2>&1 &");
