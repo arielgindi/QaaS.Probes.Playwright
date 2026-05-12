@@ -149,7 +149,13 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     private async Task<IBrowser> AttachAsync(IPlaywright pw, string url, string mode)
     {
         Context.Logger.LogInformation("{Mode} mode → {Url}", mode, url);
-        try { return await pw.Chromium.ConnectOverCDPAsync(url); }
+        var options = new BrowserTypeConnectOverCDPOptions
+        {
+            // Playwright applies SlowMo between EVERY action (click, type, etc.) —
+            // not just between flows. Set in YAML when you want to watch tests run.
+            SlowMo = Configuration.SlowMo > 0 ? Configuration.SlowMo : (float?)null
+        };
+        try { return await pw.Chromium.ConnectOverCDPAsync(url, options); }
         catch (Exception ex)
         {
             throw new InvalidOperationException(
