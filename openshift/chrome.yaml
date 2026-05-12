@@ -62,9 +62,11 @@ spec:
             periodSeconds: 30
           securityContext:
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
             capabilities:
               drop: ["ALL"]
+            # runAsNonRoot intentionally omitted — OpenShift's SCC assigns a
+            # random non-root UID anyway, and Browserless's image USER directive
+            # trips the explicit check.
       volumes:
         - name: dshm
           emptyDir:
