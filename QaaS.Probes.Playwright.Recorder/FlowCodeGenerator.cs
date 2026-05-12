@@ -36,6 +36,7 @@ internal static class FlowCodeGenerator
         var body = string.Join("\n", actionLines.Select(l => $"        {l}"));
         var configName = $"{className}Config";
         return $$"""
+            using System.Text.RegularExpressions;
             using Microsoft.Playwright;
             using QaaS.Probes.Playwright;
 
