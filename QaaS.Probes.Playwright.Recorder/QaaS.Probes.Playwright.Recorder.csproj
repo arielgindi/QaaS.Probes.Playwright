@@ -13,6 +13,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+        <ProjectReference Include="..\QaaS.Probes.Playwright\QaaS.Probes.Playwright.csproj" />
     </ItemGroup>
 
 </Project>

@@ -19,14 +19,7 @@ namespace QaaS.Probes.Playwright;
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    private const string DefaultLocalBrowserUrl  = "http://localhost:9222";
-
-    // Hardcoded default — every consumer gets the cluster Chrome for free.
-    // Edit this one line to redirect every test repo to a different cluster.
-    private const string DefaultRemoteBrowserUrl =
-        "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=internal";
-
-    private static readonly TimeSpan LocalStartupTimeout = TimeSpan.FromSeconds(60);
+    // All shared browser defaults live in BrowserDefaults — single source of truth.
 
     private IConfiguration _rawConfiguration = null!;
 
@@ -114,18 +107,23 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
     private async Task<IBrowser> ConnectBrowserAsync(IPlaywright pw)
     {
-        if (BrowserModeResolver.FromEnvironment() == BrowserMode.Local)
+        // Visible mode (Headless=false) only makes sense locally — cluster Chrome
+        // runs in a headless container, can't show a window. Force local mode.
+        var isLocal = !Configuration.Headless
+                   || BrowserModeResolver.FromEnvironment() == BrowserMode.Local;
+
+        if (isLocal)
         {
             var url = string.IsNullOrWhiteSpace(Configuration.LocalBrowserUrl)
-                ? DefaultLocalBrowserUrl : Configuration.LocalBrowserUrl!;
+                ? BrowserDefaults.LocalUrl : Configuration.LocalBrowserUrl!;
             await LocalChromeLauncher.EnsureRunningAsync(
-                url, Configuration.BrowserExecutablePath, LocalStartupTimeout, Context.Logger);
+                url, Configuration.BrowserExecutablePath,
+                BrowserDefaults.LocalStartupTimeout, Context.Logger);
             return await AttachAsync(pw, url, "Local");
         }
 
         var clusterUrl = string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl)
-            ? DefaultRemoteBrowserUrl
-            : Configuration.RemoteBrowserUrl;
+            ? BrowserDefaults.RemoteUrl : Configuration.RemoteBrowserUrl;
         return await AttachAsync(pw, clusterUrl, "Cluster");
     }
 

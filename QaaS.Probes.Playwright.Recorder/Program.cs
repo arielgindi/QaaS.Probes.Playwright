@@ -55,7 +55,8 @@ public static class Program
             ConsoleUi.Info(">>> Browser is opening — do your thing, then CLOSE the browser when done.\n");
 
             var exit = Microsoft.Playwright.Program.Main(
-                ["codegen", "--channel", "chrome", "--target", "csharp-nunit", "--output", tmp, url]);
+                ["codegen", "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
+                 "--target", "csharp-nunit", "--output", tmp, url]);
 
             if (exit != 0 || !File.Exists(tmp))
             {
@@ -72,7 +73,10 @@ public static class Program
 
             Directory.CreateDirectory(outDir);
             var existed = File.Exists(outPath);
-            File.WriteAllText(outPath, FlowCodeGenerator.Render(className, actions));
+            // Auto-derive namespace by walking up from outDir until we find a .csproj
+            // and using its RootNamespace + the relative folder path.
+            var ns = FlowCodeGenerator.DeriveNamespace(outDir);
+            File.WriteAllText(outPath, FlowCodeGenerator.Render(className, actions, ns));
 
             PrintNextSteps(className, url, outPath, existed, actions.Count);
             return 0;

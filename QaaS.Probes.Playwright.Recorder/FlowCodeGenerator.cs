@@ -19,7 +19,7 @@ internal static class FlowCodeGenerator
         return string.Concat(parts.Select(w => char.ToUpper(w[0]) + w[1..]));
     }
 
-    public static string Render(string className, IEnumerable<string> actionLines)
+    public static string Render(string className, IEnumerable<string> actionLines, string namespaceName)
     {
         var body = string.Join("\n", actionLines.Select(l => $"        {l}"));
         var configName = $"{className}Config";
@@ -27,7 +27,7 @@ internal static class FlowCodeGenerator
             using Microsoft.Playwright;
             using QaaS.Probes.Playwright;
 
-            namespace Flows;
+            namespace {{namespaceName}};
 
             /// <summary>
             /// Recorded browser flow.
@@ -45,5 +45,40 @@ internal static class FlowCodeGenerator
             /// <summary>Configuration for {{className}}. Pass values from FlowConfiguration:{{className}}:.</summary>
             public record {{configName}} { }
             """;
+    }
+
+    /// <summary>
+    /// Derives a namespace from the output directory: scans upward for a .csproj,
+    /// uses its RootNamespace (or file name) + the path from the project root.
+    /// Falls back to "Flows" when no .csproj is found.
+    /// </summary>
+    public static string DeriveNamespace(string outputDir)
+    {
+        var dir = new DirectoryInfo(Path.GetFullPath(outputDir));
+        var ancestor = dir;
+        while (ancestor != null)
+        {
+            var csproj = ancestor.GetFiles("*.csproj").FirstOrDefault();
+            if (csproj is not null)
+            {
+                var root = ReadRootNamespace(csproj.FullName) ?? Path.GetFileNameWithoutExtension(csproj.Name);
+                var rel = Path.GetRelativePath(ancestor.FullName, dir.FullName)
+                    .Replace(Path.DirectorySeparatorChar, '.')
+                    .Replace(Path.AltDirectorySeparatorChar, '.');
+                return string.IsNullOrEmpty(rel) || rel == "." ? root : $"{root}.{rel}";
+            }
+            ancestor = ancestor.Parent;
+        }
+        return "Flows";
+    }
+
+    private static string? ReadRootNamespace(string csprojPath)
+    {
+        try
+        {
+            var doc = System.Xml.Linq.XDocument.Load(csprojPath);
+            return doc.Descendants("RootNamespace").FirstOrDefault()?.Value?.Trim();
+        }
+        catch { return null; }
     }
 }

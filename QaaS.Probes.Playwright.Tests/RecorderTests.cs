@@ -56,10 +56,39 @@ public class FlowCodeGeneratorTests
     public void Render_ProducesCompilableShape()
     {
         var generated = FlowCodeGenerator.Render("LoginFlow",
-            ["await page.GotoAsync(\"x\");", "await page.ClickAsync(\"#go\");"]);
+            ["await page.GotoAsync(\"x\");", "await page.ClickAsync(\"#go\");"],
+            "MyApp.Flows");
 
+        Assert.That(generated, Does.Contain("namespace MyApp.Flows"));
         Assert.That(generated, Does.Contain("public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>"));
         Assert.That(generated, Does.Contain("await page.GotoAsync"));
         Assert.That(generated, Does.Contain("public record LoginFlowConfig"));
+    }
+
+    [Test]
+    public void DeriveNamespace_NoProject_ReturnsFlowsFallback()
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), $"qaas-ns-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmp);
+        try
+        {
+            Assert.That(FlowCodeGenerator.DeriveNamespace(tmp), Is.EqualTo("Flows"));
+        }
+        finally { Directory.Delete(tmp); }
+    }
+
+    [Test]
+    public void DeriveNamespace_FindsCsprojAndAppendsSubfolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"qaas-ns-{Guid.NewGuid():N}");
+        var sub = Path.Combine(root, "Flows");
+        Directory.CreateDirectory(sub);
+        var csprojPath = Path.Combine(root, "MyApp.Tests.csproj");
+        File.WriteAllText(csprojPath, "<Project><PropertyGroup><RootNamespace>MyApp.Tests</RootNamespace></PropertyGroup></Project>");
+        try
+        {
+            Assert.That(FlowCodeGenerator.DeriveNamespace(sub), Is.EqualTo("MyApp.Tests.Flows"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 }
