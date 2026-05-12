@@ -23,19 +23,19 @@ public static class LocalChromeLauncher
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
         var uri = ParseOrThrow(cdpUrl);
-        var dataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qaas", "chrome-profile");
-        Directory.CreateDirectory(dataDir);
+        var lockDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".qaas");
+        Directory.CreateDirectory(lockDir);
 
         // Cross-process lock so parallel runs don't both spawn against the same profile.
-        await using var _ = await AcquireLockAsync(Path.Combine(dataDir, ".launch.lock"), ct);
+        await using var _ = await AcquireLockAsync(Path.Combine(lockDir, "launch.lock"), ct);
         if (await IsReachableAsync(cdpUrl, ct)) return;
 
         var exe = executablePathOverride ?? FindChrome()
             ?? throw new InvalidOperationException(NotFoundMessage());
 
         logger.LogInformation("Local Chrome not running at {Url} — starting {Exe}", cdpUrl, exe);
-        LaunchDetached(exe, uri.Port, dataDir);
+        LaunchDetached(exe, uri.Port);
         await WaitForReachableAsync(cdpUrl, startupTimeout, ct);
     }
 
@@ -58,8 +58,11 @@ public static class LocalChromeLauncher
             await Task.Delay(300, ct);
         }
         throw new TimeoutException(
-            $"Chrome did not become reachable at {cdpUrl} within {timeout.TotalSeconds:0}s. " +
-            "If a permission/fingerprint dialog is showing, approve it and re-run.");
+            $"Chrome did not become reachable at {cdpUrl} within {timeout.TotalSeconds:0}s.\n" +
+            "Likely causes:\n" +
+            "  • Chrome is already running with your default profile — close it and re-run\n" +
+            "    (Chrome only allows one instance per profile; second launch is a no-op)\n" +
+            "  • A permission/fingerprint dialog is showing — approve it and re-run");
     }
 
     private static Uri ParseOrThrow(string cdpUrl)
@@ -96,7 +99,7 @@ public static class LocalChromeLauncher
 
     // POSIX: detach via `nohup ... &` so Chrome survives SIGHUP when the launching shell closes.
     // Windows: Process.Start already outlives the parent.
-    private static void LaunchDetached(string exe, int port, string dataDir)
+    private static void LaunchDetached(string exe, int port)
     {
         var psi = new ProcessStartInfo
         {
@@ -104,20 +107,23 @@ public static class LocalChromeLauncher
             RedirectStandardOutput = true, RedirectStandardError = true,
         };
 
+        // We deliberately DO NOT pass --user-data-dir so Chrome uses the user's
+        // default profile (bookmarks, extensions, logins). Caveat: if Chrome is
+        // already running with that profile, this launch is a silent no-op
+        // (Chrome's single-instance-per-profile lock). The wait loop times out
+        // and the error tells the user to close Chrome first.
         if (OperatingSystem.IsWindows())
         {
-            // ArgumentList handles spaces/quoting on Windows itself — pass paths raw.
             psi.FileName = exe;
             psi.ArgumentList.Add($"--remote-debugging-port={port}");
             psi.ArgumentList.Add("--remote-allow-origins=*");
-            psi.ArgumentList.Add($"--user-data-dir={dataDir}");
             psi.ArgumentList.Add("--no-first-run");
             psi.ArgumentList.Add("--no-default-browser-check");
         }
         else
         {
-            // Build a shell command string — shell-quote everything with spaces.
-            var args = string.Join(" ", ChromeArgs(port, dataDir));
+            var args = $"--remote-debugging-port={port} --remote-allow-origins=* " +
+                       "--no-first-run --no-default-browser-check";
             psi.FileName = "/bin/sh";
             psi.ArgumentList.Add("-c");
             psi.ArgumentList.Add($"nohup {Quote(exe)} {args} </dev/null >/dev/null 2>&1 &");
@@ -126,17 +132,6 @@ public static class LocalChromeLauncher
         using var p = Process.Start(psi)
             ?? throw new InvalidOperationException("Process.Start returned null when launching Chrome.");
     }
-
-    private static IEnumerable<string> ChromeArgs(int port, string dataDir) =>
-    [
-        $"--remote-debugging-port={port}",
-        // Chrome 111+ rejects CDP WebSocket handshakes without this — silent
-        // "port open but never answers" symptom otherwise.
-        "--remote-allow-origins=*",
-        $"--user-data-dir={Quote(dataDir)}",
-        "--no-first-run",
-        "--no-default-browser-check",
-    ];
 
     private static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
 
