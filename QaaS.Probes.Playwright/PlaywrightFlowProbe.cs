@@ -19,7 +19,13 @@ namespace QaaS.Probes.Playwright;
 /// </summary>
 public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    private const string DefaultLocalBrowserUrl = "http://localhost:9222";
+    private const string DefaultLocalBrowserUrl  = "http://localhost:9222";
+
+    // Hardcoded default — every consumer gets the cluster Chrome for free.
+    // Edit this one line to redirect every test repo to a different cluster.
+    private const string DefaultRemoteBrowserUrl =
+        "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=internal";
+
     private static readonly TimeSpan LocalStartupTimeout = TimeSpan.FromSeconds(60);
 
     private IConfiguration _rawConfiguration = null!;
@@ -117,12 +123,10 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             return await AttachAsync(pw, url, "Local");
         }
 
-        if (string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl))
-            throw new InvalidOperationException(
-                "Cluster mode is active but RemoteBrowserUrl is not set in YAML. " +
-                $"Set ProbeConfiguration.RemoteBrowserUrl or run with {BrowserModeResolver.EnvVar}=local.");
-
-        return await AttachAsync(pw, Configuration.RemoteBrowserUrl, "Cluster");
+        var clusterUrl = string.IsNullOrWhiteSpace(Configuration.RemoteBrowserUrl)
+            ? DefaultRemoteBrowserUrl
+            : Configuration.RemoteBrowserUrl;
+        return await AttachAsync(pw, clusterUrl, "Cluster");
     }
 
     private async Task<IBrowser> AttachAsync(IPlaywright pw, string url, string mode)
