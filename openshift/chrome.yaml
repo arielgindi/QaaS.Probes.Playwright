@@ -60,13 +60,12 @@ spec:
             tcpSocket: { port: 3000 }
             initialDelaySeconds: 30
             periodSeconds: 30
+          # securityContext intentionally minimal — Chrome's sandbox needs syscalls
+          # that seccomp RuntimeDefault and `drop: ALL` capabilities block,
+          # causing chrome_crashpad_handler crashes on launch. OpenShift's SCC
+          # already enforces non-root + no-privilege-escalation.
           securityContext:
             allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            # runAsNonRoot intentionally omitted — OpenShift's SCC assigns a
-            # random non-root UID anyway, and Browserless's image USER directive
-            # trips the explicit check.
       volumes:
         - name: dshm
           emptyDir:
