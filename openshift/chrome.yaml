@@ -1,11 +1,11 @@
 # Browserless Chrome for OpenShift — easy-mode (no auth, no secrets, no NetworkPolicy).
 # Add a Secret + NetworkPolicy later if you decide you need them.
 #
-#   oc new-project internal-chrome
+#   oc new-project <your-namespace>
 #   oc apply -f chrome.yaml
 #
 # Consumers connect with:
-#   ws://chrome.internal-chrome.svc.cluster.local:3000?token=internal
+#   ws://chrome.<your-namespace>.svc.cluster.local:3000?token=<your-token>
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -34,8 +34,9 @@ spec:
           env:
             # Non-secret. Browserless requires a token to be set; we use a fixed
             # well-known value. Everyone with cluster access can drive Chrome.
+            # Match this exact value in browser-defaults.yaml's RemoteBrowserUrl.
             - name: TOKEN
-              value: "internal"
+              value: "<your-token>"
             - name: CONCURRENT
               value: "5"
             - name: TIMEOUT
@@ -97,7 +98,7 @@ spec:
       app: chrome
 ---
 # Exposes Chrome outside the cluster. Connect from your Windows laptop with:
-#   wss://chrome-internal-chrome.apps.<cluster-domain>?token=internal
+#   wss://chrome-<your-namespace>.apps.<cluster-domain>?token=<your-token>
 # Get the exact URL after apply:
 #   oc get route chrome -o jsonpath='{.spec.host}'
 apiVersion: route.openshift.io/v1

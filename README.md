@@ -66,14 +66,18 @@ ProbeConfiguration:
 
 ## Built-in defaults — single source of truth
 
-`BrowserDefaults.cs` holds the cluster URL and other constants. Edit them once for your org:
+Org-wide defaults live in **`QaaS.Probes.Playwright/browser-defaults.yaml`** (embedded into the NuGet at build time). Edit once when forking, rebuild, and every consuming repo inherits the new values automatically.
 
-```csharp
-public const string RemoteUrl =
-    "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=internal";
+```yaml
+# browser-defaults.yaml
+RemoteBrowserUrl: "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=<your-token>"
+LocalBrowserUrl:  "http://localhost:9222"
+ChromeChannel:    chrome
+RecorderViewport: "1920,1080"
+LocalStartupTimeoutSeconds: 60
 ```
 
-After you fork this repo, replace `<your-namespace>` with your actual OpenShift namespace. Every test repo that consumes this package inherits it automatically — no per-project YAML config needed.
+Replace `<your-namespace>` and `<your-token>` with your real values. The token must match the `TOKEN` env in `openshift/chrome.yaml`. Per-test `ProbeConfiguration` (in your `test.qaas.yaml`) can still override any URL on a case-by-case basis.
 
 ## Passing Configuration
 

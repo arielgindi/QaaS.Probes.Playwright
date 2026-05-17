@@ -154,7 +154,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     }
 
     /// <summary>
-    /// Catches the common forget-to-edit case where BrowserDefaults.RemoteUrl still
+    /// Catches the common forget-to-edit case where the loaded RemoteBrowserUrl still
     /// contains a "&lt;your-namespace&gt;"-style placeholder. Without this check, the
     /// failure surfaces as a generic DNS / connection error 60s later.
     /// </summary>
@@ -163,7 +163,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         if (System.Text.RegularExpressions.Regex.IsMatch(url, "<[^>]+>"))
             throw new InvalidOperationException(
                 $"Browser URL contains an unresolved placeholder: '{url}'. " +
-                "Edit Engine/BrowserDefaults.cs and replace the <...> token with your real value, " +
+                "Edit browser-defaults.yaml and replace the <...> tokens with your real values, " +
                 "or set ProbeConfiguration.RemoteBrowserUrl in YAML.");
     }
 
