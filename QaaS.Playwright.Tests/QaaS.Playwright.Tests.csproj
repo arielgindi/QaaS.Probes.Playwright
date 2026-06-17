@@ -7,6 +7,7 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,17 +15,13 @@
         <PackageReference Include="NUnit" Version="4.5.1" />
         <PackageReference Include="NUnit3TestAdapter" Version="6.1.0" />
         <PackageReference Include="coverlet.collector" Version="8.0.0" />
-        <PackageReference Include="Serilog" Version="4.3.1" />
-        <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <!-- Override the vulnerable transitive MessagePack 3.1.4 (GHSA-hv8m-jj95-wg3x). -->
         <PackageReference Include="MessagePack" Version="3.1.7" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\QaaS.Probes.Playwright\QaaS.Probes.Playwright.csproj" />
-        <ProjectReference Include="..\QaaS.Probes.Playwright.Recorder\QaaS.Probes.Playwright.Recorder.csproj" />
-        <ProjectReference Include="..\QaaS.Probes.Playwright.Contracts\QaaS.Probes.Playwright.Contracts.csproj" />
+        <ProjectReference Include="..\QaaS.Playwright\QaaS.Playwright.csproj" />
+        <ProjectReference Include="..\QaaS.Playwright.Recorder\QaaS.Playwright.Recorder.csproj" />
     </ItemGroup>
 
 </Project>

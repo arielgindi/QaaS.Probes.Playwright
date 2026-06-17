@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace QaaS.Probes.Playwright.Configuration;
+namespace QaaS.Playwright.Configuration;
 
 /// <summary>
 /// Probe-level configuration bound from the YAML <c>ProbeConfiguration</c> section.

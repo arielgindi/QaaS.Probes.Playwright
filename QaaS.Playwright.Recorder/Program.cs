@@ -1,4 +1,4 @@
-namespace QaaS.Probes.Playwright.Recorder;
+namespace QaaS.Playwright.Recorder;
 
 /// <summary>
 /// CLI that wraps Playwright codegen and saves the output as a C# flow class
@@ -57,14 +57,14 @@ public static class Program
             // Share auth state across recording sessions: first time, codegen starts
             // fresh (you log in once); every recording after, cookies/localStorage
             // load automatically and you're already signed in.
-            var authPath = QaaS.Probes.Playwright.Engine.BrowserDefaults.AuthStatePath;
+            var authPath = QaaS.Playwright.Engine.BrowserDefaults.AuthStatePath;
             Directory.CreateDirectory(Path.GetDirectoryName(authPath)!);
 
             var codegenArgs = new List<string>
             {
                 "codegen",
-                "--channel", QaaS.Probes.Playwright.Engine.BrowserDefaults.ChromeChannel,
-                "--viewport-size", QaaS.Probes.Playwright.Engine.BrowserDefaults.RecorderViewport,
+                "--channel", QaaS.Playwright.Engine.BrowserDefaults.ChromeChannel,
+                "--viewport-size", QaaS.Playwright.Engine.BrowserDefaults.RecorderViewport,
                 "--target", "csharp-nunit",
                 "--output", tmp,
                 "--save-storage", authPath,

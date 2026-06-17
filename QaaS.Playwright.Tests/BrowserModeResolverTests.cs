@@ -1,6 +1,6 @@
-using QaaS.Probes.Playwright.Engine;
+using QaaS.Playwright.Engine;
 
-namespace QaaS.Probes.Playwright.Tests;
+namespace QaaS.Playwright.Tests;
 
 [TestFixture]
 public class BrowserModeResolverTests

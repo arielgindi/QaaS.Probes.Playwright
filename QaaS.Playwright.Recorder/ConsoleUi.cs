@@ -1,4 +1,4 @@
-namespace QaaS.Probes.Playwright.Recorder;
+namespace QaaS.Playwright.Recorder;
 
 internal static class ConsoleUi
 {

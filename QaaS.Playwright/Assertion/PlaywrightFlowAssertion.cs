@@ -4,10 +4,9 @@ using QaaS.Framework.SDK.DataSourceObjects;
 using QaaS.Framework.SDK.Hooks.Assertion;
 using QaaS.Framework.SDK.Session.SessionDataObjects;
 using QaaS.Framework.Serialization;
-using QaaS.Probes.Playwright;
 using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
 
-namespace QaaS.Assertions.Playwright;
+namespace QaaS.Playwright;
 
 /// <summary>
 /// This assertion has no configuration; it reports on whichever sessions it is attached to.
@@ -28,10 +27,13 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
     /// <inheritdoc />
     public override bool Assert(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
     {
-        ResetResult();
-
+        // The runner invokes Assert exactly once per instance (one instance per uniquely-named assertion, a fresh
+        // scope per execution), so no inter-call state reset is needed.
         var flowOutcomes = sessionDataList
             .SelectMany(session => PlaywrightFlowResults.Read(Context, session.Name))
+            // Also fold in any outcomes recorded without a session scope, so a missing scope degrades gracefully
+            // instead of silently reporting "all passed".
+            .Concat(PlaywrightFlowResults.Read(Context, PlaywrightFlowResults.UnscopedSessionName))
             .ToList();
         var sessionFailures = sessionDataList
             .SelectMany(session => session.SessionFailures)
@@ -51,15 +53,6 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         AssertionStatus = passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
         Context.Logger.LogInformation("PlaywrightFlowAssertion: passed={Passed} — {Message}", passed, AssertionMessage);
         return passed;
-    }
-
-    // The framework may reuse an assertion instance, so clear any state from a previous Assert call.
-    private void ResetResult()
-    {
-        AssertionMessage = null;
-        AssertionTrace = null;
-        AssertionStatus = null;
-        AssertionAttachments.Clear();
     }
 
     private static string BuildMessage(

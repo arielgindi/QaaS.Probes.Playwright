@@ -1,7 +1,7 @@
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace QaaS.Probes.Playwright.Engine;
+namespace QaaS.Playwright.Engine;
 
 /// <summary>
 /// Single source of truth for browser defaults shared by the probe and the recorder. Values are loaded once

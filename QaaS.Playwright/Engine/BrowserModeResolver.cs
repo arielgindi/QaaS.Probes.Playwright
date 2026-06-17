@@ -1,4 +1,4 @@
-namespace QaaS.Probes.Playwright.Engine;
+namespace QaaS.Playwright.Engine;
 
 /// <summary>How the probe reaches Chrome: a local instance or a cluster/remote Chromium.</summary>
 public enum BrowserMode

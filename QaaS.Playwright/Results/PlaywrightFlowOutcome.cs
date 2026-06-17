@@ -1,4 +1,4 @@
-namespace QaaS.Probes.Playwright;
+namespace QaaS.Playwright;
 
 /// <summary>
 /// The result of running one Playwright flow, recorded by the probe and reported by the assertion.

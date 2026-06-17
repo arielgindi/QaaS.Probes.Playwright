@@ -1,6 +1,6 @@
-using QaaS.Probes.Playwright.Recorder;
+using QaaS.Playwright.Recorder;
 
-namespace QaaS.Probes.Playwright.Tests;
+namespace QaaS.Playwright.Tests;
 
 [TestFixture]
 public class FlowCodeGeneratorTests

@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace QaaS.Probes.Playwright.Recorder;
+namespace QaaS.Playwright.Recorder;
 
 /// <summary>
 /// Turns Playwright codegen output into a compilable <c>BasePlaywrightFlow</c>. It keeps both the recorded
@@ -63,7 +63,7 @@ internal static partial class FlowCodeGenerator
         return $$"""
             using System.Text.RegularExpressions;
             using Microsoft.Playwright;
-            using QaaS.Probes.Playwright;
+            using QaaS.Playwright;
             using static Microsoft.Playwright.Assertions;
 
             namespace {{namespaceName}};
