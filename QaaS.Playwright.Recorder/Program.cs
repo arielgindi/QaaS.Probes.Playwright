@@ -1,21 +1,26 @@
+using QaaS.Playwright.Engine;
+
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>
-/// CLI that wraps Playwright codegen and saves the output as a C# flow class
-/// ready for PlaywrightFlowProbe. Uses the system-installed Google Chrome so
-/// no extra browser download is needed. Two modes:
-///   dotnet run                                 → interactive
-///   dotnet run -- record &lt;name&gt; &lt;url&gt;          → quick record
+/// CLI that wraps Playwright codegen and saves the output as a C# flow class ready for PlaywrightFlowProbe. It
+/// uses the system-installed Google Chrome, so no extra browser download is needed. Two modes:
+/// <list type="bullet">
+///   <item><c>dotnet run</c> — interactive.</item>
+///   <item><c>dotnet run -- record &lt;name&gt; &lt;url&gt; [--output-dir Dir]</c> — quick record.</item>
+/// </list>
 /// </summary>
 public static class Program
 {
+    private const string DefaultOutputDir = "Flows";
+
     public static int Main(string[] args)
     {
-        if (args is ["record", var name, var url, ..])
-            return Record(name, url, GetFlag(args, "--output-dir") ?? "Flows");
-
         if (args is [] or ["record"])
             return Interactive();
+
+        if (args is ["record", .. var recordArgs])
+            return RecordFromArgs(recordArgs);
 
         return Usage(exitCode: 1);
     }
@@ -26,96 +31,153 @@ public static class Program
         ConsoleUi.Info("Let's record a browser flow.\n");
 
         var url = ConsoleUi.Ask("What website do you want to record?", "");
-        if (string.IsNullOrWhiteSpace(url))
+        if (!IsValidHttpUrl(url))
         {
-            ConsoleUi.Error("URL is required. Example: https://my-app.com/login");
+            ConsoleUi.Error("A valid http(s) URL is required. Example: https://my-app.com/login");
             return 1;
         }
 
         var name = ConsoleUi.Ask("Give this flow a name", "my-flow");
-        var outDir = ConsoleUi.Ask("Where to save it?", "Flows");
+        var outputDir = ConsoleUi.Ask("Where to save it?", DefaultOutputDir);
 
         Console.WriteLine();
         ConsoleUi.Separator();
-        return Record(name, url, outDir);
+        return Record(name, url, outputDir);
     }
 
-    private static int Record(string name, string url, string outDir)
+    /// <summary>Parses <c>&lt;name&gt; &lt;url&gt; [--output-dir Dir]</c> in any order, validating as it goes.</summary>
+    private static int RecordFromArgs(string[] args)
     {
-        var tmp = Path.Combine(Path.GetTempPath(), $"qaas-pw-{Guid.NewGuid():N}.codegen.txt");
+        var outputDir = DefaultOutputDir;
+        var positionals = new List<string>();
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index];
+            if (arg == "--output-dir")
+            {
+                if (index + 1 >= args.Length || args[index + 1].StartsWith('-'))
+                {
+                    ConsoleUi.Error("--output-dir needs a directory value.");
+                    return Usage(1);
+                }
+                outputDir = args[++index];
+            }
+            else if (arg.StartsWith('-'))
+            {
+                ConsoleUi.Error($"Unknown option '{arg}'.");
+                return Usage(1);
+            }
+            else
+            {
+                positionals.Add(arg);
+            }
+        }
+
+        if (positionals is not [var name, var url])
+        {
+            ConsoleUi.Error("Expected exactly: record <name> <url> [--output-dir Dir]");
+            return Usage(1);
+        }
+
+        if (!IsValidHttpUrl(url))
+        {
+            ConsoleUi.Error($"'{url}' is not a valid http(s) URL. Example: https://my-app.com/login");
+            return Usage(1);
+        }
+
+        return Record(name, url, outputDir);
+    }
+
+    private static int Record(string name, string url, string outputDir)
+    {
+        var codegenOutput = Path.Combine(Path.GetTempPath(), $"qaas-pw-{Guid.NewGuid():N}.codegen.txt");
         try
         {
             var className = FlowCodeGenerator.ToPascalCase(name);
-            var outPath = Path.GetFullPath(Path.Combine(outDir, $"{className}.cs"));
+            var outputPath = Path.GetFullPath(Path.Combine(outputDir, $"{className}.cs"));
 
             ConsoleUi.Info($"Flow:    {className}");
             ConsoleUi.Info($"URL:     {url}");
-            ConsoleUi.Info($"Save to: {outPath}\n");
-
+            ConsoleUi.Info($"Save to: {outputPath}\n");
             ConsoleUi.Info(">>> Browser is opening — do your thing, then CLOSE the browser when done.\n");
 
-            // Share auth state across recording sessions: first time, codegen starts
-            // fresh (you log in once); every recording after, cookies/localStorage
-            // load automatically and you're already signed in.
-            var authPath = QaaS.Playwright.Engine.BrowserDefaults.AuthStatePath;
-            Directory.CreateDirectory(Path.GetDirectoryName(authPath)!);
+            if (RunCodegen(url, codegenOutput) is { } failure)
+                return failure;
 
-            var codegenArgs = new List<string>
-            {
-                "codegen",
-                "--channel", QaaS.Playwright.Engine.BrowserDefaults.ChromeChannel,
-                "--viewport-size", QaaS.Playwright.Engine.BrowserDefaults.RecorderViewport,
-                "--target", "csharp-nunit",
-                "--output", tmp,
-                "--save-storage", authPath,
-            };
-            if (File.Exists(authPath))
-                codegenArgs.AddRange(["--load-storage", authPath]);
-            codegenArgs.Add(url);
-
-            var exit = Microsoft.Playwright.Program.Main([.. codegenArgs]);
-
-            if (exit != 0 || !File.Exists(tmp))
-            {
-                ConsoleUi.Error("Recording cancelled or browser closed before saving.");
-                return 1;
-            }
-
-            var actions = FlowCodeGenerator.ExtractActions(File.ReadAllText(tmp));
+            var actions = FlowCodeGenerator.ExtractActions(File.ReadAllText(codegenOutput));
             if (actions.Count == 0)
             {
                 ConsoleUi.Error("No actions recorded. Interact with the page before closing.");
                 return 1;
             }
 
-            Directory.CreateDirectory(outDir);
-            var existed = File.Exists(outPath);
-
-            // Protect manual edits: never overwrite an existing flow file. Write to
-            // `<Name>.recorded.cs` instead — user merges the new actions into the
-            // existing file (which has their parameterization).
-            var writePath = existed
-                ? Path.Combine(outDir, $"{className}.recorded.cs")
-                : outPath;
-
-            var ns = FlowCodeGenerator.DeriveNamespace(outDir);
-            File.WriteAllText(writePath, FlowCodeGenerator.Render(className, actions, ns));
-
-            PrintNextSteps(className, url, writePath, existed, actions.Count);
-            return 0;
+            return SaveFlow(className, url, actions, outputDir, outputPath);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            ConsoleUi.Error($"Could not save the recorded flow: {failure.Message}");
+            return 1;
         }
         finally
         {
-            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+            TryDelete(codegenOutput);
         }
     }
 
-    private static void PrintNextSteps(string className, string url, string outPath, bool existed, int actionCount)
+    /// <summary>Runs Playwright codegen; returns an exit code on failure, or null on success.</summary>
+    private static int? RunCodegen(string url, string codegenOutput)
+    {
+        // Share auth state across recording sessions: the first run starts fresh (log in once); later runs load
+        // the saved cookies/localStorage so you are already signed in.
+        var authStatePath = BrowserDefaults.AuthStatePath;
+        Directory.CreateDirectory(Path.GetDirectoryName(authStatePath)!);
+
+        var codegenArgs = new List<string>
+        {
+            "codegen",
+            "--channel", BrowserDefaults.ChromeChannel,
+            "--viewport-size", BrowserDefaults.RecorderViewport,
+            "--target", "csharp-nunit",
+            "--output", codegenOutput,
+            "--save-storage", authStatePath,
+        };
+        if (File.Exists(authStatePath))
+            codegenArgs.AddRange(["--load-storage", authStatePath]);
+        codegenArgs.Add(url);
+
+        var exitCode = Microsoft.Playwright.Program.Main([.. codegenArgs]);
+        if (exitCode != 0 || !File.Exists(codegenOutput))
+        {
+            ConsoleUi.Error("Recording cancelled or browser closed before saving.");
+            return 1;
+        }
+
+        return null;
+    }
+
+    private static int SaveFlow(string className, string url, List<string> actions, string outputDir, string outputPath)
+    {
+        Directory.CreateDirectory(outputDir);
+        var alreadyExisted = File.Exists(outputPath);
+
+        // Protect manual edits: never overwrite an existing flow file. Write to `<Name>.recorded.cs` instead so the
+        // user can merge the new actions into the file they have already parameterized.
+        var writePath = alreadyExisted ? Path.Combine(outputDir, $"{className}.recorded.cs") : outputPath;
+
+        var flowNamespace = FlowCodeGenerator.DeriveNamespace(outputDir);
+        File.WriteAllText(writePath, FlowCodeGenerator.Render(className, actions, flowNamespace));
+
+        PrintNextSteps(className, url, writePath, alreadyExisted, actions.Count);
+        return 0;
+    }
+
+    private static void PrintNextSteps(string className, string url, string outputPath, bool alreadyExisted, int actionCount)
     {
         ConsoleUi.Separator();
-        ConsoleUi.Success($"SAVED {outPath}");
+        ConsoleUi.Success($"SAVED {outputPath}");
         ConsoleUi.Info($"{actionCount} actions recorded");
-        if (existed)
+        if (alreadyExisted)
             ConsoleUi.Info("(existing flow preserved — merge new actions into the original by hand)");
         Console.WriteLine();
 
@@ -126,8 +188,8 @@ public static class Program
         ConsoleUi.Hint("  - Name: MySession");
         ConsoleUi.Hint("    Probes:");
         ConsoleUi.Hint($"      - Name: {className}");
-        ConsoleUi.Hint($"        Probe: PlaywrightFlowProbe");
-        ConsoleUi.Hint($"        ProbeConfiguration:");
+        ConsoleUi.Hint("        Probe: PlaywrightFlowProbe");
+        ConsoleUi.Hint("        ProbeConfiguration:");
         ConsoleUi.Hint($"          BaseUrl: {baseUrl}");
         ConsoleUi.Hint($"          Flows: [{className}]");
         Console.WriteLine();
@@ -136,16 +198,32 @@ public static class Program
         Console.WriteLine();
     }
 
+    private static bool IsValidHttpUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
     private static string TryGetAuthority(string url)
     {
-        try { return new Uri(url).GetLeftPart(UriPartial.Authority); }
-        catch { return url; }
+        try
+        {
+            return new Uri(url).GetLeftPart(UriPartial.Authority);
+        }
+        catch (UriFormatException)
+        {
+            return url;
+        }
     }
 
-    private static string? GetFlag(string[] args, string flag)
+    private static void TryDelete(string path)
     {
-        var i = Array.IndexOf(args, flag);
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            // Best-effort cleanup of a temp file; ignore.
+        }
     }
 
     private static int Usage(int exitCode = 0)

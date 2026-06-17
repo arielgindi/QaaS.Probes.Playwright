@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="QaaS.Playwright.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
     <PackageReference Include="QaaS.Framework.SDK" Version="1.4.0" />
     <PackageReference Include="QaaS.Framework.Configurations" Version="1.4.0" />
