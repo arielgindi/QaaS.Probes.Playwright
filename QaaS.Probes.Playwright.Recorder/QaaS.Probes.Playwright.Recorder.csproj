@@ -16,6 +16,8 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+        <!-- Override the vulnerable transitive MessagePack 3.1.4 (GHSA-hv8m-jj95-wg3x). -->
+        <PackageReference Include="MessagePack" Version="3.1.7" />
         <ProjectReference Include="..\QaaS.Probes.Playwright\QaaS.Probes.Playwright.csproj" />
     </ItemGroup>
 

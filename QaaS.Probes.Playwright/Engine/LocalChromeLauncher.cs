@@ -48,7 +48,12 @@ public static class LocalChromeLauncher
     public static async Task<bool> IsReachableAsync(string cdpUrl, CancellationToken ct = default)
     {
         var url = new UriBuilder(cdpUrl) { Path = "/json/version", Query = "" }.Uri.ToString();
-        try { return (await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct)).IsSuccessStatusCode; }
+        try
+        {
+            // Dispose the response so the connection is returned to the pool — this is polled repeatedly.
+            using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            return response.IsSuccessStatusCode;
+        }
         catch (HttpRequestException) { return false; }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested) { return false; }
     }
@@ -73,9 +78,12 @@ public static class LocalChromeLauncher
 
     private static Uri ParseOrThrow(string cdpUrl)
     {
-        if (!Uri.TryCreate(cdpUrl, UriKind.Absolute, out var uri) || uri.Port <= 0)
+        if (!Uri.TryCreate(cdpUrl, UriKind.Absolute, out var uri)
+            || uri.Port <= 0
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             throw new ArgumentException(
-                $"Browser URL must be an absolute http URI with a port: '{cdpUrl}'. Example: http://localhost:9222");
+                $"Browser URL must be an absolute http(s) URI with an explicit port: '{cdpUrl}'. " +
+                "Example: http://localhost:9222");
         return uri;
     }
 
@@ -110,12 +118,12 @@ public static class LocalChromeLauncher
     // Windows: Process.Start already outlives the parent.
     private static void LaunchDetached(string exe, int port, string profileDir)
     {
+        // Do not redirect the child's streams: on POSIX the shell already sends Chrome's output to /dev/null, and
+        // on Windows redirected pipes that nobody drains would block Chrome once the buffer fills.
         var psi = new ProcessStartInfo
         {
             UseShellExecute = false,
             CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
         };
 
         if (OperatingSystem.IsWindows())

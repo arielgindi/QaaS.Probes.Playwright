@@ -64,9 +64,9 @@ public class FlowCodeGeneratorTests
             "MyApp.Flows");
 
         Assert.That(generated, Does.Contain("namespace MyApp.Flows"));
-        Assert.That(generated, Does.Contain("public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>"));
+        Assert.That(generated, Does.Contain("public sealed class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>"));
         Assert.That(generated, Does.Contain("await page.GotoAsync"));
-        Assert.That(generated, Does.Contain("public record LoginFlowConfig"));
+        Assert.That(generated, Does.Contain("public sealed record LoginFlowConfig"));
     }
 
     [Test]

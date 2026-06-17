@@ -17,15 +17,14 @@
         <PackageReference Include="Serilog" Version="4.3.1" />
         <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+        <!-- Override the vulnerable transitive MessagePack 3.1.4 (GHSA-hv8m-jj95-wg3x). -->
+        <PackageReference Include="MessagePack" Version="3.1.7" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\QaaS.Probes.Playwright\QaaS.Probes.Playwright.csproj" />
         <ProjectReference Include="..\QaaS.Probes.Playwright.Recorder\QaaS.Probes.Playwright.Recorder.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="..\Flows\**\*.yaml" Link="Flows\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+        <ProjectReference Include="..\QaaS.Probes.Playwright.Contracts\QaaS.Probes.Playwright.Contracts.csproj" />
     </ItemGroup>
 
 </Project>

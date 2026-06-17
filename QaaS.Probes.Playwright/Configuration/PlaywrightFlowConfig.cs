@@ -3,64 +3,69 @@ using System.ComponentModel.DataAnnotations;
 namespace QaaS.Probes.Playwright.Configuration;
 
 /// <summary>
-/// Probe-level configuration bound from the YAML ProbeConfiguration section.
-/// FlowConfiguration is NOT a property here — it's a sibling subsection passed
-/// to each flow's own typed config record.
+/// Probe-level configuration bound from the YAML <c>ProbeConfiguration</c> section.
+/// <c>FlowConfiguration</c> is deliberately not a property here — it is a sibling subsection passed to each
+/// flow's own typed config record.
 /// </summary>
 public class PlaywrightFlowConfig
 {
     /// <summary>The site URL. The probe navigates here before running any flows.</summary>
     [Required]
+    [Url]
     public string BaseUrl { get; set; } = null!;
 
     /// <summary>
-    /// Behaviour switch for "is a human watching?". When false (default), the probe
-    /// blocks asset requests and disables CSS animations for speed. Note: this does
-    /// NOT control the actual headless mode of the remote/launched Chrome — that's
-    /// decided by how Chrome was started (cluster image, local install).
+    /// Whether the run is unattended. When true (default) the probe blocks asset requests and disables CSS
+    /// animations for speed; when false it forces local mode and applies slow-mo so a human can watch. This does
+    /// not change the actual headless mode of the remote/launched Chrome — that is decided by how Chrome started.
     /// </summary>
     public bool Headless { get; set; } = true;
 
-    /// <summary>Block images/fonts in headless mode for speed. Ignored when Headless=false.</summary>
+    /// <summary>Block images/fonts in headless mode for speed. Ignored when <see cref="Headless"/> is false.</summary>
     public bool BlockAssets { get; set; } = true;
 
     /// <summary>Disable CSS animations in headless mode to avoid flaky waits.</summary>
     public bool DisableAnimations { get; set; } = true;
 
-    /// <summary>Max time (ms) for any single Playwright wait.</summary>
-    public int DefaultTimeout { get; set; } = 30000;
+    /// <summary>Maximum time (ms) for any single Playwright wait.</summary>
+    [Range(1, int.MaxValue)]
+    public int DefaultTimeout { get; set; } = 30_000;
 
     /// <summary>
-    /// Delay (ms) between every Playwright action (click, type, fill, etc.) so a human
-    /// can watch. Defaults to 2000 when Headless=false, 0 otherwise. Set explicitly to override.
+    /// Delay (ms) Playwright waits between every action so a human can watch. Leave unset to use the default
+    /// (2000 in visible mode, 0 headless); set it explicitly — including 0 — to override.
     /// </summary>
-    public int SlowMo { get; set; }
+    [Range(0, int.MaxValue)]
+    public int? SlowMo { get; set; }
 
-    /// <summary>Keep the browser open after flows finish (Headless=false only). Useful for inspecting state.</summary>
+    /// <summary>
+    /// Keep the page open for interactive inspection after the flows finish (visible + interactive runs only).
+    /// </summary>
     public bool KeepOpen { get; set; }
 
-    /// <summary>Flows that run once before the main Flows (login, cookie consent, etc).</summary>
+    /// <summary>Flows that run once before <see cref="Flows"/> (login, cookie consent, etc.). Null means none.</summary>
     public string[]? SetupFlows { get; set; }
 
-    /// <summary>Main flows to execute in order. Class names of types implementing IPlaywrightFlow.</summary>
+    /// <summary>Main flows to run in order — class names of types implementing IPlaywrightFlow. Null means none.</summary>
     public string[]? Flows { get; set; }
 
     /// <summary>
-    /// CDP endpoint of the cluster Chromium. Used in default (cluster) mode.
-    /// Example: "http://chrome.qaas.internal:9222". Required when BROWSER_MODE is unset.
+    /// CDP endpoint of the cluster Chromium, used in the default (cluster) mode — for example
+    /// <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=&lt;token&gt;</c>. Required when neither
+    /// <c>ENV=local</c> nor <see cref="Headless"/>=false selects local mode; falls back to browser-defaults.yaml.
     /// </summary>
     public string? RemoteBrowserUrl { get; set; }
 
     /// <summary>
-    /// CDP endpoint of a Chrome on the developer's laptop. Used when BROWSER_MODE=local.
-    /// Defaults to http://localhost:9222. The probe auto-launches Chrome at this port if
-    /// it isn't already running.
+    /// CDP endpoint of a Chrome on the developer's machine, used when <c>ENV=local</c> (or <see cref="Headless"/>
+    /// is false). Defaults to <c>http://localhost:9222</c>; the probe auto-launches Chrome at this port if it is
+    /// not already running.
     /// </summary>
     public string? LocalBrowserUrl { get; set; }
 
     /// <summary>
-    /// Path to a Chrome binary. Used as the launch target in local mode when the standard
-    /// install locations don't contain Chrome. Ignored in cluster mode.
+    /// Path to a Chrome binary, used as the launch target in local mode when Chrome is not in a standard install
+    /// location. Ignored in cluster mode.
     /// </summary>
     public string? BrowserExecutablePath { get; set; }
 }
