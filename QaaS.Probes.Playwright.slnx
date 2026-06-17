@@ -2,4 +2,5 @@
   <Project Path="QaaS.Probes.Playwright.Recorder/QaaS.Probes.Playwright.Recorder.csproj" />
   <Project Path="QaaS.Probes.Playwright.Tests/QaaS.Probes.Playwright.Tests.csproj" />
   <Project Path="QaaS.Probes.Playwright/QaaS.Probes.Playwright.csproj" />
+  <Project Path="QaaS.Assertions.Playwright/QaaS.Assertions.Playwright.csproj" />
 </Solution>

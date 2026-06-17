@@ -116,7 +116,38 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         {
             Context.Logger.LogInformation("{Label}: {Name}", label, name);
             if (slowMo > 0) await Task.Delay(slowMo);
-            await ResolveAndConfigure(name, flowConfig).RunAsync(page);
+            try
+            {
+                await ResolveAndConfigure(name, flowConfig).RunAsync(page);
+                PlaywrightFlowResults.Record(Context, new PlaywrightFlowOutcome(name, Passed: true, FailureMessage: null));
+            }
+            catch (Exception ex)
+            {
+                // Record which flow failed (and why), plus a screenshot of the page at the moment of
+                // failure, before unwinding — so the assertion can report a per-flow breakdown with
+                // visual evidence. Re-throw so the journey stops and the runner registers a session failure.
+                var screenshot = await TryCaptureFailureScreenshotAsync(page);
+                PlaywrightFlowResults.Record(Context, new PlaywrightFlowOutcome(name, Passed: false, ex.Message, screenshot));
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Captures a full-page PNG of the current page for failure diagnostics. Best-effort: if the page is
+    /// already gone (or the screenshot fails for any reason) it logs a warning and returns null rather than
+    /// masking the original flow failure.
+    /// </summary>
+    private async Task<byte[]?> TryCaptureFailureScreenshotAsync(IPage page)
+    {
+        try
+        {
+            return await page.ScreenshotAsync(new PageScreenshotOptions { FullPage = true });
+        }
+        catch (Exception ex)
+        {
+            Context.Logger.LogWarning("Could not capture a failure screenshot: {Message}", ex.Message);
+            return null;
         }
     }
 
@@ -180,7 +211,7 @@ public class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var slowMo = EffectiveSlowMo();
         var options = new BrowserTypeConnectOverCDPOptions
         {
-            SlowMo = slowMo > 0 ? slowMo : (float?)null
+            SlowMo = slowMo > 0 ? slowMo : null
         };
 
         // Retry with backoff — Browserless rolling restarts and brief network blips

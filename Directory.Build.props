@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Override the vulnerable transitive MessagePack 3.1.4 (GHSA-hv8m-jj95-wg3x), pulled in by
+       QaaS.Framework.Serialization, with a patched build across every project in this solution. -->
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="3.1.7" />
+  </ItemGroup>
+
+</Project>
