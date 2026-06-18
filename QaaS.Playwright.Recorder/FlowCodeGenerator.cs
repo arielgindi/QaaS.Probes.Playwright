@@ -13,26 +13,46 @@ internal static partial class FlowCodeGenerator
 {
     /// <summary>
     /// Pulls the recorded <c>await page.X()</c> actions and <c>await Expect(...)</c> assertions out of codegen
-    /// output. Drops only the initial <c>GotoAsync(startUrl)</c> — the probe navigates to <c>BaseUrl</c> itself.
+    /// output. A statement that codegen wraps across several lines (e.g. a long locator chain) is rejoined into a
+    /// single statement, so the rendered flow always compiles. Drops only the initial <c>GotoAsync(startUrl)</c> —
+    /// the probe navigates to <c>BaseUrl</c> itself.
     /// </summary>
     public static List<string> ExtractActions(string csharpCode)
     {
-        var statements = csharpCode.Split('\n')
-            .Select(line => line.Trim())
-            .Where(IsFlowStatement)
-            .Select(NormalizePageReference)
-            .ToList();
+        var statements = new List<string>();
+        string? pending = null;
 
-        if (statements.Count > 0 && statements[0].StartsWith("await page.GotoAsync", StringComparison.Ordinal))
+        foreach (var line in csharpCode.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            // Outside a statement, only a recognized flow statement starts one; everything else (usings, braces,
+            // the fixture scaffold) is skipped. Inside one, every line is a continuation until the statement ends.
+            if (pending is null && !StartsFlowStatement(line))
+                continue;
+
+            pending = pending is null ? line : Join(pending, line);
+            if (!pending.EndsWith(';'))
+                continue;   // statement wrapped onto the next line — keep accumulating
+
+            statements.Add(NormalizePageReference(pending));
+            pending = null;
+        }
+
+        // The probe navigates to BaseUrl itself, so drop a leading GotoAsync(startUrl) the recorder captured.
+        if (statements is [var first, ..] && first.StartsWith("await page.GotoAsync", StringComparison.Ordinal))
             statements.RemoveAt(0);
 
         return statements;
     }
 
-    private static bool IsFlowStatement(string line) =>
+    private static bool StartsFlowStatement(string line) =>
         line.StartsWith("await Page.", StringComparison.Ordinal)
         || line.StartsWith("await page.", StringComparison.Ordinal)
         || line.StartsWith("await Expect(", StringComparison.Ordinal);
+
+    // Rejoin a statement codegen wrapped across lines: a fluent continuation (".ClickAsync()") binds tight to the
+    // previous segment; anything else keeps one separating space, so the result reads — and compiles — as written.
+    private static string Join(string statement, string continuation) =>
+        continuation.StartsWith('.') ? statement + continuation : $"{statement} {continuation}";
 
     // Codegen's NUnit target drives the test fixture's `Page` property; the generated flow receives a `page`
     // parameter instead. Rewrite member access (`Page.`) and the page-level assertion (`Expect(Page)`).

@@ -26,6 +26,12 @@ public class AnotherFlow : BasePlaywrightFlow<TestFlowConfig>
     public override Task RunAsync(IPage page) => Task.CompletedTask;
 }
 
+// An open generic flow cannot be constructed without a type argument; discovery must never select it.
+public class GenericFlow<T> : BasePlaywrightFlow<TestFlowConfig>
+{
+    public override Task RunAsync(IPage page) => Task.CompletedTask;
+}
+
 [TestFixture]
 public class FlowDiscoveryTests
 {
@@ -56,6 +62,14 @@ public class FlowDiscoveryTests
         var ex = Assert.Throws<InvalidOperationException>(() => FlowDiscovery.Resolve("DoesNotExist"));
         Assert.That(ex!.Message, Does.Contain("DoesNotExist"));
         Assert.That(ex.Message, Does.Contain("IPlaywrightFlow"));
+    }
+
+    [Test]
+    public void Resolve_OpenGenericFlow_NotSelected()
+    {
+        // An open generic is excluded by discovery, so it surfaces as "not found" rather than a construction crash.
+        var ex = Assert.Throws<InvalidOperationException>(() => FlowDiscovery.Resolve("GenericFlow"));
+        Assert.That(ex!.Message, Does.Contain("not found"));
     }
 
     [Test]

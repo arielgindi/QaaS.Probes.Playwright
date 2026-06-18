@@ -17,7 +17,8 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
     private const int MaxConnectAttempts = 3;
 
     /// <summary>Connects to the browser selected by the configuration and current environment.</summary>
-    public async Task<IBrowser> ConnectAsync(IPlaywright playwright, PlaywrightFlowConfig config)
+    public async Task<IBrowser> ConnectAsync(
+        IPlaywright playwright, PlaywrightFlowConfig config, CancellationToken ct = default)
     {
         var slowMo = EffectiveSlowMo(config);
 
@@ -31,15 +32,15 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
                 ? BrowserDefaults.LocalUrl
                 : config.LocalBrowserUrl;
             await LocalChromeLauncher.EnsureRunningAsync(
-                localUrl, config.BrowserExecutablePath, BrowserDefaults.LocalStartupTimeout, logger);
-            return await AttachAsync(playwright, localUrl, slowMo, "Local");
+                localUrl, config.BrowserExecutablePath, BrowserDefaults.LocalStartupTimeout, logger, ct);
+            return await AttachAsync(playwright, localUrl, slowMo, "Local", ct);
         }
 
         var clusterUrl = string.IsNullOrWhiteSpace(config.RemoteBrowserUrl)
             ? BrowserDefaults.RemoteUrl
             : config.RemoteBrowserUrl;
         BrowserUrl.EnsureNoTemplatePlaceholder(clusterUrl);
-        return await AttachAsync(playwright, clusterUrl, slowMo, "Cluster");
+        return await AttachAsync(playwright, clusterUrl, slowMo, "Cluster", ct);
     }
 
     /// <summary>
@@ -49,7 +50,8 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
     private static int EffectiveSlowMo(PlaywrightFlowConfig config) =>
         config.SlowMo ?? (config.Headless ? 0 : DefaultVisibleSlowMoMs);
 
-    private async Task<IBrowser> AttachAsync(IPlaywright playwright, string url, int slowMo, string mode)
+    private async Task<IBrowser> AttachAsync(
+        IPlaywright playwright, string url, int slowMo, string mode, CancellationToken ct)
     {
         logger.LogInformation("{Mode} mode → {Url}", mode, BrowserUrl.Redact(url));
         var options = new BrowserTypeConnectOverCDPOptions { SlowMo = slowMo > 0 ? slowMo : null };
@@ -59,6 +61,7 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
         Exception? lastFailure = null;
         for (var attempt = 1; attempt <= MaxConnectAttempts; attempt++)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 return await playwright.Chromium.ConnectOverCDPAsync(url, options);
@@ -69,7 +72,7 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
                 if (attempt == MaxConnectAttempts) break;
                 logger.LogWarning("CDP connect attempt {Attempt}/{Max} failed: {Message}",
                     attempt, MaxConnectAttempts, connectFailure.Message);
-                await Task.Delay(500 * attempt);
+                await Task.Delay(500 * attempt, ct);
             }
         }
 

@@ -31,6 +31,21 @@ public class LocalChromeLauncherTests
         Assert.That(ex!.Message, Does.Contain("absolute"));
     }
 
+    [Test]
+    public void EnsureRunning_CancelledToken_ThrowsOperationCanceled_NotTimeout()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Nothing is listening, so without cancellation this would wait out the startup timeout; a cancelled token
+        // must surface as cancellation rather than a misleading TimeoutException. CatchAsync (not ThrowsAsync) so the
+        // derived TaskCanceledException the HTTP/delay stack throws still satisfies the OperationCanceledException contract.
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            LocalChromeLauncher.EnsureRunningAsync(
+                "http://localhost:1", executablePathOverride: null,
+                startupTimeout: TimeSpan.FromSeconds(30), NullLogger.Instance, cts.Token));
+    }
+
     /// <summary>Minimal HTTP server that answers /json/version with 200 OK.</summary>
     private sealed class StubCdpServer : IAsyncDisposable
     {

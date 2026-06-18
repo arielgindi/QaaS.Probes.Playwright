@@ -36,6 +36,25 @@ public class FlowCodeGeneratorTests
             Does.StartWith("await page."));
 
     [Test]
+    public void ExtractActions_RejoinsStatementWrappedAcrossLines()
+    {
+        // Codegen can wrap a long locator chain over several lines; it must come back as one compilable statement.
+        var code = """
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Save" })
+                .GetByText("Confirm")
+                .ClickAsync();
+            await Page.GetByLabel("Email").FillAsync("a@b.com");
+            """;
+
+        var result = FlowCodeGenerator.ExtractActions(code);
+
+        Assert.That(result, Has.Count.EqualTo(2));
+        Assert.That(result[0], Is.EqualTo(
+            """await page.GetByRole(AriaRole.Button, new() { Name = "Save" }).GetByText("Confirm").ClickAsync();"""));
+        Assert.That(result[1], Does.Contain("FillAsync"));
+    }
+
+    [Test]
     public void ExtractActions_OnlyInitialGoto_ReturnsEmpty() =>
         Assert.That(FlowCodeGenerator.ExtractActions("""await Page.GotoAsync("https://x.com");"""), Is.Empty);
 

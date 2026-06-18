@@ -7,7 +7,7 @@ namespace QaaS.Playwright.Configuration;
 /// <c>FlowConfiguration</c> is deliberately not a property here — it is a sibling subsection passed to each
 /// flow's own typed config record.
 /// </summary>
-public class PlaywrightFlowConfig
+public sealed class PlaywrightFlowConfig
 {
     /// <summary>The site URL. The probe navigates here before running any flows.</summary>
     [Required]

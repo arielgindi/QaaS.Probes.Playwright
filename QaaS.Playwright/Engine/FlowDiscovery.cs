@@ -40,7 +40,7 @@ public static class FlowDiscovery
         var flowInterface = typeof(IPlaywrightFlow);
         return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(SafeGetTypes)
-            .Where(type => type is { IsAbstract: false, IsInterface: false }
+            .Where(type => type is { IsAbstract: false, IsInterface: false, IsGenericTypeDefinition: false }
                            && flowInterface.IsAssignableFrom(type)
                            && type.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }

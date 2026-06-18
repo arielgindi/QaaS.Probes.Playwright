@@ -68,6 +68,9 @@ public static class LocalChromeLauncher
             if (await IsReachableAsync(cdpUrl, ct)) return;
             await Task.Delay(300, ct);
         }
+
+        // A caller that cancelled while we were between polls must see cancellation, not a misleading timeout.
+        ct.ThrowIfCancellationRequested();
         throw new TimeoutException(
             $"Chrome did not become reachable at {cdpUrl} within {timeout.TotalSeconds:0}s.\n" +
             "Likely causes:\n" +
