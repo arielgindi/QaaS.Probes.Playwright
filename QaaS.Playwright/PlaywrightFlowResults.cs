@@ -51,7 +51,7 @@ public static class PlaywrightFlowResults
 
         lock (RecordGate)
         {
-            return ReadStored(context, sessionName).ToArray();
+            return [.. ReadStored(context, sessionName)];
         }
     }
 

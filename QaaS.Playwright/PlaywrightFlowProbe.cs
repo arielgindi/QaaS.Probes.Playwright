@@ -73,7 +73,7 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
         // Reuse the browser's existing default context (the user's cookies/sessions/extensions live there); only
         // create — and therefore own/dispose — a context when the browser has none.
-        var existingContext = browser.Contexts.FirstOrDefault();
+        var existingContext = browser.Contexts.Count > 0 ? browser.Contexts[0] : null;
         var browserContext = existingContext ?? await browser.NewContextAsync();
         var ownsBrowserContext = existingContext is null;
 
@@ -82,6 +82,8 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         {
             page = await browserContext.NewPageAsync();
             page.SetDefaultTimeout(Configuration.DefaultTimeout);
+            // Pin the display size from configuration so the run and its screenshots render at a known viewport.
+            await TrySetViewportAsync(page);
             await ApplyHeadlessOptimizations(page);
 
             Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
@@ -165,7 +167,25 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     }
 
     /// <summary>
-    /// Captures a full-page PNG of the current page for failure diagnostics. Best-effort: if the page is gone
+    /// Sets the configured viewport on the page. Best-effort: a CDP target that rejects a device-metrics override
+    /// (some remote/cluster browsers do) must not abort the whole run before any flow — log and continue.
+    /// </summary>
+    private async Task TrySetViewportAsync(IPage page)
+    {
+        try
+        {
+            await page.SetViewportSizeAsync(Configuration.ViewportWidth, Configuration.ViewportHeight);
+        }
+        catch (PlaywrightException viewportFailure)
+        {
+            Context.Logger.LogWarning(
+                "Could not set viewport to {Width}x{Height}: {Message}. Continuing at the browser's current size.",
+                Configuration.ViewportWidth, Configuration.ViewportHeight, viewportFailure.Message);
+        }
+    }
+
+    /// <summary>
+    /// Captures a PNG of the current page for failure diagnostics. Best-effort: if the page is gone
     /// (or the capture times out) it logs a warning and returns null rather than masking the original failure.
     /// </summary>
     private async Task<byte[]?> TryCaptureFailureScreenshot(IPage page)
@@ -174,7 +194,9 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         {
             return await page.ScreenshotAsync(new PageScreenshotOptions
             {
-                FullPage = true,
+                // Viewport-sized by default (exactly the configured display); opt into the whole document with
+                // FullPageScreenshot=true.
+                FullPage = Configuration.FullPageScreenshot,
                 Timeout = FailureScreenshotTimeoutMs,
             });
         }

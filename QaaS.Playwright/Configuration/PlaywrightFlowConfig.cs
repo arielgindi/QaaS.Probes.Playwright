@@ -32,6 +32,26 @@ public sealed class PlaywrightFlowConfig
     public int DefaultTimeout { get; set; } = 30_000;
 
     /// <summary>
+    /// Browser viewport width in pixels. The probe sets this display size on the page before running the flows, and
+    /// failure screenshots are captured at exactly this size.
+    /// </summary>
+    [Range(1, 10_000)]
+    public int ViewportWidth { get; set; } = 1920;
+
+    /// <summary>
+    /// Browser viewport height in pixels. The probe sets this display size on the page before running the flows, and
+    /// failure screenshots are captured at exactly this size.
+    /// </summary>
+    [Range(1, 10_000)]
+    public int ViewportHeight { get; set; } = 1080;
+
+    /// <summary>
+    /// Capture the full scrollable document in failure screenshots instead of just the viewport. Defaults to false,
+    /// so a screenshot is exactly the configured <see cref="ViewportWidth"/>×<see cref="ViewportHeight"/> display.
+    /// </summary>
+    public bool FullPageScreenshot { get; set; }
+
+    /// <summary>
     /// Delay (ms) Playwright waits between every action so a human can watch. Leave unset to use the default
     /// (2000 in visible mode, 0 headless); set it explicitly — including 0 — to override.
     /// </summary>

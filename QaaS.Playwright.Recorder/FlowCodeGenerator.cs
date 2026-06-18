@@ -52,7 +52,7 @@ internal static partial class FlowCodeGenerator
     // Rejoin a statement codegen wrapped across lines: a fluent continuation (".ClickAsync()") binds tight to the
     // previous segment; anything else keeps one separating space, so the result reads — and compiles — as written.
     private static string Join(string statement, string continuation) =>
-        continuation.StartsWith('.') ? statement + continuation : $"{statement} {continuation}";
+        continuation.StartsWith('.') ? $"{statement}{continuation}" : $"{statement} {continuation}";
 
     // Codegen's NUnit target drives the test fixture's `Page` property; the generated flow receives a `page`
     // parameter instead. Rewrite member access (`Page.`) and the page-level assertion (`Expect(Page)`).
@@ -64,7 +64,7 @@ internal static partial class FlowCodeGenerator
     {
         var words = name
             .Split(['-', '_', ' '], StringSplitOptions.RemoveEmptyEntries)
-            .Select(word => new string(word.Where(char.IsLetterOrDigit).ToArray()))
+            .Select(word => string.Concat(word.Where(char.IsLetterOrDigit)))
             .Where(word => word.Length > 0)
             .ToList();
 
@@ -136,7 +136,7 @@ internal static partial class FlowCodeGenerator
 
     private static string SanitizeIdentifier(string segment)
     {
-        var cleaned = new string(segment.Where(character => char.IsLetterOrDigit(character) || character == '_').ToArray());
+        var cleaned = string.Concat(segment.Where(character => char.IsLetterOrDigit(character) || character == '_'));
         if (cleaned.Length == 0) return "Flows";
         return char.IsDigit(cleaned[0]) ? "_" + cleaned : cleaned;
     }

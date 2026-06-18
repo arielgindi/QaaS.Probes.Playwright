@@ -51,6 +51,67 @@ public class PlaywrightFlowAssertionTests
         Assert.That(assertion.AssertionMessage, Does.Contain("SignIn"), "passed flows should still be listed");
         Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1));
         Assert.That(assertion.AssertionAttachments[0].Path, Does.Contain("Todo"));
+        // The screenshot must be stored verbatim — a SerializationType would BinaryFormatter-frame the PNG and
+        // corrupt it so no image viewer could open it.
+        Assert.That(assertion.AssertionAttachments[0].SerializationType, Is.Null);
+        Assert.That(assertion.AssertionAttachments[0].Data, Is.EqualTo(new byte[] { 1, 2, 3 }));
+    }
+
+    [Test]
+    public void Assert_FlowFailed_MessageIsAOneLinerWithoutTheCallLog()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("SignIn", Passed: true));
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome(
+            "Todo", Passed: false, "Locator expected to have count '3'\nBut was: '4'\nCall log:\n  - waiting for X"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(assertion.AssertionMessage, Does.Contain("Todo failed"));
+        Assert.That(assertion.AssertionMessage, Does.Contain("1/2 flows passed"), "the headline reports the count");
+        Assert.That(assertion.AssertionMessage, Does.Contain("Locator expected to have count '3' But was: '4'"));
+        Assert.That(assertion.AssertionMessage, Does.Not.Contain("Call log"), "the call log belongs in the trace");
+        Assert.That(assertion.AssertionMessage, Does.Not.Contain("\n"), "the headline must stay on one line");
+        Assert.That(assertion.AssertionMessage, Does.Contain("Passed: SignIn"));
+    }
+
+    [Test]
+    public void Assert_FlowFailed_TraceIsAChecklistWithDelimitedFailureDetail()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("SignIn", Passed: true));
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome(
+            "Todo", Passed: false, "expected 3\nCall log:\n  - waiting"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        var trace = assertion.AssertionTrace!;
+        Assert.That(trace, Does.Contain("1 of 2 flow(s) passed, 1 failed"), "summary line");
+        Assert.That(trace, Does.Contain("[PASS]  SignIn"), "passed flow is marked");
+        Assert.That(trace, Does.Contain("[FAIL]  Todo"), "failed flow is marked");
+        Assert.That(trace, Does.Contain("---- Todo failed ----"), "delimited failure section");
+        Assert.That(trace, Does.Contain("Call log"), "the full detail (incl. call log) lives in the trace");
+        Assert.That(trace, Does.Not.Contain("✓").And.Not.Contain("✗").And.Not.Contain("──"),
+            "no decorative glyphs that mojibake in logs/CI");
+    }
+
+    [Test]
+    public void Assert_FlowFailureAlsoSurfacedAsSessionFailure_NotReportedTwiceInTrace()
+    {
+        var (assertion, context) = NewAssertion();
+        const string failureMessage = "count mismatch";
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Todo", Passed: false, failureMessage));
+        var session = new SessionData
+        {
+            Name = "Journey",
+            // The probe re-throws the flow exception, so the runner records the same message as a session failure.
+            SessionFailures = [new ActionFailure { Name = "Probe", Reason = new Reason { Message = failureMessage } }],
+        };
+
+        assertion.Assert(Sessions(session), NoDataSources);
+
+        var occurrences = assertion.AssertionTrace!.Split(failureMessage).Length - 1;
+        Assert.That(occurrences, Is.EqualTo(1), "the re-thrown flow failure must not be listed twice");
     }
 
     [Test]

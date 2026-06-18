@@ -12,7 +12,7 @@ public record TestFlowConfig
 
 public class TestFlow : BasePlaywrightFlow<TestFlowConfig>
 {
-    public static int CallCount;
+    public static int CallCount { get; set; }
 
     public override Task RunAsync(IPage page)
     {

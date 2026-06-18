@@ -9,3 +9,12 @@ dotnet_sort_system_directives_first = true
 dotnet_diagnostic.IDE0051.severity = warning
 # Remove unused parameters
 dotnet_diagnostic.IDE0060.severity = warning
+# Namespace must match folder structure (what Rider/ReSharper flags) — enforced in build
+dotnet_style_namespace_match_folder = true
+dotnet_diagnostic.IDE0130.severity = warning
+# CA1873: our structured-logging arguments are cheap (literals, locals, property reads), so the IsEnabled guard the
+# rule wants would add noise without benefit — the rule targets expensive argument evaluation, which we don't have.
+dotnet_diagnostic.CA1873.severity = none
+# CA1859: this library has no hot paths. Interface-typed signatures (IReadOnlyList/IReadOnlyCollection) are an
+# intentional readability and immutability-intent choice over the micro-perf concrete types the rule prefers.
+dotnet_diagnostic.CA1859.severity = none

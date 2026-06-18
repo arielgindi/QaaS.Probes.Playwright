@@ -23,7 +23,8 @@ public class PlaywrightFlowResultsTests
 
         var outcomes = PlaywrightFlowResults.Read(context, "session");
 
-        Assert.That(outcomes.Select(outcome => outcome.FlowName), Is.EqualTo(new[] { "First", "Second" }));
+        string[] expectedOrder = ["First", "Second"];
+        Assert.That(outcomes.Select(outcome => outcome.FlowName), Is.EqualTo(expectedOrder));
         Assert.That(outcomes[1].Passed, Is.False);
         Assert.That(outcomes[1].FailureMessage, Is.EqualTo("boom"));
     }
