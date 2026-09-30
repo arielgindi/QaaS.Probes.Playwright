@@ -11,7 +11,8 @@ namespace QaaS.Playwright.Browser;
 internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
     : IAsyncDisposable
 {
-    private const string AssetPattern = "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}";
+    private static readonly string[] AssetPatterns =
+        ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico", "*.woff", "*.woff2", "*.ttf", "*.eot"];
 
     public IPage Page => page;
 
@@ -100,9 +101,18 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
                 config.ViewportWidth, config.ViewportHeight, failure.Message);
         }
 
-        if (config.Headless && config.BlockAssets) await page.RouteAsync(AssetPattern, route => route.AbortAsync());
+        if (config.Headless && config.BlockAssets) await BlockAssetsAsync(page);
 
         if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
         else await DesktopPointer.WarnIfMissingAsync(page, logger);
+    }
+
+    // Through CDP rather than a Playwright route: a route turns off the HTTP cache and holds every request for the
+    // driver, so the app's bundle would be downloaded again on every navigation.
+    private static async Task BlockAssetsAsync(IPage page)
+    {
+        var cdp = await page.Context.NewCDPSessionAsync(page);
+        await cdp.SendAsync("Network.enable");
+        await cdp.SendAsync("Network.setBlockedURLs", new Dictionary<string, object> { ["urls"] = AssetPatterns });
     }
 }

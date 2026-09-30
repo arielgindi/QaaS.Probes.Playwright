@@ -5,12 +5,20 @@ using System.Text;
 namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
-/// A tiny web app on a free local port: a cookie login, a whoami page, a page with a test-id button and a page that
-/// reports the pointer the browser has.
+/// A tiny web app on a free local port: a cookie login, a whoami page, a page with a test-id button, a page that
+/// reports the pointer the browser has, and a page with an image and a script the browser may cache.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
+    private static readonly Dictionary<string, (string ContentType, byte[] Body)> CacheableFiles = new()
+    {
+        ["/logo.png"] = ("image/png", Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")),
+        ["/app.js"] = ("text/javascript", "window.app = 1;"u8.ToArray()),
+    };
+
     private readonly HttpListener _listener;
+    private int _scriptDownloads;
 
     private TestSite(HttpListener listener, string url)
     {
@@ -20,6 +28,9 @@ public sealed class TestSite : IDisposable
     }
 
     public string Url { get; }
+
+    /// <summary>How often /app.js was downloaded; the browser may cache it for an hour.</summary>
+    public int ScriptDownloads => _scriptDownloads;
 
     public static TestSite Start()
     {
@@ -53,10 +64,19 @@ public sealed class TestSite : IDisposable
         }
     }
 
-    private static void Respond(HttpListenerContext http)
+    private void Respond(HttpListenerContext http)
     {
         var (request, response) = (http.Request, http.Response);
-        if (request.Url!.AbsolutePath == "/session")
+        var path = request.Url!.AbsolutePath;
+        if (CacheableFiles.TryGetValue(path, out var file))
+        {
+            if (path == "/app.js") Interlocked.Increment(ref _scriptDownloads);
+            response.Headers["Cache-Control"] = "max-age=3600";
+            Send(response, file.ContentType, file.Body);
+            return;
+        }
+
+        if (path == "/session")
         {
             // The login form submits here: remember the user in a cookie, then show who is logged in.
             response.AppendCookie(new Cookie("user", request.QueryString["user"]) { Path = "/" });
@@ -65,7 +85,7 @@ public sealed class TestSite : IDisposable
             return;
         }
 
-        var body = request.Url.AbsolutePath switch
+        var body = path switch
         {
             "/login" => """<form action="/session"><label>Username <input name="user"></label><button>Log in</button></form>""",
             "/whoami" => $"""<p id="user">{WebUtility.HtmlEncode(request.Cookies["user"]?.Value ?? "nobody")}</p>""",
@@ -77,11 +97,19 @@ public sealed class TestSite : IDisposable
                 <p id="pointer"></p>
                 <script>pointer.textContent = ['fine', 'coarse', 'none'].find(type => matchMedia(`(pointer: ${type})`).matches);</script>
                 """,
+            "/image" => """
+                <img src="/logo.png" onload="image.textContent = 'loaded'" onerror="image.textContent = 'blocked'">
+                <p id="image"></p><script src="/app.js"></script>
+                """,
             _ => "<h1>Home</h1>",
         };
-        var bytes = Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>");
-        response.ContentType = "text/html; charset=utf-8";
-        response.OutputStream.Write(bytes);
+        Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
+    }
+
+    private static void Send(HttpListenerResponse response, string contentType, byte[] body)
+    {
+        response.ContentType = contentType;
+        response.OutputStream.Write(body);
         response.Close();
     }
 

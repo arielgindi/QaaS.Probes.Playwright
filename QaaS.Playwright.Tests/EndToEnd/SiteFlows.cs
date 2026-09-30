@@ -10,7 +10,7 @@ public sealed record UserConfig
 
 public sealed record NoConfig;
 
-public sealed record PointerConfig
+public sealed record ExpectedConfig
 {
     public string Expected { get; init; } = "";
 }
@@ -73,7 +73,18 @@ public sealed class AnimationFlow : BasePlaywrightFlow<NoConfig>
         """);
 }
 
-public sealed class CheckPointerFlow : BasePlaywrightFlow<PointerConfig>
+/// <summary>Opens the image page twice and checks whether its image loaded.</summary>
+public sealed class CheckImageFlow : BasePlaywrightFlow<ExpectedConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.GotoAsync($"{BaseUrl}/image");
+        await page.GotoAsync($"{BaseUrl}/image");
+        await Expect(page.Locator("#image")).ToHaveTextAsync(Configuration.Expected);
+    }
+}
+
+public sealed class CheckPointerFlow : BasePlaywrightFlow<ExpectedConfig>
 {
     public override async Task RunAsync(IPage page)
     {

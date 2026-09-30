@@ -202,6 +202,23 @@ public class ProbeEndToEndTests
     }
 
     [Test]
+    public void BlockAssets_BlocksImages_AndKeepsTheHttpCache()
+    {
+        var run = new QaasRun();
+        var blocked = Settings("CheckImageFlow", "SubmitOrderFlow");
+        blocked["FlowConfiguration:CheckImageFlow:Expected"] = "blocked";
+        var loaded = Settings("CheckImageFlow");
+        loaded["BlockAssets"] = "false";
+        loaded["FlowConfiguration:CheckImageFlow:Expected"] = "loaded";
+        var downloadsBefore = _site.ScriptDownloads;
+
+        var assertion = run.RunAssertion(run.RunSession("Blocked", blocked), run.RunSession("Loaded", loaded));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(_site.ScriptDownloads - downloadsBefore, Is.EqualTo(2), "one download per run, not per page load");
+    }
+
+    [Test]
     public async Task TenProbesInParallel_AllPass()
     {
         var run = new QaasRun();
