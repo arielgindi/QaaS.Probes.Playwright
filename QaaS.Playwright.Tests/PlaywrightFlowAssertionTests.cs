@@ -187,6 +187,39 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_FlowFailed_TraceHasTheWholeFailure_AndNotTheSessionFailureRepeatingIt()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Pay", Passed: false,
+            "Checkout failed caused by: card declined", FailureUrl: "http://app/pay",
+            FailureDetail: "No screenshot: page closed\nSystem.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
+        var session = new SessionData
+        {
+            Name = "Journey",
+            SessionFailures = [new ActionFailure { Name = "Browser", Reason = new Reason { Message = "Checkout failed" } }],
+        };
+
+        assertion.Assert(Sessions(session), NoDataSources);
+
+        Assert.That(assertion.AssertionTrace, Does.EndWith(
+            "---- Pay failed ----\nPage: http://app/pay\nNo screenshot: page closed\n" +
+            "System.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
+    }
+
+    [Test]
+    public void Assert_SeveralSessionsAndProbes_TraceNamesWhereEachFlowRan()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Buyer", new PlaywrightFlowOutcome("Login", Passed: true, ProbeName: "Web"));
+        PlaywrightFlowResults.Record(context, "Seller", new PlaywrightFlowOutcome("Login", Passed: false, "boom"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Buyer" }, new SessionData { Name = "Seller" }), NoDataSources);
+
+        Assert.That(assertion.AssertionTrace, Does.Contain("[PASS]  Buyer/Web: Login\n  [FAIL]  Seller: Login")
+            .And.Contains("---- Seller: Login failed ----"));
+    }
+
+    [Test]
     public void Assert_FlowFailureAlsoSurfacedAsSessionFailure_NotReportedTwiceInTrace()
     {
         var (assertion, context) = NewAssertion();

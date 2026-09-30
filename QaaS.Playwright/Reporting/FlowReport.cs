@@ -28,26 +28,35 @@ internal static class FlowReport
     }
 
     /// <summary>
-    /// A PASS/FAIL line per flow in run order, then each failure in full, call log included, and the probes' warnings.
+    /// A PASS/FAIL line per flow in run order, then each failure in full, with its call log and stack, and the probes'
+    /// warnings. With several sessions or probes, each flow is named with where it ran, e.g. <c>Checkout/Buyer: Pay</c>.
     /// </summary>
     public static string Trace(SessionResults results)
     {
-        var outcomes = results.Outcomes;
-        var failed = outcomes.Where(outcome => !outcome.Passed).ToList();
-        var trace = new StringBuilder(outcomes.Count == 0
+        var entries = results.SessionOutcomes;
+        var failed = entries.Where(entry => !entry.Outcome.Passed).ToList();
+        var trace = new StringBuilder(entries.Count == 0
             ? "Playwright journey — no flow outcomes were recorded."
-            : $"Playwright journey — {outcomes.Count - failed.Count} of {outcomes.Count} flow(s) passed" +
+            : $"Playwright journey — {entries.Count - failed.Count} of {entries.Count} flow(s) passed" +
               (failed.Count > 0 ? $", {failed.Count} failed." : "."));
 
-        foreach (var outcome in outcomes)
-            trace.AppendLine().Append($"  [{(outcome.Passed ? "PASS" : "FAIL")}]  {outcome.FlowName}");
+        var scoped = entries.Select(entry => (entry.SessionName, entry.Outcome.ProbeName)).Distinct().Count() > 1;
+        string NameOf((string SessionName, PlaywrightFlowOutcome Outcome) entry) =>
+            !scoped ? entry.Outcome.FlowName
+            : entry.Outcome.ProbeName is null ? $"{entry.SessionName}: {entry.Outcome.FlowName}"
+            : $"{entry.SessionName}/{entry.Outcome.ProbeName}: {entry.Outcome.FlowName}";
 
-        foreach (var outcome in failed)
-            AppendSection(trace, $"{outcome.FlowName} failed", FailureDetail(outcome));
+        foreach (var entry in entries)
+            trace.AppendLine().Append($"  [{(entry.Outcome.Passed ? "PASS" : "FAIL")}]  {NameOf(entry)}");
 
-        // A failing flow also fails its session with the same message; show only the session failures that add something.
-        var flowMessages = failed.Select(outcome => outcome.FailureMessage).ToHashSet();
-        foreach (var failure in results.SessionFailures.Where(failure => !flowMessages.Contains(failure.Reason.Message)))
+        foreach (var entry in failed)
+            AppendSection(trace, $"{NameOf(entry)} failed", FailureDetail(entry.Outcome));
+
+        // A failing flow also fails its session with its exception; show only the session failures that add something.
+        var flowFailures = failed.Select(entry => $"{entry.Outcome.FailureMessage}\n{entry.Outcome.FailureDetail}").ToList();
+        var sessionFailures = results.SessionFailures
+            .Where(failure => !flowFailures.Any(flowFailure => flowFailure.Contains(failure.Reason.Message)));
+        foreach (var failure in sessionFailures)
             AppendSection(trace, $"session failure: {failure.Name}", failure.Reason.Message);
 
         if (results.SessionNames.Count == 0)
@@ -106,10 +115,11 @@ internal static class FlowReport
             ? null
             : $"No Playwright flow ran in session(s) {string.Join(", ", unverifiedSessions)}, so nothing was verified there";
 
-    private static string? FailureDetail(PlaywrightFlowOutcome failure) =>
-        failure.FailureUrl is null
-            ? failure.FailureMessage
-            : $"Page: {failure.FailureUrl}\n{failure.FailureMessage ?? NoDetail}";
+    private static string? FailureDetail(PlaywrightFlowOutcome failure)
+    {
+        var detail = failure.FailureDetail ?? failure.FailureMessage;
+        return failure.FailureUrl is null ? detail : $"Page: {failure.FailureUrl}\n{detail ?? NoDetail}";
+    }
 
     // The assertion cannot tell these apart, so it lists them all.
     private static string LikelyCauses(IReadOnlyList<string> unverifiedSessions) =>

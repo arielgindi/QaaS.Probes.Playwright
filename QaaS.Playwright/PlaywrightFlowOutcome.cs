@@ -7,10 +7,15 @@ namespace QaaS.Playwright;
 /// <param name="FailureScreenshot">A PNG of the page when it failed, if one could be taken.</param>
 /// <param name="FailureUrl">The page's URL when it failed.</param>
 /// <param name="ProbeName">The probe that ran the flow, when the runner names it.</param>
+/// <param name="FailureDetail">
+/// The whole failure, for the report's trace: the exception with its causes and stack, and why no screenshot was taken
+/// when none was.
+/// </param>
 public sealed record PlaywrightFlowOutcome(
     string FlowName,
     bool Passed,
     string? FailureMessage = null,
     byte[]? FailureScreenshot = null,
     string? FailureUrl = null,
-    string? ProbeName = null);
+    string? ProbeName = null,
+    string? FailureDetail = null);

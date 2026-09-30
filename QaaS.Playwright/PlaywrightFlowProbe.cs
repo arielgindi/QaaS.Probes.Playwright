@@ -87,8 +87,8 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
         await browser.OpenBaseUrlAsync(Configuration.BaseUrl);
 
-        await runner.RunAsync(setupFlows, browser.Page);
-        await runner.RunAsync(flows, browser.Page);
+        await runner.RunAsync(setupFlows, browser);
+        await runner.RunAsync(flows, browser);
 
         // Saved only after every flow passed, so a failed login is never reused.
         if (!string.IsNullOrWhiteSpace(Configuration.SaveStorageStatePath))

@@ -88,6 +88,32 @@ public class ProbeEndToEndTests
         Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1), "the failure screenshot");
     }
 
+    [TestCase("DeclinedCheckoutFlow", "Checkout failed caused by: Payment provider declined card: ACCOUNT_DISABLED")]
+    [TestCase("EmptyMessageFlow", "InvalidOperationException")]
+    public void FailingFlow_HeadlineGivesTheRealReason_TraceTheWholeException(string flow, string reason)
+    {
+        var run = new QaasRun();
+
+        var assertion = run.RunAssertion(run.RunSession("Reasons", Settings(flow)));
+
+        Assert.That(assertion.AssertionMessage, Does.StartWith($"{flow} failed (0/1 flows passed): {reason} on "));
+        Assert.That(assertion.AssertionTrace, Does.Contain($"at QaaS.Playwright.Tests.EndToEnd.{flow}.RunAsync"));
+    }
+
+    [Test]
+    public async Task PageCrash_IsTheReason_NotTheTimeoutAfterIt()
+    {
+        using var chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        var run = new QaasRun();
+        var settings = Settings("CrashingFlow");
+        settings["BrowserUrl"] = chrome.Url;
+
+        var assertion = run.RunAssertion(run.RunSession("Crash", settings));
+
+        Assert.That(assertion.AssertionMessage, Does.StartWith("CrashingFlow failed (0/1 flows passed): The page crashed on "));
+        Assert.That(assertion.AssertionTrace, Does.Contain("No screenshot: the page crashed").And.Contains("Timeout 1000ms"));
+    }
+
     [Test]
     public void BaseUrlAnsweringAnError_FailsTheSession()
     {
@@ -310,6 +336,7 @@ public class ProbeEndToEndTests
         var paths = assertion.AssertionAttachments.Select(attachment => attachment.Path).ToList();
         Assert.That(paths, Has.Count.EqualTo(2).And.Unique.IgnoreCase);
         Assert.That(paths, Has.One.Contains("PlaceFirst").And.One.Contains("PlaceSecond"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("[FAIL]  Orders/PlaceFirst: PlaceMissingOrderFlow"));
     }
 
     [Test]

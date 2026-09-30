@@ -198,7 +198,10 @@ produced no items at all. `SaveStorageStatePath` and `IsolateContext: false` are
 
 - a flow failed. The message names the flow, the reason, the element it waited for and the page URL, e.g.
   `CheckoutFlow failed (1/2 flows passed): Timeout 30000ms exceeded (waiting for GetByRole(AriaRole.Button, new() { Name = "Pay" })) on https://my-app.com/cart. Passed: LoginFlow.`
-  The trace has the full error and call log, and the page's screenshot is attached;
+  An exception's innermost cause is added (`Checkout failed caused by: card declined`), and a crashed page is named
+  as the reason rather than the timeout after it. The trace has the whole exception, with its call log and stack,
+  and names the session and probe of each flow when there are several; the page's screenshot is attached, or the
+  trace says why none could be taken;
 - a session recorded a failure, e.g. a mistake in the settings, or the browser could not be reached;
 - nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe).
 

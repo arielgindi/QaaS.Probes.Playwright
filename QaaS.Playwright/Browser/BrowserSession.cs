@@ -22,6 +22,9 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     /// <summary>When true, disposing leaves the page open: a person is looking at it.</summary>
     public bool KeepPageOpen { get; set; }
 
+    /// <summary>Whether the page's renderer crashed, after which every action on it fails.</summary>
+    public bool Crashed { get; private set; }
+
     public static async Task<BrowserSession> OpenAsync(PlaywrightFlowConfig config, ILogger logger)
     {
         var browser = await SharedBrowser.GetAsync(config, logger);
@@ -30,7 +33,9 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
         {
             var page = await context.NewPageAsync();
             await SetUpPageAsync(page, config, logger);
-            return new BrowserSession(context, ownsContext, page, logger);
+            var session = new BrowserSession(context, ownsContext, page, logger);
+            page.Crash += (_, _) => session.Crashed = true;
+            return session;
         }
         catch
         {

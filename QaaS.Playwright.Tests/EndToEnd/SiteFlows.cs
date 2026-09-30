@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
@@ -106,5 +107,34 @@ public sealed class CheckPointerFlow : BasePlaywrightFlow<ExpectedConfig>
     {
         await page.GotoAsync($"{BaseUrl}/pointer");
         await Expect(page.Locator("#pointer")).ToHaveTextAsync(Configuration.Expected);
+    }
+}
+
+/// <summary>Fails with a wrapped cause, as a flow that catches and rethrows does.</summary>
+public sealed class DeclinedCheckoutFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override Task RunAsync(IPage page) => throw new InvalidOperationException(
+        "Checkout failed", new InvalidOperationException("Payment provider declined card: ACCOUNT_DISABLED"));
+}
+
+public sealed class EmptyMessageFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override Task RunAsync(IPage page) => throw new InvalidOperationException("");
+}
+
+/// <summary>
+/// Kills its Chrome's renderers, as the system does to a page that runs out of memory, then clicks. Run it only on a
+/// Chrome of its own.
+/// </summary>
+public sealed class CrashingFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var chrome = await page.Context.Browser!.NewBrowserCDPSessionAsync();
+        var processes = (await chrome.SendAsync("SystemInfo.getProcessInfo"))!.Value.GetProperty("processInfo");
+        foreach (var process in processes.EnumerateArray().Where(process => process.GetProperty("type").GetString() == "renderer"))
+            Process.GetProcessById(process.GetProperty("id").GetInt32()).Kill();
+
+        await page.Locator("h1").ClickAsync(new() { Timeout = 1000 });
     }
 }
