@@ -72,6 +72,11 @@ public class ProbeRulesTests
     }
 
     [Test]
+    public void Broken_FlowConfigurationGivenAsASingleValue_IsAProblem() =>
+        Assert.That(Broken(new PlaywrightFlowConfig { Flows = ["Login"] }, new() { ["FlowConfiguration"] = "alice" }),
+            Is.EqualTo(new[] { "FlowConfiguration: expected a section per flow, not 'alice'" }));
+
+    [Test]
     public void Broken_FlowConfigurationOfAFlowThatDoesNotRun_IsAProblem()
     {
         var settings = new Dictionary<string, string?>
