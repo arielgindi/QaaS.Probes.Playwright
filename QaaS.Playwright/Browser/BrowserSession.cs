@@ -68,25 +68,31 @@ internal sealed class BrowserSession : IAsyncDisposable
         _playwright.Dispose();
     }
 
-    // A saved login needs a fresh context (storage state can only seed a new one). Otherwise the browser's default
-    // context is reused, so a local Chrome keeps its cookies; it is created only when the browser has none.
+    // One rule: a run gets a fresh context of its own when it asks for isolation or starts from a saved login (storage
+    // state can only seed a new context). Otherwise it shares the browser's default context, so a local Chrome keeps
+    // its logins.
     private static async Task<(IBrowserContext Context, bool Owned)> OpenContextAsync(
         IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
     {
-        if (!string.IsNullOrWhiteSpace(config.LoadStorageStatePath))
-        {
-            var path = Path.GetFullPath(config.LoadStorageStatePath);
-            if (!File.Exists(path))
-                throw new FileNotFoundException(
-                    $"LoadStorageStatePath '{path}' does not exist. The session that saves it (SaveStorageStatePath) " +
-                    "must finish first, or remove LoadStorageStatePath.", path);
+        var storageState = StorageStateToLoad(config, logger);
+        if (!config.IsolateContext && storageState is null && browser.Contexts.Count > 0)
+            return (browser.Contexts[0], false);
 
-            var seeded = await browser.NewContextAsync(new BrowserNewContextOptions { StorageStatePath = path });
-            logger.LogInformation("Loaded storage state from {Path}", path);
-            return (seeded, true);
-        }
+        return (await browser.NewContextAsync(new BrowserNewContextOptions { StorageStatePath = storageState }), true);
+    }
 
-        return browser.Contexts.Count > 0 ? (browser.Contexts[0], false) : (await browser.NewContextAsync(), true);
+    private static string? StorageStateToLoad(PlaywrightFlowConfig config, ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(config.LoadStorageStatePath)) return null;
+
+        var path = Path.GetFullPath(config.LoadStorageStatePath);
+        if (!File.Exists(path))
+            throw new FileNotFoundException(
+                $"LoadStorageStatePath '{path}' does not exist. The session that saves it (SaveStorageStatePath) " +
+                "must finish first, or remove LoadStorageStatePath.", path);
+
+        logger.LogInformation("Loading storage state from {Path}", path);
+        return path;
     }
 
     private static async Task SetUpPageAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)

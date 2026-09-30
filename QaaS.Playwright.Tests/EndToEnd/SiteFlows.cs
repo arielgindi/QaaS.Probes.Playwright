@@ -12,11 +12,19 @@ public sealed record NoConfig;
 
 public sealed class LogInFlow : BasePlaywrightFlow<UserConfig>
 {
+    /// <summary>
+    /// When set, every login waits here for the others, so if parallel sessions shared cookies they would all see the
+    /// last user to log in.
+    /// </summary>
+    public static Barrier? AllLoggedIn { get; set; }
+
     public override async Task RunAsync(IPage page)
     {
         await page.GotoAsync($"{BaseUrl}/login");
         await page.GetByLabel("Username").FillAsync(Configuration.User);
         await page.GetByRole(AriaRole.Button, new() { Name = "Log in" }).ClickAsync();
+        await page.WaitForURLAsync("**/whoami");
+        if (AllLoggedIn is { } barrier) await Task.Run(() => barrier.SignalAndWait(TimeSpan.FromSeconds(10)));
     }
 }
 

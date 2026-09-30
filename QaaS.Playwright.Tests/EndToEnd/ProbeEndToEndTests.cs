@@ -87,6 +87,35 @@ public class ProbeEndToEndTests
     }
 
     [Test]
+    [Repeat(3)]
+    public async Task ParallelSessionsAsDifferentUsers_WithIsolateContext_NeverMixUp()
+    {
+        string[] users = ["ann", "ben", "cat", "dan"];
+        var run = new QaasRun();
+        LogInFlow.AllLoggedIn = new Barrier(users.Length);
+        try
+        {
+            var sessions = await run.RunSessionsInParallelAsync(users.Select(user => (user, LogInAndCheck(user))));
+
+            var assertion = run.RunAssertion(sessions);
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        }
+        finally
+        {
+            LogInFlow.AllLoggedIn = null;
+        }
+
+        Dictionary<string, string?> LogInAndCheck(string user)
+        {
+            var settings = Settings("LogInFlow", "CheckUserFlow");
+            settings["IsolateContext"] = "true";
+            settings["FlowConfiguration:LogInFlow:User"] = user;
+            settings["FlowConfiguration:CheckUserFlow:User"] = user;
+            return settings;
+        }
+    }
+
+    [Test]
     public async Task TenProbesInParallel_AllPass()
     {
         var run = new QaasRun();

@@ -82,6 +82,12 @@ public sealed class PlaywrightFlowConfig
     public string? LoadStorageStatePath { get; set; }
 
     /// <summary>
+    /// Run in a fresh browser context of its own, disposed afterwards, instead of the browser's shared default
+    /// context. Set it when parallel sessions log in as different users, so they cannot overwrite each other's cookies.
+    /// </summary>
+    public bool IsolateContext { get; set; }
+
+    /// <summary>
     /// CDP endpoint of the Chrome to run in, e.g. <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=...</c>
     /// or <c>http://localhost:9222</c>. Defaults to browser-defaults.yaml. When it is on this machine and nothing
     /// answers there, the probe starts Chrome. To use another browser on your machine only, write
