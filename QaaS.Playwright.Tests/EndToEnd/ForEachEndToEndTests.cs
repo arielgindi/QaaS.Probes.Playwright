@@ -77,6 +77,7 @@ public class ForEachEndToEndTests
         var run = new QaasRun();
         var settings = Settings(parallelism: 2);
         settings["SetupFlows:0"] = "PlaceMissingOrderFlow";
+        settings.Remove("FlowConfiguration:LogInFlow:User");
         settings["DefaultTimeout"] = "500";
 
         var session = run.RunSession("Missions", settings, Missions(["never-0", "never-1", "never-2"]));

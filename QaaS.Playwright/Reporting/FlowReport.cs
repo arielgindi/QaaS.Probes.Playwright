@@ -108,9 +108,10 @@ internal static class FlowReport
     // The assertion cannot tell these apart, so it lists them all.
     private static string LikelyCauses(IReadOnlyList<string> unverifiedSessions) =>
         $"Session(s) {string.Join(", ", unverifiedSessions)} recorded no flow outcome and no failure. Likely causes:\n" +
-        "  - the probe's Flows and SetupFlows are empty or misspelled, e.g. 'Flow:' (the probe warns about those);\n" +
         "  - the session has no PlaywrightFlowProbe;\n" +
-        "  - the probe runs in another session than the ones this assertion's SessionNames select.";
+        "  - the probe runs in another session than the ones this assertion's SessionNames select;\n" +
+        "  - the probes ran in an 'act' command and this assertion in a later 'assert': flow outcomes are kept only in\n" +
+        "    memory, so run both in one 'run' command.";
 
     private static void AppendSection(StringBuilder trace, string title, string? detail) =>
         trace.AppendLine().AppendLine().AppendLine($"---- {title} ----")

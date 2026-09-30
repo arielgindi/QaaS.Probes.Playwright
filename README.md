@@ -72,8 +72,11 @@ stops the run. Each flow reads its own `FlowConfiguration:<FlowName>` section as
 | `IsolateContext` | `true` | Run in a fresh browser context of its own; `false` shares the browser's. |
 | `EmulateDesktopPointer` | `false` | Make the page report a mouse. |
 
-The probe logs a warning for a key it does not know (such as `Flow:` for `Flows:`) and for a `FlowConfiguration`
-section whose flow is not in `SetupFlows` or `Flows`.
+A mistake in the settings fails the session before the browser opens, with one message that lists every problem and
+its path: a key that is no setting (`Flow:` for `Flows:`), a value that does not convert (`Headless: offf`), a single
+value where a list belongs (`Flows: LoginFlow`), a `${...}` placeholder QaaS left unresolved, a `FlowConfiguration`
+section of a flow that does not run, settings that do not work together, and every mistake in each flow's own settings
+(`FlowConfiguration:LoginFlow:Usernmae: not a setting (known: Username)`), nested ones included.
 
 ### BrowserUrl
 
@@ -193,9 +196,8 @@ others take its items. The session fails if any item or worker failed, and says 
 - a flow failed. The message names the flow, the reason, the element it waited for and the page URL, e.g.
   `CheckoutFlow failed (1/2 flows passed): Timeout 30000ms exceeded (waiting for GetByRole(AriaRole.Button, new() { Name = "Pay" })) on https://my-app.com/cart. Passed: LoginFlow.`
   The trace has the full error and call log, and the page's screenshot is attached;
-- a session recorded a failure, e.g. the browser could not be reached;
-- nothing was verified: no session is attached, or an attached session ran no flow (an empty or misspelled `Flows`,
-  or a session without the probe).
+- a session recorded a failure, e.g. a mistake in the settings, or the browser could not be reached;
+- nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe).
 
 ## Build and test
 

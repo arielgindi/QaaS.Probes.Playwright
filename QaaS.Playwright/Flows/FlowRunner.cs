@@ -40,7 +40,8 @@ internal sealed class FlowRunner(
         }
     }
 
-    // Each flow sees only its own FlowConfiguration:<FlowName> section.
+    // Each flow sees only its own FlowConfiguration:<FlowName> section. The probe checked every flow's settings before
+    // the run, so this throws only for a flow whose own validation changed its mind.
     private IPlaywrightFlow Create(string flowName, FlowItem? item)
     {
         var flow = FlowDiscovery.Resolve(flowName);
@@ -52,7 +53,7 @@ internal sealed class FlowRunner(
         var errors = flow.LoadAndValidateConfiguration(flowConfiguration.GetSection(flowName));
         if (errors is { Count: > 0 })
             throw new InvalidOperationException(
-                $"FlowConfiguration:{flowName} is invalid: {string.Join("; ", errors.Select(error => error.ErrorMessage))}");
+                $"{flowName} has invalid settings: {string.Join("; ", errors.Select(error => error.ErrorMessage))}");
         return flow;
     }
 

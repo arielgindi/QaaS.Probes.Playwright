@@ -154,11 +154,17 @@ The difference: our probe delegates to flow classes (which also use typed config
 - Flows focus on actions (click, fill, submit) — they don't manage browsers.
 - Multiple flows share one browser session (cookies persist across login → actions).
 
-### Why ErrorOnUnknownConfiguration = false on the probe
-- The YAML has `FlowConfiguration:` next to the probe's own keys, and it is not a property of `PlaywrightFlowConfig`.
-- So the binder must accept unknown keys; instead the probe logs a warning for each key it does not know (a typo
-  such as `Flow:`) and for each `FlowConfiguration` section whose flow does not run.
-- Flow settings bind with `ErrorOnUnknownConfiguration = true`, for which the QaaS binder logs a warning.
+### Why the probe checks its settings itself
+- QaaS 4.8 binds a value that does not convert as its type's default with only a warning, only warns about unknown
+  keys, passes an unresolved `${...}` through as text, and crashes on some shapes, such as a list where one value
+  belongs.
+- It also checks the errors a probe's `LoadAndValidateConfiguration` returns before it loads the probe, so it never
+  sees them.
+- So `StrictBinder` checks the raw configuration against the settings type, and the probe throws every problem when
+  it runs. A failed `Run` becomes a session failure the assertion reports; a throw while loading would stop the run
+  with no Allure result.
+- `FlowConfiguration` sits next to the probe's keys; the probe checks that each section belongs to a flow that runs,
+  and each flow checks its own section the same way when the probe loads.
 
 ### Why the probe auto-navigates to BaseUrl
 - So flows don't hardcode URLs.
@@ -182,7 +188,7 @@ QaaS.Playwright/                 The NuGet package
   PlaywrightFlowProbe.cs         The probe: opens the page, runs the flows, records outcomes
   PlaywrightFlowAssertion.cs     The assertion: reports the outcomes
   PlaywrightFlowOutcome.cs, PlaywrightFlowResults.cs   The outcomes, and how they reach the assertion
-  Configuration/                 The probe's settings, and the check for unknown ones
+  Configuration/                 The probe's settings, and the strict check of settings
   Browser/                       Connecting to Chrome, starting a local one, the page and context of a run
   Flows/                         Finding flows by class name and running them
   Reporting/                     The assertion's message and trace

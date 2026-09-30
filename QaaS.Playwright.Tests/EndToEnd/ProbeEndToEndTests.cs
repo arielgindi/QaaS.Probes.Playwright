@@ -50,17 +50,25 @@ public class ProbeEndToEndTests
     }
 
     [Test]
-    public void MisspelledFlowsKey_IsWarnedAbout_AndFailsTheAssertion()
+    public void MisspelledFlowsKey_FailsTheSessionBeforeTheBrowserOpens()
     {
         var run = new QaasRun();
         var settings = Settings();
         settings["Flow:0"] = "SubmitOrderFlow";
 
-        var assertion = run.RunAssertion(run.RunSession("Typo", settings));
+        var session = run.RunSession("Typo", settings);
+        var assertion = run.RunAssertion(session);
 
-        Assert.That(run.Log.Warnings, Has.One.Contains("Unknown ProbeConfiguration key 'Flow'"));
+        Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo(
+            "ProbeConfiguration has 2 problem(s):\n" +
+            "  - Flow: not a setting (known: BaseUrl, SetupFlows, Flows, ForEach, Parallelism, Headless, BlockAssets, " +
+            "DefaultTimeout, ViewportWidth, ViewportHeight, FullPageScreenshot, SlowMo, KeepOpen, SaveStorageStatePath, " +
+            "LoadStorageStatePath, IsolateContext, EmulateDesktopPointer, BrowserUrl, BrowserExecutablePath, " +
+            "FlowConfiguration)\n" +
+            "  - Flows: nothing to run: Flows and SetupFlows are both empty"));
+        Assert.That(run.Log.Messages, Has.None.StartsWith("Navigating to"));
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
-        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Typo").And.Contains("nothing was verified"));
+        Assert.That(assertion.AssertionMessage, Does.StartWith("1 session failure(s): ProbeConfiguration has 2 problem(s)"));
     }
 
     [Test]

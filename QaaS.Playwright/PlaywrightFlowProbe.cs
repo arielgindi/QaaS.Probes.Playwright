@@ -23,33 +23,41 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     private const string ProbeNameBaggageKey = "qaas.probe.probe-name";
 
     private IConfiguration _flowConfiguration = null!;
+    private List<string> _configurationProblems = [];
 
-    // FlowConfiguration sits next to the probe's own keys, so the binder must accept unknown keys; the probe warns
-    // about the ones it ignores instead.
-    protected override BinderOptions GetConfigurationBinderOptions() => new() { ErrorOnUnknownConfiguration = false };
-
+    /// <summary>
+    /// Binds the settings and checks them, and the settings of every flow they name, all at once. Every problem is
+    /// returned, and thrown when the probe runs: QaaS 4.8 checks a probe's settings before it loads the probe, so it
+    /// never sees them.
+    /// </summary>
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
-        var errors = base.LoadAndValidateConfiguration(configuration);
-        _flowConfiguration = configuration.GetSection(PlaywrightFlowConfig.FlowConfigurationKey);
-        foreach (var warning in UnknownSettings.Find(configuration, Configuration))
-            Context.Logger.LogWarning("{Warning}", warning);
-        return errors;
+        var flowConfigurationKey = PlaywrightFlowConfig.FlowConfigurationKey;
+        (Configuration, var bindProblems) = StrictBinder.Bind<PlaywrightFlowConfig>(configuration, "", flowConfigurationKey);
+        _flowConfiguration = configuration.GetSection(flowConfigurationKey);
+
+        // The first problem found at a path is the most precise: "removed: use BrowserUrl" beats "not a setting".
+        IEnumerable<SettingProblem> problems =
+            [.. ProbeRules.Removed(configuration), .. bindProblems, .. ProbeRules.Broken(configuration, Configuration)];
+        _configurationProblems =
+            [.. problems.DistinctBy(problem => problem.Path).Select(problem => problem.ToString()), .. FlowProblems()];
+        return [.. _configurationProblems.Select(problem => new ValidationResult(problem))];
     }
 
     // IProbe.Run is synchronous; this is the one place the async run is waited on.
-    public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList) =>
+    public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
+    {
+        // Before the browser opens, and as a session failure, which the assertion reports.
+        if (_configurationProblems.Count > 0)
+            throw new InvalidOperationException($"ProbeConfiguration has {_configurationProblems.Count} problem(s):\n" +
+                string.Join('\n', _configurationProblems.Select(problem => $"  - {problem}")));
+
         Task.Run(() => RunAsync(sessionDataList, dataSourceList)).GetAwaiter().GetResult();
+    }
 
     private async Task RunAsync(IImmutableList<SessionData> sessions, IImmutableList<DataSource> dataSources)
     {
         string[] setupFlows = Configuration.SetupFlows ?? [], flows = Configuration.Flows ?? [];
-        if (setupFlows.Length + flows.Length == 0)
-        {
-            Context.Logger.LogWarning("No flows configured; nothing to run.");
-            return;
-        }
-
         var stopwatch = Stopwatch.StartNew();
         var probeName = Activity.Current?.GetBaggageItem(ProbeNameBaggageKey);
         var runner = new FlowRunner(Context, CurrentSessionName(), probeName, Configuration, _flowConfiguration);
@@ -91,6 +99,32 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
         browser.KeepPageOpen = true;
         await browser.Page.PauseAsync();
+    }
+
+    // Each flow is created and its settings bound as a run would, so a missing flow or a mistake in its settings is
+    // found before the browser opens.
+    private List<string> FlowProblems()
+    {
+        var problems = new List<string>();
+        var flowNames = (Configuration.SetupFlows ?? []).Concat(Configuration.Flows ?? [])
+            .Where(flowName => !string.IsNullOrWhiteSpace(flowName))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var flowName in flowNames)
+        {
+            try
+            {
+                var flow = FlowDiscovery.Resolve(flowName);
+                flow.Context = Context;
+                var errors = flow.LoadAndValidateConfiguration(_flowConfiguration.GetSection(flowName)) ?? [];
+                problems.AddRange(errors.Select(error => error.ErrorMessage ?? $"{flowName}: invalid settings"));
+            }
+            catch (InvalidOperationException unusable)
+            {
+                problems.Add(unusable.Message);
+            }
+        }
+
+        return problems;
     }
 
     private string CurrentSessionName()

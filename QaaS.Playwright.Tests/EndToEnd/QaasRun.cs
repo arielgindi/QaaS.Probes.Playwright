@@ -55,9 +55,9 @@ public sealed class QaasRun
             .AddBaggage(SessionNameBaggageKey, sessionName)
             .AddBaggage(ProbeNameBaggageKey, probeName)
             .Start();
+        // Like QaaS 4.8, which ignores the errors this returns: the probe throws them when it runs.
         var probe = new PlaywrightFlowProbe { Context = _context };
-        var errors = probe.LoadAndValidateConfiguration(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
-        Assert.That(errors, Is.Empty, "probe configuration");
+        probe.LoadAndValidateConfiguration(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
 
         try
         {

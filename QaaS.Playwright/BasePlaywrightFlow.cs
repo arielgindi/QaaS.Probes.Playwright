@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
-using QaaS.Framework.Configurations;
 using QaaS.Framework.SDK.ContextObjects;
+using QaaS.Playwright.Configuration;
 
 namespace QaaS.Playwright;
 
@@ -25,16 +25,16 @@ public abstract class BasePlaywrightFlow<TConfiguration> : IPlaywrightFlow where
     /// <summary>The flow's settings; defaults until the probe binds them.</summary>
     public TConfiguration Configuration { get; set; } = new();
 
+    /// <summary>
+    /// Binds the flow's settings and returns every mistake in them with its path, e.g.
+    /// <c>FlowConfiguration:LoginFlow:Usernmae: not a setting (known: Username)</c>: keys that are no setting, values
+    /// that do not convert, and DataAnnotations errors, those of nested settings and list items included.
+    /// </summary>
     public List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
-        // Strict, so the binder at least logs a warning for a misspelled setting.
-        Configuration = configuration.BindToObject<TConfiguration>(
-            new BinderOptions { ErrorOnUnknownConfiguration = true }, Context.Logger);
-
-        var errors = new List<ValidationResult>();
-        Validator.TryValidateObject(
-            Configuration!, new ValidationContext(Configuration!), errors, validateAllProperties: true);
-        return errors;
+        (Configuration, var problems) =
+            StrictBinder.Bind<TConfiguration>(configuration, (configuration as IConfigurationSection)?.Path ?? "");
+        return [.. problems.Select(problem => new ValidationResult(problem.ToString()))];
     }
 
     public abstract Task RunAsync(IPage page);
