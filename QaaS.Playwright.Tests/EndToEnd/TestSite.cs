@@ -20,8 +20,11 @@ public sealed class TestSite : IDisposable
     };
 
     private readonly HttpListener _listener;
+    private readonly Lock _gate = new();
     private int _scriptDownloads;
     private int _logins;
+    private int _missionsInTheMaking;
+    private int _mostMissionsAtOnce;
 
     private TestSite(HttpListener listener, string url)
     {
@@ -42,6 +45,9 @@ public sealed class TestSite : IDisposable
     public ConcurrentQueue<string> Missions { get; } = new();
 
     public static TimeSpan MissionCreationTime { get; } = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>The most missions that were being created at the same moment.</summary>
+    public int MostMissionsAtOnce => _mostMissionsAtOnce;
 
     public static TestSite Start()
     {
@@ -130,7 +136,9 @@ public sealed class TestSite : IDisposable
     // A mission named "bad" is rejected.
     private string CreateMission(string? name)
     {
+        lock (_gate) _mostMissionsAtOnce = Math.Max(_mostMissionsAtOnce, ++_missionsInTheMaking);
         Thread.Sleep(MissionCreationTime);
+        lock (_gate) _missionsInTheMaking--;
         if (name is null or "bad") return "rejected";
         Missions.Enqueue(name);
         return name;

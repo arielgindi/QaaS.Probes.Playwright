@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using QaaS.Framework.SDK.DataSourceObjects;
 using QaaS.Playwright.Browser;
 using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
@@ -60,15 +59,25 @@ public class ForEachEndToEndTests
     }
 
     [Test]
-    public void FourWorkers_AreClearlyFasterThanOne()
+    public void FourWorkers_CreateFourMissionsAtOnce()
     {
-        string[] names = [.. Enumerable.Range(0, 8).Select(index => $"speed-{index}")];
+        using var site = TestSite.Start();
+        var settings = Settings(parallelism: 4);
+        settings["BaseUrl"] = site.Url;
+        // The workers start their first items together, so the site sees whether they really run at the same time.
+        LogInFlow.AllLoggedIn = new Barrier(4);
+        try
+        {
+            var names = Enumerable.Range(0, 8).Select(index => $"at-once-{index}");
+            var session = new QaasRun().RunSession("Missions", settings, Missions(names));
 
-        var oneWorker = TimeRun(Settings(parallelism: 1), names);
-        var fourWorkers = TimeRun(Settings(parallelism: 4), names);
-
-        Assert.That(oneWorker, Is.GreaterThan(TestSite.MissionCreationTime * names.Length), "one item after another");
-        Assert.That(fourWorkers, Is.LessThan(oneWorker / 2), $"one worker took {oneWorker.TotalSeconds:0.0} s");
+            Assert.That(session.SessionFailures, Is.Empty);
+            Assert.That(site.MostMissionsAtOnce, Is.EqualTo(4));
+        }
+        finally
+        {
+            LogInFlow.AllLoggedIn = null;
+        }
     }
 
     [Test]
@@ -107,17 +116,6 @@ public class ForEachEndToEndTests
         Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo(
             $"ForEach Missions: 2 of 2 workers stopped, the first because: BaseUrl {_site.Url}/error answered HTTP 500; " +
             "2 items did not run."));
-    }
-
-    private TimeSpan TimeRun(Dictionary<string, string?> settings, string[] names)
-    {
-        var run = new QaasRun();
-        var timer = Stopwatch.StartNew();
-        var session = run.RunSession("Missions", settings, Missions(names));
-        timer.Stop();
-
-        Assert.That(session.SessionFailures, Is.Empty);
-        return timer.Elapsed;
     }
 
     private static DataSource Missions(IEnumerable<string> names) =>
