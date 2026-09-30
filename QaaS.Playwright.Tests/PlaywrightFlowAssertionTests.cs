@@ -76,6 +76,36 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_FlowTimedOut_HeadlineNamesTheElementItWaitedForAndThePage()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("PlaceOrder", Passed: false,
+            "Timeout 3000ms exceeded.\nCall log:\n  - waiting for GetByRole(AriaRole.Button, new() { Name = \"Place order\" })\n",
+            FailureUrl: "http://app.test/orders"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "PlaceOrder failed (0/1 flows passed): Timeout 3000ms exceeded " +
+            "(waiting for GetByRole(AriaRole.Button, new() { Name = \"Place order\" })) on http://app.test/orders. Passed: none."));
+        Assert.That(assertion.AssertionTrace, Does.Contain("Page: http://app.test/orders"));
+    }
+
+    [Test]
+    public void Assert_ExpectFailed_HeadlineNamesTheElementFromItsCallLog()
+    {
+        // An Expect() call log opens with the assertion step; the element is on a later line.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Todo", Passed: false,
+            "Locator expected to be visible\nCall log:\n  - Expect \"ToBeVisibleAsync\" with timeout 5000ms\n" +
+            "  - waiting for GetByText(\"Saved\")\n"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(assertion.AssertionMessage, Does.Contain("Locator expected to be visible (waiting for GetByText(\"Saved\"))."));
+    }
+
+    [Test]
     public void Assert_FlowFailed_TraceIsAChecklistWithDelimitedFailureDetail()
     {
         var (assertion, context) = NewAssertion();

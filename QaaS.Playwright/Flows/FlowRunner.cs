@@ -26,7 +26,8 @@ internal sealed class FlowRunner(
             }
             catch (Exception failure)
             {
-                Record(new PlaywrightFlowOutcome(flowName, Passed: false, failure.Message, await TryScreenshotAsync(page)));
+                var screenshot = await TryScreenshotAsync(page);
+                Record(new PlaywrightFlowOutcome(flowName, Passed: false, failure.Message, screenshot, page.Url));
                 throw;
             }
         }

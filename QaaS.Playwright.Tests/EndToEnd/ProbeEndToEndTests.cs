@@ -63,6 +63,23 @@ public class ProbeEndToEndTests
     }
 
     [Test]
+    public void FailingFlow_HeadlineNamesTheElementAndThePage()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow", "PlaceMissingOrderFlow");
+        settings["DefaultTimeout"] = "1000";
+
+        var assertion = run.RunAssertion(run.RunSession("Failing", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "PlaceMissingOrderFlow failed (1/2 flows passed): Timeout 1000ms exceeded " +
+            $"(waiting for GetByRole(AriaRole.Button, new() {{ Name = \"Place order\" }})) on {_site.Url}/order. " +
+            "Passed: SubmitOrderFlow."));
+        Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1), "the failure screenshot");
+    }
+
+    [Test]
     public void GetByTestId_ResolvesDataTestId()
     {
         var run = new QaasRun();

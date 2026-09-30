@@ -52,6 +52,15 @@ public sealed class SubmitOrderFlow : BasePlaywrightFlow<NoConfig>
     }
 }
 
+public sealed class PlaceMissingOrderFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.GotoAsync($"{BaseUrl}/order");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
+    }
+}
+
 public sealed class CheckPointerFlow : BasePlaywrightFlow<PointerConfig>
 {
     public override async Task RunAsync(IPage page)

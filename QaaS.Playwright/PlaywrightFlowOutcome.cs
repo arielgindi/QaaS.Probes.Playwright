@@ -12,8 +12,10 @@ namespace QaaS.Playwright;
 /// A PNG of the page captured at the moment of failure, when one could be taken; otherwise <see langword="null"/>.
 /// Always <see langword="null"/> for a passing flow.
 /// </param>
+/// <param name="FailureUrl">The page's URL at the moment of failure; <see langword="null"/> for a passing flow.</param>
 public sealed record PlaywrightFlowOutcome(
     string FlowName,
     bool Passed,
     string? FailureMessage = null,
-    byte[]? FailureScreenshot = null);
+    byte[]? FailureScreenshot = null,
+    string? FailureUrl = null);

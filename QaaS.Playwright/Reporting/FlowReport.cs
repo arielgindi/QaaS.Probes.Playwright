@@ -5,8 +5,10 @@ namespace QaaS.Playwright.Reporting;
 /// <summary>The report text of <see cref="PlaywrightFlowAssertion"/>: a one-line message and a detailed trace.</summary>
 internal static class FlowReport
 {
-    // Playwright appends its action log to a failure message after this line.
+    // Playwright appends its action log to a failure message after this line; the first line naming what it waited
+    // for tells which element the flow was stuck on.
     private const string CallLogMarker = "Call log:";
+    private const string WaitingForPrefix = "- waiting for ";
 
     private const string NoDetail = "(no failure detail)";
 
@@ -39,7 +41,7 @@ internal static class FlowReport
             trace.AppendLine().Append($"  [{(outcome.Passed ? "PASS" : "FAIL")}]  {outcome.FlowName}");
 
         foreach (var outcome in failed)
-            AppendSection(trace, $"{outcome.FlowName} failed", outcome.FailureMessage);
+            AppendSection(trace, $"{outcome.FlowName} failed", FailureDetail(outcome));
 
         // A failing flow also fails its session with the same message; show only the session failures that add something.
         var flowMessages = failed.Select(outcome => outcome.FailureMessage).ToHashSet();
@@ -67,11 +69,27 @@ internal static class FlowReport
 
         var first = failed[0];
         return failed.Count == 1
-            ? $"{first.FlowName} failed ({outcomes.Count - failed.Count}/{outcomes.Count} flows passed): {Summarize(first.FailureMessage)}"
+            ? $"{first.FlowName} failed ({outcomes.Count - failed.Count}/{outcomes.Count} flows passed): {Describe(first)}"
             : $"{failed.Count} of {outcomes.Count} flows failed " +
-              $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); " +
-              $"first '{first.FlowName}': {Summarize(first.FailureMessage)}";
+              $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); first '{first.FlowName}': {Describe(first)}";
     }
+
+    // e.g. "Timeout 3000ms exceeded (waiting for GetByRole(...)) on http://app/orders".
+    private static string Describe(PlaywrightFlowOutcome failure)
+    {
+        var description = Summarize(failure.FailureMessage);
+        if (WaitingFor(failure.FailureMessage) is { } element) description += $" ({element})";
+        if (!string.IsNullOrEmpty(failure.FailureUrl)) description += $" on {failure.FailureUrl}";
+        return description;
+    }
+
+    private static string? FailureDetail(PlaywrightFlowOutcome failure) =>
+        failure.FailureUrl is null ? failure.FailureMessage : $"Page: {failure.FailureUrl}\n{failure.FailureMessage ?? NoDetail}";
+
+    private static string? WaitingFor(string? failureMessage) =>
+        failureMessage?.Split(CallLogMarker, 2).ElementAtOrDefault(1)?
+            .Split('\n', StringSplitOptions.TrimEntries)
+            .FirstOrDefault(line => line.StartsWith(WaitingForPrefix, StringComparison.Ordinal))?[2..];
 
     private static string? NothingVerifiedHeadline(IReadOnlyList<string> unverifiedSessions) =>
         unverifiedSessions.Count == 0
@@ -85,12 +103,14 @@ internal static class FlowReport
         "  - the session has no PlaywrightFlowProbe;\n" +
         "  - the probe runs in another session than the ones this assertion's SessionNames select.";
 
-    // The failure message on one line, without the call log (the trace keeps it).
+    // The failure message on one line, without the call log (the trace keeps it) or a closing period (the message
+    // adds its own).
     private static string Summarize(string? failureMessage)
     {
         if (string.IsNullOrWhiteSpace(failureMessage)) return NoDetail;
         var beforeCallLog = failureMessage.Split(CallLogMarker, 2)[0];
-        return string.Join(' ', beforeCallLog.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var lines = beforeCallLog.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(' ', lines).TrimEnd('.');
     }
 
     private static void AppendSection(StringBuilder trace, string title, string? detail) =>
