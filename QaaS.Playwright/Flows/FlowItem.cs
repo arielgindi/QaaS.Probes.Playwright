@@ -16,6 +16,9 @@ internal sealed record FlowItem(int Index, JsonNode? Data)
     // for the first time at the same moment, so each could get other items. Reads of one DataSource take turns.
     private static readonly ConditionalWeakTable<DataSource, Lock> ReadLocks = new();
 
+    // Starts the bytes of a file saved as "UTF-8 with BOM"; it is not part of the text.
+    private const char ByteOrderMark = '\uFEFF';
+
     /// <summary>How a flow run for this item is reported, e.g. <c>CreateMissionFlow[17]</c>.</summary>
     public string NameOf(string flowName) => $"{flowName}[{Index}]";
 
@@ -40,7 +43,7 @@ internal sealed record FlowItem(int Index, JsonNode? Data)
     {
         null => null,
         JsonNode node => node.DeepClone(),
-        byte[] bytes => Parse(Encoding.UTF8.GetString(bytes)),
+        byte[] bytes => Parse(Encoding.UTF8.GetString(bytes).TrimStart(ByteOrderMark)),
         string text => Parse(text),
         _ => JsonSerializer.SerializeToNode(body),
     };

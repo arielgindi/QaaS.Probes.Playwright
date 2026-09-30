@@ -71,6 +71,15 @@ public class FlowItemTests
         Assert.That(FlowItem.ToJson(Encoding.UTF8.GetBytes("""{"id":7}"""))!["id"]!.GetValue<int>(), Is.EqualTo(7));
 
     [Test]
+    public void ToJson_JsonBytesOfAFileWithAByteOrderMark_AreParsed()
+    {
+        // As File.ReadAllBytes gives them for a file saved as "UTF-8 with BOM".
+        byte[] bytes = [.. Encoding.UTF8.Preamble, .. Encoding.UTF8.GetBytes("""{"id":7}""")];
+
+        Assert.That(FlowItem.ToJson(bytes)!["id"]!.GetValue<int>(), Is.EqualTo(7));
+    }
+
+    [Test]
     public void ToJson_JsonText_IsParsed() =>
         Assert.That(FlowItem.ToJson("[1,2]"), Is.InstanceOf<JsonArray>());
 
