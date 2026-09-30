@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
@@ -29,13 +30,16 @@ internal static class DesktopPointer
         })();
         """;
 
+    // Every page of a Chrome reports the same pointer, so each connection asks once.
+    private static readonly ConditionalWeakTable<IBrowser, Task<bool>> NoMouse = new();
+
     /// <summary>Makes every document the page loads report a mouse to matchMedia.</summary>
     public static Task EmulateAsync(IPage page) => page.AddInitScriptAsync(MatchMediaShim);
 
     /// <summary>Warns when the browser reports no mouse, in every run, so every report says so.</summary>
     public static async Task WarnIfMissingAsync(IPage page, ILogger logger)
     {
-        if (!await ReportsNoMouseAsync(page)) return;
+        if (!await NoMouse.GetValue(page.Context.Browser!, _ => ReportsNoMouseAsync(page))) return;
 
         logger.LogWarning(
             "The browser reports no mouse (pointer: none), as a headless Chrome started by hand does, so responsive " +

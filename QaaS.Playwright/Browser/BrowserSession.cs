@@ -50,7 +50,7 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
         {
             session.Page = session.Track(await context.NewPageAsync());
             session.Page.Crash += (_, _) => session.Crashed = true;
-            await SetUpPageAsync(session.Page, config, logger);
+            await SetUpPageAsync(session.Page, ownsContext, config, logger);
             return session;
         }
         catch
@@ -106,7 +106,8 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     }
 
     // A run gets a fresh context of its own unless it opts out with IsolateContext: false; then it shares the
-    // browser's default context, unless it starts from a saved login, which can only seed a new context.
+    // browser's default context, unless it starts from a saved login, which can only seed a new context. An own
+    // context has the viewport from the start, which saves each page a round trip to the browser.
     private static async Task<(IBrowserContext Context, bool Owned)> OpenContextAsync(
         IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
     {
@@ -114,7 +115,9 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
         if (!config.IsolateContext && storageState is null && browser.Contexts.Count > 0)
             return (browser.Contexts[0], false);
 
-        return (await browser.NewContextAsync(new BrowserNewContextOptions { StorageStatePath = storageState }), true);
+        var viewport = new ViewportSize { Width = config.ViewportWidth, Height = config.ViewportHeight };
+        var options = new BrowserNewContextOptions { StorageStatePath = storageState, ViewportSize = viewport };
+        return (await browser.NewContextAsync(options), true);
     }
 
     private static string? StorageStateToLoad(PlaywrightFlowConfig config, ILogger logger)
@@ -137,11 +140,22 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
         return path;
     }
 
-    private static async Task SetUpPageAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)
+    private static async Task SetUpPageAsync(IPage page, bool ownsContext, PlaywrightFlowConfig config, ILogger logger)
     {
         page.SetDefaultTimeout(config.DefaultTimeout);
+        if (!ownsContext) await SetViewportAsync(page, config, logger);
 
-        // Some remote browsers reject a viewport override; the run can still go on at the browser's own size.
+        if (config.Headless && config.BlockAssets) await BlockAssetsAsync(page);
+
+        if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
+        else await DesktopPointer.WarnIfMissingAsync(page, logger);
+
+        if (!config.Headless) await WarnIfHeadlessAsync(page, config, logger);
+    }
+
+    // Some remote browsers reject a viewport override; the run can still go on at the browser's own size.
+    private static async Task SetViewportAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)
+    {
         try
         {
             await page.SetViewportSizeAsync(config.ViewportWidth, config.ViewportHeight);
@@ -151,13 +165,6 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
             logger.LogWarning("Could not set the viewport to {Width}x{Height}: {Message}",
                 config.ViewportWidth, config.ViewportHeight, failure.Message);
         }
-
-        if (config.Headless && config.BlockAssets) await BlockAssetsAsync(page);
-
-        if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
-        else await DesktopPointer.WarnIfMissingAsync(page, logger);
-
-        if (!config.Headless) await WarnIfHeadlessAsync(page, config, logger);
     }
 
     // Headless: false only slows the run down for a person to watch; whether a window shows is up to the Chrome.
