@@ -22,6 +22,16 @@ public sealed class PlaywrightFlowConfig
     public string[]? Flows { get; set; }
 
     /// <summary>
+    /// The name of a DataSource passed to the probe (DataSourceNames): Flows then run once per item it generates, and
+    /// read the item as Item. SetupFlows run once per worker, in its own browser context.
+    /// </summary>
+    public string? ForEach { get; set; }
+
+    /// <summary>With ForEach, how many workers go through the items at the same time.</summary>
+    [Range(1, int.MaxValue)]
+    public int Parallelism { get; set; } = 1;
+
+    /// <summary>
     /// Whether nobody is watching. True blocks images and fonts for speed; false slows each action down (see SlowMo)
     /// so a person can follow. Whether Chrome shows a window depends only on how Chrome was started.
     /// </summary>

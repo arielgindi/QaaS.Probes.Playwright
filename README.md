@@ -56,6 +56,8 @@ stops the run. Each flow reads its own `FlowConfiguration:<FlowName>` section as
 | `BaseUrl` | required | The site. The probe opens it before the first flow. |
 | `SetupFlows`, `Flows` | none | Flow class names, run in that order on one page. |
 | `FlowConfiguration` | none | One section per flow, bound to that flow's settings record. |
+| `ForEach` | none | A DataSource: run `Flows` once per item it generates. See below. |
+| `Parallelism` | `1` | With `ForEach`, how many workers go through the items at the same time. |
 | `BrowserUrl` | `browser-defaults.yaml` | The Chrome to run in, over CDP. See below. |
 | `BrowserExecutablePath` | found automatically | The Chrome the probe starts for a `BrowserUrl` on this machine. |
 | `Headless` | `true` | Whether nobody is watching. See below. |
@@ -132,6 +134,45 @@ google-chrome --headless=new --remote-debugging-port=9222 \
 
 or set `EmulateDesktopPointer: true`, which makes the page's `matchMedia` report a mouse before any script runs. It
 covers single `pointer`/`hover` queries from JavaScript (what MUI uses), not CSS media queries.
+
+## One flow per item: ForEach
+
+To do the same thing for every item of a list, e.g. create the 50 missions a generator makes from a list in the
+YAML, pass the DataSource to the probe and name it in `ForEach`:
+
+```yaml
+Probes:
+  - Name: CreateMissions
+    Probe: PlaywrightFlowProbe
+    DataSourceNames: [Missions]
+    ProbeConfiguration:
+      BaseUrl: https://app
+      SetupFlows: [LoginFlow]      # once per worker
+      Flows: [CreateMissionFlow]   # once per item
+      ForEach: Missions
+      Parallelism: 5               # workers at the same time (default 1)
+```
+
+The flow reads its item as `Item`, the item's body as JSON (`Item.Deserialize<T>()` gives a typed record), and
+its position as `ItemIndex`. Both are null without `ForEach`.
+
+```csharp
+public sealed class CreateMissionFlow : BasePlaywrightFlow<CreateMissionFlowConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.GotoAsync($"{BaseUrl}/missions/new");
+        await page.GetByLabel("Name").FillAsync(Item!["Name"]!.GetValue<string>());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
+    }
+}
+```
+
+Each worker opens a browser context of its own, runs `SetupFlows` once, then takes the next item until none is
+left. Every item is reported on its own, e.g. `CreateMissionFlow[17]`, with its time in the log. A failed item gets
+its screenshot, and its worker goes back to `BaseUrl` and carries on; a worker whose `SetupFlows` fail stops, and the
+others take its items. The session fails if any item or worker failed, and says which. `SaveStorageStatePath` and
+`KeepOpen` do not apply with `ForEach`.
 
 ## Many cases, fast
 

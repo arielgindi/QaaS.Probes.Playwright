@@ -39,9 +39,9 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
     // IProbe.Run is synchronous; this is the one place the async run is waited on.
     public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList) =>
-        Task.Run(RunAsync).GetAwaiter().GetResult();
+        Task.Run(() => RunAsync(sessionDataList, dataSourceList)).GetAwaiter().GetResult();
 
-    private async Task RunAsync()
+    private async Task RunAsync(IImmutableList<SessionData> sessions, IImmutableList<DataSource> dataSources)
     {
         string[] setupFlows = Configuration.SetupFlows ?? [], flows = Configuration.Flows ?? [];
         if (setupFlows.Length + flows.Length == 0)
@@ -53,19 +53,28 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var stopwatch = Stopwatch.StartNew();
         var probeName = Activity.Current?.GetBaggageItem(ProbeNameBaggageKey);
         var runner = new FlowRunner(Context, CurrentSessionName(), probeName, Configuration, _flowConfiguration);
+        if (Configuration.ForEach is { } dataSource)
+            await new ForEachRun(runner, Configuration, Context.Logger)
+                .RunAsync(FlowItem.AllOf(dataSource, dataSources, sessions), setupFlows, flows);
+        else
+            await RunOnceAsync(runner, setupFlows, flows);
 
+        Context.Logger.LogInformation("Done — {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+    }
+
+    private async Task RunOnceAsync(FlowRunner runner, string[] setupFlows, string[] flows)
+    {
         await using var browser = await BrowserSession.OpenAsync(Configuration, Context.Logger);
         Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
         await browser.Page.GotoAsync(Configuration.BaseUrl);
 
-        await runner.RunAsync(setupFlows, browser.Page, "Setup");
-        await runner.RunAsync(flows, browser.Page, "Running");
+        await runner.RunAsync(setupFlows, browser.Page);
+        await runner.RunAsync(flows, browser.Page);
 
         // Saved only after every flow passed, so a failed login is never reused.
         if (!string.IsNullOrWhiteSpace(Configuration.SaveStorageStatePath))
             await browser.SaveStorageStateAsync(Configuration.SaveStorageStatePath);
 
-        Context.Logger.LogInformation("Done — {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         await PauseForInspectionAsync(browser);
     }
 

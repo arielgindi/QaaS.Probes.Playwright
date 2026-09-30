@@ -135,6 +135,49 @@ ProbeConfiguration:
     LoginFlow: { Username: manager }
 ```
 
+## Create every item of a list
+
+`Missions` is a DataSource that generates one item per mission, e.g. `{ "Name": "Apollo", "Priority": "High" }`.
+Five workers log in once each, then create the missions between them:
+
+```yaml
+Sessions:
+  - Name: Missions
+    Probes:
+      - Name: CreateMissions
+        Probe: PlaywrightFlowProbe
+        DataSourceNames: [Missions]
+        ProbeConfiguration:
+          BaseUrl: https://my-app.com
+          SetupFlows: [LoginFlow]
+          Flows: [CreateMissionFlow]
+          ForEach: Missions
+          Parallelism: 5
+          FlowConfiguration:
+            LoginFlow: { Username: planner }
+```
+
+```csharp
+public sealed class CreateMissionFlow : BasePlaywrightFlow<CreateMissionFlowConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var mission = Item!.Deserialize<Mission>()!;
+        await page.GotoAsync($"{BaseUrl}/missions/new");
+        await page.GetByLabel("Name").FillAsync(mission.Name);
+        await page.GetByLabel("Priority").SelectOptionAsync(mission.Priority);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
+        await Expect(page.GetByText($"Mission {mission.Name} created")).ToBeVisibleAsync();
+    }
+}
+
+public sealed record Mission(string Name, string Priority);
+
+public sealed record CreateMissionFlowConfig;
+```
+
+The report lists every item, `CreateMissionFlow[0]` to `CreateMissionFlow[49]`.
+
 ## Nested settings
 
 Flow settings bind like any QaaS hook's: nested records, arrays and dictionaries work.

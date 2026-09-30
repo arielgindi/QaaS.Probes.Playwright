@@ -14,8 +14,8 @@ internal static class UnknownSettings
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// A warning per ProbeConfiguration key that is not a setting, and per FlowConfiguration section of a flow that
-    /// does not run.
+    /// A warning per ProbeConfiguration key that is not a setting, per FlowConfiguration section of a flow that does
+    /// not run, and per setting that does not apply with or without ForEach.
     /// </summary>
     public static IEnumerable<string> Find(IConfiguration probeConfiguration, PlaywrightFlowConfig config)
     {
@@ -31,5 +31,10 @@ internal static class UnknownSettings
             .Where(flowName => !flows.Contains(flowName));
         foreach (var flowName in orphanSections)
             yield return $"FlowConfiguration:{flowName} is ignored: no flow named '{flowName}' is in SetupFlows or Flows.";
+
+        if (config.ForEach is null && config.Parallelism > 1)
+            yield return "Parallelism is ignored: it applies only with ForEach.";
+        if (config.ForEach is not null && (config.SaveStorageStatePath is not null || config.KeepOpen))
+            yield return "SaveStorageStatePath and KeepOpen are ignored with ForEach, where several workers run.";
     }
 }

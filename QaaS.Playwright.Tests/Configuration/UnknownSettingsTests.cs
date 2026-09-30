@@ -12,6 +12,11 @@ public class UnknownSettingsTests
         return [.. UnknownSettings.Find(configuration, new PlaywrightFlowConfig { Flows = flows })];
     }
 
+    private static List<string> FindFor(PlaywrightFlowConfig config)
+    {
+        return [.. UnknownSettings.Find(new ConfigurationBuilder().Build(), config)];
+    }
+
     [Test]
     public void Find_KnownKeysInAnyCase_ReportsNothing() =>
         Assert.That(Find(new() { ["BaseUrl"] = "http://app", ["flows:0"] = "Login", ["HEADLESS"] = "true" }), Is.Empty);
@@ -37,6 +42,15 @@ public class UnknownSettingsTests
         Assert.That(warnings, Has.Count.EqualTo(1));
         Assert.That(warnings[0], Does.Contain("FlowConfiguration:Logn"));
     }
+
+    [Test]
+    public void Find_ParallelismWithoutForEach_ReportsIt() =>
+        Assert.That(FindFor(new PlaywrightFlowConfig { Parallelism = 4 }), Has.One.Contains("Parallelism is ignored"));
+
+    [Test]
+    public void Find_SaveStorageStateWithForEach_ReportsIt() =>
+        Assert.That(FindFor(new PlaywrightFlowConfig { ForEach = "Missions", SaveStorageStatePath = "state.json" }),
+            Has.One.Contains("SaveStorageStatePath and KeepOpen are ignored with ForEach"));
 
     [Test]
     public void Find_FlowConfigurationOfASetupFlow_ReportsNothing()

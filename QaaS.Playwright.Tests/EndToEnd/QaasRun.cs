@@ -22,16 +22,17 @@ public sealed class QaasRun
 
     public ListLogger Log { get; } = new();
 
-    /// <summary>Runs a session with one probe.</summary>
-    public SessionData RunSession(string name, Dictionary<string, string?> probeConfiguration) =>
-        SessionOf(name, [RunProbe(name, "Browser", probeConfiguration)]);
+    /// <summary>Runs a session with one probe, given the data sources listed in its DataSourceNames.</summary>
+    public SessionData RunSession(
+        string name, Dictionary<string, string?> probeConfiguration, params DataSource[] dataSources) =>
+        SessionOf(name, [RunProbe(name, "Browser", probeConfiguration, dataSources)]);
 
     /// <summary>Runs one session's probes at once, as the runner runs the probes of one action stage.</summary>
     public async Task<SessionData> RunSessionAsync(
         string name, params (string Probe, Dictionary<string, string?> Configuration)[] probes)
     {
         var failures = await Task.WhenAll(
-            probes.Select(probe => Task.Run(() => RunProbe(name, probe.Probe, probe.Configuration))));
+            probes.Select(probe => Task.Run(() => RunProbe(name, probe.Probe, probe.Configuration, []))));
         return SessionOf(name, failures);
     }
 
@@ -47,7 +48,8 @@ public sealed class QaasRun
         return assertion;
     }
 
-    private ActionFailure? RunProbe(string sessionName, string probeName, Dictionary<string, string?> configuration)
+    private ActionFailure? RunProbe(
+        string sessionName, string probeName, Dictionary<string, string?> configuration, DataSource[] dataSources)
     {
         using var scope = new Activity("probe")
             .AddBaggage(SessionNameBaggageKey, sessionName)
@@ -59,7 +61,7 @@ public sealed class QaasRun
 
         try
         {
-            probe.Run(ImmutableList<SessionData>.Empty, ImmutableList<DataSource>.Empty);
+            probe.Run(ImmutableList<SessionData>.Empty, [.. dataSources]);
             return null;
         }
         catch (Exception failure)

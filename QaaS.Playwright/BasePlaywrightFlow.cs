@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using QaaS.Framework.Configurations;
@@ -16,6 +17,10 @@ public abstract class BasePlaywrightFlow<TConfiguration> : IPlaywrightFlow where
     public Context Context { get; set; } = null!;
 
     public string BaseUrl { get; set; } = null!;
+
+    public JsonNode? Item { get; set; }
+
+    public int? ItemIndex { get; set; }
 
     /// <summary>The flow's settings; defaults until the probe binds them.</summary>
     public TConfiguration Configuration { get; set; } = new();

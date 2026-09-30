@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -6,7 +7,8 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
 /// A tiny web app on a free local port: a cookie login, a whoami page, a page with a test-id button, a page that
-/// reports the pointer the browser has, and a page with an image and a script the browser may cache.
+/// reports the pointer the browser has, a page with an image and a script the browser may cache, and a form that
+/// creates a mission in a fixed time.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -19,6 +21,7 @@ public sealed class TestSite : IDisposable
 
     private readonly HttpListener _listener;
     private int _scriptDownloads;
+    private int _logins;
 
     private TestSite(HttpListener listener, string url)
     {
@@ -31,6 +34,14 @@ public sealed class TestSite : IDisposable
 
     /// <summary>How often /app.js was downloaded; the browser may cache it for an hour.</summary>
     public int ScriptDownloads => _scriptDownloads;
+
+    /// <summary>How often someone logged in.</summary>
+    public int Logins => _logins;
+
+    /// <summary>The missions created so far. Creating one takes <see cref="MissionCreationTime"/>.</summary>
+    public ConcurrentQueue<string> Missions { get; } = new();
+
+    public static TimeSpan MissionCreationTime { get; } = TimeSpan.FromMilliseconds(250);
 
     public static TestSite Start()
     {
@@ -78,6 +89,7 @@ public sealed class TestSite : IDisposable
 
         if (path == "/session")
         {
+            Interlocked.Increment(ref _logins);
             // The login form submits here: remember the user in a cookie, then show who is logged in.
             response.AppendCookie(new Cookie("user", request.QueryString["user"]) { Path = "/" });
             response.Redirect("/whoami");
@@ -101,9 +113,20 @@ public sealed class TestSite : IDisposable
                 <img src="/logo.png" onload="image.textContent = 'loaded'" onerror="image.textContent = 'blocked'">
                 <p id="image"></p><script src="/app.js"></script>
                 """,
+            "/missions/new" => """<form action="/missions"><label>Name <input name="name"></label><button>Create</button></form>""",
+            "/missions" => $"""<p id="created">{WebUtility.HtmlEncode(CreateMission(request.QueryString["name"]))}</p>""",
             _ => "<h1>Home</h1>",
         };
         Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
+    }
+
+    // A mission named "bad" is rejected.
+    private string CreateMission(string? name)
+    {
+        Thread.Sleep(MissionCreationTime);
+        if (name is null or "bad") return "rejected";
+        Missions.Enqueue(name);
+        return name;
     }
 
     private static void Send(HttpListenerResponse response, string contentType, byte[] body)

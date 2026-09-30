@@ -84,6 +84,22 @@ public sealed class CheckImageFlow : BasePlaywrightFlow<ExpectedConfig>
     }
 }
 
+/// <summary>Creates the mission its ForEach item names, e.g. <c>{ "name": "Apollo" }</c>.</summary>
+public sealed class CreateMissionFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var name = Item!["name"]!.GetValue<string>();
+        await page.GotoAsync($"{BaseUrl}/missions/new");
+        await page.GetByLabel("Name").FillAsync(name);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
+
+        var created = await page.Locator("#created").TextContentAsync();
+        if (created != name)
+            throw new InvalidOperationException($"Mission {ItemIndex} '{name}' was not created: the app says '{created}'.");
+    }
+}
+
 public sealed class CheckPointerFlow : BasePlaywrightFlow<ExpectedConfig>
 {
     public override async Task RunAsync(IPage page)
