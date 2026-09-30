@@ -9,12 +9,18 @@ namespace QaaS.Playwright.Flows;
 /// </summary>
 public static class FlowDiscovery
 {
-    private static readonly ConcurrentDictionary<string, Type> TypesByName = new(StringComparer.OrdinalIgnoreCase);
+    // Found once for as many assemblies as are loaded: another assembly may bring a second flow of the same name.
+    private static readonly ConcurrentDictionary<string, (int Assemblies, Type Type)> TypesByName =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <exception cref="InvalidOperationException">Not exactly one flow has that name, or it cannot be created.</exception>
     public static IPlaywrightFlow Resolve(string name)
     {
-        var type = TypesByName.GetOrAdd(name, FindType);
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        if (!TypesByName.TryGetValue(name, out var found) || found.Assemblies != assemblies.Length)
+            TypesByName[name] = found = (assemblies.Length, FindType(name, assemblies));
+
+        var type = found.Type;
         if (type.GetConstructor(Type.EmptyTypes) is null)
             throw new InvalidOperationException(
                 $"Flow '{name}' ({type.FullName}) needs a public parameterless constructor.");
@@ -31,9 +37,9 @@ public static class FlowDiscovery
         }
     }
 
-    private static Type FindType(string name)
+    private static Type FindType(string name, Assembly[] assemblies)
     {
-        var matches = AppDomain.CurrentDomain.GetAssemblies()
+        var matches = assemblies
             .SelectMany(LoadableTypes)
             .Where(type => type is { IsAbstract: false, IsGenericTypeDefinition: false }
                            && typeof(IPlaywrightFlow).IsAssignableFrom(type)

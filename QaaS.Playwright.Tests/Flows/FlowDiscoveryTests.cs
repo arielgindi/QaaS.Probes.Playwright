@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Reflection.Emit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
@@ -35,6 +37,29 @@ public class GenericFlow<T> : BasePlaywrightFlow<TestFlowConfig>
 [TestFixture]
 public class FlowDiscoveryTests
 {
+    [Test]
+    public void Resolve_AnAssemblyLoadedLaterWithAFlowOfTheSameName_MakesTheNameAmbiguous()
+    {
+        var name = $"LateFlow{Guid.NewGuid():N}";
+        var first = DefineFlow("First", name);
+        Assert.That(FlowDiscovery.Resolve(name), Is.InstanceOf(first));
+
+        DefineFlow("Second", name);
+
+        Assert.Throws<InvalidOperationException>(() => FlowDiscovery.Resolve(name));
+    }
+
+    // In an assembly of its own, loaded now.
+    private static Type DefineFlow(string namespaceName, string name)
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName($"{namespaceName}{name}"), AssemblyBuilderAccess.Run);
+        var type = assembly.DefineDynamicModule(namespaceName)
+            .DefineType($"{namespaceName}.{name}", TypeAttributes.Public, typeof(AnotherFlow));
+        type.DefineDefaultConstructor(MethodAttributes.Public);
+        return type.CreateType();
+    }
+
     [Test]
     public void Resolve_ExistingFlow_ReturnsInstance()
     {
