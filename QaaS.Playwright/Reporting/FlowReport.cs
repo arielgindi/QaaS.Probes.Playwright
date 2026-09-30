@@ -13,20 +13,23 @@ internal static class FlowReport
     private const string NoDetail = "(no failure detail)";
     private const string NoSessionAttached = "No session is attached to this assertion, so nothing was verified";
 
-    /// <summary>What failed and why, which sessions ran no flow, and which flows passed.</summary>
+    /// <summary>What failed and why, which sessions ran no flow, which flows passed, and how many warnings there are.</summary>
     public static string Message(SessionResults results)
     {
-        if (results.SessionNames.Count == 0) return $"{NoSessionAttached}.";
+        var warnings = results.Warnings.Count > 0 ? $" {results.Warnings.Count} warning(s), see the trace." : "";
+        if (results.SessionNames.Count == 0) return $"{NoSessionAttached}.{warnings}";
 
         var passed = results.Outcomes.Where(outcome => outcome.Passed).Select(outcome => outcome.FlowName).ToList();
-        if (results.Passed) return $"All {passed.Count} Playwright flow(s) passed: {string.Join(", ", passed)}.";
+        if (results.Passed) return $"All {passed.Count} Playwright flow(s) passed: {string.Join(", ", passed)}.{warnings}";
 
         string?[] problems = [FailureHeadline(results), NothingVerifiedHeadline(results.UnverifiedSessions)];
         var passedNames = passed.Count > 0 ? string.Join(", ", passed) : "none";
-        return $"{string.Join(". ", problems.OfType<string>())}. Passed: {passedNames}.";
+        return $"{string.Join(". ", problems.OfType<string>())}. Passed: {passedNames}.{warnings}";
     }
 
-    /// <summary>A PASS/FAIL line per flow in run order, then each failure in full, call log included.</summary>
+    /// <summary>
+    /// A PASS/FAIL line per flow in run order, then each failure in full, call log included, and the probes' warnings.
+    /// </summary>
     public static string Trace(SessionResults results)
     {
         var outcomes = results.Outcomes;
@@ -52,6 +55,9 @@ internal static class FlowReport
         else if (results.UnverifiedSessions.Count > 0)
             AppendSection(trace, "nothing verified", LikelyCauses(results.UnverifiedSessions));
 
+        if (results.Warnings.Count > 0)
+            trace.AppendLine().AppendLine().Append("Warnings:")
+                .AppendJoin("", results.Warnings.Select(entry => $"\n  - {entry.SessionName}: {entry.Warning}"));
         return trace.ToString();
     }
 

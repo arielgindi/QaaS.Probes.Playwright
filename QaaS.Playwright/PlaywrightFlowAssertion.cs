@@ -13,8 +13,8 @@ public sealed record PlaywrightFlowAssertionConfiguration;
 
 /// <summary>
 /// Reports the flows <see cref="PlaywrightFlowProbe"/> ran in the attached sessions: which passed, which failed and
-/// why, with each failure's screenshot attached. It fails when a flow failed, a session recorded a failure, or
-/// nothing was verified: no session is attached, or an attached session ran no flow.
+/// why, with each failure's screenshot attached, and every warning the probes logged. It fails when a flow failed, a
+/// session recorded a failure, or nothing was verified: no session is attached, or an attached session ran no flow.
 /// </summary>
 public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssertionConfiguration>
 {
@@ -23,11 +23,8 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         var results = SessionResults.Collect(Context, sessionDataList);
 
         AssertionMessage = FlowReport.Message(results);
-        if (!results.Passed)
-        {
-            AssertionTrace = FlowReport.Trace(results);
-            AttachScreenshots(results);
-        }
+        AssertionTrace = FlowReport.Trace(results);
+        if (!results.Passed) AttachScreenshots(results);
 
         AssertionStatus = results.Passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
         Context.Logger.LogInformation(

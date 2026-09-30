@@ -118,6 +118,22 @@ public class ProbeEndToEndTests
     }
 
     [Test]
+    public void SavedLoginFromBeforeThisRun_IsWarnedAboutInTheReport()
+    {
+        // e.g. -a or a category filter skipped the session that saves it, so an old login would be reused.
+        var run = new QaasRun();
+        var statePath = Path.Combine(_tempDir, "old.json");
+        File.WriteAllText(statePath, """{"cookies":[],"origins":[]}""");
+        File.SetLastWriteTimeUtc(statePath, DateTime.UtcNow.AddHours(-3));
+        var settings = Settings("SubmitOrderFlow");
+        settings["LoadStorageStatePath"] = statePath;
+
+        var assertion = run.RunAssertion(run.RunSession("OldLogin", settings));
+
+        Assert.That(assertion.AssertionTrace, Does.Contain($"'{statePath}' was saved 3 h ago, before this run"));
+    }
+
+    [Test]
     [Repeat(3)]
     public async Task ParallelSessionsAsDifferentUsers_NeverMixUp()
     {
@@ -146,10 +162,8 @@ public class ProbeEndToEndTests
     }
 
     [Test]
-    public void BrowserWithoutMouse_IsWarnedAbout()
+    public void BrowserWithoutMouse_IsWarnedAboutInTheReport()
     {
-        // The warning is logged once per process, so this must stay the only test that runs on the Chrome without a
-        // mouse and does not emulate one.
         var run = new QaasRun();
         var settings = Settings("CheckPointerFlow");
         settings["BrowserUrl"] = _chromeWithoutMouse.Url;
@@ -158,7 +172,35 @@ public class ProbeEndToEndTests
         var assertion = run.RunAssertion(run.RunSession("NoMouse", settings));
 
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
-        Assert.That(run.Log.Warnings, Has.One.Contains("reports no mouse").And.Contains(DesktopPointer.LaunchFlags));
+        Assert.That(assertion.AssertionTrace, Does.Contain("NoMouse: The browser reports no mouse (pointer: none)")
+            .And.Contains(DesktopPointer.LaunchFlags));
+    }
+
+    [Test]
+    public void HeadlessFalse_OnAHeadlessChrome_IsWarnedAboutInTheReport()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["Headless"] = "false";
+        settings["SlowMo"] = "0";
+
+        var assertion = run.RunAssertion(run.RunSession("Watched", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionTrace, Does.Contain("Headless: false, but the Chrome at").And.Contains("runs headless"));
+    }
+
+    [Test]
+    public void KeepOpen_WhileHeadless_IsIgnoredWithAWarningInTheReport()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["KeepOpen"] = "true";
+
+        var assertion = run.RunAssertion(run.RunSession("KeepOpen", settings));
+
+        Assert.That(assertion.AssertionMessage, Does.EndWith("1 warning(s), see the trace."));
+        Assert.That(assertion.AssertionTrace, Does.Contain("KeepOpen: KeepOpen ignored: it needs Headless: false"));
     }
 
     [Test]

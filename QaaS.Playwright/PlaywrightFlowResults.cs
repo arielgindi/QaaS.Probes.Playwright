@@ -3,13 +3,15 @@ using QaaS.Framework.SDK.ContextObjects;
 namespace QaaS.Playwright;
 
 /// <summary>
-/// Carries flow outcomes from <see cref="PlaywrightFlowProbe"/> to <see cref="PlaywrightFlowAssertion"/> through the
-/// run's global dictionary, one list per session, so a session never sees another session's results. A probe that runs
-/// outside a session records apart from every session, whatever a session is called.
+/// Carries flow outcomes, and the warnings the probe logged, from <see cref="PlaywrightFlowProbe"/> to
+/// <see cref="PlaywrightFlowAssertion"/> through the run's global dictionary, one list per session, so a session never
+/// sees another session's results. A probe that runs outside a session records apart from every session, whatever a
+/// session is called.
 /// </summary>
 public static class PlaywrightFlowResults
 {
-    private const string RootKey = "PlaywrightFlowResults";
+    private const string OutcomesKey = "PlaywrightFlowResults";
+    private const string WarningsKey = "PlaywrightFlowWarnings";
 
     // Parallel sessions record at the same time; the lock covers only the list update, never browser work.
     private static readonly Lock Gate = new();
@@ -20,39 +22,53 @@ public static class PlaywrightFlowResults
     public static void Record(Context context, string? sessionName, PlaywrightFlowOutcome outcome)
     {
         ArgumentNullException.ThrowIfNull(outcome);
-        lock (Gate)
-        {
-            var outcomes = Stored(context, sessionName);
-            outcomes.Add(outcome);
-            context.InsertValueIntoGlobalDictionary(PathOf(sessionName), outcomes);
-        }
+        Add(context, PathOf(OutcomesKey, sessionName), outcome);
     }
 
     /// <summary>A copy of the session's outcomes, in the order the flows ran; null reads those recorded outside a session.</summary>
-    public static IReadOnlyList<PlaywrightFlowOutcome> Read(Context context, string? sessionName)
+    public static IReadOnlyList<PlaywrightFlowOutcome> Read(Context context, string? sessionName) =>
+        Copy<PlaywrightFlowOutcome>(context, PathOf(OutcomesKey, sessionName));
+
+    internal static void RecordWarning(Context context, string? sessionName, string warning) =>
+        Add(context, PathOf(WarningsKey, sessionName), warning);
+
+    internal static IReadOnlyList<string> ReadWarnings(Context context, string? sessionName) =>
+        Copy<string>(context, PathOf(WarningsKey, sessionName));
+
+    private static void Add<T>(Context context, List<string> path, T item)
     {
-        lock (Gate) return [.. Stored(context, sessionName)];
+        lock (Gate)
+        {
+            var items = Stored<T>(context, path);
+            items.Add(item);
+            context.InsertValueIntoGlobalDictionary(path, items);
+        }
     }
 
-    private static List<PlaywrightFlowOutcome> Stored(Context context, string? sessionName)
+    private static IReadOnlyList<T> Copy<T>(Context context, List<string> path)
+    {
+        lock (Gate) return [.. Stored<T>(context, path)];
+    }
+
+    private static List<T> Stored<T>(Context context, List<string> path)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         object? stored;
-        try { stored = context.GetValueFromGlobalDictionary(PathOf(sessionName)); }
+        try { stored = context.GetValueFromGlobalDictionary(path); }
         catch (KeyNotFoundException) { return []; }
 
         return stored switch
         {
             null => [],
-            List<PlaywrightFlowOutcome> outcomes => outcomes,
+            List<T> items => items,
             _ => throw new InvalidOperationException(
-                $"The global dictionary entry {string.Join(':', PathOf(sessionName))} holds a {stored.GetType().Name}, not flow " +
-                "outcomes. Another component writes to that key."),
+                $"The global dictionary entry {string.Join(':', path)} holds a {stored.GetType().Name}, not a list of " +
+                $"{typeof(T).Name}. Another component writes to that key."),
         };
     }
 
-    // A session's name is only ever a key under "Sessions", so no session name can reach the unscoped outcomes.
-    private static List<string> PathOf(string? sessionName) =>
-        sessionName is null ? [RootKey, "Unscoped"] : [RootKey, "Sessions", sessionName];
+    // A session's name is only ever a key under "Sessions", so no session name can reach what was recorded outside one.
+    private static List<string> PathOf(string rootKey, string? sessionName) =>
+        sessionName is null ? [rootKey, "Unscoped"] : [rootKey, "Sessions", sessionName];
 }

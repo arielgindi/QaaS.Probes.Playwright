@@ -16,7 +16,7 @@ public class FlowItemTests
     {
         var missions = ListGenerator.DataSource("Missions", """{"name":"Apollo"}""", """{"name":"Gemini"}""");
 
-        var items = FlowItem.AllOf("Missions", [missions], NoSessions);
+        var items = FlowItem.AllOf("Missions", [missions], NoSessions, new ListLogger());
 
         Assert.That(items.Select(item => item.Index), Is.EqualTo(new[] { 0, 1 }));
         Assert.That(items.Select(item => item.Data!["name"]!.GetValue<string>()), Is.EqualTo(new[] { "Apollo", "Gemini" }));
@@ -26,9 +26,21 @@ public class FlowItemTests
     public void AllOf_DataSourceNotPassedToTheProbe_SaysHowToPassIt()
     {
         var failure = Assert.Throws<InvalidOperationException>(() =>
-            FlowItem.AllOf("Missions", [ListGenerator.DataSource("Other")], NoSessions));
+            FlowItem.AllOf("Missions", [ListGenerator.DataSource("Other")], NoSessions, new ListLogger()));
 
         Assert.That(failure!.Message, Does.Contain("'Missions'").And.Contains("DataSourceNames"));
+    }
+
+    [Test]
+    public void AllOf_LazyDataSource_IsWarnedAbout()
+    {
+        // A Lazy source generates its items anew on every read, so whatever reads it later may see other items.
+        var logger = new ListLogger();
+        var missions = ListGenerator.DataSource("Missions", "{}") with { Lazy = true };
+
+        FlowItem.AllOf("Missions", [missions], NoSessions, logger);
+
+        Assert.That(logger.Warnings, Has.One.StartsWith("ForEach Missions is Lazy"));
     }
 
     [Test]

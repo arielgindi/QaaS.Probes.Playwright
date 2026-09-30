@@ -9,6 +9,7 @@ using QaaS.Framework.SDK.Session.SessionDataObjects;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Configuration;
 using QaaS.Playwright.Flows;
+using QaaS.Playwright.Reporting;
 
 namespace QaaS.Playwright;
 
@@ -57,23 +58,33 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
     private async Task RunAsync(IImmutableList<SessionData> sessions, IImmutableList<DataSource> dataSources)
     {
+        var sessionName = BaggageItem(SessionNameBaggageKey);
+        var logger = new WarningRecorder(Context, sessionName);
+        if (sessionName is null)
+            logger.LogWarning("Probe is running outside a session; its flow results are recorded as unscoped.");
+
         string[] setupFlows = Configuration.SetupFlows ?? [], flows = Configuration.Flows ?? [];
         var stopwatch = Stopwatch.StartNew();
-        var probeName = Activity.Current?.GetBaggageItem(ProbeNameBaggageKey);
-        var runner = new FlowRunner(Context, CurrentSessionName(), probeName, Configuration, _flowConfiguration);
+        var runner = new FlowRunner(
+            Context, sessionName, BaggageItem(ProbeNameBaggageKey), Configuration, _flowConfiguration);
         if (Configuration.ForEach is { } dataSource)
-            await new ForEachRun(runner, Configuration, Context.Logger)
-                .RunAsync(FlowItem.AllOf(dataSource, dataSources, sessions), setupFlows, flows);
+        {
+            if (Configuration.KeepOpen) logger.LogWarning("KeepOpen ignored: several ForEach workers run at once.");
+            await new ForEachRun(runner, Configuration, logger)
+                .RunAsync(FlowItem.AllOf(dataSource, dataSources, sessions, logger), setupFlows, flows);
+        }
         else
-            await RunOnceAsync(runner, setupFlows, flows);
+        {
+            await RunOnceAsync(runner, logger, setupFlows, flows);
+        }
 
-        Context.Logger.LogInformation("Done — {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+        logger.LogInformation("Done — {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
     }
 
-    private async Task RunOnceAsync(FlowRunner runner, string[] setupFlows, string[] flows)
+    private async Task RunOnceAsync(FlowRunner runner, ILogger logger, string[] setupFlows, string[] flows)
     {
-        await using var browser = await BrowserSession.OpenAsync(Configuration, Context.Logger);
-        Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
+        await using var browser = await BrowserSession.OpenAsync(Configuration, logger);
+        logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
         await browser.Page.GotoAsync(Configuration.BaseUrl);
 
         await runner.RunAsync(setupFlows, browser.Page);
@@ -83,20 +94,20 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         if (!string.IsNullOrWhiteSpace(Configuration.SaveStorageStatePath))
             await browser.SaveStorageStateAsync(Configuration.SaveStorageStatePath);
 
-        await PauseForInspectionAsync(browser);
+        await PauseForInspectionAsync(browser, logger);
     }
 
     // KeepOpen pauses on the Playwright inspector, which would wait forever without a person at a terminal.
-    private async Task PauseForInspectionAsync(BrowserSession browser)
+    private async Task PauseForInspectionAsync(BrowserSession browser, ILogger logger)
     {
         if (!Configuration.KeepOpen) return;
         if (Configuration.Headless || !IsInteractiveTerminal())
         {
-            Context.Logger.LogWarning("KeepOpen ignored: it needs Headless: false and an interactive terminal.");
+            logger.LogWarning("KeepOpen ignored: it needs Headless: false and an interactive terminal.");
             return;
         }
 
-        Context.Logger.LogInformation("Browser staying open. Close the inspector to continue.");
+        logger.LogInformation("Browser staying open. Close the inspector to continue.");
         browser.KeepPageOpen = true;
         await browser.Page.PauseAsync();
     }
@@ -127,15 +138,9 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         return problems;
     }
 
-    // Null outside a session.
-    private string? CurrentSessionName()
-    {
-        var sessionName = Activity.Current?.GetBaggageItem(SessionNameBaggageKey);
-        if (!string.IsNullOrWhiteSpace(sessionName)) return sessionName;
-
-        Context.Logger.LogWarning("Probe is running outside a session; its flow results are recorded as unscoped.");
-        return null;
-    }
+    // Null when the runner did not set it, e.g. outside a session.
+    private static string? BaggageItem(string key) =>
+        Activity.Current?.GetBaggageItem(key) is { } value && !string.IsNullOrWhiteSpace(value) ? value : null;
 
     private static bool IsInteractiveTerminal() =>
         Environment.UserInteractive && !Console.IsInputRedirected && !Console.IsOutputRedirected;

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using QaaS.Framework.SDK.DataSourceObjects;
 using QaaS.Framework.SDK.Session.SessionDataObjects;
 
@@ -15,12 +16,15 @@ internal sealed record FlowItem(int Index, JsonNode? Data)
 
     /// <summary>The items the DataSource named <paramref name="name"/> generates, in order.</summary>
     public static IReadOnlyList<FlowItem> AllOf(
-        string name, IEnumerable<DataSource> dataSources, IImmutableList<SessionData> sessions)
+        string name, IEnumerable<DataSource> dataSources, IImmutableList<SessionData> sessions, ILogger logger)
     {
         var source = dataSources.FirstOrDefault(dataSource => dataSource.Name == name)
             ?? throw new InvalidOperationException(
                 $"ForEach: no DataSource named '{name}' was passed to this probe. List it in the probe's " +
                 "DataSourceNames, next to ProbeConfiguration.");
+        if (source.Lazy)
+            logger.LogWarning("ForEach {DataSource} is Lazy, so it generates its items anew on every read: whatever " +
+                              "reads it after the flows, an assertion too, may see other items than they ran.", name);
         return [.. source.Retrieve(sessions).Select((data, index) => new FlowItem(index, ToJson(data.Body)))];
     }
 

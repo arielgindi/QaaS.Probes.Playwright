@@ -8,11 +8,13 @@ namespace QaaS.Playwright.Reporting;
 /// <param name="SessionOutcomes">Every flow outcome with the session it ran in, in run order.</param>
 /// <param name="SessionFailures">Every failure the runner recorded for those sessions.</param>
 /// <param name="UnverifiedSessions">Attached sessions that recorded neither a flow outcome nor a failure.</param>
+/// <param name="Warnings">Every warning the probes logged, with the session it was logged in, each once.</param>
 internal sealed record SessionResults(
     IReadOnlyList<string> SessionNames,
     IReadOnlyList<(string SessionName, PlaywrightFlowOutcome Outcome)> SessionOutcomes,
     IReadOnlyList<ActionFailure> SessionFailures,
-    IReadOnlyList<string> UnverifiedSessions)
+    IReadOnlyList<string> UnverifiedSessions,
+    IReadOnlyList<(string SessionName, string Warning)> Warnings)
 {
     // How outcomes recorded outside a session are labelled; only a label, never a key they are looked up by.
     private const string Unscoped = "(unscoped)";
@@ -36,6 +38,11 @@ internal sealed record SessionResults(
             .Where(entry => unscoped.Count == 0 && entry.Outcomes.Count == 0 && entry.Session.SessionFailures.Count == 0)
             .Select(entry => entry.Session.Name);
 
+        // Probes of one session, on one browser, often warn alike.
+        var warnings = sessions.Select(session => (string?)session.Name).Append(null)
+            .SelectMany(name => PlaywrightFlowResults.ReadWarnings(context, name).Select(warning => (name ?? Unscoped, warning)))
+            .Distinct();
+
         return new SessionResults(
             [.. sessions.Select(session => session.Name)],
             [
@@ -43,6 +50,7 @@ internal sealed record SessionResults(
                 .. unscoped.Select(outcome => (Unscoped, outcome)),
             ],
             [.. sessions.SelectMany(session => session.SessionFailures)],
-            [.. unverified]);
+            [.. unverified],
+            [.. warnings]);
     }
 }

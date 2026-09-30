@@ -29,16 +29,13 @@ internal static class DesktopPointer
         })();
         """;
 
-    private static int _warned;
-
     /// <summary>Makes every document the page loads report a mouse to matchMedia.</summary>
     public static Task EmulateAsync(IPage page) => page.AddInitScriptAsync(MatchMediaShim);
 
-    /// <summary>Warns, once per process, when the browser reports no mouse.</summary>
+    /// <summary>Warns when the browser reports no mouse, in every run, so every report says so.</summary>
     public static async Task WarnIfMissingAsync(IPage page, ILogger logger)
     {
-        if (Volatile.Read(ref _warned) == 1 || !await ReportsNoMouseAsync(page)) return;
-        if (Interlocked.Exchange(ref _warned, 1) == 1) return;
+        if (!await ReportsNoMouseAsync(page)) return;
 
         logger.LogWarning(
             "The browser reports no mouse (pointer: none), as a headless Chrome started by hand does, so responsive " +

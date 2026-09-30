@@ -36,6 +36,24 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_ProbeWarnings_AreCountedInTheMessageAndListedInTheTrace()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("SignIn", Passed: true));
+        PlaywrightFlowResults.RecordWarning(context, "Journey", "The browser reports no mouse");
+        PlaywrightFlowResults.RecordWarning(context, "Journey", "The browser reports no mouse");
+        PlaywrightFlowResults.RecordWarning(context, null, "Probe is running outside a session");
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.True, "warnings do not fail the assertion");
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "All 1 Playwright flow(s) passed: SignIn. 2 warning(s), see the trace."));
+        Assert.That(assertion.AssertionTrace, Does.EndWith(
+            "Warnings:\n  - Journey: The browser reports no mouse\n  - (unscoped): Probe is running outside a session"));
+    }
+
+    [Test]
     public void Assert_FlowFailed_NamesTheFlowAndAttachesItsScreenshot()
     {
         var (assertion, context) = NewAssertion();

@@ -99,7 +99,8 @@ BrowserUrl: ${BROWSER_URL ?? ws://chrome.my-namespace.svc.cluster.local:3000?tok
 
 `Headless` does not decide whether Chrome shows a window; that depends only on how Chrome was started. It says
 whether a person is watching: `true` blocks images and fonts for speed, `false` slows every action down (`SlowMo`)
-and allows `KeepOpen`.
+and allows `KeepOpen`. With `Headless: false` on a Chrome that runs headless, the probe warns that no window will
+appear.
 
 ### Logging in once: storage state
 
@@ -113,7 +114,8 @@ ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [OrdersFlow], LoadStor
 ```
 
 The file is written only after every flow passed, and atomically, so a reader never sees half of it. The saving
-session must finish first. sessionStorage is not saved.
+session must finish first. sessionStorage is not saved. A file saved before the run started, e.g. because `-a` or a
+category filter skipped the saving session, is loaded with a warning that says how old it is.
 
 ### IsolateContext
 
@@ -127,7 +129,7 @@ stage must now save it with `SaveStorageStatePath` and load it with `LoadStorage
 ### Mobile layout in a headless Chrome: EmulateDesktopPointer
 
 A headless Chrome started by hand reports no mouse, so responsive apps render their mobile layout: MUI date pickers,
-for one, become read-only fields with other labels than the recorder saw. The probe warns once when this happens.
+for one, become read-only fields with other labels than the recorder saw. The probe warns about it in every run.
 Fix it where Chrome starts:
 
 ```bash
@@ -198,6 +200,9 @@ others take its items. The session fails if any item or worker failed, and says 
   The trace has the full error and call log, and the page's screenshot is attached;
 - a session recorded a failure, e.g. a mistake in the settings, or the browser could not be reached;
 - nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe).
+
+Every warning the probes logged, such as a browser without a mouse, is listed under `Warnings:` at the end of the
+trace, passing or not, and the message says how many there are.
 
 ## Build and test
 

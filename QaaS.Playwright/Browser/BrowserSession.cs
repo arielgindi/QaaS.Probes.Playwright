@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using QaaS.Playwright.Configuration;
@@ -11,6 +12,8 @@ namespace QaaS.Playwright.Browser;
 internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
     : IAsyncDisposable
 {
+    private static readonly DateTime ProcessStartedAt = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+
     private static readonly string[] AssetPatterns =
         ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico", "*.woff", "*.woff2", "*.ttf", "*.eot"];
 
@@ -82,6 +85,12 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
                 $"LoadStorageStatePath '{path}' does not exist. The session that saves it (SaveStorageStatePath) " +
                 "must finish first, or remove LoadStorageStatePath.", path);
 
+        // A run that skipped the session saving it, e.g. with -a or a category filter, would reuse an old login.
+        var savedAt = File.GetLastWriteTimeUtc(path);
+        if (savedAt < ProcessStartedAt)
+            logger.LogWarning("LoadStorageStatePath '{Path}' was saved {Hours:0.#} h ago, before this run: did the " +
+                              "session that saves it run?", path, (DateTime.UtcNow - savedAt).TotalHours);
+
         logger.LogInformation("Loading storage state from {Path}", path);
         return path;
     }
@@ -105,6 +114,17 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
 
         if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
         else await DesktopPointer.WarnIfMissingAsync(page, logger);
+
+        if (!config.Headless) await WarnIfHeadlessAsync(page, config, logger);
+    }
+
+    // Headless: false only slows the run down for a person to watch; whether a window shows is up to the Chrome.
+    private static async Task WarnIfHeadlessAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)
+    {
+        var userAgent = await page.EvaluateAsync<string>("() => navigator.userAgent");
+        if (userAgent.Contains("HeadlessChrome", StringComparison.Ordinal))
+            logger.LogWarning("Headless: false, but the Chrome at {Url} runs headless, so no window will appear. " +
+                              "Start one with a window to watch the run.", BrowserUrl.Redact(BrowserConnector.UrlOf(config)));
     }
 
     // Through CDP rather than a Playwright route: a route turns off the HTTP cache and holds every request for the
