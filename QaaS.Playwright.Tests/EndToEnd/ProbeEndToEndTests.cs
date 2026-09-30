@@ -1,0 +1,113 @@
+using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
+
+namespace QaaS.Playwright.Tests.EndToEnd;
+
+/// <summary>The real probe and assertion against a real headless Chrome and a local web app.</summary>
+[TestFixture]
+[Category("EndToEnd")]
+public class ProbeEndToEndTests
+{
+    private TestSite _site = null!;
+    private HeadlessChrome _chrome = null!;
+    private string _tempDir = null!;
+
+    [OneTimeSetUp]
+    public async Task StartChromeAndSite()
+    {
+        _chrome = await HeadlessChrome.StartAsync();
+        _site = TestSite.Start();
+        _tempDir = Directory.CreateTempSubdirectory("qaas-e2e-").FullName;
+    }
+
+    [OneTimeTearDown]
+    public void StopChromeAndSite()
+    {
+        _chrome?.Dispose();
+        _site?.Dispose();
+        if (_tempDir is not null) Directory.Delete(_tempDir, recursive: true);
+    }
+
+    [Test]
+    public void PassingFlows_PassTheAssertion_AndAreNamed()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckUserFlow", "SubmitOrderFlow");
+        settings["SetupFlows:0"] = "LogInFlow";
+        settings["FlowConfiguration:LogInFlow:User"] = "alice";
+        settings["FlowConfiguration:CheckUserFlow:User"] = "alice";
+
+        var assertion = run.RunAssertion(run.RunSession("Journey", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionMessage,
+            Is.EqualTo("All 3 Playwright flow(s) passed: LogInFlow, CheckUserFlow, SubmitOrderFlow."));
+    }
+
+    [Test]
+    public void MisspelledFlowsKey_IsWarnedAbout_AndFailsTheAssertion()
+    {
+        var run = new QaasRun();
+        var settings = Settings();
+        settings["Flow:0"] = "SubmitOrderFlow";
+
+        var assertion = run.RunAssertion(run.RunSession("Typo", settings));
+
+        Assert.That(run.Log.Warnings, Has.One.Contains("Unknown ProbeConfiguration key 'Flow'"));
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Typo").And.Contains("nothing was verified"));
+    }
+
+    [Test]
+    public void GetByTestId_ResolvesDataTestId()
+    {
+        var run = new QaasRun();
+
+        var assertion = run.RunAssertion(run.RunSession("TestId", Settings("SubmitOrderFlow")));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void SavedStorageState_LetsALaterRunSkipTheLogin()
+    {
+        var run = new QaasRun();
+        var statePath = Path.Combine(_tempDir, "carol.json");
+        var login = Settings("LogInFlow");
+        login["FlowConfiguration:LogInFlow:User"] = "carol";
+        login["SaveStorageStatePath"] = statePath;
+        var reuse = Settings("CheckUserFlow");
+        reuse["FlowConfiguration:CheckUserFlow:User"] = "carol";
+        reuse["LoadStorageStatePath"] = statePath;
+
+        var loggedIn = run.RunSession("Login", login);
+        var reused = run.RunSession("Reuse", reuse);
+
+        var assertion = run.RunAssertion(loggedIn, reused);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public async Task TenProbesInParallel_AllPass()
+    {
+        var run = new QaasRun();
+
+        var sessions = await run.RunSessionsInParallelAsync(
+            Enumerable.Range(1, 10).Select(index => ($"Session{index}", Settings("SubmitOrderFlow"))));
+
+        var assertion = run.RunAssertion(sessions);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionMessage, Does.StartWith("All 10 Playwright flow(s) passed"));
+    }
+
+    private Dictionary<string, string?> Settings(params string[] flows)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["BaseUrl"] = _site.Url,
+            ["BrowserUrl"] = _chrome.Url,
+            ["DefaultTimeout"] = "5000",
+        };
+        for (var index = 0; index < flows.Length; index++) settings[$"Flows:{index}"] = flows[index];
+        return settings;
+    }
+}
