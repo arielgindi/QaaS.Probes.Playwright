@@ -13,31 +13,25 @@ public sealed record PlaywrightFlowAssertionConfiguration;
 
 /// <summary>
 /// Reports the flows <see cref="PlaywrightFlowProbe"/> ran in the attached sessions: which passed, which failed and
-/// why, with each failure's screenshot attached. It fails when a flow failed or a session recorded a failure.
+/// why, with each failure's screenshot attached. It fails when a flow failed, a session recorded a failure, or
+/// nothing was verified: no session is attached, or an attached session ran no flow.
 /// </summary>
 public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssertionConfiguration>
 {
     public override bool Assert(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
     {
-        // Outcomes recorded outside a session scope are included, so a missing scope cannot hide a failure.
-        var outcomes = sessionDataList
-            .Select(session => session.Name)
-            .Append(PlaywrightFlowResults.UnscopedSessionName)
-            .SelectMany(sessionName => PlaywrightFlowResults.Read(Context, sessionName))
-            .ToList();
-        var sessionFailures = sessionDataList.SelectMany(session => session.SessionFailures).ToList();
-        var passed = outcomes.All(outcome => outcome.Passed) && sessionFailures.Count == 0;
+        var results = SessionResults.Collect(Context, sessionDataList);
 
-        AssertionMessage = FlowReport.Message(outcomes, sessionFailures);
-        if (!passed)
+        AssertionMessage = FlowReport.Message(results);
+        if (!results.Passed)
         {
-            AssertionTrace = FlowReport.Trace(outcomes, sessionFailures);
-            AttachScreenshots(outcomes);
+            AssertionTrace = FlowReport.Trace(results);
+            AttachScreenshots(results.Outcomes);
         }
 
-        AssertionStatus = passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
-        Context.Logger.LogInformation("PlaywrightFlowAssertion: passed={Passed} — {Message}", passed, AssertionMessage);
-        return passed;
+        AssertionStatus = results.Passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
+        Context.Logger.LogInformation("PlaywrightFlowAssertion: passed={Passed} — {Message}", results.Passed, AssertionMessage);
+        return results.Passed;
     }
 
     private void AttachScreenshots(IEnumerable<PlaywrightFlowOutcome> outcomes)

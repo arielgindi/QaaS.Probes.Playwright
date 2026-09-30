@@ -132,6 +132,86 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_SessionRanNoFlow_FailsAndNamesTheSession()
+    {
+        // e.g. an empty Flows list, a misspelled 'Flow:' key, or a session without a probe.
+        var (assertion, _) = NewAssertion();
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.False, "a session that ran no flow verified nothing");
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Journey").And.Contains("nothing was verified"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("---- nothing verified ----").And.Contains("Likely causes"));
+    }
+
+    [Test]
+    public void Assert_OneOfTwoSessionsRanNoFlow_FailsAndNamesOnlyThatSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Ui", new PlaywrightFlowOutcome("SignIn", Passed: true));
+
+        var passed = assertion.Assert(
+            Sessions(new SessionData { Name = "Ui" }, new SessionData { Name = "Forgotten" }), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Forgotten,").And.Contains("Passed: SignIn"));
+        Assert.That(assertion.AssertionMessage, Does.Not.Contain("Ui,"));
+    }
+
+    [Test]
+    public void Assert_NoSessionAttached_Fails()
+    {
+        var (assertion, _) = NewAssertion();
+
+        var passed = assertion.Assert(Sessions(), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("No session is attached"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("SessionNames"));
+    }
+
+    [Test]
+    public void Assert_SessionFailedBeforeItsFirstFlow_IsReportedAsASessionFailureOnly()
+    {
+        var (assertion, _) = NewAssertion();
+        var session = new SessionData
+        {
+            Name = "Journey",
+            SessionFailures = [new ActionFailure { Name = "Probe", Reason = new Reason { Message = "connection refused" } }],
+        };
+
+        var passed = assertion.Assert(Sessions(session), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("connection refused").And.Not.Contains("nothing was verified"));
+    }
+
+    [Test]
+    public void Assert_UnscopedOutcomes_CountForEveryAttachedSession()
+    {
+        // A probe that ran outside a session scope cannot say which session it belongs to, so its passing flows
+        // must not make an attached session look as if it ran nothing.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(
+            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: true));
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.True);
+    }
+
+    [Test]
+    public void Assert_UnscopedOutcomes_DoNotVerifyAnAssertionWithNoSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(
+            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(), NoDataSources), Is.False);
+    }
+
+    [Test]
     public void Assert_OutcomesRecordedWithoutASessionScope_AreStillReported()
     {
         var (assertion, context) = NewAssertion();

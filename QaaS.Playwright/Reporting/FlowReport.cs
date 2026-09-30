@@ -1,5 +1,4 @@
 using System.Text;
-using QaaS.Framework.SDK.Session.SessionDataObjects;
 
 namespace QaaS.Playwright.Reporting;
 
@@ -11,43 +10,25 @@ internal static class FlowReport
 
     private const string NoDetail = "(no failure detail)";
 
-    /// <summary>A pass/fail count, the first failure's reason, and the flows that passed.</summary>
-    public static string Message(
-        IReadOnlyList<PlaywrightFlowOutcome> outcomes, IReadOnlyCollection<ActionFailure> sessionFailures)
+    private const string NoSessionAttached = "No session is attached to this assertion, so nothing was verified";
+
+    /// <summary>A pass/fail count, the first failure's reason, the sessions that ran no flow, and the flows that passed.</summary>
+    public static string Message(SessionResults results)
     {
-        var passed = outcomes.Where(outcome => outcome.Passed).ToList();
-        var failed = outcomes.Where(outcome => !outcome.Passed).ToList();
-        var passedNames = passed.Count > 0 ? string.Join(", ", passed.Select(outcome => outcome.FlowName)) : "none";
+        if (results.SessionNames.Count == 0) return $"{NoSessionAttached}.";
 
-        if (failed.Count == 0 && sessionFailures.Count == 0)
-            return outcomes.Count > 0
-                ? $"All {outcomes.Count} Playwright flow(s) passed: {passedNames}."
-                : "All Playwright flow steps passed.";
+        var passed = results.Outcomes.Where(outcome => outcome.Passed).Select(outcome => outcome.FlowName).ToList();
+        if (results.Passed) return $"All {passed.Count} Playwright flow(s) passed: {string.Join(", ", passed)}.";
 
-        string headline;
-        if (failed.Count == 0)
-        {
-            // The session failed before any flow finished, e.g. the probe could not reach the browser.
-            headline = $"{sessionFailures.Count} session failure(s) with no completed flow — " +
-                       Summarize(sessionFailures.First().Reason.Message);
-        }
-        else
-        {
-            var first = failed[0];
-            headline = failed.Count == 1
-                ? $"{first.FlowName} failed ({passed.Count}/{outcomes.Count} flows passed): {Summarize(first.FailureMessage)}"
-                : $"{failed.Count} of {outcomes.Count} flows failed " +
-                  $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); " +
-                  $"first '{first.FlowName}': {Summarize(first.FailureMessage)}";
-        }
-
-        return $"{headline}. Passed: {passedNames}.";
+        string?[] problems = [FailureHeadline(results), NothingVerifiedHeadline(results.UnverifiedSessions)];
+        var passedNames = passed.Count > 0 ? string.Join(", ", passed) : "none";
+        return $"{string.Join(". ", problems.OfType<string>())}. Passed: {passedNames}.";
     }
 
     /// <summary>A PASS/FAIL line per flow in run order, then each failure's full message and call log.</summary>
-    public static string Trace(
-        IReadOnlyList<PlaywrightFlowOutcome> outcomes, IReadOnlyCollection<ActionFailure> sessionFailures)
+    public static string Trace(SessionResults results)
     {
+        var outcomes = results.Outcomes;
         var failed = outcomes.Where(outcome => !outcome.Passed).ToList();
         var trace = new StringBuilder(outcomes.Count == 0
             ? "Playwright journey — no flow outcomes were recorded."
@@ -62,11 +43,47 @@ internal static class FlowReport
 
         // A failing flow also fails its session with the same message; show only the session failures that add something.
         var flowMessages = failed.Select(outcome => outcome.FailureMessage).ToHashSet();
-        foreach (var failure in sessionFailures.Where(failure => !flowMessages.Contains(failure.Reason.Message)))
+        foreach (var failure in results.SessionFailures.Where(failure => !flowMessages.Contains(failure.Reason.Message)))
             AppendSection(trace, $"session failure: {failure.Name}", failure.Reason.Message);
+
+        if (results.SessionNames.Count == 0)
+            AppendSection(trace, "nothing verified",
+                $"{NoSessionAttached}: its SessionNames match no session that ran.");
+        else if (results.UnverifiedSessions.Count > 0)
+            AppendSection(trace, "nothing verified", LikelyCauses(results.UnverifiedSessions));
 
         return trace.ToString();
     }
+
+    private static string? FailureHeadline(SessionResults results)
+    {
+        var outcomes = results.Outcomes;
+        var failed = outcomes.Where(outcome => !outcome.Passed).ToList();
+        if (failed.Count == 0)
+            return results.SessionFailures.Count == 0
+                ? null
+                : $"{results.SessionFailures.Count} session failure(s) with no completed flow — " +
+                  Summarize(results.SessionFailures[0].Reason.Message);
+
+        var first = failed[0];
+        return failed.Count == 1
+            ? $"{first.FlowName} failed ({outcomes.Count - failed.Count}/{outcomes.Count} flows passed): {Summarize(first.FailureMessage)}"
+            : $"{failed.Count} of {outcomes.Count} flows failed " +
+              $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); " +
+              $"first '{first.FlowName}': {Summarize(first.FailureMessage)}";
+    }
+
+    private static string? NothingVerifiedHeadline(IReadOnlyList<string> unverifiedSessions) =>
+        unverifiedSessions.Count == 0
+            ? null
+            : $"No Playwright flow ran in session(s) {string.Join(", ", unverifiedSessions)}, so nothing was verified there";
+
+    // The assertion cannot tell these apart, so it lists them all.
+    private static string LikelyCauses(IReadOnlyList<string> unverifiedSessions) =>
+        $"No flow outcome and no failure was recorded in session(s) {string.Join(", ", unverifiedSessions)}. Likely causes:\n" +
+        "  - the probe's Flows and SetupFlows are empty, or misspelled (e.g. 'Flow:'; the probe warns about unknown keys);\n" +
+        "  - the session has no PlaywrightFlowProbe;\n" +
+        "  - the probe runs in another session than the ones this assertion's SessionNames select.";
 
     // The failure message on one line, without the call log (the trace keeps it).
     private static string Summarize(string? failureMessage)
