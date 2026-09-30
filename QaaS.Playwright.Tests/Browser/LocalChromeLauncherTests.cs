@@ -1,6 +1,6 @@
-using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Tests.EndToEnd;
 
 namespace QaaS.Playwright.Tests.Browser;
 
@@ -8,88 +8,25 @@ namespace QaaS.Playwright.Tests.Browser;
 public class LocalChromeLauncherTests
 {
     [Test]
-    public async Task IsReachable_NoServer_ReturnsFalse()
-    {
-        // Reserved unassigned port range — guaranteed nothing listening.
+    public async Task IsReachable_NothingListening_ReturnsFalse() =>
         Assert.That(await LocalChromeLauncher.IsReachableAsync("http://localhost:1"), Is.False);
-    }
 
     [Test]
-    public async Task IsReachable_StubServerReturns200_ReturnsTrue()
+    public async Task IsReachable_ServerAnswers_ReturnsTrue()
     {
-        await using var server = new StubCdpServer();
-        Assert.That(await LocalChromeLauncher.IsReachableAsync(server.Url), Is.True);
+        using var site = TestSite.Start();
+
+        Assert.That(await LocalChromeLauncher.IsReachableAsync(site.Url), Is.True);
     }
 
-    [Test]
-    public void EnsureRunning_BadUrl_ThrowsArgumentException()
+    [TestCase("not-a-url")]
+    [TestCase("ws://localhost:1")]
+    [TestCase("http://localhost")]
+    public void EnsureRunning_UrlChromeCannotBeStartedFor_Throws(string url)
     {
-        var ex = Assert.ThrowsAsync<ArgumentException>(() =>
-            LocalChromeLauncher.EnsureRunningAsync(
-                "not-a-url", executablePathOverride: null,
-                startupTimeout: TimeSpan.FromSeconds(1), NullLogger.Instance));
-        Assert.That(ex!.Message, Does.Contain("absolute"));
-    }
+        var failure = Assert.ThrowsAsync<ArgumentException>(() =>
+            LocalChromeLauncher.EnsureRunningAsync(url, executablePath: null, NullLogger.Instance));
 
-    [Test]
-    public void EnsureRunning_CancelledToken_ThrowsOperationCanceled_NotTimeout()
-    {
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        // Nothing is listening, so without cancellation this would wait out the startup timeout; a cancelled token
-        // must surface as cancellation rather than a misleading TimeoutException. CatchAsync (not ThrowsAsync) so the
-        // derived TaskCanceledException the HTTP/delay stack throws still satisfies the OperationCanceledException contract.
-        Assert.CatchAsync<OperationCanceledException>(() =>
-            LocalChromeLauncher.EnsureRunningAsync(
-                "http://localhost:1", executablePathOverride: null,
-                startupTimeout: TimeSpan.FromSeconds(30), NullLogger.Instance, cts.Token));
-    }
-
-    /// <summary>Minimal HTTP server that answers /json/version with 200 OK.</summary>
-    private sealed class StubCdpServer : IAsyncDisposable
-    {
-        private readonly HttpListener _listener = new();
-        private readonly CancellationTokenSource _cts = new();
-        public string Url { get; }
-
-        public StubCdpServer()
-        {
-            var port = FindFreePort();
-            Url = $"http://localhost:{port}";
-            _listener.Prefixes.Add(Url + "/");
-            _listener.Start();
-            _ = Task.Run(Loop);
-        }
-
-        private async Task Loop()
-        {
-            try
-            {
-                while (!_cts.IsCancellationRequested)
-                {
-                    var ctx = await _listener.GetContextAsync();
-                    ctx.Response.StatusCode = 200;
-                    ctx.Response.Close();
-                }
-            }
-            catch { /* listener stopped */ }
-        }
-
-        private static int FindFreePort()
-        {
-            var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-            l.Start();
-            var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
-            l.Stop();
-            return port;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            _cts.Cancel();
-            _listener.Stop();
-            return ValueTask.CompletedTask;
-        }
+        Assert.That(failure!.Message, Does.Contain("http://localhost:9222"), "shows a URL that works");
     }
 }

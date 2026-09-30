@@ -37,12 +37,16 @@ public sealed class QaasRun
         catch (Exception failure)
         {
             var reason = new Reason { Message = failure.Message };
-            return new SessionData { Name = name, SessionFailures = [new ActionFailure { Name = "Probe", Reason = reason }] };
+            return new SessionData
+            {
+                Name = name, SessionFailures = [new ActionFailure { Name = "Probe", Reason = reason }],
+            };
         }
     }
 
     /// <summary>Starts every session at once, like sessions that share a stage.</summary>
-    public Task<SessionData[]> RunSessionsInParallelAsync(IEnumerable<(string Name, Dictionary<string, string?> Configuration)> sessions) =>
+    public Task<SessionData[]> RunSessionsInParallelAsync(
+        IEnumerable<(string Name, Dictionary<string, string?> Configuration)> sessions) =>
         Task.WhenAll(sessions.Select(session => Task.Run(() => RunSession(session.Name, session.Configuration))));
 
     public PlaywrightFlowAssertion RunAssertion(params SessionData[] sessions)

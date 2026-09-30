@@ -30,7 +30,8 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         }
 
         AssertionStatus = results.Passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
-        Context.Logger.LogInformation("PlaywrightFlowAssertion: passed={Passed} — {Message}", results.Passed, AssertionMessage);
+        Context.Logger.LogInformation(
+            "PlaywrightFlowAssertion: passed={Passed} — {Message}", results.Passed, AssertionMessage);
         return results.Passed;
     }
 

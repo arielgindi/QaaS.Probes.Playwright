@@ -3,7 +3,7 @@ using QaaS.Playwright.Browser;
 
 namespace QaaS.Playwright.Tests.EndToEnd;
 
-/// <summary>A headless Chrome started by hand, the way teams run one, with a throwaway profile. Disposing stops it.</summary>
+/// <summary>A headless Chrome started by hand, as teams run one, with a throwaway profile. Disposing stops it.</summary>
 public sealed class HeadlessChrome : IDisposable
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(20);
@@ -23,7 +23,7 @@ public sealed class HeadlessChrome : IDisposable
     /// <summary>Starts Chrome, or ignores the calling test when Chrome is not installed.</summary>
     public static async Task<HeadlessChrome> StartAsync(params string[] extraArguments)
     {
-        var executable = LocalChromeLauncher.FindChrome();
+        var executable = ChromeExecutable.Find();
         if (executable is null) Assert.Ignore("Google Chrome is not installed.");
 
         var profileDir = Directory.CreateTempSubdirectory("qaas-e2e-chrome-").FullName;

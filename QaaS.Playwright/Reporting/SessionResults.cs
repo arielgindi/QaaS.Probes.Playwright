@@ -20,18 +20,21 @@ internal sealed record SessionResults(
 
     public static SessionResults Collect(Context context, IReadOnlyCollection<SessionData> sessions)
     {
+        var recorded = sessions
+            .Select(session => (Session: session, Outcomes: PlaywrightFlowResults.Read(context, session.Name)))
+            .ToList();
+
         // Outcomes recorded without a session scope cannot be attributed to a session, so they count for every
         // attached one: a failure among them fails the assertion, and any of them means flows did run.
         var unscoped = PlaywrightFlowResults.Read(context, PlaywrightFlowResults.UnscopedSessionName);
-        var scoped = sessions.Select(session => PlaywrightFlowResults.Read(context, session.Name)).ToList();
-        var unverified = sessions
-            .Where((session, index) => scoped[index].Count == 0 && session.SessionFailures.Count == 0)
-            .Select(session => session.Name);
+        var unverified = recorded
+            .Where(entry => unscoped.Count == 0 && entry.Outcomes.Count == 0 && entry.Session.SessionFailures.Count == 0)
+            .Select(entry => entry.Session.Name);
 
         return new SessionResults(
             [.. sessions.Select(session => session.Name)],
-            [.. scoped.SelectMany(outcomes => outcomes), .. unscoped],
+            [.. recorded.SelectMany(entry => entry.Outcomes), .. unscoped],
             [.. sessions.SelectMany(session => session.SessionFailures)],
-            unscoped.Count > 0 ? [] : [.. unverified]);
+            [.. unverified]);
     }
 }

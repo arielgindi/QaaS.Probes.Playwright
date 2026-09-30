@@ -8,14 +8,15 @@ namespace QaaS.Playwright.Configuration;
 /// </summary>
 internal static class UnknownSettings
 {
-    public const string FlowConfigurationKey = "FlowConfiguration";
-
     private static readonly HashSet<string> KnownKeys = typeof(PlaywrightFlowConfig).GetProperties()
         .Select(property => property.Name)
-        .Append(FlowConfigurationKey)
+        .Append(PlaywrightFlowConfig.FlowConfigurationKey)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>One warning per unknown ProbeConfiguration key and per FlowConfiguration section of a flow that does not run.</summary>
+    /// <summary>
+    /// A warning per ProbeConfiguration key that is not a setting, and per FlowConfiguration section of a flow that
+    /// does not run.
+    /// </summary>
     public static IEnumerable<string> Find(IConfiguration probeConfiguration, PlaywrightFlowConfig config)
     {
         var unknownKeys = probeConfiguration.GetChildren()
@@ -25,7 +26,7 @@ internal static class UnknownSettings
             yield return $"Unknown ProbeConfiguration key '{key}' is ignored. Known keys: {string.Join(", ", KnownKeys)}.";
 
         var flows = (config.SetupFlows ?? []).Concat(config.Flows ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var orphanSections = probeConfiguration.GetSection(FlowConfigurationKey).GetChildren()
+        var orphanSections = probeConfiguration.GetSection(PlaywrightFlowConfig.FlowConfigurationKey).GetChildren()
             .Select(section => section.Key)
             .Where(flowName => !flows.Contains(flowName));
         foreach (var flowName in orphanSections)

@@ -6,8 +6,8 @@ using QaaS.Framework.SDK.ContextObjects;
 namespace QaaS.Playwright.Flows;
 
 /// <summary>
-/// Runs flows in order on one page and records each one's outcome for <see cref="PlaywrightFlowAssertion"/>.
-/// The first flow that throws stops the run: its failure is recorded with a screenshot, then rethrown.
+/// Runs flows in order on one page and records each one's outcome for <see cref="PlaywrightFlowAssertion"/>. The first
+/// flow that throws stops the run: its failure is recorded with a screenshot and the page's URL, then rethrown.
 /// </summary>
 internal sealed class FlowRunner(
     Context context, string sessionName, string baseUrl, IConfiguration flowConfiguration, bool fullPageScreenshot)
@@ -33,7 +33,7 @@ internal sealed class FlowRunner(
         }
     }
 
-    // Each flow gets only its own FlowConfiguration:<FlowName> section, never its siblings' keys.
+    // Each flow sees only its own FlowConfiguration:<FlowName> section.
     private IPlaywrightFlow Create(string flowName)
     {
         var flow = FlowDiscovery.Resolve(flowName);
@@ -43,7 +43,7 @@ internal sealed class FlowRunner(
         var errors = flow.LoadAndValidateConfiguration(flowConfiguration.GetSection(flowName));
         if (errors is { Count: > 0 })
             throw new InvalidOperationException(
-                $"Flow '{flowName}' configuration is invalid: {string.Join("; ", errors.Select(error => error.ErrorMessage))}");
+                $"FlowConfiguration:{flowName} is invalid: {string.Join("; ", errors.Select(error => error.ErrorMessage))}");
         return flow;
     }
 
@@ -54,15 +54,11 @@ internal sealed class FlowRunner(
     {
         try
         {
-            return await page.ScreenshotAsync(new PageScreenshotOptions
-            {
-                FullPage = fullPageScreenshot,
-                Timeout = ScreenshotTimeoutMs,
-            });
+            return await page.ScreenshotAsync(new() { FullPage = fullPageScreenshot, Timeout = ScreenshotTimeoutMs });
         }
         catch (Exception failure)
         {
-            context.Logger.LogWarning("Could not capture a failure screenshot: {Message}", failure.Message);
+            context.Logger.LogWarning("Could not take a failure screenshot: {Message}", failure.Message);
             return null;
         }
     }

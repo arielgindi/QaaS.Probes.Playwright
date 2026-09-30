@@ -13,31 +13,31 @@ using QaaS.Playwright.Flows;
 namespace QaaS.Playwright;
 
 /// <summary>
-/// Runs Playwright flows in a browser: opens a page on <c>BaseUrl</c>, runs <c>SetupFlows</c> and then <c>Flows</c>
-/// on it in order, and records each flow's outcome for <see cref="PlaywrightFlowAssertion"/>. A failing flow stops
-/// the run and fails the session.
+/// Opens a page on BaseUrl, runs SetupFlows and then Flows on it in order, and records each flow's outcome for
+/// <see cref="PlaywrightFlowAssertion"/>. The first failing flow stops the run and fails the session.
 /// </summary>
 public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    // The runner publishes the running session's name to probes through this Activity baggage key.
+    // The runner publishes the running session's name to probes under this Activity baggage key.
     private const string SessionNameBaggageKey = "qaas.probe.session-name";
 
-    private IConfiguration _rawConfiguration = null!;
+    private IConfiguration _flowConfiguration = null!;
 
-    // FlowConfiguration sits next to the probe's own keys, so unknown keys cannot be an error here.
+    // FlowConfiguration sits next to the probe's own keys, so the binder must accept unknown keys; the probe warns
+    // about the ones it ignores instead.
     protected override BinderOptions GetConfigurationBinderOptions() => new() { ErrorOnUnknownConfiguration = false };
 
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
-        _rawConfiguration = configuration;
         var errors = base.LoadAndValidateConfiguration(configuration);
+        _flowConfiguration = configuration.GetSection(PlaywrightFlowConfig.FlowConfigurationKey);
         foreach (var warning in UnknownSettings.Find(configuration, Configuration))
             Context.Logger.LogWarning("{Warning}", warning);
         return errors;
     }
 
     // IProbe.Run is synchronous; this is the one place the async run is waited on.
-    public override void Run(IImmutableList<SessionData> sessions, IImmutableList<DataSource> dataSources) =>
+    public override void Run(IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList) =>
         Task.Run(RunAsync).GetAwaiter().GetResult();
 
     private async Task RunAsync()
@@ -50,8 +50,8 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var runner = new FlowRunner(Context, CurrentSessionName(), Configuration.BaseUrl,
-            _rawConfiguration.GetSection(UnknownSettings.FlowConfigurationKey), Configuration.FullPageScreenshot);
+        var runner = new FlowRunner(Context, CurrentSessionName(), Configuration.BaseUrl, _flowConfiguration,
+            Configuration.FullPageScreenshot);
 
         await using var browser = await BrowserSession.OpenAsync(Configuration, Context.Logger);
         Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
@@ -68,13 +68,13 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         await PauseForInspectionAsync(browser);
     }
 
-    // KeepOpen pauses on the Playwright inspector, which would hang forever without a person at a terminal.
+    // KeepOpen pauses on the Playwright inspector, which would wait forever without a person at a terminal.
     private async Task PauseForInspectionAsync(BrowserSession browser)
     {
         if (!Configuration.KeepOpen) return;
-        if (Configuration.Headless || !IsInteractiveConsole())
+        if (Configuration.Headless || !IsInteractiveTerminal())
         {
-            Context.Logger.LogWarning("KeepOpen=true ignored: it needs Headless=false and an interactive terminal.");
+            Context.Logger.LogWarning("KeepOpen ignored: it needs Headless: false and an interactive terminal.");
             return;
         }
 
@@ -92,6 +92,6 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         return PlaywrightFlowResults.UnscopedSessionName;
     }
 
-    private static bool IsInteractiveConsole() =>
+    private static bool IsInteractiveTerminal() =>
         Environment.UserInteractive && !Console.IsInputRedirected && !Console.IsOutputRedirected;
 }

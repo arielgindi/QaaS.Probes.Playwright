@@ -4,180 +4,100 @@ using Microsoft.Extensions.Logging;
 namespace QaaS.Playwright.Browser;
 
 /// <summary>
-/// Ensures a local Chrome with --remote-debugging-port is running, launching it
-/// detached if not. Subsequent runs reuse the same Chrome — fingerprint/permission
-/// prompts are handled once per Chrome lifetime instead of once per test run.
+/// Starts Chrome for a BrowserUrl on this machine when nothing answers there. Chrome runs detached, with the profile
+/// <c>~/.qaas/chrome-profile</c>, and keeps running, so later runs reuse it and its logins. (Chrome 136+ refuses remote
+/// debugging on the default profile.)
 /// </summary>
-public static class LocalChromeLauncher
+internal static class LocalChromeLauncher
 {
-    // Static reuse — the poll loop shouldn't allocate a socket every 300ms.
-    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
-    private static readonly string[] WindowsChromeFolders = ["ProgramFiles", "ProgramFilesX86", "LocalApplicationData"];
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(60);
 
-    public static async Task EnsureRunningAsync(
-        string cdpUrl,
-        string? executablePathOverride,
-        TimeSpan startupTimeout,
-        ILogger logger,
-        CancellationToken ct = default)
+    public static async Task EnsureRunningAsync(string cdpUrl, string? executablePath, ILogger logger)
     {
-        if (await IsReachableAsync(cdpUrl, ct)) return;
+        if (await IsReachableAsync(cdpUrl)) return;
 
-        var uri = ParseOrThrow(cdpUrl);
+        var port = PortOf(cdpUrl);
         var profileDir = BrowserDefaults.ChromeProfileDir;
         Directory.CreateDirectory(profileDir);
 
-        // Cross-process lock so parallel runs don't both spawn against the same profile.
-        await using var _ = await AcquireLockAsync(Path.Combine(profileDir, ".launch.lock"), ct);
-        if (await IsReachableAsync(cdpUrl, ct)) return;
+        // Parallel runs must not each start a Chrome: the first starts it, the others find it running.
+        await using var launchLock = await LockAsync(Path.Combine(profileDir, ".launch.lock"));
+        if (await IsReachableAsync(cdpUrl)) return;
 
-        if (executablePathOverride is not null && !File.Exists(executablePathOverride))
-            throw new FileNotFoundException(
-                $"BrowserExecutablePath does not exist: '{executablePathOverride}'. " +
-                "Check the path in YAML, or leave it unset to auto-detect Chrome.",
-                executablePathOverride);
-
-        var exe = executablePathOverride ?? FindChrome()
-            ?? throw new InvalidOperationException(NotFoundMessage());
-
-        logger.LogInformation("Local Chrome not running at {Url} — starting {Exe}", cdpUrl, exe);
-        LaunchDetached(exe, uri.Port, profileDir);
-        await WaitForReachableAsync(cdpUrl, startupTimeout, ct);
+        var chrome = ChromeExecutable.Resolve(executablePath);
+        logger.LogInformation("Nothing answers at {Url}; starting {Chrome}", cdpUrl, chrome);
+        StartDetached(chrome,
+        [
+            $"--remote-debugging-port={port}", "--remote-allow-origins=*", $"--user-data-dir={profileDir}",
+            "--no-first-run", "--no-default-browser-check",
+        ]);
+        await WaitUntilReachableAsync(cdpUrl, BrowserDefaults.ChromeStartupTimeout);
     }
 
-    public static async Task<bool> IsReachableAsync(string cdpUrl, CancellationToken ct = default)
+    public static async Task<bool> IsReachableAsync(string cdpUrl)
     {
-        var url = new UriBuilder(cdpUrl) { Path = "/json/version", Query = "" }.Uri.ToString();
+        var versionUrl = new UriBuilder(cdpUrl) { Path = "/json/version", Query = "" }.Uri;
         try
         {
-            // Dispose the response so the connection is returned to the pool — this is polled repeatedly.
-            using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await Http.GetAsync(versionUrl, HttpCompletionOption.ResponseHeadersRead);
             return response.IsSuccessStatusCode;
         }
-        catch (HttpRequestException) { return false; }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested) { return false; }
-    }
-
-    public static string? FindChrome() => Candidates().FirstOrDefault(File.Exists);
-
-    private static async Task WaitForReachableAsync(string cdpUrl, TimeSpan timeout, CancellationToken ct)
-    {
-        var sw = Stopwatch.StartNew();
-        while (sw.Elapsed < timeout)
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException)
         {
-            if (await IsReachableAsync(cdpUrl, ct)) return;
-            await Task.Delay(300, ct);
+            return false;
         }
-
-        // A caller that cancelled while we were between polls must see cancellation, not a misleading timeout.
-        ct.ThrowIfCancellationRequested();
-        throw new TimeoutException(
-            $"Chrome did not become reachable at {cdpUrl} within {timeout.TotalSeconds:0}s.\n" +
-            "Likely causes:\n" +
-            "  • Chrome is already running with your default profile — close it and re-run\n" +
-            "    (Chrome only allows one instance per profile; second launch is a no-op)\n" +
-            "  • A permission/fingerprint dialog is showing — approve it and re-run");
     }
 
-    private static Uri ParseOrThrow(string cdpUrl)
-    {
-        if (!Uri.TryCreate(cdpUrl, UriKind.Absolute, out var uri)
-            || uri.Port <= 0
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new ArgumentException(
-                $"Browser URL must be an absolute http(s) URI with an explicit port: '{cdpUrl}'. " +
-                "Example: http://localhost:9222");
-        return uri;
-    }
+    private static int PortOf(string cdpUrl) =>
+        BrowserUrl.IsOnThisMachine(cdpUrl) && new Uri(cdpUrl) is { IsDefaultPort: false } uri
+            ? uri.Port
+            : throw new ArgumentException(
+                "To start Chrome, the browser URL must be an absolute http(s) URL on this machine with a port, " +
+                $"e.g. http://localhost:9222 (got '{cdpUrl}').");
 
-    private static async Task<IAsyncDisposable> AcquireLockAsync(string lockPath, CancellationToken ct)
+    private static async Task<FileStream> LockAsync(string path)
     {
-        var sw = Stopwatch.StartNew();
+        var waited = Stopwatch.StartNew();
         while (true)
         {
             try
             {
-                return new LockHandle(new FileStream(
-                    lockPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None));
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
             }
-            catch (IOException)
+            catch (IOException) when (waited.Elapsed < LockTimeout)
             {
-                if (sw.Elapsed > TimeSpan.FromSeconds(60))
-                    throw new TimeoutException($"Could not acquire launch lock at {lockPath} within 60s.");
-                await Task.Delay(200, ct);
+                await Task.Delay(200);
             }
         }
     }
 
-    private sealed class LockHandle(FileStream fs) : IAsyncDisposable
+    // On Linux and macOS, through nohup with output to /dev/null, so Chrome outlives this process and never blocks on
+    // a full pipe. On Windows a started process outlives its parent anyway.
+    private static void StartDetached(string chrome, string[] arguments)
     {
-        public ValueTask DisposeAsync() { fs.Dispose(); return ValueTask.CompletedTask; }
+        var commandLine = string.Join(' ', arguments.Prepend(chrome).Select(ShellQuote));
+        var start = OperatingSystem.IsWindows()
+            ? new ProcessStartInfo(chrome, arguments)
+            : new ProcessStartInfo("/bin/sh", ["-c", $"nohup {commandLine} </dev/null >/dev/null 2>&1 &"]);
+        start.UseShellExecute = false;
+        start.CreateNoWindow = true;
+        using var process = Process.Start(start) ?? throw new InvalidOperationException($"Could not start {chrome}.");
     }
 
-    // Chrome 136+ refuses --remote-debugging-port on the DEFAULT user-data-dir for
-    // security. We must use a dedicated profile dir (~/.qaas/chrome-profile).
-    // It's persistent — log in once, sessions/cookies/bookmarks stay between runs.
-    // POSIX: detach via `nohup ... &` so Chrome survives SIGHUP.
-    // Windows: Process.Start already outlives the parent.
-    private static void LaunchDetached(string exe, int port, string profileDir)
+    private static string ShellQuote(string value) => $"'{value.Replace("'", @"'\''")}'";
+
+    private static async Task WaitUntilReachableAsync(string cdpUrl, TimeSpan timeout)
     {
-        // Do not redirect the child's streams: on POSIX the shell already sends Chrome's output to /dev/null, and
-        // on Windows redirected pipes that nobody drains would block Chrome once the buffer fills.
-        var psi = new ProcessStartInfo
+        var waited = Stopwatch.StartNew();
+        while (waited.Elapsed < timeout)
         {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        if (OperatingSystem.IsWindows())
-        {
-            psi.FileName = exe;
-            psi.ArgumentList.Add($"--remote-debugging-port={port}");
-            psi.ArgumentList.Add("--remote-allow-origins=*");
-            psi.ArgumentList.Add($"--user-data-dir={profileDir}");
-            psi.ArgumentList.Add("--no-first-run");
-            psi.ArgumentList.Add("--no-default-browser-check");
-        }
-        else
-        {
-            var args = $"--remote-debugging-port={port} --remote-allow-origins=* " +
-                       $"--user-data-dir={Quote(profileDir)} --no-first-run --no-default-browser-check";
-            psi.FileName = "/bin/sh";
-            psi.ArgumentList.Add("-c");
-            psi.ArgumentList.Add($"nohup {Quote(exe)} {args} </dev/null >/dev/null 2>&1 &");
+            if (await IsReachableAsync(cdpUrl)) return;
+            await Task.Delay(300);
         }
 
-        using var p = Process.Start(psi)
-            ?? throw new InvalidOperationException("Process.Start returned null when launching Chrome.");
+        throw new TimeoutException(
+            $"Chrome did not answer at {cdpUrl} within {timeout.TotalSeconds:0}s. A Chrome already open on " +
+            $"{BrowserDefaults.ChromeProfileDir} without remote debugging takes over the launch: close it and run again.");
     }
-
-    private static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
-
-    private static IEnumerable<string> Candidates()
-    {
-        if (OperatingSystem.IsWindows())
-            return WindowsChromeFolders.Select(f => Path.Combine(
-                Environment.GetFolderPath(Enum.Parse<Environment.SpecialFolder>(f)),
-                @"Google\Chrome\Application\chrome.exe"));
-
-        if (OperatingSystem.IsMacOS())
-        {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return [
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                Path.Combine(home, "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
-                "/Applications/Chromium.app/Contents/MacOS/Chromium",
-            ];
-        }
-
-        return [
-            "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome",
-            "/snap/bin/chromium",     "/usr/bin/chromium",            "/usr/bin/chromium-browser",
-        ];
-    }
-
-    private static string NotFoundMessage() =>
-        "Chrome was not found. Searched:\n  " +
-        string.Join("\n  ", Candidates().Distinct()) +
-        "\nInstall Chrome, or set ProbeConfiguration.BrowserExecutablePath in YAML.";
 }

@@ -1,43 +1,28 @@
 namespace QaaS.Playwright.Browser;
 
 /// <summary>
-/// Writes a file atomically: the contents go to a sibling temp file which is then moved into place with a
-/// same-volume rename, so a process reading the destination concurrently sees either the old file or the complete
-/// new one — never a partially-written file. The parent directory is created if missing, and the temp file is
-/// cleaned up if the write or move fails.
+/// Writes a file so that no reader ever sees it half-written, since parallel sessions may load a storage state while
+/// another saves it: the text goes to a temp file beside the target, which is then renamed over it.
 /// </summary>
 internal static class AtomicFileWriter
 {
-    /// <summary>
-    /// Atomically writes <paramref name="contents"/> to <paramref name="path"/> and returns the absolute path
-    /// written. A relative <paramref name="path"/> resolves against the current directory.
-    /// </summary>
-    public static async Task<string> WriteAsync(string path, string contents, CancellationToken ct = default)
+    /// <summary>Writes <paramref name="contents"/> to <paramref name="path"/> and returns its absolute path.</summary>
+    public static async Task<string> WriteAsync(string path, string contents)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ArgumentNullException.ThrowIfNull(contents);
-
         var fullPath = Path.GetFullPath(path);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
-        // The temp file shares the destination's directory, so the move is a same-volume rename (atomic) rather
-        // than a copy. A GUID suffix keeps concurrent writers to the same target from colliding on the temp name.
+        // Beside the target, so the move is a rename; uniquely named, so parallel writers do not collide.
         var tempPath = $"{fullPath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await File.WriteAllTextAsync(tempPath, contents, ct);
+            await File.WriteAllTextAsync(tempPath, contents);
             File.Move(tempPath, fullPath, overwrite: true);
         }
         finally
         {
-            // On success the move already consumed the temp file; delete it only if an error left it behind.
-            if (File.Exists(tempPath))
-            {
-                try { File.Delete(tempPath); }
-                catch { /* best-effort: never mask the real write/move failure */ }
-            }
+            File.Delete(tempPath); // Left over only when writing or moving failed.
         }
 
         return fullPath;

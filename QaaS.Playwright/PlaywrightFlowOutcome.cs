@@ -1,18 +1,11 @@
 namespace QaaS.Playwright;
 
-/// <summary>
-/// The result of running one Playwright flow, recorded by the probe and reported by the assertion.
-/// </summary>
-/// <param name="FlowName">The flow's class name, as listed in the probe configuration.</param>
-/// <param name="Passed"><see langword="true"/> when the flow completed without throwing.</param>
-/// <param name="FailureMessage">
-/// The failure reason when <paramref name="Passed"/> is <see langword="false"/>; otherwise <see langword="null"/>.
-/// </param>
-/// <param name="FailureScreenshot">
-/// A PNG of the page captured at the moment of failure, when one could be taken; otherwise <see langword="null"/>.
-/// Always <see langword="null"/> for a passing flow.
-/// </param>
-/// <param name="FailureUrl">The page's URL at the moment of failure; <see langword="null"/> for a passing flow.</param>
+/// <summary>How one flow ended, recorded by the probe and reported by the assertion.</summary>
+/// <param name="FlowName">The flow's class name, as listed in the probe's settings.</param>
+/// <param name="Passed">Whether the flow finished without throwing.</param>
+/// <param name="FailureMessage">Why it failed; <see langword="null"/> when it passed.</param>
+/// <param name="FailureScreenshot">A PNG of the page when it failed, if one could be taken.</param>
+/// <param name="FailureUrl">The page's URL when it failed.</param>
 public sealed record PlaywrightFlowOutcome(
     string FlowName,
     bool Passed,

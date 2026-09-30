@@ -5,16 +5,15 @@ namespace QaaS.Playwright.Reporting;
 /// <summary>The report text of <see cref="PlaywrightFlowAssertion"/>: a one-line message and a detailed trace.</summary>
 internal static class FlowReport
 {
-    // Playwright appends its action log to a failure message after this line; the first line naming what it waited
-    // for tells which element the flow was stuck on.
+    // Playwright appends its action log to a failure message after this line. Its first "waiting for" line names the
+    // element the flow was stuck on.
     private const string CallLogMarker = "Call log:";
     private const string WaitingForPrefix = "- waiting for ";
 
     private const string NoDetail = "(no failure detail)";
-
     private const string NoSessionAttached = "No session is attached to this assertion, so nothing was verified";
 
-    /// <summary>A pass/fail count, the first failure's reason, the sessions that ran no flow, and the flows that passed.</summary>
+    /// <summary>What failed and why, which sessions ran no flow, and which flows passed.</summary>
     public static string Message(SessionResults results)
     {
         if (results.SessionNames.Count == 0) return $"{NoSessionAttached}.";
@@ -27,7 +26,7 @@ internal static class FlowReport
         return $"{string.Join(". ", problems.OfType<string>())}. Passed: {passedNames}.";
     }
 
-    /// <summary>A PASS/FAIL line per flow in run order, then each failure's full message and call log.</summary>
+    /// <summary>A PASS/FAIL line per flow in run order, then each failure in full, call log included.</summary>
     public static string Trace(SessionResults results)
     {
         var outcomes = results.Outcomes;
@@ -49,8 +48,7 @@ internal static class FlowReport
             AppendSection(trace, $"session failure: {failure.Name}", failure.Reason.Message);
 
         if (results.SessionNames.Count == 0)
-            AppendSection(trace, "nothing verified",
-                $"{NoSessionAttached}: its SessionNames match no session that ran.");
+            AppendSection(trace, "nothing verified", $"{NoSessionAttached}: its SessionNames match no session that ran.");
         else if (results.UnverifiedSessions.Count > 0)
             AppendSection(trace, "nothing verified", LikelyCauses(results.UnverifiedSessions));
 
@@ -61,15 +59,15 @@ internal static class FlowReport
     {
         var outcomes = results.Outcomes;
         var failed = outcomes.Where(outcome => !outcome.Passed).ToList();
+        var sessionFailures = results.SessionFailures;
         if (failed.Count == 0)
-            return results.SessionFailures.Count == 0
+            return sessionFailures.Count == 0
                 ? null
-                : $"{results.SessionFailures.Count} session failure(s) with no completed flow — " +
-                  Summarize(results.SessionFailures[0].Reason.Message);
+                : $"{sessionFailures.Count} session failure(s): {Summarize(sessionFailures[0].Reason.Message)}";
 
         var first = failed[0];
         return failed.Count == 1
-            ? $"{first.FlowName} failed ({outcomes.Count - failed.Count}/{outcomes.Count} flows passed): {Describe(first)}"
+            ? $"{first.FlowName} failed ({outcomes.Count - 1}/{outcomes.Count} flows passed): {Describe(first)}"
             : $"{failed.Count} of {outcomes.Count} flows failed " +
               $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); first '{first.FlowName}': {Describe(first)}";
     }
@@ -83,28 +81,12 @@ internal static class FlowReport
         return description;
     }
 
-    private static string? FailureDetail(PlaywrightFlowOutcome failure) =>
-        failure.FailureUrl is null ? failure.FailureMessage : $"Page: {failure.FailureUrl}\n{failure.FailureMessage ?? NoDetail}";
-
     private static string? WaitingFor(string? failureMessage) =>
         failureMessage?.Split(CallLogMarker, 2).ElementAtOrDefault(1)?
             .Split('\n', StringSplitOptions.TrimEntries)
             .FirstOrDefault(line => line.StartsWith(WaitingForPrefix, StringComparison.Ordinal))?[2..];
 
-    private static string? NothingVerifiedHeadline(IReadOnlyList<string> unverifiedSessions) =>
-        unverifiedSessions.Count == 0
-            ? null
-            : $"No Playwright flow ran in session(s) {string.Join(", ", unverifiedSessions)}, so nothing was verified there";
-
-    // The assertion cannot tell these apart, so it lists them all.
-    private static string LikelyCauses(IReadOnlyList<string> unverifiedSessions) =>
-        $"No flow outcome and no failure was recorded in session(s) {string.Join(", ", unverifiedSessions)}. Likely causes:\n" +
-        "  - the probe's Flows and SetupFlows are empty, or misspelled (e.g. 'Flow:'; the probe warns about unknown keys);\n" +
-        "  - the session has no PlaywrightFlowProbe;\n" +
-        "  - the probe runs in another session than the ones this assertion's SessionNames select.";
-
-    // The failure message on one line, without the call log (the trace keeps it) or a closing period (the message
-    // adds its own).
+    // The failure message on one line, without the call log or a closing period (the message adds its own).
     private static string Summarize(string? failureMessage)
     {
         if (string.IsNullOrWhiteSpace(failureMessage)) return NoDetail;
@@ -112,6 +94,23 @@ internal static class FlowReport
         var lines = beforeCallLog.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return string.Join(' ', lines).TrimEnd('.');
     }
+
+    private static string? NothingVerifiedHeadline(IReadOnlyList<string> unverifiedSessions) =>
+        unverifiedSessions.Count == 0
+            ? null
+            : $"No Playwright flow ran in session(s) {string.Join(", ", unverifiedSessions)}, so nothing was verified there";
+
+    private static string? FailureDetail(PlaywrightFlowOutcome failure) =>
+        failure.FailureUrl is null
+            ? failure.FailureMessage
+            : $"Page: {failure.FailureUrl}\n{failure.FailureMessage ?? NoDetail}";
+
+    // The assertion cannot tell these apart, so it lists them all.
+    private static string LikelyCauses(IReadOnlyList<string> unverifiedSessions) =>
+        $"Session(s) {string.Join(", ", unverifiedSessions)} recorded no flow outcome and no failure. Likely causes:\n" +
+        "  - the probe's Flows and SetupFlows are empty or misspelled, e.g. 'Flow:' (the probe warns about those);\n" +
+        "  - the session has no PlaywrightFlowProbe;\n" +
+        "  - the probe runs in another session than the ones this assertion's SessionNames select.";
 
     private static void AppendSection(StringBuilder trace, string title, string? detail) =>
         trace.AppendLine().AppendLine().AppendLine($"---- {title} ----")

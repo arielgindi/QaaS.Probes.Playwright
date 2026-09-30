@@ -5,33 +5,18 @@ using QaaS.Playwright.Configuration;
 namespace QaaS.Playwright.Browser;
 
 /// <summary>
-/// The browser side of one probe run: the Playwright driver, the connection to Chrome, the context the flows share
-/// and the page they run on. Disposing it closes everything the run opened, and nothing it did not open.
+/// The browser side of one probe run: the Playwright driver, the connection to Chrome, the context and the page the
+/// flows run on. Disposing it closes what the run opened, and nothing it did not open.
 /// </summary>
-internal sealed class BrowserSession : IAsyncDisposable
+internal sealed class BrowserSession(
+    IPlaywright playwright, IBrowser browser, IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
+    : IAsyncDisposable
 {
     private const string AssetPattern = "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}";
 
-    private readonly IPlaywright _playwright;
-    private readonly IBrowser _browser;
-    private readonly IBrowserContext _context;
-    private readonly bool _ownsContext;
-    private readonly ILogger _logger;
+    public IPage Page => page;
 
-    private BrowserSession(
-        IPlaywright playwright, IBrowser browser, IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
-    {
-        _playwright = playwright;
-        _browser = browser;
-        _context = context;
-        _ownsContext = ownsContext;
-        _logger = logger;
-        Page = page;
-    }
-
-    public IPage Page { get; }
-
-    /// <summary>When true, disposing leaves the page open (a person is looking at it).</summary>
+    /// <summary>When true, disposing leaves the page open: a person is looking at it.</summary>
     public bool KeepPageOpen { get; set; }
 
     public static async Task<BrowserSession> OpenAsync(PlaywrightFlowConfig config, ILogger logger)
@@ -39,7 +24,7 @@ internal sealed class BrowserSession : IAsyncDisposable
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         try
         {
-            var browser = await new BrowserConnector(logger).ConnectAsync(playwright, config);
+            var browser = await BrowserConnector.ConnectAsync(playwright, config, logger);
             var (context, ownsContext) = await OpenContextAsync(browser, config, logger);
             var page = await context.NewPageAsync();
             await SetUpPageAsync(page, config, logger);
@@ -55,22 +40,21 @@ internal sealed class BrowserSession : IAsyncDisposable
     /// <summary>Writes the context's cookies and localStorage to <paramref name="path"/> for later sessions.</summary>
     public async Task SaveStorageStateAsync(string path)
     {
-        var savedPath = await AtomicFileWriter.WriteAsync(path, await _context.StorageStateAsync());
-        _logger.LogInformation("Saved storage state to {Path}", savedPath);
+        var savedPath = await AtomicFileWriter.WriteAsync(path, await context.StorageStateAsync());
+        logger.LogInformation("Saved storage state to {Path}", savedPath);
     }
 
     public async ValueTask DisposeAsync()
     {
-        // Each step is guarded so a teardown error never hides the flow's own failure or skips the next step.
-        if (!KeepPageOpen) await TryAsync("close page", () => Page.CloseAsync());
-        if (_ownsContext) await TryAsync("dispose browser context", () => _context.DisposeAsync().AsTask());
-        await TryAsync("disconnect from browser", () => _browser.DisposeAsync().AsTask());
-        _playwright.Dispose();
+        // Each step is guarded, so a teardown error neither hides the flow's own failure nor skips the next step.
+        if (!KeepPageOpen) await TryAsync("close the page", () => page.CloseAsync());
+        if (ownsContext) await TryAsync("dispose the browser context", () => context.DisposeAsync().AsTask());
+        await TryAsync("disconnect from the browser", () => browser.DisposeAsync().AsTask());
+        playwright.Dispose();
     }
 
-    // One rule: a run gets a fresh context of its own when it asks for isolation or starts from a saved login (storage
-    // state can only seed a new context). Otherwise it shares the browser's default context, so a local Chrome keeps
-    // its logins.
+    // A run gets a fresh context of its own when it asks for isolation or starts from a saved login (storage state can
+    // only seed a new context). Otherwise it shares the browser's default context, so a local Chrome keeps its logins.
     private static async Task<(IBrowserContext Context, bool Owned)> OpenContextAsync(
         IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
     {
@@ -124,7 +108,7 @@ internal sealed class BrowserSession : IAsyncDisposable
         }
         catch (Exception failure)
         {
-            _logger.LogWarning("Failed to {Action} during teardown: {Message}", action, failure.Message);
+            logger.LogWarning("Could not {Action} during teardown: {Message}", action, failure.Message);
         }
     }
 }

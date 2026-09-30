@@ -2,33 +2,28 @@ using System.Text.RegularExpressions;
 
 namespace QaaS.Playwright.Browser;
 
-/// <summary>Small helpers for the CDP URL of the browser the probe connects to.</summary>
+/// <summary>Checks on the CDP URL of the browser the probe connects to.</summary>
 internal static partial class BrowserUrl
 {
-    /// <summary>Hides the query string, which for Browserless endpoints carries the auth token, so a URL can be logged.</summary>
+    /// <summary>Hides the query string, which carries a Browserless token, so the URL can be logged.</summary>
     public static string Redact(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Query)
             ? uri.GetLeftPart(UriPartial.Path) + "?<redacted>"
             : url;
 
-    /// <summary>
-    /// True for an http(s) URL on this machine (localhost, 127.0.0.1, ::1): a Chrome the probe may start itself.
-    /// </summary>
+    /// <summary>Whether it is an http(s) URL on this machine, where the probe may start Chrome itself.</summary>
     public static bool IsOnThisMachine(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
         && uri.IsLoopback;
 
-    /// <summary>
-    /// Fails fast when the URL still holds a <c>&lt;your-namespace&gt;</c>-style placeholder, instead of a DNS
-    /// error after the connect timeout.
-    /// </summary>
+    /// <summary>Fails fast on a leftover <c>&lt;your-namespace&gt;</c>, instead of a DNS error after a timeout.</summary>
     public static void EnsureNoTemplatePlaceholder(string url)
     {
         if (TemplatePlaceholder().IsMatch(url))
             throw new InvalidOperationException(
-                $"Browser URL contains an unresolved placeholder: '{url}'. Replace the <...> tokens in " +
-                "browser-defaults.yaml, or set ProbeConfiguration.BrowserUrl in YAML.");
+                $"The browser URL '{url}' still holds a <...> placeholder. Set ProbeConfiguration.BrowserUrl, " +
+                "or fill in browser-defaults.yaml.");
     }
 
     [GeneratedRegex("<[^>]+>")]
