@@ -8,6 +8,8 @@ public sealed class ListLogger : ILogger
 {
     private readonly ConcurrentQueue<(LogLevel Level, string Message)> _entries = new();
 
+    public IEnumerable<string> Messages => _entries.Select(entry => entry.Message);
+
     public IEnumerable<string> Warnings =>
         _entries.Where(entry => entry.Level == LogLevel.Warning).Select(entry => entry.Message);
 

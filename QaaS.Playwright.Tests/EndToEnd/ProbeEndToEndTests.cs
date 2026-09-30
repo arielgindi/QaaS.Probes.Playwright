@@ -211,6 +211,32 @@ public class ProbeEndToEndTests
         var assertion = run.RunAssertion(sessions);
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
         Assert.That(assertion.AssertionMessage, Does.StartWith("All 10 Playwright flow(s) passed"));
+        Assert.That(run.Log.Messages.Count(message => message.StartsWith("Connecting to")), Is.AtMost(1),
+            "the runs share one connection");
+    }
+
+    [Test]
+    public async Task ChromeRestarted_TheNextRunReconnects()
+    {
+        var chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        try
+        {
+            var settings = Settings("SubmitOrderFlow");
+            settings["BrowserUrl"] = chrome.Url;
+            var before = new QaasRun();
+            before.RunSession("BeforeRestart", settings);
+
+            chrome = await chrome.RestartAsync();
+            var after = new QaasRun();
+            var assertion = after.RunAssertion(after.RunSession("AfterRestart", settings));
+
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+            Assert.That(after.Log.Messages, Has.One.StartsWith("Connecting to"));
+        }
+        finally
+        {
+            chrome.Dispose();
+        }
     }
 
     private Dictionary<string, string?> Settings(params string[] flows)

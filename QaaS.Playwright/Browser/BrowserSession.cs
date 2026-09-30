@@ -5,11 +5,10 @@ using QaaS.Playwright.Configuration;
 namespace QaaS.Playwright.Browser;
 
 /// <summary>
-/// The browser side of one probe run: the Playwright driver, the connection to Chrome, the context and the page the
-/// flows run on. Disposing it closes what the run opened, and nothing it did not open.
+/// The browser context and the page one probe run works in, on the process's shared connection to Chrome. Disposing it
+/// closes what the run opened, and nothing it did not open.
 /// </summary>
-internal sealed class BrowserSession(
-    IPlaywright playwright, IBrowser browser, IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
+internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
     : IAsyncDisposable
 {
     private const string AssetPattern = "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}";
@@ -21,18 +20,18 @@ internal sealed class BrowserSession(
 
     public static async Task<BrowserSession> OpenAsync(PlaywrightFlowConfig config, ILogger logger)
     {
-        var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        var browser = await SharedBrowser.GetAsync(config, logger);
+        var (context, ownsContext) = await OpenContextAsync(browser, config, logger);
         try
         {
-            var browser = await BrowserConnector.ConnectAsync(playwright, config, logger);
-            var (context, ownsContext) = await OpenContextAsync(browser, config, logger);
             var page = await context.NewPageAsync();
             await SetUpPageAsync(page, config, logger);
-            return new BrowserSession(playwright, browser, context, ownsContext, page, logger);
+            return new BrowserSession(context, ownsContext, page, logger);
         }
         catch
         {
-            playwright.Dispose();
+            // The connection outlives this run, so nothing else would close the context.
+            if (ownsContext) await context.DisposeAsync();
             throw;
         }
     }
@@ -46,14 +45,18 @@ internal sealed class BrowserSession(
 
     public async ValueTask DisposeAsync()
     {
-        // Each step is guarded, so a teardown error neither hides the flow's own failure nor skips the next step.
-        // Disposing an own context closes its page too.
-        if (!KeepPageOpen)
-            await (ownsContext
-                ? TryAsync("dispose the browser context", () => context.DisposeAsync().AsTask())
-                : TryAsync("close the page", () => page.CloseAsync()));
-        await TryAsync("disconnect from the browser", () => browser.DisposeAsync().AsTask());
-        playwright.Dispose();
+        if (KeepPageOpen) return;
+        try
+        {
+            // Disposing an own context closes its page too.
+            if (ownsContext) await context.DisposeAsync();
+            else await page.CloseAsync();
+        }
+        catch (Exception failure)
+        {
+            // A teardown error must not hide the flow's own failure.
+            logger.LogWarning("Could not close the page during teardown: {Message}", failure.Message);
+        }
     }
 
     // A run gets a fresh context of its own unless it opts out with IsolateContext: false; then it shares the
@@ -101,17 +104,5 @@ internal sealed class BrowserSession(
 
         if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
         else await DesktopPointer.WarnIfMissingAsync(page, logger);
-    }
-
-    private async Task TryAsync(string action, Func<Task> step)
-    {
-        try
-        {
-            await step();
-        }
-        catch (Exception failure)
-        {
-            logger.LogWarning("Could not {Action} during teardown: {Message}", action, failure.Message);
-        }
     }
 }

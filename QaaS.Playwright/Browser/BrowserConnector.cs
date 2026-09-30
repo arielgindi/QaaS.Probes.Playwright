@@ -12,17 +12,19 @@ internal static class BrowserConnector
 
     private const int MaxAttempts = 3;
 
+    public static string UrlOf(PlaywrightFlowConfig config) =>
+        string.IsNullOrWhiteSpace(config.BrowserUrl) ? BrowserDefaults.BrowserUrl : config.BrowserUrl;
+
+    public static int SlowMoOf(PlaywrightFlowConfig config) => config.SlowMo ?? (config.Headless ? 0 : WatchedSlowMoMs);
+
     public static async Task<IBrowser> ConnectAsync(IPlaywright playwright, PlaywrightFlowConfig config, ILogger logger)
     {
-        // The recorder records the same attribute, so recorded GetByTestId() calls resolve the same way here.
-        playwright.Selectors.SetTestIdAttribute(BrowserDefaults.TestIdAttribute);
-
-        var url = string.IsNullOrWhiteSpace(config.BrowserUrl) ? BrowserDefaults.BrowserUrl : config.BrowserUrl;
+        var url = UrlOf(config);
         BrowserUrl.EnsureNoTemplatePlaceholder(url);
         if (BrowserUrl.IsOnThisMachine(url))
             await LocalChromeLauncher.EnsureRunningAsync(url, config.BrowserExecutablePath, logger);
 
-        var slowMo = config.SlowMo ?? (config.Headless ? 0 : WatchedSlowMoMs);
+        var slowMo = SlowMoOf(config);
         logger.LogInformation("Connecting to {Url}", BrowserUrl.Redact(url));
         return await ConnectWithRetriesAsync(playwright, url, new() { SlowMo = slowMo > 0 ? slowMo : null }, logger);
     }
