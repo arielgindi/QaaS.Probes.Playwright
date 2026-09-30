@@ -45,7 +45,7 @@ internal static class ConsoleUi
         Separator();
         WithColor(ConsoleColor.Green, () => Info($"SAVED {path}"));
         Info($"{actionCount} actions recorded");
-        if (path.EndsWith(".recorded.cs", StringComparison.Ordinal))
+        if (!path.EndsWith(".cs", StringComparison.Ordinal))
             Info("(the existing flow was kept — merge the new actions into it by hand)");
 
         Console.WriteLine();
@@ -58,7 +58,7 @@ internal static class ConsoleUi
                   - Name: {request.ClassName}
                     Probe: PlaywrightFlowProbe
                     ProbeConfiguration:
-                      BaseUrl: {new Uri(request.Url).GetLeftPart(UriPartial.Authority)}
+                      BaseUrl: {request.Url}
                       Flows: [{request.ClassName}]
             """);
         Console.WriteLine();

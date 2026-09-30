@@ -3,14 +3,19 @@ using System.Text.RegularExpressions;
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>
-/// Turns Playwright codegen output into a compilable flow class: the recorded actions and <c>Expect(...)</c>
-/// assertions, with codegen's <c>Page</c> fixture property rewritten to the flow's <c>page</c> parameter.
+/// Turns Playwright codegen output into a compilable flow class: the recorded actions, <c>Expect(...)</c> assertions
+/// and pop-ups, with codegen's <c>Page</c>, <c>Page1</c>, ... fixture properties rewritten to the flow's <c>page</c>
+/// parameter and the <c>page1</c>, ... variables that hold the pop-ups.
 /// </summary>
 internal static partial class FlowCodeGenerator
 {
+    private const string StringLiteral = """
+        "(?:\\.|[^"\\])*"
+        """;
+
     /// <summary>
-    /// The recorded statements, one entry each even when codegen wrapped one over several lines, without the first
-    /// GotoAsync: the probe opens BaseUrl itself.
+    /// The recorded statements, one entry each even when codegen wrapped one over several lines, as a pop-up's wait
+    /// with its lambda, without the first GotoAsync: the probe opens BaseUrl itself.
     /// </summary>
     public static List<string> ExtractActions(string codegenOutput)
     {
@@ -24,9 +29,10 @@ internal static partial class FlowCodeGenerator
             if (pending is null && !StartsFlowStatement(line)) continue;
 
             pending = pending is null ? line : Join(pending, line);
-            if (!pending.EndsWith(';')) continue;
+            if (!pending.EndsWith(';') || !BracketsAreClosed(pending)) continue;
 
-            statements.Add(PageMemberAccess().Replace(pending, "page.").Replace("Expect(Page)", "Expect(page)"));
+            statements.Add(PageOrStringLiteral().Replace(pending, match =>
+                match.Groups["literal"].Success ? match.Value : $"page{match.Groups["popup"].Value}"));
             pending = null;
         }
 
@@ -79,15 +85,26 @@ internal static partial class FlowCodeGenerator
             """;
     }
 
+    // An action or assertion, or a pop-up's wait: "var page1 = await Page.RunAndWaitForPopupAsync(async () =>".
     private static bool StartsFlowStatement(string line) =>
-        line.StartsWith("await Page.", StringComparison.Ordinal)
-        || line.StartsWith("await page.", StringComparison.Ordinal)
-        || line.StartsWith("await Expect(", StringComparison.Ordinal);
+        line.StartsWith("await ", StringComparison.Ordinal) || line.StartsWith("var ", StringComparison.Ordinal);
 
     // A fluent continuation (".ClickAsync()") joins tight; anything else keeps one space, so it compiles as written.
     private static string Join(string statement, string continuation) =>
         continuation.StartsWith('.') ? statement + continuation : $"{statement} {continuation}";
 
-    [GeneratedRegex(@"\bPage\.")]
-    private static partial Regex PageMemberAccess();
+    // A statement with a lambda, such as a pop-up's wait, goes on after the ';' that ends the lambda's first statement.
+    private static bool BracketsAreClosed(string statement)
+    {
+        var code = StringLiterals().Replace(statement, "");
+        return code.Count(character => character is '(' or '{' or '[')
+               == code.Count(character => character is ')' or '}' or ']');
+    }
+
+    [GeneratedRegex(StringLiteral)]
+    private static partial Regex StringLiterals();
+
+    // Page or Page1 outside a string literal: a typed value or a label may well read "Page.Title".
+    [GeneratedRegex($"""(?<literal>{StringLiteral})|\bPage(?<popup>\d*)\b""")]
+    private static partial Regex PageOrStringLiteral();
 }

@@ -4,19 +4,22 @@ The recorder wraps Playwright codegen. It opens your installed Google Chrome, re
 flow class the probe can run.
 
 ```bash
-dotnet run --project QaaS.Playwright.Recorder                                  # asks for the URL, name and folder
-dotnet run --project QaaS.Playwright.Recorder -- record login https://my-app.com  # the same, without questions
-dotnet run --project QaaS.Playwright.Recorder -- record login https://my-app.com --output-dir UiFlows
+dotnet run --project QaaS.Playwright.Recorder                                          # asks for the URL, name and folder
+dotnet run --project QaaS.Playwright.Recorder -- record login-flow https://my-app.com  # the same, without questions
+dotnet run --project QaaS.Playwright.Recorder -- record login-flow https://my-app.com --output-dir UiFlows
 ```
 
-Click through the site, then close the browser. The recorder saves `Flows/LoginFlow.cs` and prints the YAML to run it.
+Click through the site, then close the browser. The recorder saves `Flows/LoginFlow.cs` (the name `login-flow` in
+PascalCase) and prints the YAML to run it, with the page you started on as `BaseUrl`.
 
 - Your login is kept between recordings in `~/.qaas/auth.json`, so you log in once.
 - Elements with a `data-testid` attribute are recorded as `GetByTestId(...)`, and the probe resolves them the same
   way (the attribute is set in `browser-defaults.yaml`).
-- Recording again under the same name never overwrites a flow you may have edited: the new recording is saved beside
-  it as `LoginFlow.recorded.cs`, to merge by hand.
-- The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`.
+- Recording again under the same name never overwrites anything you may have edited: the new recording is saved
+  beside the flow as `LoginFlow.recorded.txt`, then `LoginFlow.recorded-2.txt` and so on, to merge by hand. They are
+  not `.cs` files, so the project still builds while they declare the same class.
+- The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
+  (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
 
 ## What gets generated
 
@@ -47,7 +50,9 @@ public sealed record LoginFlowConfig;
 ```
 
 The first navigation is left out: the probe opens `BaseUrl` itself, so the same flow runs in every environment.
-Assertions you record (`Expect(...)`) are kept.
+Assertions you record (`Expect(...)`) are kept, and so are pop-ups: codegen's wait for one becomes
+`var page1 = await page.RunAndWaitForPopupAsync(...)`, and what you did in it uses `page1`. Recorded text, such as a
+label or a typed value, is kept exactly as recorded.
 
 ## Parameterizing a flow
 

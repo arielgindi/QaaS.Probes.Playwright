@@ -55,6 +55,34 @@ public class FlowCodeGeneratorTests
     }
 
     [Test]
+    public void ExtractActions_PageInsideAStringLiteral_IsKeptAsRecorded() =>
+        Assert.That(
+            FlowCodeGenerator.ExtractActions("""await Page.GetByLabel("Page.Title").FillAsync("Expect(Page) \"Page.X\"");"""),
+            Is.EqualTo(new[] { """await page.GetByLabel("Page.Title").FillAsync("Expect(Page) \"Page.X\"");""" }));
+
+    [Test]
+    public void ExtractActions_PopupAndWhatIsDoneInIt_AreKept()
+    {
+        // As the bundled Playwright 1.52 codegen writes a pop-up (it names the variable page1 and uses it as Page1).
+        var code = """
+            await Page.GotoAsync("https://app.test");
+            var page1 = await Page.RunAndWaitForPopupAsync(async () =>
+            {
+                await Page.GetByRole(AriaRole.Link, new() { Name = "Open" }).ClickAsync();
+            });
+            await Page1.GetByLabel("Email").FillAsync("user@example.test");
+            await Expect(Page1.GetByText("Saved")).ToBeVisibleAsync();
+            """;
+
+        Assert.That(FlowCodeGenerator.ExtractActions(code), Is.EqualTo(new[]
+        {
+            """var page1 = await page.RunAndWaitForPopupAsync(async () => { await page.GetByRole(AriaRole.Link, new() { Name = "Open" }).ClickAsync(); });""",
+            """await page1.GetByLabel("Email").FillAsync("user@example.test");""",
+            """await Expect(page1.GetByText("Saved")).ToBeVisibleAsync();""",
+        }));
+    }
+
+    [Test]
     public void ExtractActions_OnlyInitialGoto_ReturnsEmpty() =>
         Assert.That(FlowCodeGenerator.ExtractActions("""await Page.GotoAsync("https://x.com");"""), Is.Empty);
 

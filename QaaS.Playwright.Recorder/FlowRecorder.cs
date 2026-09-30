@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using QaaS.Playwright.Browser;
 
 namespace QaaS.Playwright.Recorder;
@@ -57,16 +58,38 @@ internal static class FlowRecorder
         ];
     }
 
-    // A flow may have been edited by hand since it was recorded, so a re-recording never overwrites it: it is saved
-    // beside it as <Name>.recorded.cs, to merge by hand.
-    private static string Save(RecordRequest request, IReadOnlyList<string> actions)
+    // A flow may have been edited by hand since it was recorded, and so may an earlier re-recording, so nothing is ever
+    // overwritten: a re-recording is saved beside the flow as <Name>.recorded.txt, then <Name>.recorded-2.txt and so
+    // on, to merge by hand. Not as .cs, which would declare the flow's class twice and break the project's build.
+    internal static string Save(RecordRequest request, IReadOnlyList<string> actions)
     {
         Directory.CreateDirectory(request.OutputDir);
-        var path = Path.GetFullPath(Path.Combine(request.OutputDir, $"{request.ClassName}.cs"));
-        if (File.Exists(path)) path = Path.ChangeExtension(path, ".recorded.cs");
-
         var source = FlowCodeGenerator.Render(request.ClassName, actions, ProjectNamespace.Of(request.OutputDir));
-        File.WriteAllText(path, source);
-        return path;
+        foreach (var path in PathsFor(Path.GetFullPath(Path.Combine(request.OutputDir, $"{request.ClassName}.cs"))))
+            if (TryCreate(path, source)) return path;
+
+        throw new UnreachableException("There is always another file name to try.");
+    }
+
+    private static IEnumerable<string> PathsFor(string flowPath)
+    {
+        yield return flowPath;
+        yield return Path.ChangeExtension(flowPath, ".recorded.txt");
+        for (var copy = 2; ; copy++) yield return Path.ChangeExtension(flowPath, $".recorded-{copy}.txt");
+    }
+
+    // Only as a new file, so one that appeared since is not overwritten either.
+    private static bool TryCreate(string path, string text)
+    {
+        try
+        {
+            using var file = new StreamWriter(new FileStream(path, FileMode.CreateNew));
+            file.Write(text);
+            return true;
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            return false;
+        }
     }
 }
