@@ -133,6 +133,18 @@ google-chrome --headless=new --remote-debugging-port=9222 \
 or set `EmulateDesktopPointer: true`, which makes the page's `matchMedia` report a mouse before any script runs. It
 covers single `pointer`/`hover` queries from JavaScript (what MUI uses), not CSS media queries.
 
+## Many cases, fast
+
+- Isolation is the default: each session works in a browser context of its own, so sessions in one stage run truly
+  in parallel and never share a login. In a benchmark, ten parallel sessions took 5.1 s instead of 17.8 s, and none
+  failed instead of 39%.
+- Log in once and reuse it: one session saves the login with `SaveStorageStatePath`, and the sessions after it load
+  it with `LoadStorageStatePath` and skip their login flow (see "Logging in once" above). Measured: 15% faster over
+  50 cases, and 6.1 s instead of 10.0 s for three sessions in one case. A saved login lasts only as long as the
+  app's own session does.
+- All runs in a process share one Playwright driver and one connection per browser, and `BlockAssets` keeps the
+  browser's HTTP cache, so the app's bundle is not downloaded again on every page.
+
 ## What the assertion checks
 
 `PlaywrightFlowAssertion` has no settings. It fails when:
