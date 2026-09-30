@@ -2,14 +2,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using QaaS.Playwright.Configuration;
 
-namespace QaaS.Playwright.Engine;
+namespace QaaS.Playwright.Browser;
 
 /// <summary>
 /// Connects to the right Chrome over CDP for a probe run — a local Chrome (auto-launched when needed) or the
 /// cluster/remote Chromium — applying connection retries, slow-mo, and token-safe logging. This keeps all of the
 /// CDP/retry detail out of the probe, next to the rest of the browser plumbing.
 /// </summary>
-internal sealed class PlaywrightBrowserConnector(ILogger logger)
+internal sealed class BrowserConnector(ILogger logger)
 {
     /// <summary>Slow-mo applied between actions in visible mode when none is configured, so a human can watch.</summary>
     private const int DefaultVisibleSlowMoMs = 2_000;

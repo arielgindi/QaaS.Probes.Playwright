@@ -1,6 +1,6 @@
 using QaaS.Playwright.Recorder;
 
-namespace QaaS.Playwright.Tests;
+namespace QaaS.Playwright.Tests.Recorder;
 
 [TestFixture]
 public class FlowCodeGeneratorTests

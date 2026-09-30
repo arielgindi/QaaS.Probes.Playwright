@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
-namespace QaaS.Playwright.Engine;
+namespace QaaS.Playwright.Flows;
 
 /// <summary>
 /// Finds and instantiates <see cref="IPlaywrightFlow"/> implementations by class name across the loaded

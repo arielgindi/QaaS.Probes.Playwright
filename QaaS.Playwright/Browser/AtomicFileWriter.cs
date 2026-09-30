@@ -1,4 +1,4 @@
-namespace QaaS.Playwright.Engine;
+namespace QaaS.Playwright.Browser;
 
 /// <summary>
 /// Writes a file atomically: the contents go to a sibling temp file which is then moved into place with a

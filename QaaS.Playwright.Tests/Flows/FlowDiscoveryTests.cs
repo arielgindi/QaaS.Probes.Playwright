@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
-using QaaS.Playwright.Engine;
+using QaaS.Playwright.Flows;
 
-namespace QaaS.Playwright.Tests;
+namespace QaaS.Playwright.Tests.Flows;
 
 public record TestFlowConfig
 {

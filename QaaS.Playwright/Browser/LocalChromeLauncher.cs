@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace QaaS.Playwright.Engine;
+namespace QaaS.Playwright.Browser;
 
 /// <summary>
 /// Ensures a local Chrome with --remote-debugging-port is running, launching it

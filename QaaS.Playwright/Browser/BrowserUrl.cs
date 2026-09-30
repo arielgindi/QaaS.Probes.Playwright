@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace QaaS.Playwright.Engine;
+namespace QaaS.Playwright.Browser;
 
 /// <summary>Small, pure helpers for the CDP browser URLs the connector works with.</summary>
 internal static partial class BrowserUrl

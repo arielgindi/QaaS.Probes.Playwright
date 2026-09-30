@@ -227,5 +227,6 @@ dotnet test QaaS.Probes.Playwright.slnx -c Release
 
 ## Documentation
 
-- [RECORDING.md](RECORDING.md) — How to record and parameterize flows
-- [QAAS-CONTEXT.md](QAAS-CONTEXT.md) — QaaS platform context for developers
+- [RECORDING.md](docs/RECORDING.md) — How to record and parameterize flows
+- [QAAS-CONTEXT.md](docs/QAAS-CONTEXT.md) — QaaS platform context for developers
+- [EXAMPLES.md](docs/EXAMPLES.md) — Complete suites to copy from
