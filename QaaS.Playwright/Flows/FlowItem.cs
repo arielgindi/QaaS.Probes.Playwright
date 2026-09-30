@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -11,6 +12,10 @@ namespace QaaS.Playwright.Flows;
 /// <summary>One item of the ForEach DataSource: its position and its body as JSON.</summary>
 internal sealed record FlowItem(int Index, JsonNode? Data)
 {
+    // Parallel probes share a DataSource, and QaaS 4.8 generates an eager one's items anew for each probe that reads it
+    // for the first time at the same moment, so each could get other items. Reads of one DataSource take turns.
+    private static readonly ConditionalWeakTable<DataSource, Lock> ReadLocks = new();
+
     /// <summary>How a flow run for this item is reported, e.g. <c>CreateMissionFlow[17]</c>.</summary>
     public string NameOf(string flowName) => $"{flowName}[{Index}]";
 
@@ -25,7 +30,9 @@ internal sealed record FlowItem(int Index, JsonNode? Data)
         if (source.Lazy)
             logger.LogWarning("ForEach {DataSource} is Lazy, so it generates its items anew on every read: whatever " +
                               "reads it after the flows, an assertion too, may see other items than they ran.", name);
-        return [.. source.Retrieve(sessions).Select((data, index) => new FlowItem(index, ToJson(data.Body)))];
+
+        lock (ReadLocks.GetOrCreateValue(source))
+            return [.. source.Retrieve(sessions).Select((data, index) => new FlowItem(index, ToJson(data.Body)))];
     }
 
     /// <summary>JSON text or bytes are parsed, other text becomes a JSON string, and an object is serialized.</summary>

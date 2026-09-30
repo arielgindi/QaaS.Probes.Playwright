@@ -1,6 +1,12 @@
 using System.Collections.Immutable;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Configuration;
+using QaaS.Framework.SDK.ContextObjects;
+using QaaS.Framework.SDK.DataSourceObjects;
+using QaaS.Framework.SDK.Hooks.Generator;
+using QaaS.Framework.SDK.Session.DataObjects;
 using QaaS.Framework.SDK.Session.SessionDataObjects;
 using QaaS.Playwright.Flows;
 
@@ -44,6 +50,19 @@ public class FlowItemTests
     }
 
     [Test]
+    public async Task AllOf_ProbesReadingOneDataSourceAtOnce_GetTheSameItems()
+    {
+        var generator = new CountingGenerator();
+        var missions = new DataSource { Name = "Missions", Generator = generator };
+
+        var reads = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ =>
+            Task.Run(() => FlowItem.AllOf("Missions", [missions], NoSessions, new ListLogger()))));
+
+        Assert.That(generator.Calls, Is.EqualTo(1), "generated once, then read from QaaS's cache");
+        Assert.That(reads.Select(items => items.Single().Data!.GetValue<string>()), Has.All.EqualTo("call 1"));
+    }
+
+    [Test]
     public void NameOf_AddsTheItemIndex() =>
         Assert.That(new FlowItem(17, null).NameOf("CreateMissionFlow"), Is.EqualTo("CreateMissionFlow[17]"));
 
@@ -76,4 +95,24 @@ public class FlowItemTests
 
     [Test]
     public void ToJson_NoBody_IsNull() => Assert.That(FlowItem.ToJson(null), Is.Null);
+}
+
+/// <summary>Takes a while to generate, and says which call generated its item.</summary>
+public sealed class CountingGenerator : IGenerator
+{
+    private int _calls;
+
+    public int Calls => _calls;
+
+    public Context Context { get; set; } = null!;
+
+    public List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration) => [];
+
+    public IEnumerable<Data<object>> Generate(
+        IImmutableList<SessionData> sessionDataList, IImmutableList<DataSource> dataSourceList)
+    {
+        var call = Interlocked.Increment(ref _calls);
+        Thread.Sleep(100);
+        yield return new Data<object> { Body = $"call {call}" };
+    }
 }
