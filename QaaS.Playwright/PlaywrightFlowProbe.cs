@@ -30,7 +30,10 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
         _rawConfiguration = configuration;
-        return base.LoadAndValidateConfiguration(configuration);
+        var errors = base.LoadAndValidateConfiguration(configuration);
+        foreach (var warning in UnknownSettings.Find(configuration, Configuration))
+            Context.Logger.LogWarning("{Warning}", warning);
+        return errors;
     }
 
     // IProbe.Run is synchronous; this is the one place the async run is waited on.
@@ -48,7 +51,7 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 
         var stopwatch = Stopwatch.StartNew();
         var runner = new FlowRunner(Context, CurrentSessionName(), Configuration.BaseUrl,
-            _rawConfiguration.GetSection("FlowConfiguration"), Configuration.FullPageScreenshot);
+            _rawConfiguration.GetSection(UnknownSettings.FlowConfigurationKey), Configuration.FullPageScreenshot);
 
         await using var browser = await BrowserSession.OpenAsync(Configuration, Context.Logger);
         Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
