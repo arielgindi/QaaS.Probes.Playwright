@@ -119,6 +119,34 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_LongOrNonAsciiNames_GiveShortAsciiScreenshotNamesThatStayApart()
+    {
+        // Valid session and probe names; joined whole they made a file name the Allure reporter could not write.
+        var (assertion, context) = NewAssertion();
+        string longSession = new('s', 160), unicodeSession = new('界', 70), probe = new('p', 100);
+        foreach (var session in new[] { longSession, longSession + "2", unicodeSession })
+            PlaywrightFlowResults.Record(context, session, new("Login", false, "boom", [1], ProbeName: probe));
+
+        assertion.Assert(Sessions(
+            new SessionData { Name = longSession }, new SessionData { Name = longSession + "2" },
+            new SessionData { Name = unicodeSession }), NoDataSources);
+
+        var paths = assertion.AssertionAttachments.Select(attachment => attachment.Path).ToList();
+        Assert.That(paths, Has.Count.EqualTo(3).And.Unique.IgnoreCase);
+        Assert.That(paths, Has.All.Length.LessThanOrEqualTo(120).And.All.Match(@"^[A-Za-z0-9_-]+\.png$"));
+        Assert.That(paths[0], Does.StartWith($"{new string('s', 30)}-{new string('p', 30)}-Login-failure-"));
+        var directory = Directory.CreateTempSubdirectory("qaas-attachments-");
+        try
+        {
+            Assert.DoesNotThrow(() => paths.ForEach(path => File.WriteAllBytes(Path.Combine(directory.FullName, path), [1])));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Test]
     public void Assert_FlowFailed_MessageIsAOneLinerWithoutTheCallLog()
     {
         var (assertion, context) = NewAssertion();

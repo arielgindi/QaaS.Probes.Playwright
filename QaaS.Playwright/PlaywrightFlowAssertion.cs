@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using QaaS.Framework.SDK.DataSourceObjects;
 using QaaS.Framework.SDK.Hooks.Assertion;
@@ -33,15 +35,15 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
     }
 
     // Named after the session, the probe and the flow, and never twice: parallel probes of one session often run the
-    // same flow, and the Allure reporter aborts the whole run when two attachments share a path, ignoring case.
+    // same flow, and the Allure reporter aborts the whole run when two attachments share a path, ignoring case, or when
+    // a path is too long for the file system.
     private void AttachScreenshots(SessionResults results)
     {
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var screenshots = results.SessionOutcomes.Where(entry => entry.Outcome.FailureScreenshot is not null);
         foreach (var (sessionName, failure) in screenshots)
         {
-            string?[] parts = [sessionName, failure.ProbeName, failure.FlowName, "failure"];
-            var name = string.Join('-', parts.OfType<string>().Select(FileNameOf));
+            var name = FileNameOf([sessionName, failure.ProbeName, failure.FlowName, "failure"]);
             var path = $"{name}.png";
             for (var copy = 2; !paths.Add(path); copy++) path = $"{name}-{copy}.png";
 
@@ -50,6 +52,17 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         }
     }
 
-    private static string FileNameOf(string flowName) =>
-        string.Concat(flowName.Select(character => char.IsLetterOrDigit(character) ? character : '_'));
+    // ASCII letters and digits, each part cut to 30 characters, so the name stays near 100 bytes whatever the names;
+    // a short hash of the whole names then keeps apart runs whose names differ only further on.
+    private static string FileNameOf(string?[] parts)
+    {
+        const int maxPartLength = 30;
+        var names = parts.OfType<string>().ToList();
+        var fileName = string.Join('-', names.Select(name => string.Concat(name.Take(maxPartLength)
+            .Select(character => char.IsAsciiLetterOrDigit(character) ? character : '_'))));
+        if (names.All(name => name.Length <= maxPartLength)) return fileName;
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\n', names)));
+        return $"{fileName}-{Convert.ToHexStringLower(hash)[..8]}";
+    }
 }
