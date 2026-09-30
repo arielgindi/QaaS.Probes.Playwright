@@ -16,11 +16,8 @@ public static class BrowserDefaults
 
     private static Settings Current => LazySettings.Value;
 
-    /// <summary>CDP endpoint of the cluster Chromium.</summary>
-    public static string RemoteUrl => Current.RemoteBrowserUrl;
-
-    /// <summary>CDP endpoint of the local Chrome.</summary>
-    public static string LocalUrl => Current.LocalBrowserUrl;
+    /// <summary>CDP endpoint of the Chrome the probe runs in when the yaml sets no BrowserUrl.</summary>
+    public static string BrowserUrl => Current.BrowserUrl;
 
     /// <summary>Chrome channel the recorder launches (for example <c>chrome</c>).</summary>
     public static string ChromeChannel => Current.ChromeChannel;
@@ -34,13 +31,13 @@ public static class BrowserDefaults
     /// </summary>
     public static string TestIdAttribute => Current.TestIdAttribute;
 
-    /// <summary>How long local mode waits for Chrome to become reachable.</summary>
-    public static TimeSpan LocalStartupTimeout => TimeSpan.FromSeconds(Current.LocalStartupTimeoutSeconds);
+    /// <summary>How long the probe waits for a Chrome it started to become reachable.</summary>
+    public static TimeSpan ChromeStartupTimeout => TimeSpan.FromSeconds(Current.ChromeStartupTimeoutSeconds);
 
     /// <summary>The <c>~/.qaas</c> working directory (filesystem layout, not user-configurable).</summary>
     public static string QaasDir => Path.Combine(ResolveHomeDirectory(), ".qaas");
 
-    /// <summary>The persistent Chrome profile local mode uses.</summary>
+    /// <summary>The persistent profile of a Chrome the probe starts.</summary>
     public static string ChromeProfileDir => Path.Combine(QaasDir, "chrome-profile");
 
     /// <summary>Where the recorder persists logged-in storage state.</summary>
@@ -84,15 +81,14 @@ public static class BrowserDefaults
     // fail at load with a clear message instead of far downstream (e.g. a 0-second startup timeout).
     private static void Validate(Settings settings)
     {
-        RequireNonEmpty(settings.RemoteBrowserUrl, nameof(Settings.RemoteBrowserUrl));
-        RequireNonEmpty(settings.LocalBrowserUrl, nameof(Settings.LocalBrowserUrl));
+        RequireNonEmpty(settings.BrowserUrl, nameof(Settings.BrowserUrl));
         RequireNonEmpty(settings.ChromeChannel, nameof(Settings.ChromeChannel));
         RequireNonEmpty(settings.RecorderViewport, nameof(Settings.RecorderViewport));
         RequireNonEmpty(settings.TestIdAttribute, nameof(Settings.TestIdAttribute));
-        if (settings.LocalStartupTimeoutSeconds <= 0)
+        if (settings.ChromeStartupTimeoutSeconds <= 0)
             throw new InvalidOperationException(
-                $"browser-defaults.yaml: '{nameof(Settings.LocalStartupTimeoutSeconds)}' must be greater than 0 " +
-                $"(was {settings.LocalStartupTimeoutSeconds}).");
+                $"browser-defaults.yaml: '{nameof(Settings.ChromeStartupTimeoutSeconds)}' must be greater than 0 " +
+                $"(was {settings.ChromeStartupTimeoutSeconds}).");
     }
 
     private static void RequireNonEmpty(string? value, string key)
@@ -103,11 +99,10 @@ public static class BrowserDefaults
 
     private sealed class Settings
     {
-        public string RemoteBrowserUrl { get; set; } = null!;
-        public string LocalBrowserUrl { get; set; } = null!;
+        public string BrowserUrl { get; set; } = null!;
         public string ChromeChannel { get; set; } = null!;
         public string RecorderViewport { get; set; } = null!;
         public string TestIdAttribute { get; set; } = null!;
-        public int LocalStartupTimeoutSeconds { get; set; }
+        public int ChromeStartupTimeoutSeconds { get; set; }
     }
 }

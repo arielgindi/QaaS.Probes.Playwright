@@ -35,4 +35,14 @@ public class BrowserUrlTests
     [Test]
     public void EnsureNoTemplatePlaceholder_WithResolvedUrl_DoesNotThrow() =>
         Assert.DoesNotThrow(() => BrowserUrl.EnsureNoTemplatePlaceholder("ws://chrome.qa.svc:3000?token=abc"));
+
+    [TestCase("http://localhost:9222", true)]
+    [TestCase("http://127.0.0.1:9222", true)]
+    [TestCase("http://[::1]:9222", true)]
+    [TestCase("ws://localhost:3000", false)]
+    [TestCase("ws://chrome.qa.svc:3000?token=abc", false)]
+    [TestCase("http://chrome.qa.svc:9222", false)]
+    [TestCase("not-a-url", false)]
+    public void IsOnThisMachine_OnlyForHttpLoopbackUrls(string url, bool expected) =>
+        Assert.That(BrowserUrl.IsOnThisMachine(url), Is.EqualTo(expected));
 }

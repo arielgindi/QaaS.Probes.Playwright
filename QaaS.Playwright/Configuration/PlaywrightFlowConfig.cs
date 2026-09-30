@@ -16,8 +16,8 @@ public sealed class PlaywrightFlowConfig
 
     /// <summary>
     /// Whether the run is unattended. When true (default) the probe blocks asset requests for speed; when false it
-    /// forces local mode and applies slow-mo so a human can watch. This does
-    /// not change the actual headless mode of the remote/launched Chrome — that is decided by how Chrome started.
+    /// slows every action down so a person can watch. How Chrome itself runs (headless or with a window) is decided
+    /// by how that Chrome was started.
     /// </summary>
     public bool Headless { get; set; } = true;
 
@@ -82,22 +82,13 @@ public sealed class PlaywrightFlowConfig
     public string? LoadStorageStatePath { get; set; }
 
     /// <summary>
-    /// CDP endpoint of the cluster Chromium, used in the default (cluster) mode — for example
-    /// <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=&lt;token&gt;</c>. Required when neither
-    /// <c>ENV=local</c> nor <see cref="Headless"/>=false selects local mode; falls back to browser-defaults.yaml.
+    /// CDP endpoint of the Chrome to run in, e.g. <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=...</c>
+    /// or <c>http://localhost:9222</c>. Defaults to browser-defaults.yaml. When it is on this machine and nothing
+    /// answers there, the probe starts Chrome. To use another browser on your machine only, write
+    /// <c>BrowserUrl: ${BROWSER_URL ?? ws://...}</c> and set the BROWSER_URL environment variable.
     /// </summary>
-    public string? RemoteBrowserUrl { get; set; }
+    public string? BrowserUrl { get; set; }
 
-    /// <summary>
-    /// CDP endpoint of a Chrome on the developer's machine, used when <c>ENV=local</c> (or <see cref="Headless"/>
-    /// is false). Defaults to <c>http://localhost:9222</c>; the probe auto-launches Chrome at this port if it is
-    /// not already running.
-    /// </summary>
-    public string? LocalBrowserUrl { get; set; }
-
-    /// <summary>
-    /// Path to a Chrome binary, used as the launch target in local mode when Chrome is not in a standard install
-    /// location. Ignored in cluster mode.
-    /// </summary>
+    /// <summary>The Chrome binary to start when <see cref="BrowserUrl"/> is on this machine; found automatically if unset.</summary>
     public string? BrowserExecutablePath { get; set; }
 }

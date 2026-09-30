@@ -34,7 +34,7 @@ spec:
           env:
             # Non-secret. Browserless requires a token to be set; we use a fixed
             # well-known value. Everyone with cluster access can drive Chrome.
-            # Match this exact value in browser-defaults.yaml's RemoteBrowserUrl.
+            # Match this exact value in browser-defaults.yaml's BrowserUrl.
             - name: TOKEN
               value: "<your-token>"
             - name: CONCURRENT

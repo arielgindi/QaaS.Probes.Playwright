@@ -1,15 +1,11 @@
 # Org-wide browser defaults for QaaS.Probes.Playwright.
 # Edit once when forking this library, rebuild, and every consuming
 # test repo inherits the values. Per-test YAML can still override
-# any of these via ProbeConfiguration (RemoteBrowserUrl, etc.).
+# BrowserUrl via ProbeConfiguration.
 
-# CDP endpoint of the cluster Chromium (Browserless on OpenShift).
+# CDP endpoint of the Chrome the probe runs in (Browserless on OpenShift).
 # Replace <your-namespace> and <your-token> with your real values.
-RemoteBrowserUrl: "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=<your-token>"
-
-# CDP endpoint of a Chrome on the developer's laptop. The probe
-# auto-launches Chrome on this port if nothing is listening there.
-LocalBrowserUrl: "http://localhost:9222"
+BrowserUrl: "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=<your-token>"
 
 # Playwright "channel" used by the recorder's codegen. "chrome" =
 # system-installed Google Chrome, so no extra browser download.
@@ -24,5 +20,6 @@ RecorderViewport: "1920,1080"
 # default, so GetByTestId() means the same here as everywhere else.
 TestIdAttribute: data-testid
 
-# Seconds the probe waits for an auto-launched Chrome to expose CDP.
-LocalStartupTimeoutSeconds: 60
+# Seconds the probe waits for a Chrome it started (BrowserUrl on this
+# machine, nothing listening there) to expose CDP.
+ChromeStartupTimeoutSeconds: 60
