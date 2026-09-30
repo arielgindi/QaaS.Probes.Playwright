@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
+using QaaS.Playwright.Configuration;
 
 namespace QaaS.Playwright.Flows;
 
@@ -10,7 +11,7 @@ namespace QaaS.Playwright.Flows;
 /// flow that throws stops the run: its failure is recorded with a screenshot and the page's URL, then rethrown.
 /// </summary>
 internal sealed class FlowRunner(
-    Context context, string sessionName, string baseUrl, IConfiguration flowConfiguration, bool fullPageScreenshot)
+    Context context, string sessionName, string? probeName, PlaywrightFlowConfig config, IConfiguration flowConfiguration)
 {
     private const int ScreenshotTimeoutMs = 5_000;
 
@@ -22,12 +23,13 @@ internal sealed class FlowRunner(
             try
             {
                 await Create(flowName).RunAsync(page);
-                Record(new PlaywrightFlowOutcome(flowName, Passed: true));
+                Record(new PlaywrightFlowOutcome(flowName, Passed: true, ProbeName: probeName));
             }
             catch (Exception failure)
             {
                 var screenshot = await TryScreenshotAsync(page);
-                Record(new PlaywrightFlowOutcome(flowName, Passed: false, failure.Message, screenshot, page.Url));
+                Record(new PlaywrightFlowOutcome(
+                    flowName, Passed: false, failure.Message, screenshot, page.Url, probeName));
                 throw;
             }
         }
@@ -38,7 +40,7 @@ internal sealed class FlowRunner(
     {
         var flow = FlowDiscovery.Resolve(flowName);
         flow.Context = context;
-        flow.BaseUrl = baseUrl;
+        flow.BaseUrl = config.BaseUrl;
 
         var errors = flow.LoadAndValidateConfiguration(flowConfiguration.GetSection(flowName));
         if (errors is { Count: > 0 })
@@ -54,7 +56,7 @@ internal sealed class FlowRunner(
     {
         try
         {
-            return await page.ScreenshotAsync(new() { FullPage = fullPageScreenshot, Timeout = ScreenshotTimeoutMs });
+            return await page.ScreenshotAsync(new() { FullPage = config.FullPageScreenshot, Timeout = ScreenshotTimeoutMs });
         }
         catch (Exception failure)
         {

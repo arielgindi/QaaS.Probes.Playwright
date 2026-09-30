@@ -18,8 +18,9 @@ namespace QaaS.Playwright;
 /// </summary>
 public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
-    // The runner publishes the running session's name to probes under this Activity baggage key.
+    // The runner publishes the running session's and probe's names under these Activity baggage keys.
     private const string SessionNameBaggageKey = "qaas.probe.session-name";
+    private const string ProbeNameBaggageKey = "qaas.probe.probe-name";
 
     private IConfiguration _flowConfiguration = null!;
 
@@ -50,8 +51,8 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var runner = new FlowRunner(Context, CurrentSessionName(), Configuration.BaseUrl, _flowConfiguration,
-            Configuration.FullPageScreenshot);
+        var probeName = Activity.Current?.GetBaggageItem(ProbeNameBaggageKey);
+        var runner = new FlowRunner(Context, CurrentSessionName(), probeName, Configuration, _flowConfiguration);
 
         await using var browser = await BrowserSession.OpenAsync(Configuration, Context.Logger);
         Context.Logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);

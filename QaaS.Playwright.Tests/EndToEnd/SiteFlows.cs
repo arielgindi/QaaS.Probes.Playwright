@@ -61,6 +61,18 @@ public sealed class PlaceMissingOrderFlow : BasePlaywrightFlow<NoConfig>
     }
 }
 
+/// <summary>Waits for 30 animation frames, about half a second: a flow whose time depends on the page rendering.</summary>
+public sealed class AnimationFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override Task RunAsync(IPage page) => page.EvaluateAsync("""
+        () => new Promise(resolve => {
+          let frames = 0;
+          const tick = () => ++frames === 30 ? resolve() : requestAnimationFrame(tick);
+          requestAnimationFrame(tick);
+        })
+        """);
+}
+
 public sealed class CheckPointerFlow : BasePlaywrightFlow<PointerConfig>
 {
     public override async Task RunAsync(IPage page)

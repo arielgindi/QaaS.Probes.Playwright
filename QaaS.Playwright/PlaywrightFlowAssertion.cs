@@ -26,7 +26,7 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         if (!results.Passed)
         {
             AssertionTrace = FlowReport.Trace(results);
-            AttachScreenshots(results.Outcomes);
+            AttachScreenshots(results);
         }
 
         AssertionStatus = results.Passed ? AssertionOutcome.Passed : AssertionOutcome.Failed;
@@ -35,16 +35,21 @@ public sealed class PlaywrightFlowAssertion : BaseAssertion<PlaywrightFlowAssert
         return results.Passed;
     }
 
-    private void AttachScreenshots(IEnumerable<PlaywrightFlowOutcome> outcomes)
+    // Named after the session, the probe and the flow, and never twice: parallel probes of one session often run the
+    // same flow, and the Allure reporter aborts the whole run when two attachments share a path, ignoring case.
+    private void AttachScreenshots(SessionResults results)
     {
-        foreach (var failure in outcomes.Where(outcome => outcome.FailureScreenshot is not null))
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var screenshots = results.SessionOutcomes.Where(entry => entry.Outcome.FailureScreenshot is not null);
+        foreach (var (sessionName, failure) in screenshots)
         {
+            string?[] parts = [sessionName, failure.ProbeName, failure.FlowName, "failure"];
+            var name = string.Join('-', parts.OfType<string>().Select(FileNameOf));
+            var path = $"{name}.png";
+            for (var copy = 2; !paths.Add(path); copy++) path = $"{name}-{copy}.png";
+
             // No SerializationType: the reporter must write the PNG bytes as they are.
-            AssertionAttachments.Add(new AssertionAttachment
-            {
-                Path = $"{FileNameOf(failure.FlowName)}-failure.png",
-                Data = failure.FailureScreenshot,
-            });
+            AssertionAttachments.Add(new AssertionAttachment { Path = path, Data = failure.FailureScreenshot });
         }
     }
 

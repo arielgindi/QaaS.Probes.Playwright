@@ -14,6 +14,7 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 public sealed class QaasRun
 {
     private const string SessionNameBaggageKey = "qaas.probe.session-name";
+    private const string ProbeNameBaggageKey = "qaas.probe.probe-name";
 
     private readonly Context _context;
 
@@ -21,27 +22,17 @@ public sealed class QaasRun
 
     public ListLogger Log { get; } = new();
 
-    public SessionData RunSession(string name, Dictionary<string, string?> probeConfiguration)
-    {
-        using var session = new Activity("session").AddBaggage(SessionNameBaggageKey, name).Start();
-        var probe = new PlaywrightFlowProbe { Context = _context };
-        var errors = probe.LoadAndValidateConfiguration(
-            new ConfigurationBuilder().AddInMemoryCollection(probeConfiguration).Build());
-        Assert.That(errors, Is.Empty, "probe configuration");
+    /// <summary>Runs a session with one probe.</summary>
+    public SessionData RunSession(string name, Dictionary<string, string?> probeConfiguration) =>
+        SessionOf(name, [RunProbe(name, "Browser", probeConfiguration)]);
 
-        try
-        {
-            probe.Run(ImmutableList<SessionData>.Empty, ImmutableList<DataSource>.Empty);
-            return new SessionData { Name = name };
-        }
-        catch (Exception failure)
-        {
-            var reason = new Reason { Message = failure.Message };
-            return new SessionData
-            {
-                Name = name, SessionFailures = [new ActionFailure { Name = "Probe", Reason = reason }],
-            };
-        }
+    /// <summary>Runs one session's probes at once, as the runner runs the probes of one action stage.</summary>
+    public async Task<SessionData> RunSessionAsync(
+        string name, params (string Probe, Dictionary<string, string?> Configuration)[] probes)
+    {
+        var failures = await Task.WhenAll(
+            probes.Select(probe => Task.Run(() => RunProbe(name, probe.Probe, probe.Configuration))));
+        return SessionOf(name, failures);
     }
 
     /// <summary>Starts every session at once, like sessions that share a stage.</summary>
@@ -55,4 +46,28 @@ public sealed class QaasRun
         assertion.Assert(sessions.ToImmutableList(), ImmutableList<DataSource>.Empty);
         return assertion;
     }
+
+    private ActionFailure? RunProbe(string sessionName, string probeName, Dictionary<string, string?> configuration)
+    {
+        using var scope = new Activity("probe")
+            .AddBaggage(SessionNameBaggageKey, sessionName)
+            .AddBaggage(ProbeNameBaggageKey, probeName)
+            .Start();
+        var probe = new PlaywrightFlowProbe { Context = _context };
+        var errors = probe.LoadAndValidateConfiguration(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
+        Assert.That(errors, Is.Empty, "probe configuration");
+
+        try
+        {
+            probe.Run(ImmutableList<SessionData>.Empty, ImmutableList<DataSource>.Empty);
+            return null;
+        }
+        catch (Exception failure)
+        {
+            return new ActionFailure { Name = probeName, Reason = new Reason { Message = failure.Message } };
+        }
+    }
+
+    private static SessionData SessionOf(string name, IEnumerable<ActionFailure?> failures) =>
+        new() { Name = name, SessionFailures = [.. failures.OfType<ActionFailure>()] };
 }

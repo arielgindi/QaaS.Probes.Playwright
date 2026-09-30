@@ -5,15 +5,17 @@ namespace QaaS.Playwright.Reporting;
 
 /// <summary>What the sessions attached to one assertion recorded.</summary>
 /// <param name="SessionNames">The attached sessions.</param>
-/// <param name="Outcomes">Every flow outcome, in run order.</param>
+/// <param name="SessionOutcomes">Every flow outcome with the session it ran in, in run order.</param>
 /// <param name="SessionFailures">Every failure the runner recorded for those sessions.</param>
 /// <param name="UnverifiedSessions">Attached sessions that recorded neither a flow outcome nor a failure.</param>
 internal sealed record SessionResults(
     IReadOnlyList<string> SessionNames,
-    IReadOnlyList<PlaywrightFlowOutcome> Outcomes,
+    IReadOnlyList<(string SessionName, PlaywrightFlowOutcome Outcome)> SessionOutcomes,
     IReadOnlyList<ActionFailure> SessionFailures,
     IReadOnlyList<string> UnverifiedSessions)
 {
+    public IReadOnlyList<PlaywrightFlowOutcome> Outcomes { get; } = [.. SessionOutcomes.Select(entry => entry.Outcome)];
+
     public bool Passed =>
         SessionNames.Count > 0 && UnverifiedSessions.Count == 0 && SessionFailures.Count == 0
         && Outcomes.All(outcome => outcome.Passed);
@@ -33,7 +35,10 @@ internal sealed record SessionResults(
 
         return new SessionResults(
             [.. sessions.Select(session => session.Name)],
-            [.. recorded.SelectMany(entry => entry.Outcomes), .. unscoped],
+            [
+                .. recorded.SelectMany(entry => entry.Outcomes.Select(outcome => (entry.Session.Name, outcome))),
+                .. unscoped.Select(outcome => (PlaywrightFlowResults.UnscopedSessionName, outcome)),
+            ],
             [.. sessions.SelectMany(session => session.SessionFailures)],
             [.. unverified]);
     }

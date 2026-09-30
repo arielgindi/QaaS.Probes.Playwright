@@ -58,6 +58,49 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_SameFlowFailedInTwoSessions_NamesEachScreenshotAfterItsSession()
+    {
+        // Two attachments with one path make the Allure reporter abort the whole run.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Ui 1", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1]));
+        PlaywrightFlowResults.Record(context, "Ui 2", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [2]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Ui 1" }, new SessionData { Name = "Ui 2" }), NoDataSources);
+
+        string[] expected = ["Ui_1-Login-failure.png", "Ui_2-Login-failure.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Assert_SameFlowFailedInTwoProbesOfOneSession_NamesEachScreenshotAfterItsProbe()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Leave",
+            new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1], ProbeName: "Employee"));
+        PlaywrightFlowResults.Record(context, "Leave",
+            new PlaywrightFlowOutcome("Login", Passed: false, "boom", [2], ProbeName: "Manager"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Leave" }), NoDataSources);
+
+        string[] expected = ["Leave-Employee-Login-failure.png", "Leave-Manager-Login-failure.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Assert_ScreenshotsThatWouldShareAPath_GetUniquePaths()
+    {
+        // Probes of one session under a runner that does not name them; the reporter compares paths ignoring case.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Login", Passed: false, "a", [1]));
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("LOGIN", Passed: false, "b", [2]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        string[] expected = ["Journey-Login-failure.png", "Journey-LOGIN-failure-2.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
     public void Assert_FlowFailed_MessageIsAOneLinerWithoutTheCallLog()
     {
         var (assertion, context) = NewAssertion();

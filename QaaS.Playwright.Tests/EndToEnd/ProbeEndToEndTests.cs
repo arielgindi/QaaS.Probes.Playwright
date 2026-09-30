@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using QaaS.Playwright.Browser;
 using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
 
@@ -213,6 +214,41 @@ public class ProbeEndToEndTests
         Assert.That(assertion.AssertionMessage, Does.StartWith("All 10 Playwright flow(s) passed"));
         Assert.That(run.Log.Messages.Count(message => message.StartsWith("Connecting to")), Is.AtMost(1),
             "the runs share one connection");
+    }
+
+    [Test]
+    public async Task ProbesOfOneSession_FailingTheSameFlow_AttachDistinctScreenshots()
+    {
+        var run = new QaasRun();
+        var failing = Settings("PlaceMissingOrderFlow");
+        failing["DefaultTimeout"] = "1000";
+
+        var session = await run.RunSessionAsync("Orders",
+            ("Submit", Settings("SubmitOrderFlow")), ("PlaceFirst", failing), ("PlaceSecond", failing));
+
+        var assertion = run.RunAssertion(session);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        var paths = assertion.AssertionAttachments.Select(attachment => attachment.Path).ToList();
+        Assert.That(paths, Has.Count.EqualTo(2).And.Unique.IgnoreCase);
+        Assert.That(paths, Has.One.Contains("PlaceFirst").And.One.Contains("PlaceSecond"));
+    }
+
+    [Test]
+    public async Task FiveProbesOfOneSession_RunInAboutTheTimeOfOne()
+    {
+        var run = new QaasRun();
+        var timer = Stopwatch.StartNew();
+        run.RunSession("One", Settings("AnimationFlow"));
+        var one = timer.Elapsed;
+
+        timer.Restart();
+        var session = await run.RunSessionAsync("Five",
+            [.. Enumerable.Range(1, 5).Select(index => ($"Probe{index}", Settings("AnimationFlow")))]);
+        var five = timer.Elapsed;
+
+        var assertion = run.RunAssertion(session);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(five, Is.LessThan(one * 3), $"one probe took {one.TotalMilliseconds:0} ms");
     }
 
     [Test]
