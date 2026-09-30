@@ -1,231 +1,261 @@
-# QaaS.Probes.Playwright
+# QaaS.Playwright
 
-Playwright browser automation probe for QaaS. Record browser flows, replay them as part of QaaS test sessions.
+Browser tests for QaaS. Record a flow in Chrome, get a C# class, and run it from a QaaS test with
+`PlaywrightFlowProbe`; `PlaywrightFlowAssertion` reports which flows passed and why one failed, with a screenshot.
 
-## Quick Start
+## Quick start
 
-### 1. Record a flow
+1. Record a flow (uses your installed Google Chrome):
+
+   ```bash
+   dotnet run --project QaaS.Playwright.Recorder
+   ```
+
+   Answer three questions, click through the site, close the browser. The flow is saved as `Flows/<Name>.cs`.
+   See [docs/RECORDING.md](docs/RECORDING.md).
+
+2. Reference the package from your QaaS test project:
+
+   ```xml
+   <PackageReference Include="QaaS.Playwright" Version="1.0.0" />
+   ```
+
+   Add `<WarningsAsErrors>CS4014</WarningsAsErrors>` to its `PropertyGroup` too: a flow that forgets to `await` a
+   Playwright call then fails the build, instead of passing before the call fails.
+
+3. Run the flow in a session and assert on it:
+
+   ```yaml
+   Sessions:
+     - Name: Checkout
+       Probes:
+         - Name: Browser
+           Probe: PlaywrightFlowProbe
+           ProbeConfiguration:
+             BaseUrl: https://my-app.com
+             SetupFlows: [LoginFlow]
+             Flows: [AddToCartFlow, CheckoutFlow]
+             FlowConfiguration:
+               LoginFlow:
+                 Username: smoke-user
+   Assertions:
+     - Name: CheckoutWorks
+       Assertion: PlaywrightFlowAssertion
+       SessionNames: [Checkout]
+   ```
+
+   ```bash
+   dotnet run -- run test.qaas.yaml
+   ```
+
+The probe opens `BaseUrl`, then runs `SetupFlows` and `Flows` in order on the same page. The first flow that fails
+stops the run, and so does an error page at `BaseUrl` (HTTP 400 or above), since flows starting there verify nothing. Each flow reads its own `FlowConfiguration:<FlowName>` section as typed settings; see
+[docs/EXAMPLES.md](docs/EXAMPLES.md).
+
+## Settings
+
+| Setting | Default | What it does |
+|---|---|---|
+| `BaseUrl` | required | The site. The probe opens it before the first flow. |
+| `SetupFlows`, `Flows` | none | Flow class names, run in that order on one page. |
+| `FlowConfiguration` | none | One section per flow, bound to that flow's settings record. |
+| `ForEach` | none | A DataSource: run `Flows` once per item it generates. See below. |
+| `Parallelism` | `1` | With `ForEach`, how many workers go through the items at the same time. |
+| `BrowserUrl` | `browser-defaults.yaml` | The Chrome to run in, over CDP. See below. |
+| `BrowserExecutablePath` | found automatically | The Chrome the probe starts for a `BrowserUrl` on this machine. |
+| `Headless` | `true` | Whether nobody is watching. See below. |
+| `BlockAssets` | `true` | Block images and fonts while `Headless`, for speed. |
+| `SlowMo` | `0`, or `2000` when `Headless: false` | Pause before each action, in ms. |
+| `KeepOpen` | `false` | Leave the page open in the Playwright inspector (`Headless: false`, in a terminal). |
+| `DefaultTimeout` | `30000` | The longest an action waits, in ms; `Expect(...)` keeps 5 s. See below. |
+| `ViewportWidth`, `ViewportHeight` | `1920`, `1080` | The page size, and so the failure screenshot's. |
+| `FullPageScreenshot` | `false` | Screenshot the whole page on failure, not only the viewport. |
+| `SaveStorageStatePath` | none | Save the login (cookies, localStorage) here after every flow passed. |
+| `LoadStorageStatePath` | none | Start already logged in from a saved file. |
+| `IsolateContext` | `true` | Run in a fresh browser context of its own; `false` shares the browser's. |
+| `EmulateDesktopPointer` | `false` | Make the page report a mouse. |
+
+A mistake in the settings fails the session before the browser opens, with one message that lists every problem and
+its path: a key that is no setting (`Flow:` for `Flows:`), a value that does not convert (`Headless: offf`), a single
+value where a list belongs (`Flows: LoginFlow`), a `${...}` placeholder QaaS left unresolved, a `FlowConfiguration`
+section of a flow that does not run, settings that do not work together, and every mistake in each flow's own settings
+(`FlowConfiguration:LoginFlow:Usernmae: not a setting (known: Username)`), nested ones included.
+
+### BrowserUrl
+
+`BrowserUrl` is a CDP endpoint: a Browserless pod such as `ws://chrome.<namespace>.svc.cluster.local:3000?token=...`
+(see [openshift/chrome.yaml](openshift/chrome.yaml)), or a Chrome on your machine such as `http://localhost:9222`.
+The default comes from `QaaS.Playwright/browser-defaults.yaml`, which is built into the package: edit it once when
+you fork, and every test inherits it.
+
+When the URL is on this machine and nothing answers there, the probe starts Chrome itself with the profile
+`~/.qaas/chrome-profile`. That Chrome keeps running, so later runs reuse it and its logins.
+
+To run a shared test against your own browser without editing it, use a QaaS placeholder and set an environment
+variable only on your machine:
+
+```yaml
+BrowserUrl: ${BROWSER_URL ?? ws://chrome.my-namespace.svc.cluster.local:3000?token=my-token}
+```
+
+### Headless
+
+`Headless` does not decide whether Chrome shows a window; that depends only on how Chrome was started. It says
+whether a person is watching: `true` blocks images and fonts for speed, `false` slows every action down (`SlowMo`)
+and allows `KeepOpen`. With `Headless: false` on a Chrome that runs headless, the probe warns that no window will
+appear.
+
+### Timeouts
+
+`DefaultTimeout` bounds each action: a click, a fill, a navigation, a locator's wait. An `Expect(...)` assertion
+keeps Playwright's own 5 s unless the flow gives it one, e.g.
+`await Expect(page.GetByText("Saved")).ToBeVisibleAsync(new() { Timeout = 15_000 });`. Neither bounds a whole flow: a
+flow that awaits something that never ends, such as a JavaScript promise that never settles, waits forever.
+
+### Logging in once: storage state
+
+A session that logs in can save its login, and later sessions can start from it:
+
+```yaml
+# A session with Stage: 1
+ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [LoginFlow], SaveStorageStatePath: state/admin.json }
+# Any number of sessions with Stage: 2, in parallel
+ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [OrdersFlow], LoadStorageStatePath: state/admin.json }
+```
+
+The file is written only after every flow passed, and atomically, so a reader never sees half of it. The saving
+session must finish first. sessionStorage is not saved. A file saved before the run started, e.g. because `-a` or a
+category filter skipped the saving session, is loaded with a warning that says how old it is.
+
+### IsolateContext
+
+Each run gets a fresh browser context of its own, disposed afterwards, so parallel sessions that log in as different
+users cannot overwrite each other's login, and do not wait for each other to render. `IsolateContext: false` shares
+the browser's default context instead, e.g. to reuse the logins of your local Chrome; the run then closes the page and
+pop-ups it opened, and no other. It is rejected with `ForEach`, where every worker needs a context of its own.
+
+**Upgrading:** runs used to share the default context. A session that relied on a login left there by an earlier
+stage must now save it with `SaveStorageStatePath` and load it with `LoadStorageStatePath`.
+
+### Mobile layout in a headless Chrome: EmulateDesktopPointer
+
+A headless Chrome started by hand reports no mouse, so responsive apps render their mobile layout: MUI date pickers,
+for one, become read-only fields with other labels than the recorder saw. The probe warns about it in every run.
+Fix it where Chrome starts:
+
 ```bash
-dotnet run --project QaaS.Probes.Playwright.Recorder
-```
-Uses your system Google Chrome — no extra browser to install.
-Interactive mode asks you: URL, flow name, where to save. A browser opens — click around, close it when done. A C# flow class is saved automatically.
-
-### 2. Use in your QaaS project
-
-Add the reference:
-```xml
-<PackageReference Include="QaaS.Probes.Playwright" Version="1.0.0" />
+google-chrome --headless=new --remote-debugging-port=9222 \
+  --blink-settings=primaryPointerType=4,availablePointerTypes=4,primaryHoverType=2,availableHoverTypes=2
 ```
 
-Add to your `test.qaas.yaml`:
-```yaml
-Sessions:
-  - Name: MySession
-    Probes:
-      - Name: BrowserFlow
-        Probe: PlaywrightFlowProbe
-        ProbeConfiguration:
-          BaseUrl: https://my-app.com
-          Flows: [LoginFlow]
-```
+or set `EmulateDesktopPointer: true`, which makes the page's `matchMedia` report a mouse before any script runs. It
+covers single `pointer`/`hover` queries from JavaScript (what MUI uses), not CSS media queries.
 
-Run:
-```bash
-dotnet run -- run test.qaas.yaml
-```
+## One flow per item: ForEach
 
-## Local vs Cluster Browser
-
-Controlled by the `ENV` environment variable.
-
-| `ENV` | Behavior |
-|---|---|
-| unset (or `cluster` / `remote`) | Connect via CDP to `RemoteBrowserUrl` (defaults to `BrowserDefaults.RemoteUrl`). Used in CI inside OpenShift. |
-| `local` | Attach to a local Chrome at `LocalBrowserUrl` (defaults to `http://localhost:9222`). Auto-launches Chrome from the standard install path if it isn't running. |
-
-Anything else (typos like `true`, `1`, etc.) throws — no silent fallthrough.
-
-`Headless: false` also forces local mode automatically (cluster Chrome runs in a headless container and can't show a window).
+To do the same thing for every item of a list, e.g. create the 50 missions a generator makes from a list in the
+YAML, pass the DataSource to the probe and name it in `ForEach`:
 
 ```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  Headless: false               # visible browser → local mode automatically + SlowMo 2000
-  Flows: [LoginFlow]
-  # Optional overrides:
-  # RemoteBrowserUrl: ws://chrome.<other-ns>.svc:3000?token=...
-  # LocalBrowserUrl:  http://localhost:9222
-  # BrowserExecutablePath: C:\Program Files\Google\Chrome\Application\chrome.exe
+Probes:
+  - Name: CreateMissions
+    Probe: PlaywrightFlowProbe
+    DataSourceNames: [Missions]
+    ProbeConfiguration:
+      BaseUrl: https://app
+      SetupFlows: [LoginFlow]      # once per worker
+      Flows: [CreateMissionFlow]   # once per item
+      ForEach: Missions
+      Parallelism: 5               # workers at the same time (default 1)
 ```
 
-**Local mode notes**
-- Chrome opens with a dedicated profile at `~/.qaas/chrome-profile`. Persistent — log in once per site, sessions stay between runs. (Chrome 136+ blocks `--remote-debugging-port` on your default Chrome profile, so we use a separate one.)
-- The probe attaches to the existing default context (your cookies/sessions), not an incognito-like new context.
-- On Linux/macOS, Chrome is launched via `nohup … &` so it survives the test process.
-
-## Built-in defaults — single source of truth
-
-Org-wide defaults live in **`QaaS.Probes.Playwright/browser-defaults.yaml`** (embedded into the NuGet at build time). Edit once when forking, rebuild, and every consuming repo inherits the new values automatically.
-
-```yaml
-# browser-defaults.yaml
-RemoteBrowserUrl: "ws://chrome.<your-namespace>.svc.cluster.local:3000?token=<your-token>"
-LocalBrowserUrl:  "http://localhost:9222"
-ChromeChannel:    chrome
-RecorderViewport: "1920,1080"
-LocalStartupTimeoutSeconds: 60
-```
-
-Replace `<your-namespace>` and `<your-token>` with your real values. The token must match the `TOKEN` env in `openshift/chrome.yaml`. Per-test `ProbeConfiguration` (in your `test.qaas.yaml`) can still override any URL on a case-by-case basis.
-
-## Passing Configuration
-
-Each flow has a typed config record. Add properties, reference them in the flow, pass values from YAML:
+The flow reads its item as `Item`, the item's body as JSON (`Item.Deserialize<T>()` gives a typed record), and
+its position as `ItemIndex`. Both are null without `ForEach`.
 
 ```csharp
-public class LoginFlow : BasePlaywrightFlow<LoginFlowConfig>
+public sealed class CreateMissionFlow : BasePlaywrightFlow<CreateMissionFlowConfig>
 {
     public override async Task RunAsync(IPage page)
     {
-        await page.GetByLabel("Username").FillAsync(Configuration.Username);
-        await page.GetByLabel("Password").FillAsync(Configuration.Password);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Login" }).ClickAsync();
+        await page.GotoAsync($"{BaseUrl}/missions/new");
+        await page.GetByLabel("Name").FillAsync(Item!["Name"]!.GetValue<string>());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
     }
 }
-
-public record LoginFlowConfig
-{
-    public string Username { get; set; } = null!;
-    public string Password { get; set; } = null!;
-}
 ```
 
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  Flows: [LoginFlow]
-  FlowConfiguration:
-    LoginFlow:
-      Username: admin
-      Password: secret123
-```
+Each worker opens a browser context of its own, runs `SetupFlows` once, then takes the next item until none is
+left. Every item is reported on its own, e.g. `CreateMissionFlow[17]`, with its time in the log. A failed item gets
+its screenshot, and its worker goes back to `BaseUrl` and carries on; a worker whose `SetupFlows` fail stops, and the
+others take its items. The session fails if any item or worker failed, and says which, and when the DataSource
+produced no items at all. `SaveStorageStatePath` and `IsolateContext: false` are rejected with `ForEach`, and
+`KeepOpen` is ignored with a warning.
 
-Uses QaaS's `BindToObject<T>()` — supports nested objects, arrays, dictionaries, enums, validation attributes. Same mechanism as all QaaS hooks.
+## Many cases, fast
 
-## Multiple Flows with Separate Configs
+- Isolation is the default: each session works in a browser context of its own, so sessions in one stage run truly
+  in parallel and never share a login. In a benchmark, ten parallel sessions took 5.1 s instead of 17.8 s, and none
+  failed instead of 39%.
+- Log in once and reuse it: one session saves the login with `SaveStorageStatePath`, and the sessions after it load
+  it with `LoadStorageStatePath` and skip their login flow (see "Logging in once" above). Measured: 15% faster over
+  50 cases, and 6.1 s instead of 10.0 s for three sessions in one case. A saved login lasts only as long as the
+  app's own session does.
+- All runs in a process share one Playwright driver and one connection per browser, and `BlockAssets` keeps the
+  browser's HTTP cache, so the app's bundle is not downloaded again on every page.
 
-Each flow gets its own section under FlowConfiguration:
+## What the assertion checks
 
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  SetupFlows: [LoginFlow]
-  Flows: [AddTodosFlow, CompleteTodosFlow, DeleteCompletedFlow]
-  FlowConfiguration:
-    LoginFlow:
-      Username: admin
-      Password: secret
-    AddTodosFlow:
-      Items: [Buy groceries, Walk the dog, Write QaaS probe]
-    CompleteTodosFlow:
-      ItemsToComplete: [Buy groceries]
-    DeleteCompletedFlow:
-      ExpectedRemaining: 2
-```
+`PlaywrightFlowAssertion` has no settings. It fails when:
 
-All flows share one browser — login cookies carry to subsequent flows.
+- a flow failed. The message names the flow, the reason, the element it waited for and the page URL, e.g.
+  `CheckoutFlow failed (1/2 flows passed): Timeout 30000ms exceeded (waiting for GetByRole(AriaRole.Button, new() { Name = "Pay" })) on https://my-app.com/cart. Passed: LoginFlow.`
+  An exception's innermost cause is added (`Checkout failed caused by: card declined`), and a crashed page is named
+  as the reason rather than the timeout after it. The trace has the whole exception, with its call log and stack,
+  and names the session and probe of each flow when there are several; the page's screenshot is attached, or the
+  trace says why none could be taken;
+- a session recorded a failure, e.g. a mistake in the settings, or the browser could not be reached;
+- nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe, or
+  an `assert` command after a separate `act`, see below).
 
-## Complex Configuration (Arrays of Objects)
+Every warning the probes logged, such as a browser without a mouse, is listed under `Warnings:` at the end of the
+trace, passing or not, and the message says how many there are.
 
-Same pattern as `CreateRabbitMqExchanges` with its `Exchanges[]` array:
+## Traps in QaaS 4.8
 
-```csharp
-public record CreateMissionsFlowConfig
-{
-    public MissionConfig[]? Missions { get; set; }
-}
+The probe works around what it can: it checks its settings itself and fails the session on a mistake, since QaaS
+binds a wrong value as a default, only warns about unknown keys and never sees a probe's validation errors; and
+parallel probes take turns reading a DataSource, which QaaS would generate once for each. The rest is up to the
+suite:
 
-public record MissionConfig
-{
-    public string Name { get; set; } = null!;
-    public string Priority { get; set; } = null!;
-    public TeamConfig Team { get; set; } = null!;
-}
+- Every Playwright session needs a `PlaywrightFlowAssertion` that selects it: a failed session no assertion selects,
+  or a run without assertions, exits 0. A `SessionNames` entry that matches no session crashes the run (exit 134)
+  with no Allure result.
+- Failing cases add up to the exit code, so 256 failed cases exit 0 on Linux. End the suite's `Main` with
+  `return Bootstrap.New(args).RunAndGetExitCode() == 0 ? 0 : 1;`.
+- `act` and then `assert` as two commands: flow outcomes live in memory, so the assertion sees none. Use `run`.
+- An action `Stage` inside one session is launch order, not a wait for the earlier actions to finish. Put dependent
+  browser steps in one probe's `SetupFlows` and `Flows`, or in sessions with different session `Stage`s.
+- A case file overrides lists by index, so a shorter `Flows` keeps the base's extra entries: base `[A, B, C]` and
+  case `[X]` run `[X, B, C]`.
+- Environment variables override the YAML, and even `-r`; `--no-env` turns that off. `$${...}` is not an escape.
+- An empty `-c` folder exits 0 without running anything, and one case with a bad hook stops every case.
+- References prefix DataSource names, but not the probe's `DataSourceNames`.
+- Failure screenshots reach Allure as `application/octet-stream`, since QaaS takes an attachment's type only from
+  its `SerializationType`: Allure offers them as downloads instead of showing them inline.
 
-public record TeamConfig
-{
-    public string Lead { get; set; } = null!;
-    public string[] Members { get; set; } = [];
-}
-```
-
-```yaml
-FlowConfiguration:
-  CreateMissionsFlow:
-    Missions:
-      - Name: Alpha Strike
-        Priority: High
-        Team:
-          Lead: John
-          Members: [Alice, Bob]
-```
-
-## Environments
-
-Change one line to switch environments:
-
-```yaml
-BaseUrl: https://staging.my-app.com   # staging
-BaseUrl: https://my-app.com           # production
-```
-
-Or use QaaS overwrite arguments:
-```bash
-dotnet run -- run test.qaas.yaml -r ProbeConfiguration:BaseUrl=https://staging.my-app.com
-```
-
-## Debugging
-
-Set `Headless: false` to watch the browser. Everything adjusts automatically:
-
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://my-app.com
-  Headless: false
-  KeepOpen: true
-  Flows: [LoginFlow]
-```
-
-- Browser becomes visible
-- 1 second delay between flows so you can watch
-- Images and CSS load normally
-- Browser stays open after completion
-
-## Configuration Reference
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `BaseUrl` | *(required)* | Target URL — probe navigates here first |
-| `Flows` | `[]` | Flow class names to run in order |
-| `SetupFlows` | `[]` | Flows that run once before main flows (login, etc) |
-| `FlowConfiguration` | `{}` | Per-flow config sections, bound via `BindToObject<T>()` |
-| `Headless` | `true` | Invisible browser. `false` = visible + auto SlowMo |
-| `KeepOpen` | `false` | Keep browser open (only with `Headless: false`) |
-| `SlowMo` | `0` | Delay (ms) between every Playwright action. Auto 2000 when Headless=false |
-| `BlockAssets` | `true` | Block images/fonts in headless mode |
-| `DisableAnimations` | `true` | Kill CSS animations in headless mode |
-| `DefaultTimeout` | `30000` | Max ms to wait for elements |
-
-## Build & Test
+## Build and test
 
 ```bash
-dotnet restore QaaS.Probes.Playwright.slnx
-dotnet build QaaS.Probes.Playwright.slnx -c Release
-dotnet test QaaS.Probes.Playwright.slnx -c Release
+dotnet build
+dotnet test
+dotnet test --filter TestCategory!=EndToEnd   # skip the tests that start Chrome
 ```
 
-## Documentation
+The `EndToEnd` tests run the real probe and assertion against a headless Chrome they start and stop themselves, and
+a small web app served in-process. They take a few seconds, and are skipped when Chrome is not installed.
 
-- [RECORDING.md](RECORDING.md) — How to record and parameterize flows
-- [QAAS-CONTEXT.md](QAAS-CONTEXT.md) — QaaS platform context for developers
+## More
+
+- [docs/RECORDING.md](docs/RECORDING.md): recording and parameterizing flows
+- [docs/EXAMPLES.md](docs/EXAMPLES.md): complete flows and YAML to copy
+- [docs/QAAS-CONTEXT.md](docs/QAAS-CONTEXT.md): how QaaS hooks work and where this plugin fits

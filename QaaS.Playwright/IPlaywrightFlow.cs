@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
@@ -6,32 +7,32 @@ using QaaS.Framework.SDK.ContextObjects;
 namespace QaaS.Playwright;
 
 /// <summary>
-/// Contract for a browser flow. The probe discovers implementations by class name (the same pattern as QaaS's
-/// HookProvider) and calls <see cref="RunAsync"/> with an active Playwright page.
-///
-/// Implement flows by inheriting <see cref="BasePlaywrightFlow{TConfiguration}"/> rather than this interface.
+/// A browser flow, found by class name and run by <see cref="PlaywrightFlowProbe"/>. Inherit
+/// <see cref="BasePlaywrightFlow{TConfiguration}"/> rather than implementing this directly.
 /// </summary>
 public interface IPlaywrightFlow
 {
-    /// <summary>QaaS execution context — provides the logger and run-scoped shared state.</summary>
+    /// <summary>The QaaS context: the logger and the run's shared state.</summary>
     Context Context { get; set; }
 
-    /// <summary>
-    /// The base URL from the probe's configuration. The probe navigates the (shared) page here once, before the
-    /// first flow; use it to build URLs so the same flow works across environments.
-    /// </summary>
+    /// <summary>The probe's BaseUrl; build URLs from it so a flow works in every environment.</summary>
     string BaseUrl { get; set; }
 
     /// <summary>
-    /// Called by the probe before <see cref="RunAsync"/>. Binds the flow's <c>FlowConfiguration</c> section to its
-    /// typed configuration record and validates it.
+    /// With ForEach, the DataSource item this run is for, as JSON; otherwise null. Implement it (BasePlaywrightFlow
+    /// does) to receive the item; the default ignores it, so existing implementations still compile.
     /// </summary>
-    /// <returns>Validation failures, or an empty/null list when the configuration is valid.</returns>
+    JsonNode? Item { get => null; set { } }
+
+    /// <summary>With ForEach, the item's position in the DataSource, from 0; otherwise null.</summary>
+    int? ItemIndex { get => null; set { } }
+
+    /// <summary>Binds the flow's <c>FlowConfiguration:&lt;FlowName&gt;</c> section; returns what is invalid in it.</summary>
     List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration);
 
     /// <summary>
-    /// Runs the browser flow. All flows in a probe run share one page in order, so cookies and session state
-    /// persist; the page is wherever the previous flow left it (the first flow starts on <see cref="BaseUrl"/>).
+    /// Runs the flow. A probe's flows run in order on one page, so each starts where the previous one left off and
+    /// the first starts on BaseUrl.
     /// </summary>
     Task RunAsync(IPage page);
 }

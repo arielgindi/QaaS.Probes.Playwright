@@ -1,0 +1,422 @@
+using System.Diagnostics;
+using System.Text.Json.Nodes;
+using QaaS.Playwright.Browser;
+using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
+
+namespace QaaS.Playwright.Tests.EndToEnd;
+
+/// <summary>The real probe and assertion against a real headless Chrome and a local web app.</summary>
+[TestFixture]
+[Category("EndToEnd")]
+public class ProbeEndToEndTests
+{
+    private TestSite _site = null!;
+    private HeadlessChrome _chrome = null!;
+    private HeadlessChrome _chromeWithoutMouse = null!;
+    private string _tempDir = null!;
+
+    [OneTimeSetUp]
+    public async Task StartChromeAndSite()
+    {
+        // Started with the flags the docs recommend, so it reports a mouse like a desktop browser.
+        _chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        _chromeWithoutMouse = await HeadlessChrome.StartAsync();
+        _site = TestSite.Start();
+        _tempDir = Directory.CreateTempSubdirectory("qaas-e2e-").FullName;
+    }
+
+    [OneTimeTearDown]
+    public void StopChromeAndSite()
+    {
+        _chrome?.Dispose();
+        _chromeWithoutMouse?.Dispose();
+        _site?.Dispose();
+        if (_tempDir is not null) Directory.Delete(_tempDir, recursive: true);
+    }
+
+    [Test]
+    public void PassingFlows_PassTheAssertion_AndAreNamed()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckUserFlow", "SubmitOrderFlow");
+        settings["SetupFlows:0"] = "LogInFlow";
+        settings["FlowConfiguration:LogInFlow:User"] = "alice";
+        settings["FlowConfiguration:CheckUserFlow:User"] = "alice";
+
+        var assertion = run.RunAssertion(run.RunSession("Journey", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionMessage,
+            Is.EqualTo("All 3 Playwright flow(s) passed: LogInFlow, CheckUserFlow, SubmitOrderFlow."));
+    }
+
+    [Test]
+    public void MisspelledFlowsKey_FailsTheSessionBeforeTheBrowserOpens()
+    {
+        var run = new QaasRun();
+        var settings = Settings();
+        settings["Flow:0"] = "SubmitOrderFlow";
+
+        var session = run.RunSession("Typo", settings);
+        var assertion = run.RunAssertion(session);
+
+        Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo(
+            "ProbeConfiguration has 2 problem(s):\n" +
+            "  - Flow: not a setting (known: BaseUrl, SetupFlows, Flows, ForEach, Parallelism, Headless, BlockAssets, " +
+            "DefaultTimeout, ViewportWidth, ViewportHeight, FullPageScreenshot, SlowMo, KeepOpen, SaveStorageStatePath, " +
+            "LoadStorageStatePath, IsolateContext, EmulateDesktopPointer, BrowserUrl, BrowserExecutablePath, " +
+            "FlowConfiguration)\n" +
+            "  - Flows: nothing to run: Flows and SetupFlows are both empty"));
+        Assert.That(run.Log.Messages, Has.None.StartsWith("Navigating to"));
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Does.StartWith("1 session failure(s): ProbeConfiguration has 2 problem(s)"));
+    }
+
+    [Test]
+    public void FailingFlow_HeadlineNamesTheElementAndThePage()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow", "PlaceMissingOrderFlow");
+        settings["DefaultTimeout"] = "1000";
+
+        var assertion = run.RunAssertion(run.RunSession("Failing", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "PlaceMissingOrderFlow failed (1/2 flows passed): Timeout 1000ms exceeded " +
+            $"(waiting for GetByRole(AriaRole.Button, new() {{ Name = \"Place order\" }})) on {_site.Url}/order. " +
+            "Passed: SubmitOrderFlow."));
+        Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1), "the failure screenshot");
+    }
+
+    [TestCase("DeclinedCheckoutFlow", "Checkout failed caused by: Payment provider declined card: ACCOUNT_DISABLED")]
+    [TestCase("EmptyMessageFlow", "InvalidOperationException")]
+    public void FailingFlow_HeadlineGivesTheRealReason_TraceTheWholeException(string flow, string reason)
+    {
+        var run = new QaasRun();
+
+        var assertion = run.RunAssertion(run.RunSession("Reasons", Settings(flow)));
+
+        Assert.That(assertion.AssertionMessage, Does.StartWith($"{flow} failed (0/1 flows passed): {reason} on "));
+        Assert.That(assertion.AssertionTrace, Does.Contain($"at QaaS.Playwright.Tests.EndToEnd.{flow}.RunAsync"));
+    }
+
+    [Test]
+    public async Task PageCrash_IsTheReason_NotTheTimeoutAfterIt()
+    {
+        using var chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        var run = new QaasRun();
+        var settings = Settings("CrashingFlow");
+        settings["BrowserUrl"] = chrome.Url;
+
+        var assertion = run.RunAssertion(run.RunSession("Crash", settings));
+
+        Assert.That(assertion.AssertionMessage, Does.StartWith("CrashingFlow failed (0/1 flows passed): The page crashed on "));
+        Assert.That(assertion.AssertionTrace, Does.Contain("No screenshot: the page crashed").And.Contains("Timeout 1000ms"));
+    }
+
+    [Test]
+    public void BaseUrlAnsweringAnError_FailsTheSession()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["BaseUrl"] = $"{_site.Url}/error";
+
+        var session = run.RunSession("Broken", settings);
+
+        Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo($"BaseUrl {_site.Url}/error answered HTTP 500."));
+    }
+
+    [Test]
+    public void GetByTestId_ResolvesDataTestId()
+    {
+        var run = new QaasRun();
+
+        var assertion = run.RunAssertion(run.RunSession("TestId", Settings("SubmitOrderFlow")));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void SavedStorageState_LetsALaterRunSkipTheLogin()
+    {
+        var run = new QaasRun();
+        var statePath = Path.Combine(_tempDir, "carol.json");
+        var login = Settings("LogInFlow");
+        login["FlowConfiguration:LogInFlow:User"] = "carol";
+        login["SaveStorageStatePath"] = statePath;
+        var reuse = Settings("CheckUserFlow");
+        reuse["FlowConfiguration:CheckUserFlow:User"] = "carol";
+        reuse["LoadStorageStatePath"] = statePath;
+
+        var loggedIn = run.RunSession("Login", login);
+        var reused = run.RunSession("Reuse", reuse);
+
+        var assertion = run.RunAssertion(loggedIn, reused);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void SavedLoginFromBeforeThisRun_IsWarnedAboutInTheReport()
+    {
+        // e.g. -a or a category filter skipped the session that saves it, so an old login would be reused.
+        var run = new QaasRun();
+        var statePath = Path.Combine(_tempDir, "old.json");
+        File.WriteAllText(statePath, """{"cookies":[],"origins":[]}""");
+        File.SetLastWriteTimeUtc(statePath, DateTime.UtcNow.AddHours(-3));
+        var settings = Settings("SubmitOrderFlow");
+        settings["LoadStorageStatePath"] = statePath;
+
+        var assertion = run.RunAssertion(run.RunSession("OldLogin", settings));
+
+        Assert.That(assertion.AssertionTrace, Does.Contain($"'{statePath}' was saved 3 h ago, before this run"));
+    }
+
+    [Test]
+    [Repeat(3)]
+    public async Task ParallelSessionsAsDifferentUsers_NeverMixUp()
+    {
+        string[] users = ["ann", "ben", "cat", "dan"];
+        var run = new QaasRun();
+        LogInFlow.AllLoggedIn = new Barrier(users.Length);
+        try
+        {
+            var sessions = await run.RunSessionsInParallelAsync(users.Select(user => (user, LogInAndCheck(user))));
+
+            var assertion = run.RunAssertion(sessions);
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        }
+        finally
+        {
+            LogInFlow.AllLoggedIn = null;
+        }
+
+        Dictionary<string, string?> LogInAndCheck(string user)
+        {
+            var settings = Settings("LogInFlow", "CheckUserFlow");
+            settings["FlowConfiguration:LogInFlow:User"] = user;
+            settings["FlowConfiguration:CheckUserFlow:User"] = user;
+            return settings;
+        }
+    }
+
+    [Test]
+    public void BrowserWithoutMouse_IsWarnedAboutInTheReport()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["BrowserUrl"] = _chromeWithoutMouse.Url;
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "none";
+
+        var assertion = run.RunAssertion(run.RunSession("NoMouse", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionTrace, Does.Contain("NoMouse: The browser reports no mouse (pointer: none)")
+            .And.Contains(DesktopPointer.LaunchFlags));
+    }
+
+    [Test]
+    public void HeadlessFalse_OnAHeadlessChrome_IsWarnedAboutInTheReport()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["Headless"] = "false";
+        settings["SlowMo"] = "0";
+
+        var assertion = run.RunAssertion(run.RunSession("Watched", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionTrace, Does.Contain("Headless: false, but the Chrome at").And.Contains("runs headless"));
+    }
+
+    [Test]
+    public void KeepOpen_WhileHeadless_IsIgnoredWithAWarningInTheReport()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["KeepOpen"] = "true";
+
+        var assertion = run.RunAssertion(run.RunSession("KeepOpen", settings));
+
+        Assert.That(assertion.AssertionMessage, Does.EndWith("1 warning(s), see the trace."));
+        Assert.That(assertion.AssertionTrace, Does.Contain("KeepOpen: KeepOpen ignored: it needs Headless: false"));
+    }
+
+    [Test]
+    public void EmulateDesktopPointer_MakesPointerFineMatch()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["BrowserUrl"] = _chromeWithoutMouse.Url;
+        settings["EmulateDesktopPointer"] = "true";
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "fine";
+
+        var assertion = run.RunAssertion(run.RunSession("EmulatedMouse", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void ChromeStartedWithTheLaunchFlags_ReportsAMouse()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "fine";
+
+        var assertion = run.RunAssertion(run.RunSession("DesktopFlags", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void IsolateContextFalse_SharesTheBrowsersDefaultContext()
+    {
+        var run = new QaasRun();
+        var logIn = Settings("LogInFlow");
+        logIn["IsolateContext"] = "false";
+        logIn["FlowConfiguration:LogInFlow:User"] = "eve";
+        var shared = Settings("CheckUserFlow");
+        shared["IsolateContext"] = "false";
+        shared["FlowConfiguration:CheckUserFlow:User"] = "eve";
+        var isolated = Settings("CheckUserFlow");
+        isolated["FlowConfiguration:CheckUserFlow:User"] = "nobody";
+
+        var sessions = new[]
+        {
+            run.RunSession("LogIn", logIn), run.RunSession("Shared", shared), run.RunSession("Isolated", isolated),
+        };
+
+        var assertion = run.RunAssertion(sessions);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public async Task IsolateContextFalse_ClosesThePopupsTheRunOpened_AndNoOtherPage()
+    {
+        using var http = new HttpClient();
+        var existing = JsonNode.Parse(await (await http.PutAsync($"{_chrome.Url}/json/new?{_site.Url}/whoami", null))
+            .Content.ReadAsStringAsync())!["id"]!.GetValue<string>();
+        try
+        {
+            var run = new QaasRun();
+            var settings = Settings("OpenPopupsFlow");
+            settings["IsolateContext"] = "false";
+
+            var assertion = run.RunAssertion(run.RunSession("Popups", settings));
+
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+            var sitePages = JsonNode.Parse(await http.GetStringAsync($"{_chrome.Url}/json/list"))!.AsArray()
+                .Where(target => target!["url"]!.GetValue<string>().StartsWith(_site.Url))
+                .Select(target => target!["id"]!.GetValue<string>());
+            Assert.That(sitePages, Is.EqualTo(new[] { existing }), "the page, its pop-up and the pop-up's pop-up are closed");
+        }
+        finally
+        {
+            await http.GetAsync($"{_chrome.Url}/json/close/{existing}");
+        }
+    }
+
+    [Test]
+    public void BlockAssets_BlocksImages_AndKeepsTheHttpCache()
+    {
+        var run = new QaasRun();
+        var blocked = Settings("CheckImageFlow", "SubmitOrderFlow");
+        blocked["FlowConfiguration:CheckImageFlow:Expected"] = "blocked";
+        var loaded = Settings("CheckImageFlow");
+        loaded["BlockAssets"] = "false";
+        loaded["FlowConfiguration:CheckImageFlow:Expected"] = "loaded";
+        var downloadsBefore = _site.ScriptDownloads;
+
+        var assertion = run.RunAssertion(run.RunSession("Blocked", blocked), run.RunSession("Loaded", loaded));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(_site.ScriptDownloads - downloadsBefore, Is.EqualTo(2), "one download per run, not per page load");
+    }
+
+    [Test]
+    public async Task TenProbesInParallel_AllPass()
+    {
+        var run = new QaasRun();
+
+        var sessions = await run.RunSessionsInParallelAsync(
+            Enumerable.Range(1, 10).Select(index => ($"Session{index}", Settings("SubmitOrderFlow"))));
+
+        var assertion = run.RunAssertion(sessions);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(assertion.AssertionMessage, Does.StartWith("All 10 Playwright flow(s) passed"));
+        Assert.That(run.Log.Messages.Count(message => message.StartsWith("Connecting to")), Is.AtMost(1),
+            "the runs share one connection");
+    }
+
+    [Test]
+    public async Task ProbesOfOneSession_FailingTheSameFlow_AttachDistinctScreenshots()
+    {
+        var run = new QaasRun();
+        var failing = Settings("PlaceMissingOrderFlow");
+        failing["DefaultTimeout"] = "1000";
+
+        var session = await run.RunSessionAsync("Orders",
+            ("Submit", Settings("SubmitOrderFlow")), ("PlaceFirst", failing), ("PlaceSecond", failing));
+
+        var assertion = run.RunAssertion(session);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        var paths = assertion.AssertionAttachments.Select(attachment => attachment.Path).ToList();
+        Assert.That(paths, Has.Count.EqualTo(2).And.Unique.IgnoreCase);
+        Assert.That(paths, Has.One.Contains("PlaceFirst").And.One.Contains("PlaceSecond"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("[FAIL]  Orders/PlaceFirst: PlaceMissingOrderFlow"));
+    }
+
+    [Test]
+    public async Task FiveProbesOfOneSession_RunInAboutTheTimeOfOne()
+    {
+        var run = new QaasRun();
+        var timer = Stopwatch.StartNew();
+        run.RunSession("One", Settings("AnimationFlow"));
+        var one = timer.Elapsed;
+
+        timer.Restart();
+        var session = await run.RunSessionAsync("Five",
+            [.. Enumerable.Range(1, 5).Select(index => ($"Probe{index}", Settings("AnimationFlow")))]);
+        var five = timer.Elapsed;
+
+        var assertion = run.RunAssertion(session);
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(five, Is.LessThan(one * 3), $"one probe took {one.TotalMilliseconds:0} ms");
+    }
+
+    [Test]
+    public async Task ChromeRestarted_TheNextRunReconnects()
+    {
+        var chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        try
+        {
+            var settings = Settings("SubmitOrderFlow");
+            settings["BrowserUrl"] = chrome.Url;
+            var before = new QaasRun();
+            before.RunSession("BeforeRestart", settings);
+
+            chrome = await chrome.RestartAsync();
+            var after = new QaasRun();
+            var assertion = after.RunAssertion(after.RunSession("AfterRestart", settings));
+
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+            Assert.That(after.Log.Messages, Has.One.StartsWith("Connecting to"));
+        }
+        finally
+        {
+            chrome.Dispose();
+        }
+    }
+
+    private Dictionary<string, string?> Settings(params string[] flows)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["BaseUrl"] = _site.Url,
+            ["BrowserUrl"] = _chrome.Url,
+            ["DefaultTimeout"] = "5000",
+        };
+        for (var index = 0; index < flows.Length; index++) settings[$"Flows:{index}"] = flows[index];
+        return settings;
+    }
+}

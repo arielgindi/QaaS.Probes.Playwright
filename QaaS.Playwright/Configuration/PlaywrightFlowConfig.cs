@@ -3,104 +3,97 @@ using System.ComponentModel.DataAnnotations;
 namespace QaaS.Playwright.Configuration;
 
 /// <summary>
-/// Probe-level configuration bound from the YAML <c>ProbeConfiguration</c> section.
-/// <c>FlowConfiguration</c> is deliberately not a property here — it is a sibling subsection passed to each
-/// flow's own typed config record.
+/// The probe's <c>ProbeConfiguration</c>. Its sibling <c>FlowConfiguration</c> section is not a setting here: each
+/// flow binds its own <c>FlowConfiguration:&lt;FlowName&gt;</c> part.
 /// </summary>
 public sealed class PlaywrightFlowConfig
 {
-    /// <summary>The site URL. The probe navigates here before running any flows.</summary>
+    internal const string FlowConfigurationKey = "FlowConfiguration";
+
+    /// <summary>The site to test. The probe opens it before the first flow.</summary>
     [Required]
     [Url]
     public string BaseUrl { get; set; } = null!;
 
-    /// <summary>
-    /// Whether the run is unattended. When true (default) the probe blocks asset requests and disables CSS
-    /// animations for speed; when false it forces local mode and applies slow-mo so a human can watch. This does
-    /// not change the actual headless mode of the remote/launched Chrome — that is decided by how Chrome started.
-    /// </summary>
-    public bool Headless { get; set; } = true;
-
-    /// <summary>Block images/fonts in headless mode for speed. Ignored when <see cref="Headless"/> is false.</summary>
-    public bool BlockAssets { get; set; } = true;
-
-    /// <summary>Disable CSS animations in headless mode to avoid flaky waits.</summary>
-    public bool DisableAnimations { get; set; } = true;
-
-    /// <summary>Maximum time (ms) for any single Playwright wait.</summary>
-    [Range(1, int.MaxValue)]
-    public int DefaultTimeout { get; set; } = 30_000;
-
-    /// <summary>
-    /// Browser viewport width in pixels. The probe sets this display size on the page before running the flows, and
-    /// failure screenshots are captured at exactly this size.
-    /// </summary>
-    [Range(1, 10_000)]
-    public int ViewportWidth { get; set; } = 1920;
-
-    /// <summary>
-    /// Browser viewport height in pixels. The probe sets this display size on the page before running the flows, and
-    /// failure screenshots are captured at exactly this size.
-    /// </summary>
-    [Range(1, 10_000)]
-    public int ViewportHeight { get; set; } = 1080;
-
-    /// <summary>
-    /// Capture the full scrollable document in failure screenshots instead of just the viewport. Defaults to false,
-    /// so a screenshot is exactly the configured <see cref="ViewportWidth"/>×<see cref="ViewportHeight"/> display.
-    /// </summary>
-    public bool FullPageScreenshot { get; set; }
-
-    /// <summary>
-    /// Delay (ms) Playwright waits between every action so a human can watch. Leave unset to use the default
-    /// (2000 in visible mode, 0 headless); set it explicitly — including 0 — to override.
-    /// </summary>
-    [Range(0, int.MaxValue)]
-    public int? SlowMo { get; set; }
-
-    /// <summary>
-    /// Keep the page open for interactive inspection after the flows finish (visible + interactive runs only).
-    /// </summary>
-    public bool KeepOpen { get; set; }
-
-    /// <summary>Flows that run once before <see cref="Flows"/> (login, cookie consent, etc.). Null means none.</summary>
+    /// <summary>Flows that run first, e.g. a login. Class names of IPlaywrightFlow implementations.</summary>
     public string[]? SetupFlows { get; set; }
 
-    /// <summary>Main flows to run in order — class names of types implementing IPlaywrightFlow. Null means none.</summary>
+    /// <summary>Flows that run after SetupFlows, in order, on the same page.</summary>
     public string[]? Flows { get; set; }
 
     /// <summary>
-    /// When set, the browser context's authentication state (cookies + localStorage) is written to this path after
-    /// the flows succeed. Pair it with <see cref="LoadStorageStatePath"/> in other sessions to log in once and reuse
-    /// the session — including across sessions that run in parallel. The session that saves must finish before the
-    /// sessions that load it start. sessionStorage is not captured (a Playwright storage-state limitation).
+    /// The name of a DataSource passed to the probe (DataSourceNames): Flows then run once per item it generates, and
+    /// read the item as Item. SetupFlows run once per worker, in its own browser context.
+    /// </summary>
+    public string? ForEach { get; set; }
+
+    /// <summary>With ForEach, how many workers go through the items at the same time.</summary>
+    [Range(1, int.MaxValue)]
+    public int Parallelism { get; set; } = 1;
+
+    /// <summary>
+    /// Whether nobody is watching. True blocks images and fonts for speed; false slows each action down (see SlowMo)
+    /// so a person can follow. Whether Chrome shows a window depends only on how Chrome was started.
+    /// </summary>
+    public bool Headless { get; set; } = true;
+
+    /// <summary>Block images and fonts while Headless, for speed.</summary>
+    public bool BlockAssets { get; set; } = true;
+
+    /// <summary>
+    /// The longest a Playwright action (a click, a fill, a navigation) waits, in milliseconds. <c>Expect(...)</c>
+    /// assertions keep Playwright's own 5 s unless the flow gives them a timeout.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int DefaultTimeout { get; set; } = 30_000;
+
+    /// <summary>The page's width in pixels, and so the failure screenshot's.</summary>
+    [Range(1, 10_000)]
+    public int ViewportWidth { get; set; } = 1920;
+
+    /// <summary>The page's height in pixels, and so the failure screenshot's.</summary>
+    [Range(1, 10_000)]
+    public int ViewportHeight { get; set; } = 1080;
+
+    /// <summary>Screenshot the whole scrollable page on failure, not just the viewport.</summary>
+    public bool FullPageScreenshot { get; set; }
+
+    /// <summary>A pause before each action, in milliseconds. Unset: 0 when Headless, 2000 otherwise.</summary>
+    [Range(0, int.MaxValue)]
+    public int? SlowMo { get; set; }
+
+    /// <summary>Leave the page open in the Playwright inspector after the flows (Headless: false, in a terminal).</summary>
+    public bool KeepOpen { get; set; }
+
+    /// <summary>
+    /// Save the context's cookies and localStorage here after every flow passed, for other sessions to load with
+    /// LoadStorageStatePath. sessionStorage is not saved.
     /// </summary>
     public string? SaveStorageStatePath { get; set; }
 
-    /// <summary>
-    /// When set, the run starts in a fresh context seeded with the authentication state previously written to this
-    /// path by a <see cref="SaveStorageStatePath"/> run, so it begins already logged in and can omit the login flow.
-    /// The file must already exist when the run starts.
-    /// </summary>
+    /// <summary>Start in a fresh context seeded from this file, already logged in. The file must exist.</summary>
     public string? LoadStorageStatePath { get; set; }
 
     /// <summary>
-    /// CDP endpoint of the cluster Chromium, used in the default (cluster) mode — for example
-    /// <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=&lt;token&gt;</c>. Required when neither
-    /// <c>ENV=local</c> nor <see cref="Headless"/>=false selects local mode; falls back to browser-defaults.yaml.
+    /// Run in a fresh context of its own, disposed afterwards, so parallel sessions can neither overwrite each other's
+    /// login nor wait for each other to render. False shares the browser's default context, e.g. to reuse the logins
+    /// of a local Chrome.
     /// </summary>
-    public string? RemoteBrowserUrl { get; set; }
+    public bool IsolateContext { get; set; } = true;
 
     /// <summary>
-    /// CDP endpoint of a Chrome on the developer's machine, used when <c>ENV=local</c> (or <see cref="Headless"/>
-    /// is false). Defaults to <c>http://localhost:9222</c>; the probe auto-launches Chrome at this port if it is
-    /// not already running.
+    /// Make matchMedia report a mouse, for a Chrome that reports none (a headless Chrome started by hand), so
+    /// responsive apps render their desktop layout. CSS media queries need the Chrome flags the probe's warning names.
     /// </summary>
-    public string? LocalBrowserUrl { get; set; }
+    public bool EmulateDesktopPointer { get; set; }
 
     /// <summary>
-    /// Path to a Chrome binary, used as the launch target in local mode when Chrome is not in a standard install
-    /// location. Ignored in cluster mode.
+    /// The CDP endpoint of the Chrome to run in, e.g. <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=...</c>
+    /// or <c>http://localhost:9222</c>. Unset: the one in browser-defaults.yaml. When it is on this machine and
+    /// nothing answers there, the probe starts Chrome.
     /// </summary>
+    public string? BrowserUrl { get; set; }
+
+    /// <summary>The Chrome the probe starts for a BrowserUrl on this machine. Unset: found in the usual places.</summary>
     public string? BrowserExecutablePath { get; set; }
 }

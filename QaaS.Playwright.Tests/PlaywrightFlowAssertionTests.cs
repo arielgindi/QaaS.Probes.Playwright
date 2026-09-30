@@ -36,6 +36,24 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_ProbeWarnings_AreCountedInTheMessageAndListedInTheTrace()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("SignIn", Passed: true));
+        PlaywrightFlowResults.RecordWarning(context, "Journey", "The browser reports no mouse");
+        PlaywrightFlowResults.RecordWarning(context, "Journey", "The browser reports no mouse");
+        PlaywrightFlowResults.RecordWarning(context, null, "Probe is running outside a session");
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.True, "warnings do not fail the assertion");
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "All 1 Playwright flow(s) passed: SignIn. 2 warning(s), see the trace."));
+        Assert.That(assertion.AssertionTrace, Does.EndWith(
+            "Warnings:\n  - Journey: The browser reports no mouse\n  - (unscoped): Probe is running outside a session"));
+    }
+
+    [Test]
     public void Assert_FlowFailed_NamesTheFlowAndAttachesItsScreenshot()
     {
         var (assertion, context) = NewAssertion();
@@ -58,6 +76,77 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_SameFlowFailedInTwoSessions_NamesEachScreenshotAfterItsSession()
+    {
+        // Two attachments with one path make the Allure reporter abort the whole run.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Ui 1", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1]));
+        PlaywrightFlowResults.Record(context, "Ui 2", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [2]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Ui 1" }, new SessionData { Name = "Ui 2" }), NoDataSources);
+
+        string[] expected = ["Ui_1-Login-failure.png", "Ui_2-Login-failure.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Assert_SameFlowFailedInTwoProbesOfOneSession_NamesEachScreenshotAfterItsProbe()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Leave",
+            new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1], ProbeName: "Employee"));
+        PlaywrightFlowResults.Record(context, "Leave",
+            new PlaywrightFlowOutcome("Login", Passed: false, "boom", [2], ProbeName: "Manager"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Leave" }), NoDataSources);
+
+        string[] expected = ["Leave-Employee-Login-failure.png", "Leave-Manager-Login-failure.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Assert_ScreenshotsThatWouldShareAPath_GetUniquePaths()
+    {
+        // Probes of one session under a runner that does not name them; the reporter compares paths ignoring case.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Login", Passed: false, "a", [1]));
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("LOGIN", Passed: false, "b", [2]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        string[] expected = ["Journey-Login-failure.png", "Journey-LOGIN-failure-2.png"];
+        Assert.That(assertion.AssertionAttachments.Select(attachment => attachment.Path), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Assert_LongOrNonAsciiNames_GiveShortAsciiScreenshotNamesThatStayApart()
+    {
+        // Valid session and probe names; joined whole they made a file name the Allure reporter could not write.
+        var (assertion, context) = NewAssertion();
+        string longSession = new('s', 160), unicodeSession = new('界', 70), probe = new('p', 100);
+        foreach (var session in new[] { longSession, longSession + "2", unicodeSession })
+            PlaywrightFlowResults.Record(context, session, new("Login", false, "boom", [1], ProbeName: probe));
+
+        assertion.Assert(Sessions(
+            new SessionData { Name = longSession }, new SessionData { Name = longSession + "2" },
+            new SessionData { Name = unicodeSession }), NoDataSources);
+
+        var paths = assertion.AssertionAttachments.Select(attachment => attachment.Path).ToList();
+        Assert.That(paths, Has.Count.EqualTo(3).And.Unique.IgnoreCase);
+        Assert.That(paths, Has.All.Length.LessThanOrEqualTo(120).And.All.Match(@"^[A-Za-z0-9_-]+\.png$"));
+        Assert.That(paths[0], Does.StartWith($"{new string('s', 30)}-{new string('p', 30)}-Login-failure-"));
+        var directory = Directory.CreateTempSubdirectory("qaas-attachments-");
+        try
+        {
+            Assert.DoesNotThrow(() => paths.ForEach(path => File.WriteAllBytes(Path.Combine(directory.FullName, path), [1])));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Test]
     public void Assert_FlowFailed_MessageIsAOneLinerWithoutTheCallLog()
     {
         var (assertion, context) = NewAssertion();
@@ -73,6 +162,36 @@ public class PlaywrightFlowAssertionTests
         Assert.That(assertion.AssertionMessage, Does.Not.Contain("Call log"), "the call log belongs in the trace");
         Assert.That(assertion.AssertionMessage, Does.Not.Contain("\n"), "the headline must stay on one line");
         Assert.That(assertion.AssertionMessage, Does.Contain("Passed: SignIn"));
+    }
+
+    [Test]
+    public void Assert_FlowTimedOut_HeadlineNamesTheElementItWaitedForAndThePage()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("PlaceOrder", Passed: false,
+            "Timeout 3000ms exceeded.\nCall log:\n  - waiting for GetByRole(AriaRole.Button, new() { Name = \"Place order\" })\n",
+            FailureUrl: "http://app.test/orders"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(assertion.AssertionMessage, Is.EqualTo(
+            "PlaceOrder failed (0/1 flows passed): Timeout 3000ms exceeded " +
+            "(waiting for GetByRole(AriaRole.Button, new() { Name = \"Place order\" })) on http://app.test/orders. Passed: none."));
+        Assert.That(assertion.AssertionTrace, Does.Contain("Page: http://app.test/orders"));
+    }
+
+    [Test]
+    public void Assert_ExpectFailed_HeadlineNamesTheElementFromItsCallLog()
+    {
+        // An Expect() call log opens with the assertion step; the element is on a later line.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Todo", Passed: false,
+            "Locator expected to be visible\nCall log:\n  - Expect \"ToBeVisibleAsync\" with timeout 5000ms\n" +
+            "  - waiting for GetByText(\"Saved\")\n"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(assertion.AssertionMessage, Does.Contain("Locator expected to be visible (waiting for GetByText(\"Saved\"))."));
     }
 
     [Test]
@@ -93,6 +212,40 @@ public class PlaywrightFlowAssertionTests
         Assert.That(trace, Does.Contain("Call log"), "the full detail (incl. call log) lives in the trace");
         Assert.That(trace, Does.Not.Contain("✓").And.Not.Contain("✗").And.Not.Contain("──"),
             "no decorative glyphs that mojibake in logs/CI");
+    }
+
+    [Test]
+    public void Assert_FlowFailed_TraceHasTheWholeFailure_AndNotTheSessionFailureRepeatingIt()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Pay", Passed: false,
+            "Checkout failed caused by: card declined", FailureUrl: "http://app/pay",
+            FailureDetail: "No screenshot: page closed\n" +
+                           "System.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
+        var session = new SessionData
+        {
+            Name = "Journey",
+            SessionFailures = [new ActionFailure { Name = "Browser", Reason = new Reason { Message = "Checkout failed" } }],
+        };
+
+        assertion.Assert(Sessions(session), NoDataSources);
+
+        Assert.That(assertion.AssertionTrace, Does.EndWith(
+            "---- Pay failed ----\nPage: http://app/pay\nNo screenshot: page closed\n" +
+            "System.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
+    }
+
+    [Test]
+    public void Assert_SeveralSessionsAndProbes_TraceNamesWhereEachFlowRan()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Buyer", new PlaywrightFlowOutcome("Login", Passed: true, ProbeName: "Web"));
+        PlaywrightFlowResults.Record(context, "Seller", new PlaywrightFlowOutcome("Login", Passed: false, "boom"));
+
+        assertion.Assert(Sessions(new SessionData { Name = "Buyer" }, new SessionData { Name = "Seller" }), NoDataSources);
+
+        Assert.That(assertion.AssertionTrace, Does.Contain("[PASS]  Buyer/Web: Login\n  [FAIL]  Seller: Login")
+            .And.Contains("---- Seller: Login failed ----"));
     }
 
     [Test]
@@ -132,15 +285,123 @@ public class PlaywrightFlowAssertionTests
     }
 
     [Test]
+    public void Assert_SessionRanNoFlow_FailsAndNamesTheSession()
+    {
+        // e.g. an empty Flows list, a misspelled 'Flow:' key, or a session without a probe.
+        var (assertion, _) = NewAssertion();
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.False, "a session that ran no flow verified nothing");
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Failed));
+        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Journey").And.Contains("nothing was verified"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("---- nothing verified ----").And.Contains("Likely causes"));
+    }
+
+    [Test]
+    public void Assert_OneOfTwoSessionsRanNoFlow_FailsAndNamesOnlyThatSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "Ui", new PlaywrightFlowOutcome("SignIn", Passed: true));
+
+        var passed = assertion.Assert(
+            Sessions(new SessionData { Name = "Ui" }, new SessionData { Name = "Forgotten" }), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("session(s) Forgotten,").And.Contains("Passed: SignIn"));
+        Assert.That(assertion.AssertionMessage, Does.Not.Contain("Ui,"));
+    }
+
+    [Test]
+    public void Assert_NoSessionAttached_Fails()
+    {
+        var (assertion, _) = NewAssertion();
+
+        var passed = assertion.Assert(Sessions(), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("No session is attached"));
+        Assert.That(assertion.AssertionTrace, Does.Contain("SessionNames"));
+    }
+
+    [Test]
+    public void Assert_SessionFailedBeforeItsFirstFlow_IsReportedAsASessionFailureOnly()
+    {
+        var (assertion, _) = NewAssertion();
+        var session = new SessionData
+        {
+            Name = "Journey",
+            SessionFailures = [new ActionFailure { Name = "Probe", Reason = new Reason { Message = "connection refused" } }],
+        };
+
+        var passed = assertion.Assert(Sessions(session), NoDataSources);
+
+        Assert.That(passed, Is.False);
+        Assert.That(assertion.AssertionMessage, Does.Contain("connection refused").And.Not.Contains("nothing was verified"));
+    }
+
+    [Test]
+    public void Assert_UnscopedOutcomes_CountForEveryAttachedSession()
+    {
+        // A probe that ran outside a session scope cannot say which session it belongs to, so its passing flows
+        // must not make an attached session look as if it ran nothing.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: true));
+
+        var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
+
+        Assert.That(passed, Is.True);
+    }
+
+    [Test]
+    public void Assert_UnscopedOutcomes_DoNotVerifyAnAssertionWithNoSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(), NoDataSources), Is.False);
+    }
+
+    [Test]
     public void Assert_OutcomesRecordedWithoutASessionScope_AreStillReported()
     {
         var (assertion, context) = NewAssertion();
-        PlaywrightFlowResults.Record(
-            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: false, "boom"));
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: false, "boom"));
 
         var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
 
         Assert.That(passed, Is.False, "a missing session scope must degrade gracefully, not silently pass");
         Assert.That(assertion.AssertionMessage, Does.Contain("Todo"));
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_DoesNotFailAnotherSession()
+    {
+        // "(unscoped)" is a valid session name; its outcomes are that session's alone.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: false, "boom"));
+        PlaywrightFlowResults.Record(context, "Other", new PlaywrightFlowOutcome("Verify", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(new SessionData { Name = "Other" }), NoDataSources), Is.True);
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_DoesNotVerifyAnotherSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(new SessionData { Name = "Empty" }), NoDataSources), Is.False);
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_ReportsItsFlowOnce()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "(unscoped)" }), NoDataSources);
+
+        Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1));
     }
 }

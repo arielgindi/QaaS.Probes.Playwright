@@ -1,0 +1,202 @@
+# QaaS Platform Context
+
+This document explains the QaaS (Quality-as-a-Service) platform and how this Playwright probe fits into it, for developers new to this codebase.
+
+## What is QaaS
+
+QaaS is a modular .NET 10.0 test automation platform built by TheSmokeTeam. It has:
+
+- **QaaS.Framework** — the core, provides hook interfaces and execution engine
+- **QaaS.Runner** — orchestrates test execution (sessions, publishers, consumers, probes, assertions)
+- **QaaS.Mocker** — orchestrates mock servers (HTTP, gRPC, Socket)
+- **QaaS.Common.*** — shared hook implementations (generators, assertions, probes, processors)
+
+Everything is configured via YAML. The C# code is the behavior; YAML is the configuration.
+
+## The hook system
+
+QaaS has four hook types. Every hook follows the same pattern: a C# class with a typed configuration record, discovered by class name, configured from YAML.
+
+| Hook | Interface | Purpose | Config Section |
+|------|-----------|---------|----------------|
+| Generator | `IGenerator` / `BaseGenerator<T>` | Produces test data | `GeneratorConfiguration:` |
+| Assertion | `IAssertion` / `BaseAssertion<T>` | Validates results | `AssertionConfiguration:` |
+| Probe | `IProbe` / `BaseProbe<T>` | Performs actions (setup/teardown) | `ProbeConfiguration:` |
+| Processor | `ITransactionProcessor` | Handles mocker responses | `ProcessorConfiguration:` |
+
+### How hooks work
+
+1. User writes YAML referencing the hook by class name
+2. QaaS Runner scans assemblies, finds the class
+3. Calls `LoadAndValidateConfiguration(IConfiguration)` — binds YAML to typed C# record
+4. Calls the hook's main method (`Generate`, `Assert`, `Run`, `Process`)
+
+### Config binding
+
+All hooks use `BindToObject<T>()` from `QaaS.Framework.Configurations`:
+```csharp
+Configuration = configuration.BindToObject<TConfiguration>(binderOptions, logger);
+```
+
+This converts YAML sections into C# objects. Supports:
+- Nested objects (`Team.Lead`)
+- Arrays (`string[]`, `MissionConfig[]`)
+- Dictionaries (`Dictionary<string, string>`)
+- Enums (from string)
+- Validation attributes (`[Required]`, `[Range]`, `[MinLength]`)
+
+## QaaS Runner YAML structure
+
+```yaml
+MetaData:
+  Team: MyTeam
+  System: MyApp
+
+DataSources:
+  - Name: TestData
+    Generator: FromCSV                    # ← Generator hook name
+    GeneratorConfiguration:               # ← Bound to FromCSVConfig
+      FileSystem:
+        Path: TestData
+
+Sessions:
+  - Name: MySession
+    Publishers:
+      - Name: SendMessages
+        DataSourceNames: [TestData]
+        RabbitMq:
+          Host: localhost
+          ExchangeName: input
+
+    Consumers:
+      - Name: ReceiveMessages
+        TimeoutMs: 5000
+        RabbitMq:
+          Host: localhost
+          ExchangeName: output
+
+    Probes:
+      - Name: SetupProbe
+        Probe: FlushAllRedis              # ← Probe hook name
+        ProbeConfiguration:               # ← Bound to RedisServerProbeConfig
+          HostNames: [localhost]
+
+Assertions:
+  - Name: CheckCounts
+    Assertion: HermeticByExpectedOutputCount   # ← Assertion hook name
+    SessionNames: [MySession]
+    AssertionConfiguration:                    # ← Bound to config record
+      OutputNames: [ReceiveMessages]
+      ExpectedCount: 100
+```
+
+## Existing probe examples
+
+### FlushAllRedis
+```csharp
+public class FlushAllRedis : BaseRedisProbeWithGlobalDict<RedisServerProbeConfig>
+{
+    protected override void RunRedisProbe()
+    {
+        RedisDb.Execute("FLUSHALL");
+    }
+}
+```
+
+### CreateRabbitMqExchanges
+```csharp
+public class CreateRabbitMqExchanges : BaseRabbitMqObjectsManipulation<CreateRabbitMqExchangesConfig, RabbitMqExchangeConfig>
+{
+    protected override IEnumerable<RabbitMqExchangeConfig> GetObjectsToManipulateConfigurations()
+        => Configuration.Exchanges!;
+
+    protected override void ManipulateObject(IChannel channel, RabbitMqExchangeConfig config)
+    {
+        channel.ExchangeDeclareAsync(config.Name!, config.Type.ToString(), config.Durable, config.AutoDelete, config.Arguments);
+    }
+}
+```
+
+Config with array of complex objects:
+```yaml
+ProbeConfiguration:
+  Host: localhost
+  Port: 5672
+  Exchanges:
+    - Name: my-exchange
+      Type: Fanout
+      Durable: true
+```
+
+## How our Playwright probe fits in
+
+Our probe follows the exact same pattern:
+
+| Aspect | Redis/RabbitMQ Probes | Our Playwright Probe |
+|--------|----------------------|---------------------|
+| Base class | `BaseProbe<T>` | `BaseProbe<PlaywrightFlowConfig>` |
+| YAML config | `ProbeConfiguration:` | `ProbeConfiguration:` |
+| Discovery | By class name | By class name |
+| Behavior | C# code | C# flow classes |
+| Config binding | `BindToObject<T>()` | `BindToObject<T>()` |
+
+The difference: our probe delegates to flow classes (which also use typed config). This is like how `CreateRabbitMqExchanges` iterates over `Exchanges[]` — except our "exchanges" are Playwright flow classes.
+
+## Key design decisions we made
+
+### Why C# flows instead of YAML
+- Every QaaS hook stores behavior in C#. No existing hook reads behavior from files.
+- C# gives compile-time safety, IDE support, full Playwright API.
+- YAML would require a step interpreter that can never cover all Playwright features.
+
+### Why BasePlaywrightFlow<T> instead of making each flow a full probe
+- One probe manages the browser side (connect, open the page, close it).
+- Flows focus on actions (click, fill, submit) — they don't manage browsers.
+- Multiple flows share one browser session (cookies persist across login → actions).
+
+### Why the probe checks its settings itself
+- QaaS 4.8 binds a value that does not convert as its type's default with only a warning, only warns about unknown
+  keys, passes an unresolved `${...}` through as text, and crashes on some shapes, such as a list where one value
+  belongs.
+- It also checks the errors a probe's `LoadAndValidateConfiguration` returns before it loads the probe, so it never
+  sees them.
+- So `StrictBinder` checks the raw configuration against the settings type, and the probe throws every problem when
+  it runs. A failed `Run` becomes a session failure the assertion reports; a throw while loading would stop the run
+  with no Allure result.
+- `FlowConfiguration` sits next to the probe's keys; the probe checks that each section belongs to a flow that runs,
+  and each flow checks its own section the same way when the probe loads.
+
+### Why the probe auto-navigates to BaseUrl
+- So flows don't hardcode URLs.
+- Switch environments by changing one YAML line.
+- Recorded flows can skip the GotoAsync or use BaseUrl for sub-pages.
+
+## NuGet packages involved
+
+```
+QaaS.Framework.SDK (1.4.0)            ← BaseProbe<T>, IProbe, Context, BinderOptions
+QaaS.Framework.Configurations (1.4.0) ← BindToObject<T>(), config binding
+Microsoft.Playwright (1.52.0)          ← Browser automation
+QaaS.Runner (4.3.0)                    ← Runner that executes the probe (referenced by test projects)
+```
+
+## Repo structure
+
+```
+QaaS.Playwright/                 The NuGet package
+  IPlaywrightFlow.cs, BasePlaywrightFlow.cs     What a flow implements
+  PlaywrightFlowProbe.cs         The probe: opens the page, runs the flows, records outcomes
+  PlaywrightFlowAssertion.cs     The assertion: reports the outcomes
+  PlaywrightFlowOutcome.cs, PlaywrightFlowResults.cs   The outcomes, and how they reach the assertion
+  Configuration/                 The probe's settings, and the strict check of settings
+  Browser/                       Connecting to Chrome, starting a local one, the page and context of a run
+  Flows/                         Finding flows by class name and running them
+  Reporting/                     The assertion's message and trace
+  browser-defaults.yaml          Built-in defaults (BrowserUrl, test-id attribute, ...)
+
+QaaS.Playwright.Recorder/        The recording CLI (wraps Playwright codegen)
+QaaS.Playwright.Tests/           NUnit tests; the folders mirror the library's
+  EndToEnd/                      The real probe and assertion against a headless Chrome
+docs/                            These documents
+openshift/chrome.yaml            A Browserless Chrome for the cluster
+```
