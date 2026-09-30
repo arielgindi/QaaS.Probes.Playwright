@@ -28,6 +28,19 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     public static async Task<BrowserSession> OpenAsync(PlaywrightFlowConfig config, ILogger logger)
     {
         var browser = await SharedBrowser.GetAsync(config, logger);
+        try
+        {
+            return await OpenAsync(browser, config, logger);
+        }
+        catch (PlaywrightException) when (!browser.IsConnected)
+        {
+            // It dropped after this run got it, e.g. because Chrome restarted just before: SharedBrowser connects again.
+            return await OpenAsync(await SharedBrowser.GetAsync(config, logger), config, logger);
+        }
+    }
+
+    private static async Task<BrowserSession> OpenAsync(IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
+    {
         var (context, ownsContext) = await OpenContextAsync(browser, config, logger);
         try
         {
