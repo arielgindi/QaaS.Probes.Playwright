@@ -13,7 +13,7 @@ namespace QaaS.Playwright.Flows;
 /// page's URL, then rethrown.
 /// </summary>
 internal sealed class FlowRunner(
-    Context context, string sessionName, string? probeName, PlaywrightFlowConfig config, IConfiguration flowConfiguration)
+    Context context, string? sessionName, string? probeName, PlaywrightFlowConfig config, IConfiguration flowConfiguration)
 {
     private const int ScreenshotTimeoutMs = 5_000;
 

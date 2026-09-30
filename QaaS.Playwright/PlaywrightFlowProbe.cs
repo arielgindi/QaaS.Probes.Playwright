@@ -127,13 +127,14 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         return problems;
     }
 
-    private string CurrentSessionName()
+    // Null outside a session.
+    private string? CurrentSessionName()
     {
         var sessionName = Activity.Current?.GetBaggageItem(SessionNameBaggageKey);
         if (!string.IsNullOrWhiteSpace(sessionName)) return sessionName;
 
         Context.Logger.LogWarning("Probe is running outside a session; its flow results are recorded as unscoped.");
-        return PlaywrightFlowResults.UnscopedSessionName;
+        return null;
     }
 
     private static bool IsInteractiveTerminal() =>

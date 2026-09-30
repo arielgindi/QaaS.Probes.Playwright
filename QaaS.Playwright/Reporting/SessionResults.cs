@@ -14,6 +14,9 @@ internal sealed record SessionResults(
     IReadOnlyList<ActionFailure> SessionFailures,
     IReadOnlyList<string> UnverifiedSessions)
 {
+    // How outcomes recorded outside a session are labelled; only a label, never a key they are looked up by.
+    private const string Unscoped = "(unscoped)";
+
     public IReadOnlyList<PlaywrightFlowOutcome> Outcomes { get; } = [.. SessionOutcomes.Select(entry => entry.Outcome)];
 
     public bool Passed =>
@@ -28,7 +31,7 @@ internal sealed record SessionResults(
 
         // Outcomes recorded without a session scope cannot be attributed to a session, so they count for every
         // attached one: a failure among them fails the assertion, and any of them means flows did run.
-        var unscoped = PlaywrightFlowResults.Read(context, PlaywrightFlowResults.UnscopedSessionName);
+        var unscoped = PlaywrightFlowResults.Read(context, sessionName: null);
         var unverified = recorded
             .Where(entry => unscoped.Count == 0 && entry.Outcomes.Count == 0 && entry.Session.SessionFailures.Count == 0)
             .Select(entry => entry.Session.Name);
@@ -37,7 +40,7 @@ internal sealed record SessionResults(
             [.. sessions.Select(session => session.Name)],
             [
                 .. recorded.SelectMany(entry => entry.Outcomes.Select(outcome => (entry.Session.Name, outcome))),
-                .. unscoped.Select(outcome => (PlaywrightFlowResults.UnscopedSessionName, outcome)),
+                .. unscoped.Select(outcome => (Unscoped, outcome)),
             ],
             [.. sessions.SelectMany(session => session.SessionFailures)],
             [.. unverified]);

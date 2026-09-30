@@ -55,8 +55,19 @@ public class PlaywrightFlowResultsTests
     public void Read_WhenAnotherComponentSquatsTheKey_ThrowsAClearError()
     {
         var context = NewContext();
-        context.InsertValueIntoGlobalDictionary(["PlaywrightFlowResults", "session"], "not a list of outcomes");
+        context.InsertValueIntoGlobalDictionary(["PlaywrightFlowResults", "Sessions", "session"], "not a list of outcomes");
 
         Assert.Throws<InvalidOperationException>(() => PlaywrightFlowResults.Read(context, "session"));
+    }
+
+    [Test]
+    public void Record_OutsideASession_IsApartFromASessionNamedLikeIt()
+    {
+        var context = NewContext();
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Unscoped", Passed: true));
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Scoped", Passed: true));
+
+        Assert.That(PlaywrightFlowResults.Read(context, null).Single().FlowName, Is.EqualTo("Unscoped"));
+        Assert.That(PlaywrightFlowResults.Read(context, "(unscoped)").Single().FlowName, Is.EqualTo("Scoped"));
     }
 }

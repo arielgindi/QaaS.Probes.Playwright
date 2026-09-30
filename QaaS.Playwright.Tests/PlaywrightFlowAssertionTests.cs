@@ -266,8 +266,7 @@ public class PlaywrightFlowAssertionTests
         // A probe that ran outside a session scope cannot say which session it belongs to, so its passing flows
         // must not make an attached session look as if it ran nothing.
         var (assertion, context) = NewAssertion();
-        PlaywrightFlowResults.Record(
-            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: true));
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: true));
 
         var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
 
@@ -278,8 +277,7 @@ public class PlaywrightFlowAssertionTests
     public void Assert_UnscopedOutcomes_DoNotVerifyAnAssertionWithNoSession()
     {
         var (assertion, context) = NewAssertion();
-        PlaywrightFlowResults.Record(
-            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: true));
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: true));
 
         Assert.That(assertion.Assert(Sessions(), NoDataSources), Is.False);
     }
@@ -288,12 +286,42 @@ public class PlaywrightFlowAssertionTests
     public void Assert_OutcomesRecordedWithoutASessionScope_AreStillReported()
     {
         var (assertion, context) = NewAssertion();
-        PlaywrightFlowResults.Record(
-            context, PlaywrightFlowResults.UnscopedSessionName, new PlaywrightFlowOutcome("Todo", Passed: false, "boom"));
+        PlaywrightFlowResults.Record(context, null, new PlaywrightFlowOutcome("Todo", Passed: false, "boom"));
 
         var passed = assertion.Assert(Sessions(new SessionData { Name = "Journey" }), NoDataSources);
 
         Assert.That(passed, Is.False, "a missing session scope must degrade gracefully, not silently pass");
         Assert.That(assertion.AssertionMessage, Does.Contain("Todo"));
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_DoesNotFailAnotherSession()
+    {
+        // "(unscoped)" is a valid session name; its outcomes are that session's alone.
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: false, "boom"));
+        PlaywrightFlowResults.Record(context, "Other", new PlaywrightFlowOutcome("Verify", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(new SessionData { Name = "Other" }), NoDataSources), Is.True);
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_DoesNotVerifyAnotherSession()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: true));
+
+        Assert.That(assertion.Assert(Sessions(new SessionData { Name = "Empty" }), NoDataSources), Is.False);
+    }
+
+    [Test]
+    public void Assert_ASessionNamedUnscoped_ReportsItsFlowOnce()
+    {
+        var (assertion, context) = NewAssertion();
+        PlaywrightFlowResults.Record(context, "(unscoped)", new PlaywrightFlowOutcome("Login", Passed: false, "boom", [1]));
+
+        assertion.Assert(Sessions(new SessionData { Name = "(unscoped)" }), NoDataSources);
+
+        Assert.That(assertion.AssertionAttachments, Has.Count.EqualTo(1));
     }
 }
