@@ -1,125 +1,88 @@
 # Examples
 
-## Example 1: TodoMVC — 3 flows, each with its own config
+## Flows with their own settings
 
-This is the working example in the `PlaywrightDemo/` folder.
+Three flows against the TodoMVC demo. Each reads its own `FlowConfiguration:<FlowName>` section.
 
-### Flows
-
-**AddTodosFlow.cs** — adds items from a config array:
 ```csharp
-public class AddTodosFlow : BasePlaywrightFlow<AddTodosFlowConfig>
+using Microsoft.Playwright;
+using QaaS.Playwright;
+using static Microsoft.Playwright.Assertions;
+
+public sealed class AddTodosFlow : BasePlaywrightFlow<AddTodosFlowConfig>
 {
     public override async Task RunAsync(IPage page)
     {
-        foreach (var todo in Configuration.Items!)
+        var newTodo = page.GetByPlaceholder("What needs to be done?");
+        foreach (var item in Configuration.Items)
         {
-            await page.GetByPlaceholder("What needs to be done?").FillAsync(todo);
-            await page.GetByPlaceholder("What needs to be done?").PressAsync("Enter");
+            await newTodo.FillAsync(item);
+            await newTodo.PressAsync("Enter");
         }
     }
 }
 
-public record AddTodosFlowConfig
+public sealed record AddTodosFlowConfig
 {
-    public string[]? Items { get; set; }
+    public string[] Items { get; init; } = [];
 }
-```
 
-**CompleteTodosFlow.cs** — checks off specific items:
-```csharp
-public class CompleteTodosFlow : BasePlaywrightFlow<CompleteTodosFlowConfig>
+public sealed class CompleteTodosFlow : BasePlaywrightFlow<CompleteTodosFlowConfig>
 {
     public override async Task RunAsync(IPage page)
     {
-        foreach (var todo in Configuration.ItemsToComplete!)
-        {
-            await page.GetByRole(AriaRole.Listitem)
-                .Filter(new() { HasText = todo })
-                .GetByRole(AriaRole.Checkbox)
-                .CheckAsync();
-        }
+        foreach (var item in Configuration.ItemsToComplete)
+            await page.GetByRole(AriaRole.Listitem).Filter(new() { HasText = item }).GetByRole(AriaRole.Checkbox).CheckAsync();
     }
 }
 
-public record CompleteTodosFlowConfig
+public sealed record CompleteTodosFlowConfig
 {
-    public string[]? ItemsToComplete { get; set; }
+    public string[] ItemsToComplete { get; init; } = [];
 }
-```
 
-**DeleteCompletedFlow.cs** — clears completed and verifies count:
-```csharp
-public class DeleteCompletedFlow : BasePlaywrightFlow<DeleteCompletedFlowConfig>
+public sealed class ClearCompletedFlow : BasePlaywrightFlow<ClearCompletedFlowConfig>
 {
     public override async Task RunAsync(IPage page)
     {
         await page.GetByRole(AriaRole.Button, new() { Name = "Clear completed" }).ClickAsync();
-
-        var remaining = await page.Locator(".todo-list li").CountAsync();
-        if (remaining != Configuration.ExpectedRemaining)
-            throw new Exception(
-                $"Expected {Configuration.ExpectedRemaining} remaining but found {remaining}");
+        await Expect(page.GetByTestId("todo-item")).ToHaveCountAsync(Configuration.ExpectedRemaining);
     }
 }
 
-public record DeleteCompletedFlowConfig
+public sealed record ClearCompletedFlowConfig
 {
-    public int ExpectedRemaining { get; set; }
+    public int ExpectedRemaining { get; init; }
 }
 ```
 
-### YAML
-
 ```yaml
-MetaData:
-  Team: Smoke
-  System: TodoMVC
-
 Sessions:
-  - Name: TodoWorkflow
+  - Name: Todos
     Probes:
       - Name: ManageTodos
         Probe: PlaywrightFlowProbe
         ProbeConfiguration:
           BaseUrl: https://demo.playwright.dev/todomvc/#/
-          Headless: false
-          KeepOpen: true
-          Flows: [AddTodosFlow, CompleteTodosFlow, DeleteCompletedFlow]
+          Flows: [AddTodosFlow, CompleteTodosFlow, ClearCompletedFlow]
           FlowConfiguration:
             AddTodosFlow:
-              Items:
-                - Buy groceries
-                - Walk the dog
-                - Write QaaS probe
-                - Deploy to production
-                - Go to sleep
+              Items: [Buy groceries, Walk the dog, Write the probe]
             CompleteTodosFlow:
-              ItemsToComplete:
-                - Buy groceries
-                - Write QaaS probe
-            DeleteCompletedFlow:
-              ExpectedRemaining: 3
+              ItemsToComplete: [Buy groceries]
+            ClearCompletedFlow:
+              ExpectedRemaining: 2
+Assertions:
+  - Name: TodosWork
+    Assertion: PlaywrightFlowAssertion
+    SessionNames: [Todos]
 ```
 
-### Run it
-```bash
-cd PlaywrightDemo/PlaywrightDemo
-dotnet run -- run test.qaas.yaml --no-process-exit
-```
+A flow fails by throwing; a Playwright `Expect(...)` that does not hold throws with a clear message.
 
-### What happens
-1. Browser opens at `https://demo.playwright.dev/todomvc/#/`
-2. **AddTodosFlow** types 5 todos, pressing Enter after each
-3. **CompleteTodosFlow** checks the checkbox on "Buy groceries" and "Write QaaS probe"
-4. **DeleteCompletedFlow** clicks "Clear completed", verifies 3 items remain
-5. Browser stays open for inspection
+## Log in first
 
----
-
-## Example 2: Login + Actions (setup flow pattern)
-
-When you need to login first, then do other things:
+`SetupFlows` run before `Flows` on the same page, so the flows after the login are logged in.
 
 ```yaml
 ProbeConfiguration:
@@ -127,63 +90,66 @@ ProbeConfiguration:
   SetupFlows: [LoginFlow]
   Flows: [CreateOrderFlow, VerifyOrderFlow]
   FlowConfiguration:
-    LoginFlow:
-      Username: admin
-      Password: secret
-    CreateOrderFlow:
-      ProductName: Widget Pro
-      Quantity: 3
-    VerifyOrderFlow:
-      ExpectedTotal: "$29.97"
+    LoginFlow: { Username: admin, Password: secret }
+    CreateOrderFlow: { ProductName: Widget Pro, Quantity: 3 }
+    VerifyOrderFlow: { ExpectedTotal: "$29.97" }
 ```
 
-- `SetupFlows` runs `LoginFlow` once — cookies are set
-- `Flows` runs `CreateOrderFlow` then `VerifyOrderFlow` — both see the logged-in session
+## Log in once for many sessions
 
----
+The first stage logs in and saves the login; the sessions of the next stage start from it and run in parallel.
 
-## Example 3: Complex nested config (missions with teams)
+```yaml
+Sessions:
+  - Name: Login
+    Stage: 1
+    Probes:
+      - Name: Browser
+        Probe: PlaywrightFlowProbe
+        ProbeConfiguration:
+          BaseUrl: https://my-app.com
+          Flows: [LoginFlow]
+          SaveStorageStatePath: state/admin.json
+  - Name: Orders
+    Stage: 2
+    Probes:
+      - Name: Browser
+        Probe: PlaywrightFlowProbe
+        ProbeConfiguration:
+          BaseUrl: https://my-app.com
+          Flows: [OrdersFlow]
+          LoadStorageStatePath: state/admin.json
+```
+
+## Parallel sessions as different users
+
+Sessions in one stage run at the same time. When they log in as different users, give each its own context:
+
+```yaml
+ProbeConfiguration:
+  BaseUrl: https://my-app.com
+  IsolateContext: true
+  SetupFlows: [LoginFlow]
+  Flows: [ApproveRequestFlow]
+  FlowConfiguration:
+    LoginFlow: { Username: manager }
+```
+
+## Nested settings
+
+Flow settings bind like any QaaS hook's: nested records, arrays and dictionaries work.
 
 ```csharp
-public class CreateMissionsFlow : BasePlaywrightFlow<CreateMissionsFlowConfig>
+public sealed record CreateMissionsFlowConfig
 {
-    public override async Task RunAsync(IPage page)
-    {
-        foreach (var mission in Configuration.Missions!)
-        {
-            await page.GetByRole(AriaRole.Button, new() { Name = "New Mission" }).ClickAsync();
-            await page.GetByLabel("Name").FillAsync(mission.Name);
-            await page.GetByLabel("Priority").SelectOptionAsync(mission.Priority);
-            await page.GetByLabel("Lead").FillAsync(mission.Team.Lead);
-
-            foreach (var member in mission.Team.Members)
-            {
-                await page.GetByLabel("Add Member").FillAsync(member);
-                await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
-            }
-
-            await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
-            await page.GetByText("Mission created").WaitForAsync();
-        }
-    }
+    public MissionConfig[] Missions { get; init; } = [];
 }
 
-public record CreateMissionsFlowConfig
+public sealed record MissionConfig
 {
-    public MissionConfig[]? Missions { get; set; }
-}
-
-public record MissionConfig
-{
-    public string Name { get; set; } = null!;
-    public string Priority { get; set; } = null!;
-    public TeamConfig Team { get; set; } = null!;
-}
-
-public record TeamConfig
-{
-    public string Lead { get; set; } = null!;
-    public string[] Members { get; set; } = [];
+    public string Name { get; init; } = "";
+    public string Priority { get; init; } = "";
+    public string[] Members { get; init; } = [];
 }
 ```
 
@@ -193,75 +159,29 @@ FlowConfiguration:
     Missions:
       - Name: Alpha Strike
         Priority: High
-        Team:
-          Lead: John
-          Members: [Alice, Bob]
+        Members: [Alice, Bob]
       - Name: Beta Recon
         Priority: Low
-        Team:
-          Lead: Jane
-          Members: [Charlie]
-      - Name: Gamma Patrol
-        Priority: Medium
-        Team:
-          Lead: Mike
-          Members: [Dave, Eve, Frank]
+        Members: [Charlie]
 ```
 
-Same pattern as QaaS's `CreateRabbitMqExchanges` with its `Exchanges[]` array. YAML auto-binds to the nested C# records.
+## Watching a run on your machine
 
----
+Point the probe at a Chrome on your machine; it starts one when nothing answers there, with a window.
 
-## Example 4: Headless production run
-
-For CI/CD — no browser window, fast execution:
-
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://production.my-app.com
-  Flows: [LoginFlow, SmokeTestFlow]
-  FlowConfiguration:
-    LoginFlow:
-      Username: smoke-user
-      Password: "${env:SMOKE_PASSWORD}"
-    SmokeTestFlow:
-      PagesToCheck:
-        - /dashboard
-        - /orders
-        - /settings
-```
-
-No `Headless` (defaults to true), no `KeepOpen`, no `SlowMo`. Runs in seconds. Images and fonts are blocked.
-
----
-
-## Example 5: Multiple environments
-
-Same flows, different YAML per environment:
-
-**test.staging.qaas.yaml:**
-```yaml
-ProbeConfiguration:
-  BaseUrl: https://staging.my-app.com
-  Flows: [LoginFlow, CreateOrderFlow]
-  FlowConfiguration:
-    LoginFlow:
-      Username: staging-user
-      Password: staging-pass
-```
-
-**test.production.qaas.yaml:**
 ```yaml
 ProbeConfiguration:
   BaseUrl: https://my-app.com
-  Flows: [LoginFlow, CreateOrderFlow]
-  FlowConfiguration:
-    LoginFlow:
-      Username: prod-smoke-user
-      Password: prod-smoke-pass
+  BrowserUrl: http://localhost:9222
+  Headless: false   # every action waits 2 s (SlowMo) so you can follow it
+  KeepOpen: true    # stay in the Playwright inspector afterwards
+  Flows: [LoginFlow]
 ```
 
-Or use QaaS overwrite arguments:
+## Another environment
+
+Change `BaseUrl` in the YAML, or override it on the command line by its full path:
+
 ```bash
-dotnet run -- run test.qaas.yaml -r ProbeConfiguration:BaseUrl=https://staging.my-app.com
+dotnet run -- run test.qaas.yaml -r Sessions:0:Probes:0:ProbeConfiguration:BaseUrl=https://staging.my-app.com
 ```

@@ -1,6 +1,6 @@
 # QaaS Platform Context
 
-This document explains the QaaS (Quality-as-a-Service) platform and how this Playwright probe fits into it. Written for developers (or AI models) working on this codebase for the first time.
+This document explains the QaaS (Quality-as-a-Service) platform and how this Playwright probe fits into it, for developers new to this codebase.
 
 ## What is QaaS
 
@@ -150,14 +150,15 @@ The difference: our probe delegates to flow classes (which also use typed config
 - YAML would require a step interpreter that can never cover all Playwright features.
 
 ### Why BasePlaywrightFlow<T> instead of making each flow a full probe
-- One probe manages the browser lifecycle (launch, navigate, dispose).
+- One probe manages the browser side (connect, open the page, close it).
 - Flows focus on actions (click, fill, submit) — they don't manage browsers.
 - Multiple flows share one browser session (cookies persist across login → actions).
 
 ### Why ErrorOnUnknownConfiguration = false on the probe
-- The YAML has `FlowConfiguration:` which is NOT a property on `PlaywrightFlowConfig`.
-- Without this, QaaS's binder throws on unknown keys.
-- The flow configs use `ErrorOnUnknownConfiguration = true` so typos ARE caught at the flow level.
+- The YAML has `FlowConfiguration:` next to the probe's own keys, and it is not a property of `PlaywrightFlowConfig`.
+- So the binder must accept unknown keys; instead the probe logs a warning for each key it does not know (a typo
+  such as `Flow:`) and for each `FlowConfiguration` section whose flow does not run.
+- Flow settings bind with `ErrorOnUnknownConfiguration = true`, for which the QaaS binder logs a warning.
 
 ### Why the probe auto-navigates to BaseUrl
 - So flows don't hardcode URLs.
@@ -176,18 +177,20 @@ QaaS.Runner (4.3.0)                    ← Runner that executes the probe (refer
 ## Repo structure
 
 ```
-QaaS.Probes.Playwright/          ← Shared NuGet package
-  IPlaywrightFlow.cs             ← Flow interface + base class
-  PlaywrightFlowProbe.cs         ← The QaaS probe
-  Configuration/                 ← Probe config model
-  Engine/                        ← Flow discovery
+QaaS.Playwright/                 The NuGet package
+  IPlaywrightFlow.cs, BasePlaywrightFlow.cs     What a flow implements
+  PlaywrightFlowProbe.cs         The probe: opens the page, runs the flows, records outcomes
+  PlaywrightFlowAssertion.cs     The assertion: reports the outcomes
+  PlaywrightFlowOutcome.cs, PlaywrightFlowResults.cs   The outcomes, and how they reach the assertion
+  Configuration/                 The probe's settings, and the check for unknown ones
+  Browser/                       Connecting to Chrome, starting a local one, the page and context of a run
+  Flows/                         Finding flows by class name and running them
+  Reporting/                     The assertion's message and trace
+  browser-defaults.yaml          Built-in defaults (BrowserUrl, test-id attribute, ...)
 
-QaaS.Probes.Playwright.Recorder/ ← CLI tool for recording
-  Program.cs                     ← Wraps Playwright codegen → C# class
-
-QaaS.Probes.Playwright.Tests/    ← NUnit tests
-
-PlaywrightDemo/                  ← Example project
-  test.qaas.yaml                 ← Example YAML config
-  Flows/                         ← Example flow classes
+QaaS.Playwright.Recorder/        The recording CLI (wraps Playwright codegen)
+QaaS.Playwright.Tests/           NUnit tests; the folders mirror the library's
+  EndToEnd/                      The real probe and assertion against a headless Chrome
+docs/                            These documents
+openshift/chrome.yaml            A Browserless Chrome for the cluster
 ```
