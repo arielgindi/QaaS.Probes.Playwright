@@ -64,7 +64,7 @@ stops the run, and so does an error page at `BaseUrl` (HTTP 400 or above), since
 | `BlockAssets` | `true` | Block images and fonts while `Headless`, for speed. |
 | `SlowMo` | `0`, or `2000` when `Headless: false` | Pause before each action, in ms. |
 | `KeepOpen` | `false` | Leave the page open in the Playwright inspector (`Headless: false`, in a terminal). |
-| `DefaultTimeout` | `30000` | The longest any action waits, in ms. |
+| `DefaultTimeout` | `30000` | The longest an action waits, in ms; `Expect(...)` keeps 5 s. See below. |
 | `ViewportWidth`, `ViewportHeight` | `1920`, `1080` | The page size, and so the failure screenshot's. |
 | `FullPageScreenshot` | `false` | Screenshot the whole page on failure, not only the viewport. |
 | `SaveStorageStatePath` | none | Save the login (cookies, localStorage) here after every flow passed. |
@@ -102,14 +102,21 @@ whether a person is watching: `true` blocks images and fonts for speed, `false` 
 and allows `KeepOpen`. With `Headless: false` on a Chrome that runs headless, the probe warns that no window will
 appear.
 
+### Timeouts
+
+`DefaultTimeout` bounds each action: a click, a fill, a navigation, a locator's wait. An `Expect(...)` assertion
+keeps Playwright's own 5 s unless the flow gives it one, e.g.
+`await Expect(page.GetByText("Saved")).ToBeVisibleAsync(new() { Timeout = 15_000 });`. Neither bounds a whole flow: a
+flow that awaits something that never ends, such as a JavaScript promise that never settles, waits forever.
+
 ### Logging in once: storage state
 
 A session that logs in can save its login, and later sessions can start from it:
 
 ```yaml
-# Stage 1
+# A session with Stage: 1
 ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [LoginFlow], SaveStorageStatePath: state/admin.json }
-# Stage 2, in any number of parallel sessions
+# Any number of sessions with Stage: 2, in parallel
 ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [OrdersFlow], LoadStorageStatePath: state/admin.json }
 ```
 
@@ -121,7 +128,8 @@ category filter skipped the saving session, is loaded with a warning that says h
 
 Each run gets a fresh browser context of its own, disposed afterwards, so parallel sessions that log in as different
 users cannot overwrite each other's login, and do not wait for each other to render. `IsolateContext: false` shares
-the browser's default context instead, e.g. to reuse the logins of your local Chrome.
+the browser's default context instead, e.g. to reuse the logins of your local Chrome; the run then closes the page and
+pop-ups it opened, and no other. It is rejected with `ForEach`, where every worker needs a context of its own.
 
 **Upgrading:** runs used to share the default context. A session that relied on a login left there by an earlier
 stage must now save it with `SaveStorageStatePath` and load it with `LoadStorageStatePath`.
@@ -203,10 +211,34 @@ produced no items at all. `SaveStorageStatePath` and `IsolateContext: false` are
   and names the session and probe of each flow when there are several; the page's screenshot is attached, or the
   trace says why none could be taken;
 - a session recorded a failure, e.g. a mistake in the settings, or the browser could not be reached;
-- nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe).
+- nothing was verified: no session is attached, or an attached session ran no flow (a session without the probe, or
+  an `assert` command after a separate `act`, see below).
 
 Every warning the probes logged, such as a browser without a mouse, is listed under `Warnings:` at the end of the
 trace, passing or not, and the message says how many there are.
+
+## Traps in QaaS 4.8
+
+The probe works around what it can: it checks its settings itself and fails the session on a mistake, since QaaS
+binds a wrong value as a default, only warns about unknown keys and never sees a probe's validation errors; and
+parallel probes take turns reading a DataSource, which QaaS would generate once for each. The rest is up to the
+suite:
+
+- Every Playwright session needs a `PlaywrightFlowAssertion` that selects it: a failed session no assertion selects,
+  or a run without assertions, exits 0. A `SessionNames` entry that matches no session crashes the run (exit 134)
+  with no Allure result.
+- Failing cases add up to the exit code, so 256 failed cases exit 0 on Linux. End the suite's `Main` with
+  `return Bootstrap.New(args).RunAndGetExitCode() == 0 ? 0 : 1;`.
+- `act` and then `assert` as two commands: flow outcomes live in memory, so the assertion sees none. Use `run`.
+- An action `Stage` inside one session is launch order, not a wait for the earlier actions to finish. Put dependent
+  browser steps in one probe's `SetupFlows` and `Flows`, or in sessions with different session `Stage`s.
+- A case file overrides lists by index, so a shorter `Flows` keeps the base's extra entries: base `[A, B, C]` and
+  case `[X]` run `[X, B, C]`.
+- Environment variables override the YAML, and even `-r`; `--no-env` turns that off. `$${...}` is not an escape.
+- An empty `-c` folder exits 0 without running anything, and one case with a bad hook stops every case.
+- References prefix DataSource names, but not the probe's `DataSourceNames`.
+- Failure screenshots reach Allure as `application/octet-stream`, since QaaS takes an attachment's type only from
+  its `SerializationType`: Allure offers them as downloads instead of showing them inline.
 
 ## Build and test
 

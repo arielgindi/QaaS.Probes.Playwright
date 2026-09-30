@@ -40,7 +40,10 @@ public sealed class PlaywrightFlowConfig
     /// <summary>Block images and fonts while Headless, for speed.</summary>
     public bool BlockAssets { get; set; } = true;
 
-    /// <summary>The longest any Playwright action waits, in milliseconds.</summary>
+    /// <summary>
+    /// The longest a Playwright action (a click, a fill, a navigation) waits, in milliseconds. <c>Expect(...)</c>
+    /// assertions keep Playwright's own 5 s unless the flow gives them a timeout.
+    /// </summary>
     [Range(1, int.MaxValue)]
     public int DefaultTimeout { get; set; } = 30_000;
 
