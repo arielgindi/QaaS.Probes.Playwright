@@ -1,3 +1,4 @@
+using QaaS.Playwright.Browser;
 using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
 
 namespace QaaS.Playwright.Tests.EndToEnd;
@@ -9,12 +10,15 @@ public class ProbeEndToEndTests
 {
     private TestSite _site = null!;
     private HeadlessChrome _chrome = null!;
+    private HeadlessChrome _chromeWithoutMouse = null!;
     private string _tempDir = null!;
 
     [OneTimeSetUp]
     public async Task StartChromeAndSite()
     {
-        _chrome = await HeadlessChrome.StartAsync();
+        // Started with the flags the docs recommend, so it reports a mouse like a desktop browser.
+        _chrome = await HeadlessChrome.StartAsync(DesktopPointer.LaunchFlags);
+        _chromeWithoutMouse = await HeadlessChrome.StartAsync();
         _site = TestSite.Start();
         _tempDir = Directory.CreateTempSubdirectory("qaas-e2e-").FullName;
     }
@@ -23,6 +27,7 @@ public class ProbeEndToEndTests
     public void StopChromeAndSite()
     {
         _chrome?.Dispose();
+        _chromeWithoutMouse?.Dispose();
         _site?.Dispose();
         if (_tempDir is not null) Directory.Delete(_tempDir, recursive: true);
     }
@@ -113,6 +118,48 @@ public class ProbeEndToEndTests
             settings["FlowConfiguration:CheckUserFlow:User"] = user;
             return settings;
         }
+    }
+
+    [Test]
+    public void BrowserWithoutMouse_IsWarnedAbout()
+    {
+        // The warning is logged once per process, so this must stay the only test that runs on the Chrome without a
+        // mouse and does not emulate one.
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["BrowserUrl"] = _chromeWithoutMouse.Url;
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "none";
+
+        var assertion = run.RunAssertion(run.RunSession("NoMouse", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+        Assert.That(run.Log.Warnings, Has.One.Contains("reports no mouse").And.Contains(DesktopPointer.LaunchFlags));
+    }
+
+    [Test]
+    public void EmulateDesktopPointer_MakesPointerFineMatch()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["BrowserUrl"] = _chromeWithoutMouse.Url;
+        settings["EmulateDesktopPointer"] = "true";
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "fine";
+
+        var assertion = run.RunAssertion(run.RunSession("EmulatedMouse", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void ChromeStartedWithTheLaunchFlags_ReportsAMouse()
+    {
+        var run = new QaasRun();
+        var settings = Settings("CheckPointerFlow");
+        settings["FlowConfiguration:CheckPointerFlow:Expected"] = "fine";
+
+        var assertion = run.RunAssertion(run.RunSession("DesktopFlags", settings));
+
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
     }
 
     [Test]

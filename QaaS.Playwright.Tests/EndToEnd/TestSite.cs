@@ -4,7 +4,10 @@ using System.Text;
 
 namespace QaaS.Playwright.Tests.EndToEnd;
 
-/// <summary>A tiny web app on a free local port: a cookie login, a whoami page and a page with a test-id button.</summary>
+/// <summary>
+/// A tiny web app on a free local port: a cookie login, a whoami page, a page with a test-id button and a page that
+/// reports the pointer the browser has.
+/// </summary>
 public sealed class TestSite : IDisposable
 {
     private readonly HttpListener _listener;
@@ -69,6 +72,10 @@ public sealed class TestSite : IDisposable
             "/order" => """
                 <button data-testid="submit-order" onclick="result.textContent = 'submitted'">Submit</button>
                 <p id="result"></p>
+                """,
+            "/pointer" => """
+                <p id="pointer"></p>
+                <script>pointer.textContent = ['fine', 'coarse', 'none'].find(type => matchMedia(`(pointer: ${type})`).matches);</script>
                 """,
             _ => "<h1>Home</h1>",
         };

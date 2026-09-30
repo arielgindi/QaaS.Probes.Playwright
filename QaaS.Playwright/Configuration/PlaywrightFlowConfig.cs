@@ -88,6 +88,13 @@ public sealed class PlaywrightFlowConfig
     public bool IsolateContext { get; set; }
 
     /// <summary>
+    /// Make the page's matchMedia report a mouse, for a Chrome that reports none (a headless Chrome started by hand), so
+    /// responsive apps render their desktop layout. CSS media queries are unaffected; for those, start Chrome with the
+    /// --blink-settings flags the probe's warning names.
+    /// </summary>
+    public bool EmulateDesktopPointer { get; set; }
+
+    /// <summary>
     /// CDP endpoint of the Chrome to run in, e.g. <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=...</c>
     /// or <c>http://localhost:9222</c>. Defaults to browser-defaults.yaml. When it is on this machine and nothing
     /// answers there, the probe starts Chrome. To use another browser on your machine only, write

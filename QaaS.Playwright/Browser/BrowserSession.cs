@@ -111,6 +111,9 @@ internal sealed class BrowserSession : IAsyncDisposable
         }
 
         if (config.Headless && config.BlockAssets) await page.RouteAsync(AssetPattern, route => route.AbortAsync());
+
+        if (config.EmulateDesktopPointer) await DesktopPointer.EmulateAsync(page);
+        else await DesktopPointer.WarnIfMissingAsync(page, logger);
     }
 
     private async Task TryAsync(string action, Func<Task> step)

@@ -10,6 +10,11 @@ public sealed record UserConfig
 
 public sealed record NoConfig;
 
+public sealed record PointerConfig
+{
+    public string Expected { get; init; } = "";
+}
+
 public sealed class LogInFlow : BasePlaywrightFlow<UserConfig>
 {
     /// <summary>
@@ -44,5 +49,14 @@ public sealed class SubmitOrderFlow : BasePlaywrightFlow<NoConfig>
         await page.GotoAsync($"{BaseUrl}/order");
         await page.GetByTestId("submit-order").ClickAsync();
         await Expect(page.Locator("#result")).ToHaveTextAsync("submitted");
+    }
+}
+
+public sealed class CheckPointerFlow : BasePlaywrightFlow<PointerConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.GotoAsync($"{BaseUrl}/pointer");
+        await Expect(page.Locator("#pointer")).ToHaveTextAsync(Configuration.Expected);
     }
 }
