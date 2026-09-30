@@ -171,9 +171,10 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     private static async Task WarnIfHeadlessAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)
     {
         var userAgent = await page.EvaluateAsync<string>("() => navigator.userAgent");
-        if (userAgent.Contains("HeadlessChrome", StringComparison.Ordinal))
-            logger.LogWarning("Headless: false, but the Chrome at {Url} runs headless, so no window will appear. " +
-                              "Start one with a window to watch the run.", BrowserUrl.Redact(BrowserConnector.UrlOf(config)));
+        if (!userAgent.Contains("HeadlessChrome", StringComparison.Ordinal)) return;
+
+        logger.LogWarning("Headless: false, but the Chrome at {Url} runs headless, so no window will appear. Start one " +
+                          "with a window to watch the run.", BrowserUrl.Redact(BrowserConnector.UrlOf(config)));
     }
 
     // Through CDP rather than a Playwright route: a route turns off the HTTP cache and holds every request for the

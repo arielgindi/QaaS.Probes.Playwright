@@ -25,7 +25,8 @@ public class BrowserSessionTests
         var context = (await SharedBrowser.GetAsync(config, new ListLogger())).Contexts[0];
         var pagesBefore = context.Pages.Count;
 
-        var failure = Assert.ThrowsAsync<InvalidOperationException>(() => BrowserSession.OpenAsync(config, new FailingOnWarning()));
+        var failure = Assert.ThrowsAsync<InvalidOperationException>(
+            () => BrowserSession.OpenAsync(config, new FailingOnWarning()));
 
         Assert.That(failure!.Message, Does.StartWith("Setup failed on: The browser reports no mouse"));
         Assert.That(context.Pages, Has.Count.EqualTo(pagesBefore));
@@ -56,7 +57,8 @@ public class BrowserSessionTests
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            if (logLevel == LogLevel.Warning) throw new InvalidOperationException($"Setup failed on: {formatter(state, exception)}");
+            if (logLevel == LogLevel.Warning)
+                throw new InvalidOperationException($"Setup failed on: {formatter(state, exception)}");
         }
     }
 }

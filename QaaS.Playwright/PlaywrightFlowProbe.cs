@@ -15,7 +15,8 @@ namespace QaaS.Playwright;
 
 /// <summary>
 /// Opens a page on BaseUrl, runs SetupFlows and then Flows on it in order, and records each flow's outcome for
-/// <see cref="PlaywrightFlowAssertion"/>. The first failing flow stops the run and fails the session.
+/// <see cref="PlaywrightFlowAssertion"/>. The first failing flow stops the run and fails the session; so does any
+/// mistake in the settings, before the browser opens.
 /// </summary>
 public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
 {
@@ -33,8 +34,9 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     /// </summary>
     public override List<ValidationResult>? LoadAndValidateConfiguration(IConfiguration configuration)
     {
-        var flowConfigurationKey = PlaywrightFlowConfig.FlowConfigurationKey;
-        (Configuration, var bindProblems) = StrictBinder.Bind<PlaywrightFlowConfig>(configuration, "", flowConfigurationKey);
+        const string flowConfigurationKey = PlaywrightFlowConfig.FlowConfigurationKey;
+        (Configuration, var bindProblems) =
+            StrictBinder.Bind<PlaywrightFlowConfig>(configuration, "", flowConfigurationKey);
         _flowConfiguration = configuration.GetSection(flowConfigurationKey);
 
         // The first problem found at a path is the most precise: "removed: use BrowserUrl" beats "not a setting".

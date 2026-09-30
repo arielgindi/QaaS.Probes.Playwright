@@ -13,7 +13,7 @@ internal static class FlowReport
     private const string NoDetail = "(no failure detail)";
     private const string NoSessionAttached = "No session is attached to this assertion, so nothing was verified";
 
-    /// <summary>What failed and why, which sessions ran no flow, which flows passed, and how many warnings there are.</summary>
+    /// <summary>What failed and why, which sessions ran no flow, which flows passed, and how many warnings came.</summary>
     public static string Message(SessionResults results)
     {
         var warnings = results.Warnings.Count > 0 ? $" {results.Warnings.Count} warning(s), see the trace." : "";

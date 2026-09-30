@@ -142,8 +142,8 @@ public sealed class CrashingFlow : BasePlaywrightFlow<NoConfig>
     {
         var chrome = await page.Context.Browser!.NewBrowserCDPSessionAsync();
         var processes = (await chrome.SendAsync("SystemInfo.getProcessInfo"))!.Value.GetProperty("processInfo");
-        foreach (var process in processes.EnumerateArray().Where(process => process.GetProperty("type").GetString() == "renderer"))
-            Process.GetProcessById(process.GetProperty("id").GetInt32()).Kill();
+        var renderers = processes.EnumerateArray().Where(process => process.GetProperty("type").GetString() == "renderer");
+        foreach (var renderer in renderers) Process.GetProcessById(renderer.GetProperty("id").GetInt32()).Kill();
 
         await page.Locator("h1").ClickAsync(new() { Timeout = 1000 });
     }

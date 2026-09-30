@@ -220,7 +220,8 @@ public class PlaywrightFlowAssertionTests
         var (assertion, context) = NewAssertion();
         PlaywrightFlowResults.Record(context, "Journey", new PlaywrightFlowOutcome("Pay", Passed: false,
             "Checkout failed caused by: card declined", FailureUrl: "http://app/pay",
-            FailureDetail: "No screenshot: page closed\nSystem.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
+            FailureDetail: "No screenshot: page closed\n" +
+                           "System.InvalidOperationException: Checkout failed\n   at Pay.RunAsync()"));
         var session = new SessionData
         {
             Name = "Journey",

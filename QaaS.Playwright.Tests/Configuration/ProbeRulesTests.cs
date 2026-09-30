@@ -38,7 +38,8 @@ public class ProbeRulesTests
 
     [Test]
     public void Broken_NoFlowAtAll_IsAProblem() =>
-        Assert.That(Broken(new PlaywrightFlowConfig()), Is.EqualTo(new[] { "Flows: nothing to run: Flows and SetupFlows are both empty" }));
+        Assert.That(Broken(new PlaywrightFlowConfig()),
+            Is.EqualTo(new[] { "Flows: nothing to run: Flows and SetupFlows are both empty" }));
 
     [Test]
     public void Broken_EmptyFlowName_IsAProblem() =>
@@ -66,14 +67,17 @@ public class ProbeRulesTests
         Assert.That(Broken(config), Is.EqualTo(new[]
         {
             "SaveStorageStatePath: cannot be used with ForEach, where several workers run",
-            "IsolateContext: must stay true with ForEach: every worker needs a browser context of its own",
+            "IsolateContext: must stay true with ForEach: every worker needs a context of its own",
         }));
     }
 
     [Test]
     public void Broken_FlowConfigurationOfAFlowThatDoesNotRun_IsAProblem()
     {
-        var settings = new Dictionary<string, string?> { ["FlowConfiguration:Logn:User"] = "a", ["FlowConfiguration:login:User"] = "b" };
+        var settings = new Dictionary<string, string?>
+        {
+            ["FlowConfiguration:Logn:User"] = "a", ["FlowConfiguration:login:User"] = "b",
+        };
 
         Assert.That(Broken(new PlaywrightFlowConfig { SetupFlows = ["Login"] }, settings),
             Is.EqualTo(new[] { "FlowConfiguration:Logn: no flow named 'Logn' is in SetupFlows or Flows" }));

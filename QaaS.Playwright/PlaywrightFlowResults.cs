@@ -25,7 +25,9 @@ public static class PlaywrightFlowResults
         Add(context, PathOf(OutcomesKey, sessionName), outcome);
     }
 
-    /// <summary>A copy of the session's outcomes, in the order the flows ran; null reads those recorded outside a session.</summary>
+    /// <summary>
+    /// A copy of the session's outcomes, in the order the flows ran; a null session reads those recorded outside one.
+    /// </summary>
     public static IReadOnlyList<PlaywrightFlowOutcome> Read(Context context, string? sessionName) =>
         Copy<PlaywrightFlowOutcome>(context, PathOf(OutcomesKey, sessionName));
 

@@ -43,6 +43,19 @@ public class PlaywrightFlowProbeTests
         Assert.That(problems, Has.One.StartsWith("Flow 'NoSuchFlow' not found"));
     }
 
+    [TestCase("DefaultTimeout", "0", "DefaultTimeout: The field DefaultTimeout must be between 1 and 2147483647.")]
+    [TestCase("Parallelism", "0", "Parallelism: The field Parallelism must be between 1 and 2147483647.")]
+    public void LoadAndValidateConfiguration_ValueOutOfRange_IsAProblem(string key, string value, string problem)
+    {
+        // A DefaultTimeout of 0 lets an action wait forever; QaaS 4.8 would run it anyway.
+        var settings = new Dictionary<string, string?>
+        {
+            ["BaseUrl"] = "http://app.test", ["Flows:0"] = "SubmitOrderFlow", ["ForEach"] = "Items", [key] = value,
+        };
+
+        Assert.That(Load(settings).Problems, Is.EqualTo(new[] { problem }));
+    }
+
     [Test]
     public void Run_WithProblems_ThrowsThemAllAtOnce()
     {

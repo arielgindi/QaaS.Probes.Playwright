@@ -38,7 +38,7 @@ internal static class ProbeRules
         if (config.ForEach is not null && !string.IsNullOrWhiteSpace(config.SaveStorageStatePath))
             yield return new("SaveStorageStatePath", "cannot be used with ForEach, where several workers run");
         if (config.ForEach is not null && !config.IsolateContext)
-            yield return new("IsolateContext", "must stay true with ForEach: every worker needs a browser context of its own");
+            yield return new("IsolateContext", "must stay true with ForEach: every worker needs a context of its own");
 
         var flowNames = setupFlows.Concat(flows).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var orphanSections = probeConfiguration.GetSection(PlaywrightFlowConfig.FlowConfigurationKey).GetChildren()

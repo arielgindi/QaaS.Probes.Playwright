@@ -17,7 +17,8 @@ public class WarningRecorderTests
         logger.LogInformation("Navigating to {Url}", "http://app");
         logger.LogWarning("KeepOpen ignored: {Reason}", "no terminal");
 
-        Assert.That(PlaywrightFlowResults.ReadWarnings(context, "Journey"), Is.EqualTo(new[] { "KeepOpen ignored: no terminal" }));
+        Assert.That(PlaywrightFlowResults.ReadWarnings(context, "Journey"),
+            Is.EqualTo(new[] { "KeepOpen ignored: no terminal" }));
         Assert.That(console.Messages, Is.EqualTo(new[] { "Navigating to http://app", "KeepOpen ignored: no terminal" }));
     }
 }

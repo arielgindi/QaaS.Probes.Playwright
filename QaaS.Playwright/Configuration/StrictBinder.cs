@@ -59,15 +59,19 @@ internal static class StrictBinder
         if (shape == Shape.Value)
         {
             // An empty value counts too: QaaS binds a YAML null in a list of numbers by dropping it, shifting the rest.
-            if (children.Count > 0) yield return new(path, "expected a single value, not a list or settings");
-            else if (value?.Contains("${") == true) yield return new(path, $"'{value}' holds a placeholder QaaS did not resolve");
-            else if (value is not null && !Converts(value, type)) yield return new(path, $"'{value}' is not {Describe(type)}");
+            if (children.Count > 0)
+                yield return new(path, "expected a single value, not a list or settings");
+            else if (value?.Contains("${") == true)
+                yield return new(path, $"'{value}' holds a placeholder QaaS did not resolve");
+            else if (value is not null && !Converts(value, type))
+                yield return new(path, $"'{value}' is not {Describe(type)}");
             yield break;
         }
 
         if (hasValue)
         {
-            yield return new(path, shape == Shape.List ? $"expected a list, e.g. [{value}]" : $"expected settings, not '{value}'");
+            var expected = shape == Shape.List ? $"a list, e.g. [{value}]" : $"settings, not '{value}'";
+            yield return new(path, $"expected {expected}");
             yield break;
         }
 
@@ -82,8 +86,8 @@ internal static class StrictBinder
             var childPath = Join(path, child.Key);
             if (TypeOf(type, shape, child.Key) is not { } childType)
             {
-                var known = SettingsOf(type).Select(property => property.Name).Concat(siblingKeys).ToList();
-                yield return new(childPath, $"not a setting (known: {(known.Count > 0 ? string.Join(", ", known) : "none")})");
+                var known = SettingsOf(type).Select(property => property.Name).Concat(siblingKeys).DefaultIfEmpty("none");
+                yield return new(childPath, $"not a setting (known: {string.Join(", ", known)})");
                 continue;
             }
 

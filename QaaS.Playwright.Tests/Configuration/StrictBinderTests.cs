@@ -62,7 +62,8 @@ public class StrictBinderTests
 
     [Test]
     public void Bind_SettingsWhereAListBelongs_IsAProblem() =>
-        Assert.That(Problems(new() { ["Names:LoginFlow"] = "true" }), Is.EqualTo(new[] { "Names: expected a list, not settings" }));
+        Assert.That(Problems(new() { ["Names:LoginFlow"] = "true" }),
+            Is.EqualTo(new[] { "Names: expected a list, not settings" }));
 
     [Test]
     public void Bind_ListWhereASingleValueBelongs_IsAProblemNotACrash() =>

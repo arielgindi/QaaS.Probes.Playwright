@@ -40,7 +40,8 @@ internal sealed record SessionResults(
 
         // Probes of one session, on one browser, often warn alike.
         var warnings = sessions.Select(session => (string?)session.Name).Append(null)
-            .SelectMany(name => PlaywrightFlowResults.ReadWarnings(context, name).Select(warning => (name ?? Unscoped, warning)))
+            .SelectMany(name => PlaywrightFlowResults.ReadWarnings(context, name)
+                .Select(warning => (name ?? Unscoped, warning)))
             .Distinct();
 
         return new SessionResults(

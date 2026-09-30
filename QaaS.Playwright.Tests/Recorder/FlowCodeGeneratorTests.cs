@@ -76,7 +76,8 @@ public class FlowCodeGeneratorTests
 
         Assert.That(FlowCodeGenerator.ExtractActions(code), Is.EqualTo(new[]
         {
-            """var page1 = await page.RunAndWaitForPopupAsync(async () => { await page.GetByRole(AriaRole.Link, new() { Name = "Open" }).ClickAsync(); });""",
+            "var page1 = await page.RunAndWaitForPopupAsync(async () => { " +
+            """await page.GetByRole(AriaRole.Link, new() { Name = "Open" }).ClickAsync(); });""",
             """await page1.GetByLabel("Email").FillAsync("user@example.test");""",
             """await Expect(page1.GetByText("Saved")).ToBeVisibleAsync();""",
         }));
