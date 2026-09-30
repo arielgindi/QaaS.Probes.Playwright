@@ -67,7 +67,7 @@ stops the run. Each flow reads its own `FlowConfiguration:<FlowName>` section as
 | `FullPageScreenshot` | `false` | Screenshot the whole page on failure, not only the viewport. |
 | `SaveStorageStatePath` | none | Save the login (cookies, localStorage) here after every flow passed. |
 | `LoadStorageStatePath` | none | Start already logged in from a saved file. |
-| `IsolateContext` | `false` | Run in a fresh browser context of its own. |
+| `IsolateContext` | `true` | Run in a fresh browser context of its own; `false` shares the browser's. |
 | `EmulateDesktopPointer` | `false` | Make the page report a mouse. |
 
 The probe logs a warning for a key it does not know (such as `Flow:` for `Flows:`) and for a `FlowConfiguration`
@@ -110,12 +110,14 @@ ProbeConfiguration: { BaseUrl: https://my-app.com, Flows: [OrdersFlow], LoadStor
 The file is written only after every flow passed, and atomically, so a reader never sees half of it. The saving
 session must finish first. sessionStorage is not saved.
 
-### Parallel sessions: IsolateContext
+### IsolateContext
 
-By default a run uses the browser's default context, which every run on that Chrome shares, so a local Chrome keeps
-your logins. Sessions that run in parallel and log in as different users would then overwrite each other's cookies.
-Set `IsolateContext: true` on them: each run gets a fresh context, disposed afterwards. `LoadStorageStatePath` also
-gives the run a fresh context.
+Each run gets a fresh browser context of its own, disposed afterwards, so parallel sessions that log in as different
+users cannot overwrite each other's login, and do not wait for each other to render. `IsolateContext: false` shares
+the browser's default context instead, e.g. to reuse the logins of your local Chrome.
+
+**Upgrading:** runs used to share the default context. A session that relied on a login left there by an earlier
+stage must now save it with `SaveStorageStatePath` and load it with `LoadStorageStatePath`.
 
 ### Mobile layout in a headless Chrome: EmulateDesktopPointer
 

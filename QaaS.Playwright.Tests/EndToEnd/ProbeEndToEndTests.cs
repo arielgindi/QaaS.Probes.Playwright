@@ -110,7 +110,7 @@ public class ProbeEndToEndTests
 
     [Test]
     [Repeat(3)]
-    public async Task ParallelSessionsAsDifferentUsers_WithIsolateContext_NeverMixUp()
+    public async Task ParallelSessionsAsDifferentUsers_NeverMixUp()
     {
         string[] users = ["ann", "ben", "cat", "dan"];
         var run = new QaasRun();
@@ -130,7 +130,6 @@ public class ProbeEndToEndTests
         Dictionary<string, string?> LogInAndCheck(string user)
         {
             var settings = Settings("LogInFlow", "CheckUserFlow");
-            settings["IsolateContext"] = "true";
             settings["FlowConfiguration:LogInFlow:User"] = user;
             settings["FlowConfiguration:CheckUserFlow:User"] = user;
             return settings;
@@ -176,6 +175,28 @@ public class ProbeEndToEndTests
 
         var assertion = run.RunAssertion(run.RunSession("DesktopFlags", settings));
 
+        Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public void IsolateContextFalse_SharesTheBrowsersDefaultContext()
+    {
+        var run = new QaasRun();
+        var logIn = Settings("LogInFlow");
+        logIn["IsolateContext"] = "false";
+        logIn["FlowConfiguration:LogInFlow:User"] = "eve";
+        var shared = Settings("CheckUserFlow");
+        shared["IsolateContext"] = "false";
+        shared["FlowConfiguration:CheckUserFlow:User"] = "eve";
+        var isolated = Settings("CheckUserFlow");
+        isolated["FlowConfiguration:CheckUserFlow:User"] = "nobody";
+
+        var sessions = new[]
+        {
+            run.RunSession("LogIn", logIn), run.RunSession("Shared", shared), run.RunSession("Isolated", isolated),
+        };
+
+        var assertion = run.RunAssertion(sessions);
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
     }
 

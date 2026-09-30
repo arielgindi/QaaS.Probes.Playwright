@@ -47,14 +47,17 @@ internal sealed class BrowserSession(
     public async ValueTask DisposeAsync()
     {
         // Each step is guarded, so a teardown error neither hides the flow's own failure nor skips the next step.
-        if (!KeepPageOpen) await TryAsync("close the page", () => page.CloseAsync());
-        if (ownsContext) await TryAsync("dispose the browser context", () => context.DisposeAsync().AsTask());
+        // Disposing an own context closes its page too.
+        if (!KeepPageOpen)
+            await (ownsContext
+                ? TryAsync("dispose the browser context", () => context.DisposeAsync().AsTask())
+                : TryAsync("close the page", () => page.CloseAsync()));
         await TryAsync("disconnect from the browser", () => browser.DisposeAsync().AsTask());
         playwright.Dispose();
     }
 
-    // A run gets a fresh context of its own when it asks for isolation or starts from a saved login (storage state can
-    // only seed a new context). Otherwise it shares the browser's default context, so a local Chrome keeps its logins.
+    // A run gets a fresh context of its own unless it opts out with IsolateContext: false; then it shares the
+    // browser's default context, unless it starts from a saved login, which can only seed a new context.
     private static async Task<(IBrowserContext Context, bool Owned)> OpenContextAsync(
         IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
     {

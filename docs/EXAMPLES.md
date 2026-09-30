@@ -123,12 +123,12 @@ Sessions:
 
 ## Parallel sessions as different users
 
-Sessions in one stage run at the same time. When they log in as different users, give each its own context:
+Sessions in one stage run at the same time, each in a browser context of its own, so they can log in as different
+users:
 
 ```yaml
 ProbeConfiguration:
   BaseUrl: https://my-app.com
-  IsolateContext: true
   SetupFlows: [LoginFlow]
   Flows: [ApproveRequestFlow]
   FlowConfiguration:

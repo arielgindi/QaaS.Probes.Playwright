@@ -62,10 +62,11 @@ public sealed class PlaywrightFlowConfig
     public string? LoadStorageStatePath { get; set; }
 
     /// <summary>
-    /// Run in a fresh context of its own, disposed afterwards, instead of the browser's shared default context, so
-    /// parallel sessions that log in as different users cannot overwrite each other's cookies.
+    /// Run in a fresh context of its own, disposed afterwards, so parallel sessions can neither overwrite each other's
+    /// login nor wait for each other to render. False shares the browser's default context, e.g. to reuse the logins
+    /// of a local Chrome.
     /// </summary>
-    public bool IsolateContext { get; set; }
+    public bool IsolateContext { get; set; } = true;
 
     /// <summary>
     /// Make matchMedia report a mouse, for a Chrome that reports none (a headless Chrome started by hand), so
