@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 using QaaS.Playwright.Browser;
 using AssertionOutcome = QaaS.Framework.SDK.Hooks.Assertion.AssertionStatus;
 
@@ -287,6 +288,32 @@ public class ProbeEndToEndTests
 
         var assertion = run.RunAssertion(sessions);
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [Test]
+    public async Task IsolateContextFalse_ClosesThePopupsTheRunOpened_AndNoOtherPage()
+    {
+        using var http = new HttpClient();
+        var existing = JsonNode.Parse(await (await http.PutAsync($"{_chrome.Url}/json/new?{_site.Url}/whoami", null))
+            .Content.ReadAsStringAsync())!["id"]!.GetValue<string>();
+        try
+        {
+            var run = new QaasRun();
+            var settings = Settings("OpenPopupsFlow");
+            settings["IsolateContext"] = "false";
+
+            var assertion = run.RunAssertion(run.RunSession("Popups", settings));
+
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+            var sitePages = JsonNode.Parse(await http.GetStringAsync($"{_chrome.Url}/json/list"))!.AsArray()
+                .Where(target => target!["url"]!.GetValue<string>().StartsWith(_site.Url))
+                .Select(target => target!["id"]!.GetValue<string>());
+            Assert.That(sitePages, Is.EqualTo(new[] { existing }), "the page, its pop-up and the pop-up's pop-up are closed");
+        }
+        finally
+        {
+            await http.GetAsync($"{_chrome.Url}/json/close/{existing}");
+        }
     }
 
     [Test]

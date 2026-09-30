@@ -110,6 +110,16 @@ public sealed class CheckPointerFlow : BasePlaywrightFlow<ExpectedConfig>
     }
 }
 
+/// <summary>Opens a pop-up, which opens another, as links that open in a new window do.</summary>
+public sealed class OpenPopupsFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var popup = await page.RunAndWaitForPopupAsync(() => page.EvaluateAsync("url => window.open(url)", $"{BaseUrl}/order"));
+        await popup.RunAndWaitForPopupAsync(() => popup.EvaluateAsync("url => window.open(url)", $"{BaseUrl}/whoami"));
+    }
+}
+
 /// <summary>Fails with a wrapped cause, as a flow that catches and rethrows does.</summary>
 public sealed class DeclinedCheckoutFlow : BasePlaywrightFlow<NoConfig>
 {

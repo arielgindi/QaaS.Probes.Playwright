@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
@@ -7,17 +8,19 @@ namespace QaaS.Playwright.Browser;
 
 /// <summary>
 /// The browser context and the page one probe run works in, on the process's shared connection to Chrome. Disposing it
-/// closes what the run opened, and nothing it did not open.
+/// closes what the run opened, pop-ups included, and nothing it did not open.
 /// </summary>
-internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, IPage page, ILogger logger)
-    : IAsyncDisposable
+internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, ILogger logger) : IAsyncDisposable
 {
     private static readonly DateTime ProcessStartedAt = Process.GetCurrentProcess().StartTime.ToUniversalTime();
 
     private static readonly string[] AssetPatterns =
         ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico", "*.woff", "*.woff2", "*.ttf", "*.eot"];
 
-    public IPage Page => page;
+    // The run's page and every pop-up opened from it, which a borrowed context keeps open unless the run closes them.
+    private readonly ConcurrentQueue<IPage> _openedPages = new();
+
+    public IPage Page { get; private set; } = null!;
 
     /// <summary>When true, disposing leaves the page open: a person is looking at it.</summary>
     public bool KeepPageOpen { get; set; }
@@ -42,18 +45,18 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     private static async Task<BrowserSession> OpenAsync(IBrowser browser, PlaywrightFlowConfig config, ILogger logger)
     {
         var (context, ownsContext) = await OpenContextAsync(browser, config, logger);
+        var session = new BrowserSession(context, ownsContext, logger);
         try
         {
-            var page = await context.NewPageAsync();
-            await SetUpPageAsync(page, config, logger);
-            var session = new BrowserSession(context, ownsContext, page, logger);
-            page.Crash += (_, _) => session.Crashed = true;
+            session.Page = session.Track(await context.NewPageAsync());
+            session.Page.Crash += (_, _) => session.Crashed = true;
+            await SetUpPageAsync(session.Page, config, logger);
             return session;
         }
         catch
         {
-            // The connection outlives this run, so nothing else would close the context.
-            if (ownsContext) await context.DisposeAsync();
+            // The connection outlives this run, so nothing else would close what it opened.
+            await session.DisposeAsync();
             throw;
         }
     }
@@ -61,7 +64,7 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     /// <summary>Opens BaseUrl. An error page there fails the run: flows that start on one verify nothing.</summary>
     public async Task OpenBaseUrlAsync(string baseUrl)
     {
-        var response = await page.GotoAsync(baseUrl);
+        var response = await Page.GotoAsync(baseUrl);
         if (response is { Status: >= 400 })
             throw new InvalidOperationException($"BaseUrl {baseUrl} answered HTTP {response.Status}.");
     }
@@ -76,15 +79,28 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
     public async ValueTask DisposeAsync()
     {
         if (KeepPageOpen) return;
+
+        // Disposing an own context closes all its pages; a borrowed one keeps those the run did not open.
+        if (ownsContext) await CloseAsync(() => context.DisposeAsync().AsTask());
+        else foreach (var page in _openedPages) await CloseAsync(() => page.CloseAsync());
+    }
+
+    private IPage Track(IPage page)
+    {
+        _openedPages.Enqueue(page);
+        page.Popup += (_, popup) => Track(popup);
+        return page;
+    }
+
+    // A teardown error must not hide the flow's own failure.
+    private async Task CloseAsync(Func<Task> close)
+    {
         try
         {
-            // Disposing an own context closes its page too.
-            if (ownsContext) await context.DisposeAsync();
-            else await page.CloseAsync();
+            await close();
         }
         catch (Exception failure)
         {
-            // A teardown error must not hide the flow's own failure.
             logger.LogWarning("Could not close the page during teardown: {Message}", failure.Message);
         }
     }
