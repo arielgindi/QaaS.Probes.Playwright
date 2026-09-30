@@ -30,8 +30,7 @@ public static class BrowserDefaults
 
     /// <summary>
     /// The attribute the recorder records as a test id and the probe resolves <c>GetByTestId</c> against — read by
-    /// both sides so they always agree. Defaults to <c>id</c>; set it to <c>data-testid</c> (or your convention)
-    /// when forking if your apps use that instead.
+    /// both sides so they always agree. Defaults to <c>data-testid</c>, Playwright's own default.
     /// </summary>
     public static string TestIdAttribute => Current.TestIdAttribute;
 

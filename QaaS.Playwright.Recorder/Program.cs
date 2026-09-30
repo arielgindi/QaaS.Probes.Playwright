@@ -140,8 +140,8 @@ public static class Program
             "--viewport-size", BrowserDefaults.RecorderViewport,
             "--target", "csharp-nunit",
             // Codegen ignores `id` by default (it assumes ids are framework-generated and unstable). Record the
-            // shared test-id attribute instead (BrowserDefaults.TestIdAttribute, e.g. "id") so an element with
-            // id="email" records as GetByTestId("email") — and the probe resolves it the same way at run time
+            // shared test-id attribute instead (BrowserDefaults.TestIdAttribute, e.g. "data-testid") so an element with
+            // data-testid="email" records as GetByTestId("email") — and the probe resolves it the same way at run time
             // (PlaywrightBrowserConnector reads the same default), so the two can never drift apart.
             "--test-id-attribute", BrowserDefaults.TestIdAttribute,
             "--output", codegenOutput,
