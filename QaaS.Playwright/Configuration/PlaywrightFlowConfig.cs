@@ -15,17 +15,14 @@ public sealed class PlaywrightFlowConfig
     public string BaseUrl { get; set; } = null!;
 
     /// <summary>
-    /// Whether the run is unattended. When true (default) the probe blocks asset requests and disables CSS
-    /// animations for speed; when false it forces local mode and applies slow-mo so a human can watch. This does
+    /// Whether the run is unattended. When true (default) the probe blocks asset requests for speed; when false it
+    /// forces local mode and applies slow-mo so a human can watch. This does
     /// not change the actual headless mode of the remote/launched Chrome — that is decided by how Chrome started.
     /// </summary>
     public bool Headless { get; set; } = true;
 
     /// <summary>Block images/fonts in headless mode for speed. Ignored when <see cref="Headless"/> is false.</summary>
     public bool BlockAssets { get; set; } = true;
-
-    /// <summary>Disable CSS animations in headless mode to avoid flaky waits.</summary>
-    public bool DisableAnimations { get; set; } = true;
 
     /// <summary>Maximum time (ms) for any single Playwright wait.</summary>
     [Range(1, int.MaxValue)]

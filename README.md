@@ -214,7 +214,6 @@ ProbeConfiguration:
 | `KeepOpen` | `false` | Keep browser open (only with `Headless: false`) |
 | `SlowMo` | `0` | Delay (ms) between every Playwright action. Auto 2000 when Headless=false |
 | `BlockAssets` | `true` | Block images/fonts in headless mode |
-| `DisableAnimations` | `true` | Kill CSS animations in headless mode |
 | `DefaultTimeout` | `30000` | Max ms to wait for elements |
 
 ## Build & Test

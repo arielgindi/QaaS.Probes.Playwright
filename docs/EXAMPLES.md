@@ -231,7 +231,7 @@ ProbeConfiguration:
         - /settings
 ```
 
-No `Headless` (defaults to true), no `KeepOpen`, no `SlowMo`. Runs in seconds. Images/fonts blocked, animations disabled.
+No `Headless` (defaults to true), no `KeepOpen`, no `SlowMo`. Runs in seconds. Images and fonts are blocked.
 
 ---
 

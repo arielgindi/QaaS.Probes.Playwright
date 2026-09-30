@@ -12,12 +12,6 @@ internal sealed class BrowserSession : IAsyncDisposable
 {
     private const string AssetPattern = "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}";
 
-    private const string DisableAnimationsScript = """
-        const style = document.createElement('style');
-        style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
-        (document.head ?? document.documentElement).appendChild(style);
-        """;
-
     private readonly IPlaywright _playwright;
     private readonly IBrowser _browser;
     private readonly IBrowserContext _context;
@@ -110,9 +104,7 @@ internal sealed class BrowserSession : IAsyncDisposable
                 config.ViewportWidth, config.ViewportHeight, failure.Message);
         }
 
-        if (!config.Headless) return;
-        if (config.BlockAssets) await page.RouteAsync(AssetPattern, route => route.AbortAsync());
-        if (config.DisableAnimations) await page.AddInitScriptAsync(DisableAnimationsScript);
+        if (config.Headless && config.BlockAssets) await page.RouteAsync(AssetPattern, route => route.AbortAsync());
     }
 
     private async Task TryAsync(string action, Func<Task> step)
