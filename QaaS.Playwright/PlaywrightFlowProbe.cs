@@ -71,11 +71,7 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var browser = await new PlaywrightBrowserConnector(Context.Logger).ConnectAsync(playwright, Configuration);
 
-        // Reuse the browser's existing default context (the user's cookies/sessions/extensions live there); only
-        // create — and therefore own/dispose — a context when the browser has none.
-        var existingContext = browser.Contexts.Count > 0 ? browser.Contexts[0] : null;
-        var browserContext = existingContext ?? await browser.NewContextAsync();
-        var ownsBrowserContext = existingContext is null;
+        var (browserContext, ownsBrowserContext) = await AcquireContextAsync(browser);
 
         IPage? page = null;
         try
@@ -93,6 +89,10 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             await RunFlows(setupFlowNames, flowConfiguration, page, sessionName, label: "Setup");
             await RunFlows(mainFlowNames, flowConfiguration, page, sessionName, label: "Running");
 
+            // Persist the authenticated session for other (parallel) sessions to reuse — only after the flows
+            // succeeded, so a half-finished or failed login is never saved.
+            await MaybeSaveStorageStateAsync(browserContext);
+
             Context.Logger.LogInformation("Done — {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             await MaybePauseForInspection(page, keepBrowserOpenForInspection);
         }
@@ -106,6 +106,55 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
             if (ownsBrowserContext)
                 await SafeTeardownAsync("dispose browser context", browserContext.DisposeAsync);
         }
+    }
+
+    /// <summary>
+    /// Acquires the browser context the flows run in. When <see cref="PlaywrightFlowConfig.LoadStorageStatePath"/>
+    /// is set, a fresh context is created seeded with that saved authentication state (cookies + localStorage) —
+    /// this is how a session reuses a login another session captured. Otherwise the browser's existing default
+    /// context is reused (so a local Chrome's cookies/extensions are kept), or a new one is created when there is
+    /// none. The returned flag says whether this probe owns the context and must dispose it.
+    /// </summary>
+    private async Task<(IBrowserContext BrowserContext, bool Owned)> AcquireContextAsync(IBrowser browser)
+    {
+        if (!string.IsNullOrWhiteSpace(Configuration.LoadStorageStatePath))
+        {
+            // Normalize like the save side so File.Exists, the connection, and the logs all use one absolute path.
+            var loadPath = Path.GetFullPath(Configuration.LoadStorageStatePath);
+            if (!File.Exists(loadPath))
+                throw new FileNotFoundException(
+                    $"LoadStorageStatePath '{loadPath}' does not exist. The session that saves it " +
+                    "(SaveStorageStatePath) must run to completion first, or remove LoadStorageStatePath.", loadPath);
+
+            // Storage state can only be applied when a context is created, never injected into an existing one, so a
+            // load always creates — and therefore owns — a fresh context.
+            var seeded = await browser.NewContextAsync(new BrowserNewContextOptions { StorageStatePath = loadPath });
+            Context.Logger.LogInformation("Loaded storage state from {Path}", loadPath);
+            return (seeded, Owned: true);
+        }
+
+        // Reuse the browser's existing default context (the user's cookies/sessions/extensions live there); only
+        // create — and therefore own/dispose — a context when the browser has none.
+        var existingContext = browser.Contexts.Count > 0 ? browser.Contexts[0] : null;
+        return existingContext is null
+            ? (await browser.NewContextAsync(), Owned: true)
+            : (existingContext, Owned: false);
+    }
+
+    /// <summary>
+    /// Persists the context's authentication state (cookies + localStorage) to
+    /// <see cref="PlaywrightFlowConfig.SaveStorageStatePath"/> when configured, so other sessions can reuse this
+    /// login via <c>LoadStorageStatePath</c>. The parent directory is created if needed. A save failure surfaces as
+    /// a run failure — by design, since a missing/stale file would silently leave the reusing sessions unauthenticated.
+    /// </summary>
+    private async Task MaybeSaveStorageStateAsync(IBrowserContext browserContext)
+    {
+        if (string.IsNullOrWhiteSpace(Configuration.SaveStorageStatePath)) return;
+
+        // Atomic write so a session loading this state concurrently can never observe a half-written file.
+        var json = await browserContext.StorageStateAsync();
+        var savedPath = await AtomicFileWriter.WriteAsync(Configuration.SaveStorageStatePath, json);
+        Context.Logger.LogInformation("Saved storage state to {Path}", savedPath);
     }
 
     private async Task MaybePauseForInspection(IPage page, bool keepBrowserOpenForInspection)

@@ -70,6 +70,21 @@ public sealed class PlaywrightFlowConfig
     public string[]? Flows { get; set; }
 
     /// <summary>
+    /// When set, the browser context's authentication state (cookies + localStorage) is written to this path after
+    /// the flows succeed. Pair it with <see cref="LoadStorageStatePath"/> in other sessions to log in once and reuse
+    /// the session — including across sessions that run in parallel. The session that saves must finish before the
+    /// sessions that load it start. sessionStorage is not captured (a Playwright storage-state limitation).
+    /// </summary>
+    public string? SaveStorageStatePath { get; set; }
+
+    /// <summary>
+    /// When set, the run starts in a fresh context seeded with the authentication state previously written to this
+    /// path by a <see cref="SaveStorageStatePath"/> run, so it begins already logged in and can omit the login flow.
+    /// The file must already exist when the run starts.
+    /// </summary>
+    public string? LoadStorageStatePath { get; set; }
+
+    /// <summary>
     /// CDP endpoint of the cluster Chromium, used in the default (cluster) mode — for example
     /// <c>ws://chrome.&lt;namespace&gt;.svc.cluster.local:3000?token=&lt;token&gt;</c>. Required when neither
     /// <c>ENV=local</c> nor <see cref="Headless"/>=false selects local mode; falls back to browser-defaults.yaml.

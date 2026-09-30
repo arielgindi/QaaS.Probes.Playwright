@@ -227,6 +227,5 @@ dotnet test QaaS.Probes.Playwright.slnx -c Release
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — How the probe works internally
 - [RECORDING.md](RECORDING.md) — How to record and parameterize flows
 - [QAAS-CONTEXT.md](QAAS-CONTEXT.md) — QaaS platform context for developers

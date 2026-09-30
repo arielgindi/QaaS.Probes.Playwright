@@ -28,6 +28,13 @@ public static class BrowserDefaults
     /// <summary>Viewport the recorder opens Chrome with (for example <c>1920,1080</c>).</summary>
     public static string RecorderViewport => Current.RecorderViewport;
 
+    /// <summary>
+    /// The attribute the recorder records as a test id and the probe resolves <c>GetByTestId</c> against — read by
+    /// both sides so they always agree. Defaults to <c>id</c>; set it to <c>data-testid</c> (or your convention)
+    /// when forking if your apps use that instead.
+    /// </summary>
+    public static string TestIdAttribute => Current.TestIdAttribute;
+
     /// <summary>How long local mode waits for Chrome to become reachable.</summary>
     public static TimeSpan LocalStartupTimeout => TimeSpan.FromSeconds(Current.LocalStartupTimeoutSeconds);
 
@@ -82,6 +89,7 @@ public static class BrowserDefaults
         RequireNonEmpty(settings.LocalBrowserUrl, nameof(Settings.LocalBrowserUrl));
         RequireNonEmpty(settings.ChromeChannel, nameof(Settings.ChromeChannel));
         RequireNonEmpty(settings.RecorderViewport, nameof(Settings.RecorderViewport));
+        RequireNonEmpty(settings.TestIdAttribute, nameof(Settings.TestIdAttribute));
         if (settings.LocalStartupTimeoutSeconds <= 0)
             throw new InvalidOperationException(
                 $"browser-defaults.yaml: '{nameof(Settings.LocalStartupTimeoutSeconds)}' must be greater than 0 " +
@@ -100,6 +108,7 @@ public static class BrowserDefaults
         public string LocalBrowserUrl { get; set; } = null!;
         public string ChromeChannel { get; set; } = null!;
         public string RecorderViewport { get; set; } = null!;
+        public string TestIdAttribute { get; set; } = null!;
         public int LocalStartupTimeoutSeconds { get; set; }
     }
 }

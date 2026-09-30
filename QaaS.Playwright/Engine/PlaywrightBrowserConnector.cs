@@ -20,6 +20,12 @@ internal sealed class PlaywrightBrowserConnector(ILogger logger)
     public async Task<IBrowser> ConnectAsync(
         IPlaywright playwright, PlaywrightFlowConfig config, CancellationToken ct = default)
     {
+        // Resolve GetByTestId() against the same attribute the recorder records (BrowserDefaults.TestIdAttribute,
+        // e.g. "id"), so a recorded GetByTestId("email") matches [id="email"] at run time. Reading the shared
+        // default keeps the recorder and runtime in lockstep. Affects only GetByTestId — role, label, text, and
+        // Locator selectors are unchanged.
+        playwright.Selectors.SetTestIdAttribute(BrowserDefaults.TestIdAttribute);
+
         var slowMo = EffectiveSlowMo(config);
 
         // Visible mode (Headless=false) only makes sense locally — cluster Chrome runs headless in a container and

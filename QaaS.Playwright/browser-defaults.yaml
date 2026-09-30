@@ -18,5 +18,11 @@ ChromeChannel: chrome
 # Viewport the recorder opens Chrome with (W,H).
 RecorderViewport: "1920,1080"
 
+# DOM attribute treated as the "test id": the recorder records it (codegen
+# --test-id-attribute) and the probe resolves GetByTestId() against it. Both
+# read this one value so they always agree. "id" suits apps with hand-written
+# stable ids; change to "data-testid" if that's your convention.
+TestIdAttribute: id
+
 # Seconds the probe waits for an auto-launched Chrome to expose CDP.
 LocalStartupTimeoutSeconds: 60
