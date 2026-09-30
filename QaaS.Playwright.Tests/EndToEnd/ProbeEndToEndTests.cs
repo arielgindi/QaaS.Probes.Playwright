@@ -89,6 +89,18 @@ public class ProbeEndToEndTests
     }
 
     [Test]
+    public void BaseUrlAnsweringAnError_FailsTheSession()
+    {
+        var run = new QaasRun();
+        var settings = Settings("SubmitOrderFlow");
+        settings["BaseUrl"] = $"{_site.Url}/error";
+
+        var session = run.RunSession("Broken", settings);
+
+        Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo($"BaseUrl {_site.Url}/error answered HTTP 500."));
+    }
+
+    [Test]
     public void GetByTestId_ResolvesDataTestId()
     {
         var run = new QaasRun();

@@ -87,6 +87,28 @@ public class ForEachEndToEndTests
         Assert.That(_site.Missions, Has.None.StartsWith("never"));
     }
 
+    [Test]
+    public void NoItems_FailsTheSession()
+    {
+        var session = new QaasRun().RunSession("Missions", Settings(parallelism: 2), Missions([]));
+
+        Assert.That(session.SessionFailures.Single().Reason.Message,
+            Is.EqualTo("ForEach Missions: the DataSource produced no items."));
+    }
+
+    [Test]
+    public void BaseUrlAnsweringAnError_StopsEveryWorker()
+    {
+        var settings = Settings(parallelism: 2);
+        settings["BaseUrl"] = $"{_site.Url}/error";
+
+        var session = new QaasRun().RunSession("Missions", settings, Missions(["never-a", "never-b"]));
+
+        Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo(
+            $"ForEach Missions: 2 of 2 workers stopped, the first because: BaseUrl {_site.Url}/error answered HTTP 500; " +
+            "2 items did not run."));
+    }
+
     private TimeSpan TimeRun(Dictionary<string, string?> settings, string[] names)
     {
         var run = new QaasRun();

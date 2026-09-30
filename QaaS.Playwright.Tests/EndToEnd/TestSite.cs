@@ -7,8 +7,8 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
 /// A tiny web app on a free local port: a cookie login, a whoami page, a page with a test-id button, a page that
-/// reports the pointer the browser has, a page with an image and a script the browser may cache, and a form that
-/// creates a mission in a fixed time.
+/// reports the pointer the browser has, a page with an image and a script the browser may cache, a form that
+/// creates a mission in a fixed time, and an error page.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -84,6 +84,13 @@ public sealed class TestSite : IDisposable
             if (path == "/app.js") Interlocked.Increment(ref _scriptDownloads);
             response.Headers["Cache-Control"] = "max-age=3600";
             Send(response, file.ContentType, file.Body);
+            return;
+        }
+
+        if (path == "/error")
+        {
+            response.StatusCode = 500;
+            Send(response, "text/html; charset=utf-8", "<h1>Internal Server Error</h1>"u8.ToArray());
             return;
         }
 

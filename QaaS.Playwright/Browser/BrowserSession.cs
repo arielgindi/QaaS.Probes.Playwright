@@ -40,6 +40,14 @@ internal sealed class BrowserSession(IBrowserContext context, bool ownsContext, 
         }
     }
 
+    /// <summary>Opens BaseUrl. An error page there fails the run: flows that start on one verify nothing.</summary>
+    public async Task OpenBaseUrlAsync(string baseUrl)
+    {
+        var response = await page.GotoAsync(baseUrl);
+        if (response is { Status: >= 400 })
+            throw new InvalidOperationException($"BaseUrl {baseUrl} answered HTTP {response.Status}.");
+    }
+
     /// <summary>Writes the context's cookies and localStorage to <paramref name="path"/> for later sessions.</summary>
     public async Task SaveStorageStateAsync(string path)
     {

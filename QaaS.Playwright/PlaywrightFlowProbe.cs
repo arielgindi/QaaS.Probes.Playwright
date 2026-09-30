@@ -85,7 +85,7 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     {
         await using var browser = await BrowserSession.OpenAsync(Configuration, logger);
         logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
-        await browser.Page.GotoAsync(Configuration.BaseUrl);
+        await browser.OpenBaseUrlAsync(Configuration.BaseUrl);
 
         await runner.RunAsync(setupFlows, browser.Page);
         await runner.RunAsync(flows, browser.Page);

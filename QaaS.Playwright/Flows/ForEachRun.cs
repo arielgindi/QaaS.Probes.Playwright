@@ -13,9 +13,15 @@ internal sealed class ForEachRun(FlowRunner runner, PlaywrightFlowConfig config,
 {
     private readonly ConcurrentBag<int> _failedItems = [];
 
-    /// <exception cref="InvalidOperationException">An item failed, or a worker stopped; the message says which.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// There was no item, an item failed, or a worker stopped; the message says which.
+    /// </exception>
     public async Task RunAsync(IReadOnlyList<FlowItem> items, string[] setupFlows, string[] flows)
     {
+        // Nothing would run, and nothing be verified.
+        if (items.Count == 0)
+            throw new InvalidOperationException($"ForEach {config.ForEach}: the DataSource produced no items.");
+
         var queue = new ConcurrentQueue<FlowItem>(items);
         var workerCount = Math.Min(config.Parallelism, items.Count);
         logger.LogInformation("ForEach {DataSource}: {Items} items, {Workers} workers", config.ForEach, items.Count,
@@ -37,15 +43,15 @@ internal sealed class ForEachRun(FlowRunner runner, PlaywrightFlowConfig config,
                 $"ForEach {config.ForEach}: {string.Join("; ", problems.OfType<string>())}.");
     }
 
-    // Returns why the worker stopped early: it could not open its page, run SetupFlows, or go back to BaseUrl after
-    // a failed item. Null when it ran until the queue was empty.
+    // Returns why the worker stopped early: it could not open its page or BaseUrl, run SetupFlows, or go back to BaseUrl
+    // after a failed item. Null when it ran until the queue was empty.
     private async Task<string?> RunWorkerAsync(int worker, ConcurrentQueue<FlowItem> queue, string[] setupFlows,
         string[] flows)
     {
         try
         {
             await using var browser = await BrowserSession.OpenAsync(config, logger);
-            await browser.Page.GotoAsync(config.BaseUrl);
+            await browser.OpenBaseUrlAsync(config.BaseUrl);
             await runner.RunAsync(setupFlows, browser.Page);
             while (queue.TryDequeue(out var item))
             {
@@ -57,7 +63,7 @@ internal sealed class ForEachRun(FlowRunner runner, PlaywrightFlowConfig config,
                 {
                     // Recorded by the runner; the next item starts where every item starts.
                     _failedItems.Add(item.Index);
-                    await browser.Page.GotoAsync(config.BaseUrl);
+                    await browser.OpenBaseUrlAsync(config.BaseUrl);
                 }
             }
 

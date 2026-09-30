@@ -46,7 +46,7 @@ Browser tests for QaaS. Record a flow in Chrome, get a C# class, and run it from
    ```
 
 The probe opens `BaseUrl`, then runs `SetupFlows` and `Flows` in order on the same page. The first flow that fails
-stops the run. Each flow reads its own `FlowConfiguration:<FlowName>` section as typed settings; see
+stops the run, and so does an error page at `BaseUrl` (HTTP 400 or above), since flows starting there verify nothing. Each flow reads its own `FlowConfiguration:<FlowName>` section as typed settings; see
 [docs/EXAMPLES.md](docs/EXAMPLES.md).
 
 ## Settings
@@ -176,8 +176,9 @@ public sealed class CreateMissionFlow : BasePlaywrightFlow<CreateMissionFlowConf
 Each worker opens a browser context of its own, runs `SetupFlows` once, then takes the next item until none is
 left. Every item is reported on its own, e.g. `CreateMissionFlow[17]`, with its time in the log. A failed item gets
 its screenshot, and its worker goes back to `BaseUrl` and carries on; a worker whose `SetupFlows` fail stops, and the
-others take its items. The session fails if any item or worker failed, and says which. `SaveStorageStatePath` and
-`KeepOpen` do not apply with `ForEach`.
+others take its items. The session fails if any item or worker failed, and says which, and when the DataSource
+produced no items at all. `SaveStorageStatePath` and `IsolateContext: false` are rejected with `ForEach`, and
+`KeepOpen` is ignored with a warning.
 
 ## Many cases, fast
 
