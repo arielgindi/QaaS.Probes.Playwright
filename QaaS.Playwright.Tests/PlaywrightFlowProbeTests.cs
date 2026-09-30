@@ -43,6 +43,18 @@ public class PlaywrightFlowProbeTests
         Assert.That(problems, Has.One.StartsWith("Flow 'NoSuchFlow' not found"));
     }
 
+    [Test]
+    public void LoadAndValidateConfiguration_FlowSettingsGivenAsASingleValue_IsAProblem()
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["BaseUrl"] = "http://app.test", ["Flows:0"] = "CheckUserFlow", ["FlowConfiguration:CheckUserFlow"] = "alice",
+        };
+
+        Assert.That(Load(settings).Problems,
+            Is.EqualTo(new[] { "FlowConfiguration:CheckUserFlow: expected settings, not 'alice'" }));
+    }
+
     [TestCase("DefaultTimeout", "0", "DefaultTimeout: The field DefaultTimeout must be between 1 and 2147483647.")]
     [TestCase("Parallelism", "0", "Parallelism: The field Parallelism must be between 1 and 2147483647.")]
     public void LoadAndValidateConfiguration_ValueOutOfRange_IsAProblem(string key, string value, string problem)

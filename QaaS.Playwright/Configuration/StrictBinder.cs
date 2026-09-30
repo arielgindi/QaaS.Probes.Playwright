@@ -29,7 +29,9 @@ internal static class StrictBinder
     public static (T Settings, List<SettingProblem> Problems) Bind<T>(
         IConfiguration configuration, string path, params string[] siblingKeys) where T : new()
     {
-        var problems = ShapeProblems(configuration, null, typeof(T), path, siblingKeys).ToList();
+        // A section can be a single value itself, e.g. "FlowConfiguration: { LoginFlow: alice }".
+        var value = (configuration as IConfigurationSection)?.Value;
+        var problems = ShapeProblems(configuration, value, typeof(T), path, siblingKeys).ToList();
         T settings;
         try
         {

@@ -20,6 +20,9 @@ Browser tests for QaaS. Record a flow in Chrome, get a C# class, and run it from
    <PackageReference Include="QaaS.Playwright" Version="1.0.0" />
    ```
 
+   Add `<WarningsAsErrors>CS4014</WarningsAsErrors>` to its `PropertyGroup` too: a flow that forgets to `await` a
+   Playwright call then fails the build, instead of passing before the call fails.
+
 3. Run the flow in a session and assert on it:
 
    ```yaml

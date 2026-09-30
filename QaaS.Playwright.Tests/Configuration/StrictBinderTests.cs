@@ -61,6 +61,17 @@ public class StrictBinderTests
         Assert.That(Problems(new() { [key] = value }), Is.EqualTo(new[] { problem }));
 
     [Test]
+    public void Bind_SectionThatIsASingleValue_IsAProblem()
+    {
+        var section = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["FlowConfiguration:Checkout"] = "alice" })
+            .Build().GetSection("FlowConfiguration:Checkout");
+
+        Assert.That(StrictBinder.Bind<SampleSettings>(section, section.Path).Problems.Select(problem => $"{problem}"),
+            Is.EqualTo(new[] { "FlowConfiguration:Checkout: expected settings, not 'alice'" }));
+    }
+
+    [Test]
     public void Bind_SettingsWhereAListBelongs_IsAProblem() =>
         Assert.That(Problems(new() { ["Names:LoginFlow"] = "true" }),
             Is.EqualTo(new[] { "Names: expected a list, not settings" }));
