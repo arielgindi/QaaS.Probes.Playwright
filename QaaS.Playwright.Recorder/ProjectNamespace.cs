@@ -27,6 +27,8 @@ internal static class ProjectNamespace
         var folder = new DirectoryInfo(Path.GetFullPath(directory));
         for (var ancestor = folder; ancestor is not null; ancestor = ancestor.Parent)
         {
+            // The folder is made when the flow is saved, so it may not be there yet.
+            if (!ancestor.Exists) continue;
             var project = ancestor.GetFiles("*.csproj").FirstOrDefault();
             if (project is null) continue;
 
