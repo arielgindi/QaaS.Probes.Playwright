@@ -304,8 +304,9 @@ internal static class CaptureScript
 
           function candidate(kind, scope, parts, element, extra) {
             const found = matches([...scope, ...parts]);
+            const hidden = found && found.length > 1 ? found.filter((other) => !visible(other)).length : 0;
             return { kind, parts: [...scope, ...parts], count: found ? found.length : -1,
-              matches: !!found && found.length === 1 && found[0] === element, ...extra };
+              matches: !!found && found.length === 1 && found[0] === element, ...(hidden ? { hidden } : {}), ...extra };
           }
 
           // Every way to find the element, each checked against the page as it is now. The recorder picks one.

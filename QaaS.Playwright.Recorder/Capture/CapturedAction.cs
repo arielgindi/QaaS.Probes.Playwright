@@ -129,6 +129,11 @@ internal sealed class CapturedCandidate
     /// <summary>How many elements it found; -1 when it could not be checked.</summary>
     public int Count { get; set; }
 
+    /// <summary>
+    /// When it found more than one, how many of them were hidden: a copy a responsive layout keeps for another width.
+    /// </summary>
+    public int Hidden { get; set; }
+
     /// <summary>It found exactly the element acted on, and nothing else.</summary>
     public bool Matches { get; set; }
 

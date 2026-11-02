@@ -115,7 +115,7 @@ internal static class ConsoleUi
     private static string? Describe(CapturedAction action)
     {
         var target = action.Kind == "choose" ? action.Field ?? action.Target : action.Target;
-        var where = Short(LocatorPolicy.Choose(target, byName: action.Widget == "radio")) ?? target?.Text ?? "";
+        var where = LocatorPolicy.Describe(LocatorPolicy.Choose(target, byName: action.Widget == "radio")) ?? target?.Text ?? "";
         return action.Kind switch
         {
             "click" when action.Widget is "select-open" or "autocomplete-button" => null,
@@ -135,21 +135,6 @@ internal static class ConsoleUi
         "tabSelected" => "↳ tab selected",
         _ => null,
     };
-
-    // The locator as a person reads it: [name='x'], button "Save", row "HL-775-ZE" » button "Actions".
-    private static string? Short(CapturedCandidate? candidate)
-    {
-        if (candidate is null) return null;
-        if (candidate.Kind == "generator") return candidate.Csharp;
-        var parts = candidate.Parts.SkipWhile(part => part is { M: "role", Role: "dialog" }).Select(part => part.M switch
-        {
-            "css" => part.Css,
-            "testid" => $"test id \"{part.Value}\"",
-            "filter" => $"\"{part.HasText}\"",
-            _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
-        });
-        return string.Join(" » ", parts);
-    }
 
     private static void Hint(string lines)
     {
