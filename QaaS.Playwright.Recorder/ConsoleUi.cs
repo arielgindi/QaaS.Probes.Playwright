@@ -138,7 +138,7 @@ internal static class ConsoleUi
     };
 
     // The locator as a person reads it: [name='x'], button "Save", row "HL-775-ZE" » button "Actions".
-    private static string? Short(CapturedCandidate? candidate)
+    public static string? Short(CapturedCandidate? candidate)
     {
         if (candidate is null) return null;
         if (candidate.Kind == "generator") return candidate.Csharp;
