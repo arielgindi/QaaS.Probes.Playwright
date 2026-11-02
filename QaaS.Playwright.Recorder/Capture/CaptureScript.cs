@@ -369,7 +369,7 @@ internal static class CaptureScript
               text: roleText ?? clean(accessibleName(element)),
               label: clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
-              interactive: element.matches(INTERACTIVE) || element.matches(TOGGLES),
+              interactive: options.interactive ?? (element.matches(INTERACTIVE) || element.matches(TOGGLES)),
               row: row ? { key: row.key, header: row.header } : null,
               candidates,
             };
@@ -462,7 +462,8 @@ internal static class CaptureScript
           let lastPointer = 0;
 
           function draftFor(hit) {
-            const element = retarget(hit);
+            const picked = pickedFor(hit);
+            const element = picked ?? retarget(hit);
             if (hit.closest(PICKER)) return { ignore: 'picker' };
             const fileInput = element.matches('input[type=file]') ? element
               : element.closest('label')?.control?.matches?.('input[type=file]') ? element.closest('label').control : null;
@@ -482,7 +483,8 @@ internal static class CaptureScript
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
                 hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')) };
             }
-            const info = describe(element);
+            // An element the person picked is what they act on, whatever it is.
+            const info = describe(element, picked ? { interactive: true } : {});
             if (isMuiSelect(element) || isAutocomplete(element)) opened = { element, info };
             const widget = toggle ? (roleOf(toggle) === 'radio' ? 'radio' : roleOf(toggle) === 'switch' ? 'switch' : 'checkbox')
               : isMuiSelect(element) ? 'select-open'
@@ -612,8 +614,8 @@ internal static class CaptureScript
 
           addEventListener('dblclick', (event) => safe(() => {
             if (!event.isTrusted || !lastClick) return;
-            const target = retarget(deepTarget(event));
-            if (target !== lastClick.element) return;
+            const hit = deepTarget(event);
+            if ((pickedFor(hit) ?? retarget(hit)) !== lastClick.element) return;
             record({ ...lastClick.record, kind: 'dblclick' });
             lastClick = null;
           }), true);
@@ -622,7 +624,9 @@ internal static class CaptureScript
           // A box follows the pointer over the element a click would record, labelled with the locator the flow would use
           // and why the ones tried before it lost, as the recorder's own policy answers through window.__qaasExplain. It is
           // drawn in a closed shadow root, which neither the page nor Playwright's selectors see; it never takes the pointer
-          // or the focus, and takes no room. F9 hides or shows it.
+          // or the focus, and takes no room. F9 hides or shows it. While it shows, Alt+Up picks the element around the one in
+          // the box and Alt+Down goes back toward the element under the pointer; a click then records the element picked.
+          // Moving to another element drops the pick.
           const OVERLAY_CSS = `
             :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
               left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
@@ -630,19 +634,21 @@ internal static class CaptureScript
             .box, .label { position: fixed; display: none; box-sizing: border-box; pointer-events: none; }
             .box { border: 2px solid #1a73e8; border-radius: 2px; background: rgba(26, 115, 232, .12);
               box-shadow: 0 0 0 1px rgba(255, 255, 255, .9); }
+            .box.picked { border-color: #e37400; background: rgba(227, 116, 0, .14); }
             .label { max-width: min(560px, calc(100vw - 8px)); padding: 4px 8px; border-radius: 4px;
               background: rgba(24, 24, 27, .95); color: #d4d4d8; direction: ltr; unicode-bidi: isolate; text-align: left;
               font: 11px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overflow-wrap: anywhere;
               box-shadow: 0 2px 6px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .25); }
             .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
             .locator { font-size: 12px; font-weight: 600; color: #fff; }
-            .problem { color: #fbbf24; }
+            .pick, .problem { color: #fbbf24; }
             .reasons, .note { color: #a1a1aa; }`;
           // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
           let overlayOn = true;
           let view = null;
-          // What the pointer is over: the element hit, the one a click there records, the one shown, and the answer.
+          // What the pointer is over: the element hit, the one a click there records, the one picked instead with the
+          // Alt+arrows, the one shown, and the recorder's answer for it.
           let hover = null;
           let explaining = false;
           let explainAgain = false;
@@ -663,8 +669,8 @@ internal static class CaptureScript
             };
             const box = part(root, 'box');
             const label = part(root, 'label');
-            view = { host, box, label, locator: part(label, 'locator'), problem: part(label, 'problem'),
-              reasons: part(label, 'reasons'), note: part(label, 'note') };
+            view = { host, box, label, pick: part(label, 'pick'), locator: part(label, 'locator'),
+              problem: part(label, 'problem'), reasons: part(label, 'reasons'), note: part(label, 'note') };
             document.documentElement.appendChild(host);
             return view;
           }
@@ -682,6 +688,7 @@ internal static class CaptureScript
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
             const { box, label } = overlayView();
+            box.classList.toggle('picked', !!hover.picked);
             Object.assign(box.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
               width: `${rect.width}px`, height: `${rect.height}px` });
             if (!hover.answer) { label.style.display = 'none'; return; }
@@ -694,19 +701,46 @@ internal static class CaptureScript
             Object.assign(label.style, { left: `${Math.max(4, left)}px`, top: `${Math.max(4, top)}px` });
           }
 
-          function fillLabel(answer) {
+          function fillLabel(answer, picked) {
             const parts = overlayView();
             const line = (part, text) => { part.textContent = text || ''; part.style.display = text ? 'block' : 'none'; };
+            line(parts.pick, picked && `picked: ${tagOf(picked)}  (Alt+${range(0x2191)} ${range(0x2193)})`);
             line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
             line(parts.problem, answer.problem);
             line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
             line(parts.note, answer.note);
           }
 
+          const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
+            : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
           const hoverOver = (hit) => {
             const element = retarget(hit);
-            return { hit, element, shown: element.closest('[role=option]') ?? element, answer: null, at: 0 };
+            return { hit, element, picked: null, shown: element.closest('[role=option]') ?? element, answer: null, at: 0 };
           };
+
+          // The element picked with the Alt+arrows, while the pointer is still on what it was picked from.
+          const pickedFor = (hit) => (overlayOn && hover?.hit === hit && hover.picked) || null;
+
+          // Steps the pick through the elements from the one under the pointer up to the body: up by Alt+Up, down by Alt+Down.
+          function pick(step) {
+            const state = hover;
+            if (!state) return;
+            if (!state.chain) {
+              state.chain = [];
+              for (let node = state.element.contains(state.hit) ? state.hit : state.element;
+                   node && node !== document.body && node !== document.documentElement; node = node.parentElement)
+                state.chain.push(node);
+              state.index = state.chain.indexOf(state.element);
+            }
+            const index = Math.min(Math.max(state.index + step, 0), state.chain.length - 1);
+            if (index === state.index || index < 0) return;
+            state.index = index;
+            state.picked = state.chain[index] === state.element ? null : state.chain[index];
+            state.shown = state.picked ?? state.element.closest('[role=option]') ?? state.element;
+            state.answer = null;
+            drawOverlay();
+            scheduleExplain();
+          }
 
           function scheduleExplain() {
             if (!explainTimer) explainTimer = setTimeout(() => { explainTimer = 0; safe(explain); }, 80);
@@ -719,14 +753,15 @@ internal static class CaptureScript
             if (!overlayOn || !state?.shown.isConnected || typeof window.__qaasExplain !== 'function') return;
             explaining = true;
             state.at = now();
-            const option = state.shown !== state.element;
-            const { target } = describe(state.shown, option ? { pageLevel: true, noRow: true } : {});
-            const byName = state.element.matches(TOGGLES) && roleOf(state.element) === 'radio';
+            const { shown, picked } = state;
+            const option = !picked && shown !== state.element;
+            const { target } = describe(shown, picked ? { interactive: true } : option ? { pageLevel: true, noRow: true } : {});
+            const byName = shown.matches(TOGGLES) && roleOf(shown) === 'radio';
             Promise.resolve(window.__qaasExplain(JSON.stringify({ target, byName })))
               .then((reply) => safe(() => {
                 if (hover !== state || !reply) return;
                 state.answer = JSON.parse(reply);
-                fillLabel(state.answer);
+                fillLabel(state.answer, picked);
                 drawOverlay();
               }))
               .catch(() => { /* the recorder is gone */ })
@@ -756,11 +791,14 @@ internal static class CaptureScript
           addEventListener('scroll', () => safe(drawOverlay), { capture: true, passive: true });
           addEventListener('resize', () => safe(drawOverlay), { passive: true });
           addEventListener('keydown', (event) => safe(() => {
-            if (!event.isTrusted || event.repeat || event.key !== 'F9' || event.altKey || event.ctrlKey || event.metaKey ||
-                event.shiftKey) return;
-            overlayOn = !overlayOn;
-            hover = null;
-            hideOverlay();
+            if (!event.isTrusted || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.key === 'F9' && !event.altKey && !event.repeat) {
+              overlayOn = !overlayOn;
+              hover = null;
+              hideOverlay();
+            } else if (overlayOn && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+              pick(event.key === 'ArrowUp' ? 1 : -1);
+            }
           }), { capture: true, passive: true });
 
           // ------------------------------------------------------------------------------------------------ keyboard
