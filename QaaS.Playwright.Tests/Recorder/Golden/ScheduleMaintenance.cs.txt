@@ -1,0 +1,56 @@
+using Microsoft.Playwright;
+using QaaS.Playwright;
+using static Microsoft.Playwright.Assertions;
+
+namespace Flows;
+
+/// <summary>
+/// Recorded on http://127.0.0.1:5774/vehicles. The values it types and chooses are the settings in
+/// <see cref="ScheduleMaintenanceConfig"/>: give each case its own under FlowConfiguration:ScheduleMaintenance:.
+/// </summary>
+public sealed class ScheduleMaintenance : BasePlaywrightFlow<ScheduleMaintenanceConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var dialog = await OpenScheduleMaintenanceAsync(page);
+        await FillScheduleMaintenanceAsync(dialog);
+        await ScheduleAsync(dialog);
+    }
+
+    private async Task<ILocator> OpenScheduleMaintenanceAsync(IPage page)
+    {
+        await page.GetByRole(AriaRole.Button, new() { Name = $"Actions for {Configuration.PlateNumber}", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Menuitem, new() { Name = "Schedule maintenance", Exact = true }).ClickAsync();
+        var dialog = page.GetByRole(AriaRole.Dialog, new() { Name = "Schedule maintenance" });
+        await Expect(dialog).ToBeVisibleAsync();
+        return dialog;
+    }
+
+    private async Task FillScheduleMaintenanceAsync(ILocator dialog)
+    {
+        var maintenanceTypeId = dialog.Locator("[id='maintenanceTypeId']");
+        await maintenanceTypeId.ClickAsync();
+        await dialog.Page.GetByRole(AriaRole.Option, new() { Name = Configuration.MaintenanceTypeId, Exact = true }).ClickAsync();
+        await Expect(maintenanceTypeId).ToHaveTextAsync(Configuration.MaintenanceTypeId);
+        await dialog.Locator("[name='dueDate']").FillAsync(Configuration.DueDate);
+        await dialog.GetByRole(AriaRole.Radio, new() { Name = Configuration.Priority, Exact = true }).CheckAsync();
+        await dialog.Locator("[name='notes']").FillAsync(Configuration.Notes);
+    }
+
+    private async Task ScheduleAsync(ILocator dialog)
+    {
+        await dialog.GetByRole(AriaRole.Button, new() { Name = "Schedule", Exact = true }).ClickAsync();
+        await Expect(dialog).ToBeHiddenAsync(new() { Timeout = 30000 });
+        await Expect(dialog.Page.GetByRole(AriaRole.Alert).Filter(new() { HasText = $"Maintenance scheduled for {Configuration.PlateNumber}" })).ToBeVisibleAsync();
+    }
+}
+
+/// <summary>The values recorded in <see cref="ScheduleMaintenance"/>; FlowConfiguration:ScheduleMaintenance: sets them per case.</summary>
+public sealed record ScheduleMaintenanceConfig
+{
+    public string PlateNumber { get; init; } = "HL-775-ZE";
+    public string MaintenanceTypeId { get; init; } = "Brake inspection";
+    public string DueDate { get; init; } = "03/11/2026";
+    public string Priority { get; init; } = "High";
+    public string Notes { get; init; } = "Brakes squeak";
+}

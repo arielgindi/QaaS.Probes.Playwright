@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Tests find their files (golden recordings, .editorconfig) from their own source path, which a CI build would
+         otherwise map to /_/. -->
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
+    <!-- Tests need no XML docs. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QaaS.Playwright\QaaS.Playwright.csproj" />
+    <ProjectReference Include="..\QaaS.Playwright.Recorder\QaaS.Playwright.Recorder.csproj" />
+  </ItemGroup>
+
+</Project>

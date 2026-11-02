@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="QaaS.Playwright/QaaS.Playwright.csproj" />
+  <Project Path="QaaS.Playwright.Recorder/QaaS.Playwright.Recorder.csproj" />
+  <Project Path="QaaS.Playwright.Tests/QaaS.Playwright.Tests.csproj" />
+</Solution>

@@ -1,0 +1,34 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,targets,xml,json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# Treat unused imports as warnings so dotnet format will remove them
+dotnet_diagnostic.IDE0005.severity = warning
+# Sort System.* first
+dotnet_sort_system_directives_first = true
+# Remove unused private members
+dotnet_diagnostic.IDE0051.severity = warning
+# Remove unused parameters
+dotnet_diagnostic.IDE0060.severity = warning
+# Namespace must match folder structure (what Rider/ReSharper flags) — enforced in build
+dotnet_style_namespace_match_folder = true
+dotnet_diagnostic.IDE0130.severity = warning
+# CA1873: the structured-logging arguments are cheap (literals, locals, property reads), so the IsEnabled guard the
+# rule wants would add noise without benefit; the rule targets expensive argument evaluation.
+dotnet_diagnostic.CA1873.severity = none
+# CA1859: this library has no hot paths. Interface-typed signatures (IReadOnlyList/IReadOnlyCollection) are an
+# intentional readability and immutability-intent choice over the micro-perf concrete types the rule prefers.
+dotnet_diagnostic.CA1859.severity = none

@@ -1,0 +1,38 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Package metadata, shared by the library and the recorder tool. -->
+  <PropertyGroup>
+    <Authors>SmokeTeam</Authors>
+    <Company>SmokeTeam</Company>
+    <Copyright>Copyright (c) SmokeTeam</Copyright>
+    <PackageProjectUrl>https://github.com/arielgindi/QaaS.Probes.Playwright</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/arielgindi/QaaS.Probes.Playwright</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>qaas;playwright;browser;e2e;testing;probe;recorder</PackageTags>
+    <PackageReleaseNotes>https://github.com/arielgindi/QaaS.Probes.Playwright/blob/master/CHANGELOG.md</PackageReleaseNotes>
+    <VersionPrefix>1.1.0</VersionPrefix>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+# Built-in defaults of QaaS.Playwright, shared by the probe and the recorder. A test overrides BrowserUrl in its
+# ProbeConfiguration; the rest rarely needs changing.
+
+# The Chrome the probe runs in, over CDP. On this machine, and nothing answering there, the probe starts Chrome itself
+# (see BrowserExecutablePath). For a remote browser, set the probe's BrowserUrl, e.g.
+#   BrowserUrl: ${BROWSER_URL ?? ws://browserless.example.com:3000?token=...}
+BrowserUrl: "http://localhost:9222"
+
+# The Playwright channel the recorder opens: "chrome" is the installed Google Chrome, so nothing is downloaded.
+ChromeChannel: chrome
+
+# The viewport the recorder opens Chrome with (width,height).
+RecorderViewport: "1920,1080"
+
+# The attribute GetByTestId() means, in the recorder and the probe alike. "data-testid" is Playwright's own default.
+TestIdAttribute: data-testid
+
+# Seconds the probe waits for a Chrome it started to answer.
+ChromeStartupTimeoutSeconds: 60

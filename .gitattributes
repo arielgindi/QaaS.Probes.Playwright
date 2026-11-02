@@ -1,0 +1,2 @@
+# LF everywhere, also in a Windows checkout: raw string literals in the code and its tests keep \n line ends.
+* text=auto eol=lf

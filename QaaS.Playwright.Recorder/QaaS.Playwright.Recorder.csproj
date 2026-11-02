@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackageId>QaaS.Playwright.Recorder</PackageId>
+    <Description>Records a browser flow in Chrome and writes it as a QaaS.Playwright flow class, with its values as settings.</Description>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>qaas-playwright</ToolCommandName>
+    <!-- The tool runs on the desktops people record on, so it carries Playwright's driver for each. -->
+    <PlaywrightPlatform>win-x64;linux-x64;osx-x64;osx-arm64</PlaywrightPlatform>
+    <!-- The tool's types are internal or its entry point; NU5111: Playwright's own driver scripts, never run by NuGet. -->
+    <NoWarn>$(NoWarn);CS1591;NU5111</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="QaaS.Playwright.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+    <ProjectReference Include="..\QaaS.Playwright\QaaS.Playwright.csproj" />
+  </ItemGroup>
+
+</Project>

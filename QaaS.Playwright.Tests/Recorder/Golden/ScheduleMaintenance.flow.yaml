@@ -1,0 +1,9 @@
+# The values recorded in ScheduleMaintenance. Put this block under the ProbeConfiguration of the probe
+# that runs the flow, and change the values for each case.
+FlowConfiguration:
+  ScheduleMaintenance:
+    PlateNumber: 'HL-775-ZE'
+    MaintenanceTypeId: 'Brake inspection'
+    DueDate: '03/11/2026'
+    Priority: 'High'
+    Notes: 'Brakes squeak'

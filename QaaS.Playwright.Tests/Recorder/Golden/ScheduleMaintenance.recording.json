@@ -1,0 +1,793 @@
+{
+  "startUrl": "http://127.0.0.1:5774/vehicles",
+  "actions": [
+    {
+      "id": "yxps92-1",
+      "t": 1791100843403,
+      "kind": "click",
+      "page": "page",
+      "url": "http://127.0.0.1:5774/vehicles",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Actions for HL-775-ZE",
+        "interactive": true,
+        "row": {
+          "key": "HL-775-ZE",
+          "header": "Plate number"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Actions for HL-775-ZE",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Actions for HL-775-ZE"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "HL-775-ZE"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Actions for HL-775-ZE",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Actions for HL-775-ZE"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Actions for HL-775-ZE\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "yxps92-2",
+      "t": 1791100844077,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "http://127.0.0.1:5774/vehicles",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "Schedule maintenance",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Schedule maintenance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Schedule maintenance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"Schedule maintenance\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "yxps92-2",
+          "sinceAction": 42,
+          "t": 1791100844119,
+          "dialog": {
+            "title": "Schedule maintenance",
+            "raw": "Schedule maintenance",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "yxps92-3",
+      "t": 1791100844736,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": "maintenanceTypeId",
+        "text": "Maintenance type",
+        "label": "Maintenance type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[id='maintenanceTypeId']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "div:has(> input[name='maintenanceTypeId'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Maintenance type"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Maintenance type"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Maintenance type\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "yxps92-4",
+      "t": 1791100845377,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "Brake inspection",
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": "maintenanceTypeId",
+        "text": "Maintenance type",
+        "label": "Maintenance type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[id='maintenanceTypeId']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "div:has(> input[name='maintenanceTypeId'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Maintenance type"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Maintenance type"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Maintenance type\" })"
+          }
+        ]
+      },
+      "field": {
+        "tag": "div",
+        "role": "combobox",
+        "id": "maintenanceTypeId",
+        "text": "Maintenance type",
+        "label": "Maintenance type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[id='maintenanceTypeId']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "div:has(> input[name='maintenanceTypeId'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "maintenanceTypeId"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Maintenance type"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Maintenance type"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Maintenance type\" })"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Brake inspection",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Brake inspection",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Brake inspection"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Brake inspection\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "yxps92-4",
+          "sinceAction": 351,
+          "t": 1791100845728,
+          "value": "Brake inspection",
+          "raw": "Brake inspection"
+        }
+      ]
+    },
+    {
+      "id": "yxps92-5",
+      "t": 1791100846418,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "03/11/2026",
+      "raw": "03/11/2026",
+      "final": true,
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "dueDate",
+        "name": "dueDate",
+        "text": "Due date",
+        "label": "Due date",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[name='dueDate']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "dueDate"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[id='dueDate']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "dueDate"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Due date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Due date"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Due date\" })"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "yxps92-6",
+      "t": 1791100847368,
+      "kind": "check",
+      "page": "page",
+      "widget": "radio",
+      "checked": true,
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "radio",
+        "type": "radio",
+        "name": "priority",
+        "value": "HIGH",
+        "text": "High",
+        "label": "High",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[name='priority']"
+              }
+            ],
+            "count": 3,
+            "value": "priority"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[name='priority'][value='HIGH']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "priority"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "High",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "High"
+          },
+          {
+            "kind": "roleInGroup",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[role='radiogroup']:has([name='priority'])"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "High",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "High"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"High\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "yxps92-7",
+      "t": 1791100848401,
+      "kind": "fill",
+      "page": "page",
+      "widget": "textarea",
+      "value": "Brakes squeak",
+      "raw": "Brakes squeak",
+      "final": true,
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "textarea",
+        "role": "textbox",
+        "id": "notes",
+        "name": "notes",
+        "text": "Notes",
+        "label": "Notes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[name='notes']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "notes"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "css",
+                "css": "[id='notes']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "notes"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Notes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Notes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Notes\" })"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "yxps92-8",
+      "t": 1791100849579,
+      "kind": "click",
+      "page": "page",
+      "url": "http://127.0.0.1:5774/vehicles",
+      "dialog": {
+        "title": "Schedule maintenance",
+        "raw": "Schedule maintenance",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Schedule maintenance"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Schedule",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Schedule maintenance"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Schedule",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Schedule"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Schedule\" })"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "alert",
+          "actionId": "yxps92-8",
+          "sinceAction": 37,
+          "t": 1791100849616,
+          "text": "Maintenance scheduled for HL-775-ZE",
+          "alertCount": 1
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "yxps92-8",
+          "sinceAction": 237,
+          "t": 1791100849816,
+          "dialog": {
+            "title": "Schedule maintenance",
+            "raw": "Schedule maintenance",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    }
+  ]
+}

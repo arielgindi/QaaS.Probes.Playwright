@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>QaaS.Playwright</PackageId>
+    <Description>Playwright browser tests for QaaS: a probe that runs C# flows in Chrome, and an assertion that reports each flow's result with a failure screenshot.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="browser-defaults.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="QaaS.Playwright.Tests" />
+    <InternalsVisibleTo Include="QaaS.Playwright.Recorder" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="QaaS.Framework.SDK" />
+    <PackageReference Include="QaaS.Framework.Configurations" />
+    <PackageReference Include="QaaS.Framework.Serialization" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+</Project>
