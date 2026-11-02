@@ -359,7 +359,7 @@ internal static class CaptureScript
               candidates.push(candidate('row', scope, [...rowParts, ...inner], element, { text: name }));
             }
             const generated = safe(() => engine()?.generateLocator(element, 'csharp'), null);
-            if (generated) candidates.push({ kind: 'generator', csharp: generated, count: 1, matches: true });
+            if (generated) candidates.push({ kind: 'generator', csharp: generated, selector: safe(() => engine().selector(element), null), count: 1, matches: true });
             return {
               tag: tag.toLowerCase(), role, type: element.getAttribute('type'), id: element.id || null,
               name: nameAttribute, testId, value: element.matches('input[type=radio], input[type=checkbox]') ? element.value : null,

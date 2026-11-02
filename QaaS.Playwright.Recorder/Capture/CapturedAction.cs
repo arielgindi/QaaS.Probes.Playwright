@@ -140,6 +140,9 @@ internal sealed class CapturedCandidate
 
     /// <summary>For the generator, Playwright's own C# locator.</summary>
     public string? Csharp { get; set; }
+
+    /// <summary>For the generator, the same locator as a Playwright selector, to find the element from .NET.</summary>
+    public string? Selector { get; set; }
 }
 
 /// <summary>One call of a locator chain.</summary>
