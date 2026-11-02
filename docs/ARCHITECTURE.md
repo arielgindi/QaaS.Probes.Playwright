@@ -75,10 +75,11 @@ QaaS.Playwright/                 The library (NuGet package QaaS.Playwright)
   Reporting/                     The assertion's message and trace, and the run's warnings
   browser-defaults.yaml          Built-in defaults (BrowserUrl, test-id attribute, ...)
 QaaS.Playwright.Recorder/        The recorder (.NET tool qaas-playwright)
-  Capture/                       Its own Chrome session and the capture script
+  Capture/                       Its own Chrome session, the capture script and its overlay
   Generation/                    From a recording to a flow class and its YAML
 QaaS.Playwright.Tests/           NUnit tests
   EndToEnd/                      The real probe and assertion against a headless Chrome and a small web app
-  Recorder/                      The code the recorder writes, against a golden recording, and that it builds
+  Recorder/                      The code the recorder writes, against a golden recording, and that it builds;
+                                 what a recording session shows and records on a local page
 docs/                            Documentation
 ```

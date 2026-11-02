@@ -2,6 +2,18 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- While recording, a box follows the pointer over the element a click records, labelled with the locator the flow
+  will use and why each locator tried before it lost (`id: found 2 (1 hidden)`, `id: looks generated`,
+  `testid: none`). F9 hides or shows it.
+- `Alt+↑` and `Alt+↓` pick the element the next click records: the one around the box, or back toward the pointer.
+- A click on a plain element that looks clickable (a hand pointer, `onclick`, `tabindex`) records that element, like a
+  button. When only Playwright's own locator finds the element, as for a carousel's wrapper, the element the click
+  hits inside it with a stable id or test id is recorded instead.
+- `--keep-recording` saves the raw recording beside the flow, with every locator tried, to share when an element was
+  located badly.
+
 ## 1.1.0
 
 First public release.
