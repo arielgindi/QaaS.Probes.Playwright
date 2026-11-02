@@ -33,6 +33,8 @@ internal static class CaptureScript
           // Bidi marks and isolates, and the zero-width space an empty MUI Select shows.
           const BIDI = new RegExp(`[${range(0x200b)}${range(0x200e, 0x200f)}${range(0x202a, 0x202e)}${range(0x2066, 0x2069)}${range(0x061c)}]`, 'g');
           const INVISIBLE = new RegExp(`[${range(0x200b)}${range(0x00ad)}]`, 'g');
+          // Taken before the page's scripts run, so the overlay's shadow root stays closed whatever they replace.
+          const attachShadow = Element.prototype.attachShadow;
           const page = Math.random().toString(36).slice(2, 8);
           let counter = 0;
 
@@ -615,6 +617,151 @@ internal static class CaptureScript
             record({ ...lastClick.record, kind: 'dblclick' });
             lastClick = null;
           }), true);
+
+          // ------------------------------------------------------------------------------------------------- overlay
+          // A box follows the pointer over the element a click would record, labelled with the locator the flow would use
+          // and why the ones tried before it lost, as the recorder's own policy answers through window.__qaasExplain. It is
+          // drawn in a closed shadow root, which neither the page nor Playwright's selectors see; it never takes the pointer
+          // or the focus, and takes no room. F9 hides or shows it.
+          const OVERLAY_CSS = `
+            :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
+              left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
+              pointer-events: none !important; }
+            .box, .label { position: fixed; display: none; box-sizing: border-box; pointer-events: none; }
+            .box { border: 2px solid #1a73e8; border-radius: 2px; background: rgba(26, 115, 232, .12);
+              box-shadow: 0 0 0 1px rgba(255, 255, 255, .9); }
+            .label { max-width: min(560px, calc(100vw - 8px)); padding: 4px 8px; border-radius: 4px;
+              background: rgba(24, 24, 27, .95); color: #d4d4d8; direction: ltr; unicode-bidi: isolate; text-align: left;
+              font: 11px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overflow-wrap: anywhere;
+              box-shadow: 0 2px 6px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .25); }
+            .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
+            .locator { font-size: 12px; font-weight: 600; color: #fff; }
+            .problem { color: #fbbf24; }
+            .reasons, .note { color: #a1a1aa; }`;
+          // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
+          const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
+          let overlayOn = true;
+          let view = null;
+          // What the pointer is over: the element hit, the one a click there records, the one shown, and the answer.
+          let hover = null;
+          let explaining = false;
+          let explainAgain = false;
+          let explainTimer = 0;
+
+          function overlayView() {
+            if (view?.host.isConnected) return view;
+            const host = document.createElement('qaas-recorder-overlay');
+            const root = attachShadow.call(host, { mode: 'closed' });
+            const sheet = new CSSStyleSheet();
+            sheet.replaceSync(OVERLAY_CSS);
+            root.adoptedStyleSheets = [sheet];
+            const part = (parent, name) => {
+              const element = parent.appendChild(document.createElement('div'));
+              element.className = name;
+              element.setAttribute('aria-hidden', 'true');
+              return element;
+            };
+            const box = part(root, 'box');
+            const label = part(root, 'label');
+            view = { host, box, label, locator: part(label, 'locator'), problem: part(label, 'problem'),
+              reasons: part(label, 'reasons'), note: part(label, 'note') };
+            document.documentElement.appendChild(host);
+            return view;
+          }
+
+          function hideOverlay() {
+            if (!view) return;
+            view.box.style.display = 'none';
+            view.label.style.display = 'none';
+          }
+
+          // The box over the element, and the label below it, or above it when there is no room below.
+          function drawOverlay() {
+            const element = hover?.shown;
+            if (!overlayOn || !element?.isConnected) { hideOverlay(); return; }
+            const rect = element.getBoundingClientRect();
+            if (!rect.width && !rect.height) { hideOverlay(); return; }
+            const { box, label } = overlayView();
+            Object.assign(box.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
+              width: `${rect.width}px`, height: `${rect.height}px` });
+            if (!hover.answer) { label.style.display = 'none'; return; }
+            label.style.display = 'block';
+            const size = label.getBoundingClientRect();
+            const below = rect.bottom + 4;
+            const above = rect.top - size.height - 4;
+            const top = below + size.height <= innerHeight ? below : above >= 0 ? above : innerHeight - size.height - 4;
+            const left = Math.min(Math.max(4, rect.left), innerWidth - size.width - 4);
+            Object.assign(label.style, { left: `${Math.max(4, left)}px`, top: `${Math.max(4, top)}px` });
+          }
+
+          function fillLabel(answer) {
+            const parts = overlayView();
+            const line = (part, text) => { part.textContent = text || ''; part.style.display = text ? 'block' : 'none'; };
+            line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
+            line(parts.problem, answer.problem);
+            line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
+            line(parts.note, answer.note);
+          }
+
+          const hoverOver = (hit) => {
+            const element = retarget(hit);
+            return { hit, element, shown: element.closest('[role=option]') ?? element, answer: null, at: 0 };
+          };
+
+          function scheduleExplain() {
+            if (!explainTimer) explainTimer = setTimeout(() => { explainTimer = 0; safe(explain); }, 80);
+          }
+
+          // Asks the recorder what a click on the element records: one question at a time, about the latest element.
+          function explain() {
+            if (explaining) { explainAgain = true; return; }
+            const state = hover;
+            if (!overlayOn || !state?.shown.isConnected || typeof window.__qaasExplain !== 'function') return;
+            explaining = true;
+            state.at = now();
+            const option = state.shown !== state.element;
+            const { target } = describe(state.shown, option ? { pageLevel: true, noRow: true } : {});
+            const byName = state.element.matches(TOGGLES) && roleOf(state.element) === 'radio';
+            Promise.resolve(window.__qaasExplain(JSON.stringify({ target, byName })))
+              .then((reply) => safe(() => {
+                if (hover !== state || !reply) return;
+                state.answer = JSON.parse(reply);
+                fillLabel(state.answer);
+                drawOverlay();
+              }))
+              .catch(() => { /* the recorder is gone */ })
+              .finally(() => {
+                explaining = false;
+                if (explainAgain) { explainAgain = false; scheduleExplain(); }
+              });
+          }
+
+          addEventListener('pointermove', (event) => safe(() => {
+            if (!event.isTrusted || !overlayOn) return;
+            const hit = deepTarget(event);
+            if (hit === hover?.hit) {
+              // The page may have changed under a pointer at rest.
+              if (now() - hover.at > 1500) scheduleExplain();
+              return;
+            }
+            hover = hit && hit !== document.body && hit !== document.documentElement && !hit.matches('iframe, frame')
+              ? hoverOver(hit) : null;
+            drawOverlay();
+            if (hover) scheduleExplain();
+          }), { capture: true, passive: true });
+          addEventListener('pointerout', (event) => safe(() => {
+            // Off the page, or into a frame, which records nothing.
+            if (event.isTrusted && !event.relatedTarget) { hover = null; hideOverlay(); }
+          }), { capture: true, passive: true });
+          addEventListener('scroll', () => safe(drawOverlay), { capture: true, passive: true });
+          addEventListener('resize', () => safe(drawOverlay), { passive: true });
+          addEventListener('keydown', (event) => safe(() => {
+            if (!event.isTrusted || event.repeat || event.key !== 'F9' || event.altKey || event.ctrlKey || event.metaKey ||
+                event.shiftKey) return;
+            overlayOn = !overlayOn;
+            hover = null;
+            hideOverlay();
+          }), { capture: true, passive: true });
 
           // ------------------------------------------------------------------------------------------------ keyboard
           const activeElement = () => {

@@ -43,7 +43,8 @@ internal static class ConsoleUi
         Info($"Flow:    {request.ClassName}");
         Info($"URL:     {request.Url}");
         Info($"Save to: {Path.GetFullPath(Path.Combine(request.OutputDir, $"{request.ClassName}.cs"))}\n");
-        Info(">>> Browser is opening — do your thing, then CLOSE the browser (or press Enter here) when done.\n");
+        Info(">>> Browser is opening — do your thing, then CLOSE the browser (or press Enter here) when done.");
+        Info("    The box under the pointer shows what a click records. F9 hides or shows it.\n");
     }
 
     /// <summary>Completes when the person presses Enter; never, when nobody can type here.</summary>
