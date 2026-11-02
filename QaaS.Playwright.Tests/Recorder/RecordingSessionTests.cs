@@ -1,11 +1,15 @@
 using System.Text.Json;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
 
 namespace QaaS.Playwright.Tests.Recorder;
 
-/// <summary>The recorder in a headless Chrome on a local page: what its overlay shows under the pointer.</summary>
+/// <summary>
+/// The recorder in a headless Chrome on a local page: what its overlay shows under the pointer, and which element a
+/// click is recorded on.
+/// </summary>
 [TestFixture]
 [Category("EndToEnd")]
 public class RecordingSessionTests
@@ -43,7 +47,47 @@ public class RecordingSessionTests
         });
     }
 
-    private async Task<RecordingSession> StartAsync(string body)
+    [Test]
+    public async Task ClickableCardsAndCarouselWrappers_AreRecordedByTheStableIdInside()
+    {
+        var actions = 0;
+        await using var session = await StartAsync("""
+            <style>
+              .slick-track { display: flex; gap: 16px; }
+              .slick-slide { width: 200px; flex: none; }
+              .card { display: inline-block; width: 100%; height: 60px; overflow: hidden; cursor: pointer; }
+            </style>
+            <div class="slick-track">
+              <div class="slick-slide"><div><div id="card-orders" class="card"><h3>Orders</h3></div></div></div>
+              <div class="slick-slide" style="cursor: pointer"><div><div id="card-tickets"><h3>Tickets</h3></div></div></div>
+            </div>
+            <div id="tile-reports" style="cursor: pointer; width: 200px"><span>Reports</span> <span>2 new</span></div>
+            """, news => { if (news is CapturedAction) Interlocked.Increment(ref actions); });
+        var page = session.Page;
+
+        // Just below the card, on the wrapper the carousel put around it.
+        var wrapper = (await page.Locator("#card-orders >> xpath=..").BoundingBoxAsync())!;
+        var (x, y) = (wrapper.X + 20, wrapper.Y + wrapper.Height - 1);
+        var hitsWrapper = await page.EvaluateAsync<bool>(
+            "({ x, y }) => document.elementFromPoint(x, y) === document.getElementById('card-orders').parentElement",
+            new { x = (double)x, y = (double)y });
+        await page.Mouse.ClickAsync(x, y);
+        // The slide is what looks clickable; the element inside it has the id.
+        await page.GetByText("Tickets").ClickAsync();
+        await page.GetByText("Reports").ClickAsync();
+        for (var wait = 0; wait < 50 && Volatile.Read(ref actions) < 3; wait++) await Task.Delay(100);
+        var code = FlowCodeGenerator.Generate(await session.StopAsync(), "OpenCards", "Flows").Code;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(hitsWrapper, Is.True, "the first click must land on the wrapper");
+            Assert.That(code, Does.Contain("""await page.Locator("[id='card-orders']").ClickAsync();"""));
+            Assert.That(code, Does.Contain("""await page.Locator("[id='card-tickets']").ClickAsync();"""));
+            Assert.That(code, Does.Contain("""await page.Locator("[id='tile-reports']").ClickAsync();"""));
+        });
+    }
+
+    private async Task<RecordingSession> StartAsync(string body, Action<object>? onNews = null)
     {
         var page = Path.Combine(_folder, "page.html");
         await File.WriteAllTextAsync(page, $"<!doctype html><meta charset=\"utf-8\"><body>{body}</body>");
@@ -51,7 +95,7 @@ public class RecordingSessionTests
         return await RecordingSession.StartAsync(new RecordingOptions(new Uri(page).AbsoluteUri)
         {
             LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
-        }, _ => { });
+        }, onNews ?? (_ => { }));
     }
 
     // The overlay's text, one line per node, read through Chrome's DevTools protocol, which sees into closed shadow roots.

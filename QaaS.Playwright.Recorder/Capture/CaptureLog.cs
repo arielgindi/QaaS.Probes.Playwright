@@ -1,4 +1,5 @@
 using System.Text.Json;
+using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Recorder.Capture;
 
@@ -249,6 +250,7 @@ internal sealed class CaptureLog
         public CapturedDialog? Dialog { get; set; }
         public List<string>? OpenDialogs { get; set; }
         public CapturedTarget? Target { get; set; }
+        public List<CapturedTarget>? Equivalents { get; set; }
         public CapturedTarget? Field { get; set; }
         public CapturedTarget? Option { get; set; }
         public CapturedTarget? To { get; set; }
@@ -258,12 +260,17 @@ internal sealed class CaptureLog
         public string? Text { get; set; }
         public int? AlertCount { get; set; }
 
-        public CapturedAction ToAction(string page) => new()
+        public CapturedAction ToAction(string page)
         {
-            Id = Id!, T = T, Kind = Kind ?? "", Page = page, Widget = Widget, Value = Value, Raw = Raw, Final = Final,
-            Picked = Picked, Checked = Checked, Key = Key, OnPage = OnPage, Files = Files, Url = Url, Dialog = Dialog,
-            OpenDialogs = OpenDialogs, Target = Target, Field = Field, Option = Option, To = To, HoverMenu = HoverMenu,
-        };
+            var target = LocatorPolicy.Prefer(Target, Equivalents);
+            return new()
+            {
+                Id = Id!, T = T, Kind = Kind ?? "", Page = page, Widget = Widget, Value = Value, Raw = Raw, Final = Final,
+                Picked = Picked, Checked = Checked, Key = Key, OnPage = OnPage, Files = Files, Url = Url, Dialog = Dialog,
+                OpenDialogs = OpenDialogs, Target = target, Field = Field, Option = Option, To = To, HoverMenu = HoverMenu,
+                Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
+            };
+        }
 
         public CapturedEffect ToEffect() => new()
         {

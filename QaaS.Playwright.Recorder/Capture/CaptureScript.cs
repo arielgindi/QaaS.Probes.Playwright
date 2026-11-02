@@ -26,6 +26,8 @@ internal static class CaptureScript
           const INTERACTIVE = 'button, a[href], input, textarea, select, tr, [role=button], [role=link], [role=checkbox], ' +
             '[role=radio], [role=switch], [role=tab], [role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], ' +
             '[role=option], [role=combobox], [role=gridcell], [role=row], [contenteditable=""], [contenteditable=true]';
+          // A row or a grid's cell is interactive as a whole, but what looks clickable inside it is the target.
+          const CONTAINERS = 'tr, [role=row], [role=gridcell]';
           const TOGGLES = 'input[type=checkbox], input[type=radio], [role=checkbox], [role=radio], [role=switch]';
           const DIALOGS = '[role=dialog], [role=alertdialog]';
           const PICKER = '.MuiPickersPopper-root';
@@ -219,8 +221,22 @@ internal static class CaptureScript
           const isAutocomplete = (element) => element.tagName === 'INPUT' && element.getAttribute('role') === 'combobox';
           const controlOfLabel = (label) => label.control ?? label.querySelector(TOGGLES);
 
-          // The element a person meant: the interactive element around what the pointer hit, or for a label of a checkbox,
-          // radio or switch, the control itself.
+          // What looks clickable without being a control: the pointer turns into a hand over it and not over its parent, it
+          // has an onclick attribute, or the Tab key stops on it. A focusable area that scrolls is for the keyboard.
+          function looksClickable(element) {
+            if (element === document.body || element === document.documentElement) return false;
+            if (element.hasAttribute('onclick')) return true;
+            const style = styleOf(element);
+            if (!style) return false;
+            if (style.cursor === 'pointer' && styleOf(element.parentElement)?.cursor !== 'pointer') return true;
+            if (!element.hasAttribute('tabindex') || element.tabIndex < 0 || element.matches(DIALOGS)) return false;
+            return !(/auto|scroll/.test(style.overflowX + style.overflowY) &&
+              (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth));
+          }
+
+          // The element a person meant: the control around what the pointer hit (for a label of a checkbox, radio or
+          // switch, the control itself), else the outermost element below the next row or cell that looks clickable, else
+          // the row or cell, else what was hit.
           function retarget(hit) {
             const interactive = hit.closest(INTERACTIVE);
             const label = hit.closest('label');
@@ -228,8 +244,43 @@ internal static class CaptureScript
               const control = controlOfLabel(label);
               if (control) return control;
             }
-            return interactive ?? hit;
+            if (interactive && !interactive.matches(CONTAINERS)) return interactive;
+            let clickable = null;
+            for (let node = hit; node && node !== interactive; node = node.parentElement)
+              if (looksClickable(node)) clickable = node;
+            return clickable ?? interactive ?? hit;
           }
+
+          // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
+          function onlyChild(element) {
+            const child = element.children.length === 1 ? element.firstElementChild : null;
+            if (!child || [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim())) return null;
+            const outer = element.getBoundingClientRect();
+            const inner = child.getBoundingClientRect();
+            return ['left', 'top', 'right', 'bottom'].every((side) => Math.abs(outer[side] - inner[side]) <= 8) ? child : null;
+          }
+
+          // The elements a click on the target hits as well that have an id or a test id: those between it and what the
+          // pointer hit, outermost first, then a wrapper's only child. The recorder locates the click by one of them when
+          // only Playwright's own locator finds the target.
+          function equivalentsOf(hit, element) {
+            const found = [];
+            if (element.contains(hit)) for (let node = hit; node !== element; node = node.parentElement) found.unshift(node);
+            for (let child = onlyChild(element); child; child = onlyChild(child)) if (!found.includes(child)) found.push(child);
+            return found.filter((node) => node.id || node.getAttribute(TEST_ID));
+          }
+          // Each is the same click: when the target is a control, so are they.
+          const describeEquivalents = (elements, target) =>
+            elements.map((other) => describe(other, target.interactive ? { interactive: true } : {}).target);
+
+          // What the element is beyond its role, for the recorder to write it.
+          const widgetOf = (element) => element.matches(TOGGLES)
+            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' ? 'switch' : 'checkbox')
+            : isMuiSelect(element) ? 'select-open'
+            : element.closest('.MuiAutocomplete-root') && element.tagName === 'BUTTON' ? 'autocomplete-button'
+            : roleOf(element) === 'tab' ? 'tab'
+            : roleOf(element) === 'menuitem' ? 'menuitem'
+            : null;
 
           function dialogOf(element) {
             for (let dialog = element.closest(DIALOGS); dialog; dialog = dialog.parentElement?.closest(DIALOGS))
@@ -369,7 +420,8 @@ internal static class CaptureScript
               text: roleText ?? clean(accessibleName(element)),
               label: clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
-              interactive: options.interactive ?? (element.matches(INTERACTIVE) || element.matches(TOGGLES)),
+              interactive: options.interactive ??
+                (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element)),
               row: row ? { key: row.key, header: row.header } : null,
               candidates,
             };
@@ -486,15 +538,12 @@ internal static class CaptureScript
             // An element the person picked is what they act on, whatever it is.
             const info = describe(element, picked ? { interactive: true } : {});
             if (isMuiSelect(element) || isAutocomplete(element)) opened = { element, info };
-            const widget = toggle ? (roleOf(toggle) === 'radio' ? 'radio' : roleOf(toggle) === 'switch' ? 'switch' : 'checkbox')
-              : isMuiSelect(element) ? 'select-open'
-              : element.closest('.MuiAutocomplete-root') && element.tagName === 'BUTTON' ? 'autocomplete-button'
-              : roleOf(element) === 'tab' ? 'tab'
-              : roleOf(element) === 'menuitem' ? 'menuitem'
-              : null;
+            const widget = widgetOf(element);
             const field = widget === 'autocomplete-button'
               ? describe(element.closest('.MuiAutocomplete-root').querySelector('input')).target : null;
+            const equivalents = picked || widget ? [] : describeEquivalents(equivalentsOf(hit, element), info.target);
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
+              ...(equivalents.length ? { equivalents } : {}),
               adornmentField: element.tagName === 'BUTTON' ? fieldOfAdornment(element) : null,
               hoverMenu: hoverMenus.has(element.closest('[role=menu]')) };
           }
@@ -647,8 +696,8 @@ internal static class CaptureScript
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
           let overlayOn = true;
           let view = null;
-          // What the pointer is over: the element hit, the one a click there records, the one picked instead with the
-          // Alt+arrows, the one shown, and the recorder's answer for it.
+          // What the pointer is over: the element hit, the one a click there targets, the one picked instead with the
+          // Alt+arrows, the one described, the one the recorder records it on (boxed), and the recorder's answer.
           let hover = null;
           let explaining = false;
           let explainAgain = false;
@@ -683,7 +732,7 @@ internal static class CaptureScript
 
           // The box over the element, and the label below it, or above it when there is no room below.
           function drawOverlay() {
-            const element = hover?.shown;
+            const element = hover?.boxed ?? hover?.shown;
             if (!overlayOn || !element?.isConnected) { hideOverlay(); return; }
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
@@ -715,7 +764,8 @@ internal static class CaptureScript
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
           const hoverOver = (hit) => {
             const element = retarget(hit);
-            return { hit, element, picked: null, shown: element.closest('[role=option]') ?? element, answer: null, at: 0 };
+            return { hit, element, picked: null, shown: element.closest('[role=option]') ?? element, boxed: null, answer: null,
+              at: 0 };
           };
 
           // The element picked with the Alt+arrows, while the pointer is still on what it was picked from.
@@ -737,6 +787,7 @@ internal static class CaptureScript
             state.index = index;
             state.picked = state.chain[index] === state.element ? null : state.chain[index];
             state.shown = state.picked ?? state.element.closest('[role=option]') ?? state.element;
+            state.boxed = null;
             state.answer = null;
             drawOverlay();
             scheduleExplain();
@@ -756,11 +807,14 @@ internal static class CaptureScript
             const { shown, picked } = state;
             const option = !picked && shown !== state.element;
             const { target } = describe(shown, picked ? { interactive: true } : option ? { pageLevel: true, noRow: true } : {});
-            const byName = shown.matches(TOGGLES) && roleOf(shown) === 'radio';
-            Promise.resolve(window.__qaasExplain(JSON.stringify({ target, byName })))
+            const widget = widgetOf(shown);
+            const others = picked || option || widget ? [] : equivalentsOf(state.hit, shown);
+            const equivalents = describeEquivalents(others, target);
+            Promise.resolve(window.__qaasExplain(JSON.stringify({ target, equivalents, byName: widget === 'radio' })))
               .then((reply) => safe(() => {
-                if (hover !== state || !reply) return;
+                if (hover !== state || state.shown !== shown || !reply) return;
                 state.answer = JSON.parse(reply);
+                state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
                 fillLabel(state.answer, picked);
                 drawOverlay();
               }))

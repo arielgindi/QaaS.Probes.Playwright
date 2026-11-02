@@ -34,6 +34,17 @@ internal static partial class LocatorPolicy
     }
 
     /// <summary>
+    /// The element to locate a click by: <paramref name="target"/>, unless only Playwright's own locator finds it, or
+    /// nothing finds it alone, and one of <paramref name="equivalents"/>, which the same click hits, has a stable id
+    /// or test id that finds it alone; then the first such.
+    /// </summary>
+    public static CapturedTarget? Prefer(CapturedTarget? target, IEnumerable<CapturedTarget>? equivalents)
+    {
+        if (target is null || equivalents is null || Choose(target) is { Kind: not "generator", Matches: true }) return target;
+        return equivalents.FirstOrDefault(other => Choose(other) is { Kind: "id" or "testid", Matches: true }) ?? target;
+    }
+
+    /// <summary>
     /// Why each locator the policy tries before <paramref name="chosen"/> lost, as <c>kind: reason</c>, e.g.
     /// <c>id: found 2 (1 hidden)</c>, <c>id: looks generated</c> or <c>testid: none</c>. Kinds that do not apply
     /// to the element (a form name on a button, a table row) are left out.
