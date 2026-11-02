@@ -4,8 +4,8 @@ namespace QaaS.Playwright.Recorder;
 
 /// <summary>
 /// Records a browser flow in the installed Chrome and saves it as a C# flow class with its settings.
-/// <c>qaas-playwright</c> asks for the details; <c>qaas-playwright record &lt;name&gt; &lt;url&gt; [--output-dir Dir]</c>
-/// takes them.
+/// <c>qaas-playwright</c> asks for the details; <c>qaas-playwright record &lt;name&gt; &lt;url&gt; [--output-dir Dir]
+/// [--no-panel]</c> takes them.
 /// </summary>
 public static class Program
 {

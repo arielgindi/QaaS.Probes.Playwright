@@ -22,6 +22,7 @@ internal static class ConsoleUi
             qaas-playwright                                       Asks for the URL, the name and the folder
             qaas-playwright record <name> <url>                   Records into ./Flows
             qaas-playwright record <name> <url> --output-dir Dir  Records into Dir
+            qaas-playwright record <name> <url> --no-panel        Records without the panel beside the browser
             qaas-playwright --version                             Prints the version
 
           Uses your installed Google Chrome.

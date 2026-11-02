@@ -15,13 +15,17 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     private static readonly string[] TypesAFlowUses =
         ["Task", "IPage", "BasePlaywrightFlow", "Expect", "AriaRole", "Regex", "IDialog", "Console", "Array"];
 
-    /// <summary>Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir]</c>, with the option anywhere.</summary>
+    /// <summary>Whether the recorder's panel shows the flow beside the recorded window as it is written.</summary>
+    public bool Panel { get; init; } = true;
+
+    /// <summary>Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--no-panel]</c>, with the options anywhere.</summary>
     /// <exception cref="ArgumentException">The arguments are not a valid record command.</exception>
     public static RecordRequest Parse(IReadOnlyList<string> args)
     {
         if (args is not ["record", ..]) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
 
         var outputDir = DefaultOutputDir;
+        var panel = true;
         var positionals = new List<string>();
         for (var index = 1; index < args.Count; index++)
         {
@@ -30,6 +34,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                             && !dir.StartsWith('-')
                     ? args[++index]
                     : throw new ArgumentException("--output-dir needs a directory.");
+            else if (args[index] == "--no-panel")
+                panel = false;
             else if (args[index].StartsWith('-'))
                 throw new ArgumentException($"Unknown option '{args[index]}'.");
             else
@@ -37,8 +43,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         }
 
         return positionals is [var name, var url]
-            ? Create(name, url, outputDir)
-            : throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir]");
+            ? Create(name, url, outputDir) with { Panel = panel }
+            : throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--no-panel]");
     }
 
     /// <summary>Asks for the page, the flow's name and the folder.</summary>
@@ -50,6 +56,10 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var name = ConsoleUi.Ask("Give this flow a name", "my-flow");
         return Create(name, url, ConsoleUi.Ask("Where to save it?", DefaultOutputDir));
     }
+
+    /// <summary>The same request for a flow named <paramref name="name"/>, checked as a new name is.</summary>
+    /// <exception cref="ArgumentException">The flow cannot have that name.</exception>
+    public RecordRequest Renamed(string name) => Create(name, Url, OutputDir) with { Panel = Panel };
 
     // Checked before recording, so nobody records a flow that cannot be saved or compiled.
     private static RecordRequest Create(string name, string url, string outputDir)
