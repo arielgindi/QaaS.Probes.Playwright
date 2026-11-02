@@ -22,6 +22,7 @@ internal static class ConsoleUi
             qaas-playwright                                       Asks for the URL, the name and the folder
             qaas-playwright record <name> <url>                   Records into ./Flows
             qaas-playwright record <name> <url> --output-dir Dir  Records into Dir
+            qaas-playwright record <name> <url> --keep-recording  Also saves the raw recording beside the flow
             qaas-playwright --version                             Prints the version
 
           Uses your installed Google Chrome.
@@ -43,7 +44,9 @@ internal static class ConsoleUi
         Info($"Flow:    {request.ClassName}");
         Info($"URL:     {request.Url}");
         Info($"Save to: {Path.GetFullPath(Path.Combine(request.OutputDir, $"{request.ClassName}.cs"))}\n");
-        Info(">>> Browser is opening — do your thing, then CLOSE the browser (or press Enter here) when done.\n");
+        Info(">>> Browser is opening — do your thing, then CLOSE the browser (or press Enter here) when done.");
+        Info("    The box under the pointer shows what a click records. F9 hides or shows it;");
+        Info("    Alt+↑ picks the element around it and Alt+↓ goes back, for the next click to record.\n");
     }
 
     /// <summary>Completes when the person presses Enter; never, when nobody can type here.</summary>
@@ -73,6 +76,7 @@ internal static class ConsoleUi
         Separator();
         WithColor(ConsoleColor.Green, () => Info($"SAVED {saved.CodePath}"));
         Info($"      {saved.YamlPath} (the values it recorded)");
+        if (saved.RecordingPath is { } raw) Info($"      {raw} (the raw recording, with every locator tried)");
         if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
             Info("(the existing flow was kept — merge the new recording into it by hand)");
 
@@ -115,7 +119,7 @@ internal static class ConsoleUi
     private static string? Describe(CapturedAction action)
     {
         var target = action.Kind == "choose" ? action.Field ?? action.Target : action.Target;
-        var where = Short(LocatorPolicy.Choose(target, byName: action.Widget == "radio")) ?? target?.Text ?? "";
+        var where = LocatorPolicy.Describe(LocatorPolicy.Choose(target, byName: action.Widget == "radio")) ?? target?.Text ?? "";
         return action.Kind switch
         {
             "click" when action.Widget is "select-open" or "autocomplete-button" => null,
@@ -135,21 +139,6 @@ internal static class ConsoleUi
         "tabSelected" => "↳ tab selected",
         _ => null,
     };
-
-    // The locator as a person reads it: [name='x'], button "Save", row "HL-775-ZE" » button "Actions".
-    private static string? Short(CapturedCandidate? candidate)
-    {
-        if (candidate is null) return null;
-        if (candidate.Kind == "generator") return candidate.Csharp;
-        var parts = candidate.Parts.SkipWhile(part => part is { M: "role", Role: "dialog" }).Select(part => part.M switch
-        {
-            "css" => part.Css,
-            "testid" => $"test id \"{part.Value}\"",
-            "filter" => $"\"{part.HasText}\"",
-            _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
-        });
-        return string.Join(" » ", parts);
-    }
 
     private static void Hint(string lines)
     {

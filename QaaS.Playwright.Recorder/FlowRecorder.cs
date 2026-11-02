@@ -5,8 +5,8 @@ using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Recorder;
 
-/// <summary>The flow's two saved files: its class and its recorded values.</summary>
-internal sealed record SavedFlow(string CodePath, string YamlPath);
+/// <summary>The flow's saved files: its class, its recorded values, and the raw recording when it was kept.</summary>
+internal sealed record SavedFlow(string CodePath, string YamlPath, string? RecordingPath = null);
 
 /// <summary>Records a flow in Chrome and saves it as a C# flow class with the YAML of its values.</summary>
 internal static class FlowRecorder
@@ -38,10 +38,10 @@ internal static class FlowRecorder
         }
 
         var flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir));
+        SavedFlow saved;
         try
         {
-            ConsoleUi.Saved(request, Save(request, flow), flow);
-            return 0;
+            saved = Save(request, flow);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
@@ -50,6 +50,26 @@ internal static class FlowRecorder
             await File.WriteAllTextAsync(kept, flow.Code + "\n/*\n" + flow.Yaml + "*/\n");
             ConsoleUi.Error($"Could not save the flow: {failure.Message}\n  The recorded flow is kept in {kept}");
             return 1;
+        }
+
+        if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
+        ConsoleUi.Saved(request, saved, flow);
+        return 0;
+    }
+
+    // The raw recording, beside the flow and named after it, for a person to share when an element was located badly.
+    private static async Task<string?> KeepAsync(SavedFlow saved, Recording recording)
+    {
+        var path = Path.ChangeExtension(saved.CodePath, ".recording.json");
+        try
+        {
+            await File.WriteAllTextAsync(path, recording.ToJson());
+            return path;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            ConsoleUi.Warning($"The recording was not kept: {failure.Message}");
+            return null;
         }
     }
 

@@ -26,6 +26,7 @@ internal sealed record RecordingOptions(string Url)
 internal sealed class RecordingSession : IAsyncDisposable
 {
     private const string Binding = "__qaasRecord";
+    private const string ExplainBinding = "__qaasExplain";
     private const float NavigationTimeoutMs = 60_000;
     private static readonly TimeSpan SettleTimeout = TimeSpan.FromSeconds(5);
 
@@ -152,6 +153,7 @@ internal sealed class RecordingSession : IAsyncDisposable
             var news = Log.Add(AliasOf(source.Page), json);
             if (news is not null) _onNews(news);
         });
+        await _context.ExposeBindingAsync(ExplainBinding, (BindingSource _, string json) => OverlayLabel.For(json));
         await _context.AddInitScriptAsync(CaptureScript.For(BrowserDefaults.TestIdAttribute));
         _context.Page += (_, page) =>
         {

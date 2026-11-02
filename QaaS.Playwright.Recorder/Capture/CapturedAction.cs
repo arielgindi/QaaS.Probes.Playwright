@@ -65,6 +65,14 @@ internal sealed class CapturedAction
     /// <summary>The element acted on; for a choice, the field the list belongs to.</summary>
     public CapturedTarget? Target { get; set; }
 
+    /// <summary>
+    /// For a click, other elements it hits that have an id or a test id: between the element the pointer hit and the
+    /// target, or a wrapper's only child. When the recorder locates the click by one of them instead
+    /// (<see cref="Generation.LocatorPolicy.Prefer"/>), that one is the target and the element the page reported is
+    /// listed here.
+    /// </summary>
+    public List<CapturedTarget>? Equivalents { get; set; }
+
     /// <summary>For a choice, the Select or Autocomplete the option belongs to.</summary>
     public CapturedTarget? Field { get; set; }
 
@@ -128,6 +136,11 @@ internal sealed class CapturedCandidate
 
     /// <summary>How many elements it found; -1 when it could not be checked.</summary>
     public int Count { get; set; }
+
+    /// <summary>
+    /// When it found more than one, how many of them were hidden: a copy a responsive layout keeps for another width.
+    /// </summary>
+    public int Hidden { get; set; }
 
     /// <summary>It found exactly the element acted on, and nothing else.</summary>
     public bool Matches { get; set; }

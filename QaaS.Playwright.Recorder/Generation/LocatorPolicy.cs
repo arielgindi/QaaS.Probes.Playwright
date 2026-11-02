@@ -33,6 +33,53 @@ internal static partial class LocatorPolicy
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// The element to locate a click by: <paramref name="target"/>, unless only Playwright's own locator finds it, or
+    /// nothing finds it alone, and one of <paramref name="equivalents"/>, which the same click hits, has a stable id
+    /// or test id that finds it alone; then the first such.
+    /// </summary>
+    public static CapturedTarget? Prefer(CapturedTarget? target, IEnumerable<CapturedTarget>? equivalents)
+    {
+        if (target is null || equivalents is null || Choose(target) is { Kind: not "generator", Matches: true }) return target;
+        return equivalents.FirstOrDefault(other => Choose(other) is { Kind: "id" or "testid", Matches: true }) ?? target;
+    }
+
+    /// <summary>
+    /// Why each locator the policy tries before <paramref name="chosen"/> lost, as <c>kind: reason</c>, e.g.
+    /// <c>id: found 2 (1 hidden)</c>, <c>id: looks generated</c> or <c>testid: none</c>. Kinds that do not apply
+    /// to the element (a form name on a button, a table row) are left out.
+    /// </summary>
+    public static IReadOnlyList<string> WhyNot(CapturedTarget target, CapturedCandidate? chosen, bool byName = false)
+    {
+        var reasons = new List<string>();
+        foreach (var kind in (byName ? [.. ByName, .. Order] : Order).Distinct())
+        {
+            if (chosen is { Matches: true } && chosen.Kind == kind) break;
+            var tried = target.Candidates.FirstOrDefault(candidate => candidate.Kind == kind);
+            if ((tried is null ? Missing(kind, target) : Lost(tried)) is { } reason) reasons.Add($"{kind}: {reason}");
+        }
+
+        return reasons;
+    }
+
+    /// <summary>
+    /// The locator as a person reads it, without the dialog it is found in: <c>[name='x']</c>, <c>button "Save"</c>,
+    /// <c>row "HL-775-ZE" » button "Actions"</c>; Playwright's own as its C#.
+    /// </summary>
+    public static string? Describe(CapturedCandidate? candidate)
+    {
+        if (candidate is null) return null;
+        if (candidate.Kind == "generator") return candidate.Csharp;
+        var parts = candidate.Parts.SkipWhile(part => part is { M: "role", Role: "dialog" }).Select(part => part.M switch
+        {
+            "css" => part.Css,
+            "testid" => $"test id \"{part.Value}\"",
+            "filter" => $"\"{part.HasText}\"",
+            _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
+        });
+        return string.Join(" » ", parts);
+    }
+
     /// <summary>Why the locator needs a person's look, or null when it is fine.</summary>
     public static string? Problem(CapturedCandidate? candidate)
     {
@@ -88,6 +135,36 @@ internal static partial class LocatorPolicy
         "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp),
         _ => false,
     };
+
+    // A kind the capture script did not try: one the element has nothing for.
+    private static string? Missing(string kind, CapturedTarget target) => kind switch
+    {
+        "id" or "testid" or "generator" => "none",
+        "name" when target.Tag is "input" or "textarea" or "select" => "none",
+        "role" => target.Role is null ? "none" : "no name",
+        _ => null,
+    };
+
+    private static string? Lost(CapturedCandidate candidate)
+    {
+        if (!IsUsable(candidate))
+            return candidate.Kind switch
+            {
+                "generator" => "none",
+                "role" or "roleInGroup" or "row" =>
+                    $"no AriaRole for '{candidate.Parts.First(part => part.M == "role" && AriaRoleName(part.Role) is null).Role}'",
+                _ => "looks generated",
+            };
+        return candidate switch
+        {
+            { Matches: true } => null,
+            { Count: < 0 } => "not checked",
+            { Count: 0 } => "found none",
+            { Count: 1 } => "found another element",
+            { Hidden: > 0 } => $"found {candidate.Count} ({candidate.Hidden} hidden)",
+            _ => $"found {candidate.Count}",
+        };
+    }
 
     private static IEnumerable<string> CssStrings(string code) =>
         CssLiteral().Matches(code).Select(match => Regex.Unescape(match.Groups["css"].Value));
