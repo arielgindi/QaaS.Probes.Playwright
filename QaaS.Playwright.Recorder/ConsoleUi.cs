@@ -23,6 +23,7 @@ internal static class ConsoleUi
             qaas-playwright record <name> <url>                   Records into ./Flows
             qaas-playwright record <name> <url> --output-dir Dir  Records into Dir
             qaas-playwright record <name> <url> --keep-recording  Also saves the raw recording beside the flow
+            qaas-playwright record <name> <url> --no-panel        Records without the panel beside the browser
             qaas-playwright --version                             Prints the version
 
           Uses your installed Google Chrome.

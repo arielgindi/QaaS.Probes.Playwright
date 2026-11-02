@@ -7,8 +7,18 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// <summary>A line of the flow a person should look at, and why.</summary>
 internal sealed record CheckByHand(int? Line, string Message);
 
+/// <summary>Lines of a flow's code, numbered from 1, both included.</summary>
+internal sealed record LineSpan(int First, int Last);
+
 /// <summary>The flow's source, its settings as YAML, and what to check by hand.</summary>
-internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks);
+internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks)
+{
+    /// <summary>The lines written for each recorded action, by the action's id.</summary>
+    public IReadOnlyDictionary<string, LineSpan> ActionLines { get; init; } = new Dictionary<string, LineSpan>();
+
+    /// <summary>The lines of each step's method, by the method's name.</summary>
+    public IReadOnlyDictionary<string, LineSpan> StepLines { get; init; } = new Dictionary<string, LineSpan>();
+}
 
 /// <summary>
 /// Writes a <see cref="FlowPlan"/> as a flow class: <c>RunAsync</c> calls one method per step, each step acts on the
@@ -25,7 +35,7 @@ internal sealed partial class FlowWriter
 
     private readonly FlowPlan _plan;
     private readonly List<Line> _run = [];
-    private readonly List<(string Signature, List<Line> Body)> _methods = [];
+    private readonly List<(string Step, string Signature, List<Line> Body)> _methods = [];
     private readonly Dictionary<string, string> _dialogVariables = [];
     private readonly HashSet<string> _runVariables = ["page"];
 
@@ -41,7 +51,11 @@ internal sealed partial class FlowWriter
         return writer.Assemble(namespaceName);
     }
 
-    private sealed record Line(string Text, string? Check = null);
+    private sealed record Line(string Text, string? Check = null)
+    {
+        /// <summary>The id of the recorded action the line is written for.</summary>
+        public string? Action { get; init; }
+    }
 
     // Where a step's actions run: its dialog, whose page is dialog.Page, or a page.
     private sealed record Scope(string Root, string Page, string? Dialog);
@@ -54,11 +68,15 @@ internal sealed partial class FlowWriter
         _stepUsesFlow = false;
         var body = new List<Line>();
         for (var index = 0; index < step.Actions.Count; index++)
-            body.AddRange(WriteAction(step.Actions[index], scope, step, index == step.Actions.Count - 1, locals));
+        {
+            var action = step.Actions[index];
+            body.AddRange(WriteAction(action, scope, step, index == step.Actions.Count - 1, locals)
+                .Select(line => line with { Action = action.Source.Id }));
+        }
 
         var returns = step.Opens is not null ? "Task<ILocator>" : step.OpensPage is not null ? "Task<IPage>" : "Task";
         var parameter = step.Dialog is not null ? "ILocator dialog" : $"IPage {step.Page}";
-        _methods.Add(($"private {(_stepUsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", body));
+        _methods.Add((step.Name, $"private {(_stepUsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", body));
 
         var call = $"{step.Name}({argument})";
         if (step.Opens is { } opened)
@@ -411,12 +429,17 @@ internal sealed partial class FlowWriter
         var configName = $"{className}Config";
         var code = new StringBuilder();
         var checks = new List<CheckByHand>();
+        var actionLines = new Dictionary<string, LineSpan>();
+        var stepLines = new Dictionary<string, LineSpan>();
         var lineNumber = 0;
-        void Append(string text, string? check = null)
+        void Append(string text, string? check = null, string? action = null)
         {
             code.Append(text).Append('\n');
             lineNumber++;
             if (check is not null) checks.Add(new CheckByHand(lineNumber, check));
+            if (action is not null)
+                actionLines[action] = actionLines.TryGetValue(action, out var span) ? span with { Last = lineNumber }
+                    : new LineSpan(lineNumber, lineNumber);
         }
 
         var all = _run.Concat(_methods.SelectMany(method => method.Body)).Select(line => line.Text).ToList();
@@ -438,13 +461,15 @@ internal sealed partial class FlowWriter
         Append("    {");
         foreach (var line in _run) Append($"        {line.Text}", line.Check);
         Append("    }");
-        foreach (var (signature, body) in _methods)
+        foreach (var (step, signature, body) in _methods)
         {
             Append("");
             Append($"    {signature}");
+            var first = lineNumber;
             Append("    {");
-            foreach (var line in body) Append($"        {line.Text}", line.Check);
+            foreach (var line in body) Append($"        {line.Text}", line.Check, line.Action);
             Append("    }");
+            stepLines[step] = new LineSpan(first, lineNumber);
         }
 
         if (usesUpload)
@@ -468,7 +493,10 @@ internal sealed partial class FlowWriter
         }
 
         foreach (var missing in _plan.NotRecorded) checks.Add(new CheckByHand(null, missing));
-        return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks);
+        return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
+        {
+            ActionLines = actionLines, StepLines = stepLines,
+        };
     }
 
     private static string Default(Setting setting) =>

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace QaaS.Playwright.Recorder.Capture;
 
 /// <summary>
@@ -86,6 +88,10 @@ internal sealed class CapturedAction
     public bool? HoverMenu { get; set; }
 
     public List<CapturedEffect> Effects { get; set; } = [];
+
+    /// <summary>The element the flow finds to act on: for a choice, its field.</summary>
+    [JsonIgnore]
+    public CapturedTarget? Element => Kind == "choose" ? Field ?? Target : Target;
 }
 
 /// <summary>An element, with every locator that might find it.</summary>
@@ -111,6 +117,9 @@ internal sealed class CapturedTarget
     public bool Interactive { get; set; }
     public CapturedRow? Row { get; set; }
     public List<CapturedCandidate> Candidates { get; set; } = [];
+
+    /// <summary>The candidate the person chose in the recorder's panel, by its index; null leaves it to the policy.</summary>
+    public int? Chosen { get; set; }
 }
 
 /// <summary>The table row an element is in, and the text that tells the row apart from the others.</summary>
@@ -153,6 +162,9 @@ internal sealed class CapturedCandidate
 
     /// <summary>For the generator, Playwright's own C# locator.</summary>
     public string? Csharp { get; set; }
+
+    /// <summary>For the generator, the same locator as a Playwright selector, to find the element from .NET.</summary>
+    public string? Selector { get; set; }
 }
 
 /// <summary>One call of a locator chain.</summary>

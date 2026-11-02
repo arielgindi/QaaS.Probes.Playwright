@@ -5,7 +5,10 @@ using System.Text;
 
 namespace QaaS.Playwright.Tests.EndToEnd;
 
-/// <summary>A tiny web app on a free local port: a cookie login, a whoami page, an order page and a ticket form.</summary>
+/// <summary>
+/// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, and a helpdesk with
+/// a ticket table and a dialog to record in.
+/// </summary>
 public sealed class TestSite : IDisposable
 {
     private readonly HttpListener _listener;
@@ -82,10 +85,45 @@ public sealed class TestSite : IDisposable
                 """,
             "/tickets/new" => """<form action="/tickets"><label>Name <input name="name"></label><button>Create</button></form>""",
             "/tickets" => $"""<p id="created">{WebUtility.HtmlEncode(CreateTicket(request.QueryString["name"]))}</p>""",
+            "/helpdesk" => Helpdesk,
             _ => "<h1>Home</h1>",
         };
         Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
     }
+
+    // A button with a generated id, three buttons of one name told apart by their row, and a dialog whose form saves to
+    // a new address with a message.
+    private const string Helpdesk = """
+        <h1>Helpdesk</h1>
+        <button id=":r5:" data-testid="new-ticket" onclick="openForm()">New ticket</button>
+        <table>
+          <thead><tr><th scope="col">Ticket</th><th scope="col">Subject</th><th scope="col">Owner</th></tr></thead>
+          <tbody>
+            <tr><td>TCK-1040</td><td>Password reset</td><td><button onclick="assign(this)">Assign to me</button></td></tr>
+            <tr><td>TCK-1041</td><td>VPN drops every hour</td><td><button onclick="assign(this)">Assign to me</button></td></tr>
+            <tr><td>TCK-1042</td><td>Laptop for a new starter</td><td><button onclick="assign(this)">Assign to me</button></td></tr>
+          </tbody>
+        </table>
+        <div role="dialog" aria-labelledby="form-title" id="form" hidden>
+          <h2 id="form-title">New ticket</h2>
+          <label>Title <input name="title"></label>
+          <label>Category <select name="category"><option>Hardware</option><option>Software</option><option>Access</option></select></label>
+          <fieldset>
+            <legend>Priority</legend>
+            <label><input type="radio" name="priority" value="low"> Low</label>
+            <label><input type="radio" name="priority" value="normal" checked> Normal</label>
+            <label><input type="radio" name="priority" value="high"> High</label>
+          </fieldset>
+          <button onclick="form.hidden = true">Cancel</button>
+          <button onclick="create()">Create ticket</button>
+        </div>
+        <script>
+          const say = (text) => document.body.insertAdjacentHTML('beforeend', `<p role="alert">${text}</p>`);
+          const openForm = () => { form.hidden = false; };
+          const assign = (button) => say(`${button.closest('tr').cells[0].textContent} assigned to you`);
+          const create = () => { form.hidden = true; history.pushState({}, '', '/tickets/1043'); say('Ticket TCK-1043 created'); };
+        </script>
+        """;
 
     private string CreateTicket(string? name)
     {

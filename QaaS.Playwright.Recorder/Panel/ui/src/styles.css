@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Colours are tokens, one set per theme; Tailwind's utilities read them (bg-panel, text-muted, border-line, ...). */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --color-warn: var(--warn);
+  --color-rec: var(--rec);
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0c0d10;
+  --panel: #111317;
+  --raised: #181b20;
+  --line: #22262c;
+  --line-strong: #30353d;
+  --fg: #e8eaed;
+  --muted: #9aa1ab;
+  --faint: #6c737e;
+  --accent: #7c82ff;
+  --accent-fg: #a5a9ff;
+  --on-accent: #ffffff;
+  --ok: #4cc38a;
+  --bad: #f2777f;
+  --warn: #f1b44c;
+  --rec: #f25858;
+  --line-selected: #1a1c2c;
+  --line-hovered: #15171c;
+  --tk-plain: #d6dae0;
+  --tk-kw: #c6a2ff;
+  --tk-type: #5ec8c0;
+  --tk-fn: #86b4ff;
+  --tk-prop: #d6dae0;
+  --tk-str: #9ed48f;
+  --tk-num: #f2a77c;
+  --tk-com: #6a717c;
+  --tk-punc: #8b929c;
+  --tk-key: #86b4ff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f7f8fa;
+  --panel: #ffffff;
+  --raised: #f2f4f7;
+  --line: #e3e6eb;
+  --line-strong: #d3d8df;
+  --fg: #16181d;
+  --muted: #5a626e;
+  --faint: #8a919c;
+  --accent: #5157e6;
+  --accent-fg: #4148d6;
+  --on-accent: #ffffff;
+  --ok: #17824f;
+  --bad: #cf3344;
+  --warn: #a86a00;
+  --rec: #e03b3b;
+  --line-selected: #eceefd;
+  --line-hovered: #f0f2f5;
+  --tk-plain: #1f2328;
+  --tk-kw: #7a3fe0;
+  --tk-type: #0d7a74;
+  --tk-fn: #2d5fcf;
+  --tk-prop: #1f2328;
+  --tk-str: #2e7a33;
+  --tk-num: #b5541c;
+  --tk-com: #8a929c;
+  --tk-punc: #6b7480;
+  --tk-key: #2d5fcf;
+}
+
+@layer base {
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 35%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--accent) 75%, transparent);
+    outline-offset: 1px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@layer components {
+  /* Three columns when there is room; else the code over the inspector, beside the steps; else all stacked. */
+  .layout {
+    display: grid;
+    grid-template-areas: "steps code inspector";
+    grid-template-columns: 300px minmax(0, 1fr) 356px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .area-steps {
+    grid-area: steps;
+  }
+
+  .area-code {
+    grid-area: code;
+  }
+
+  .area-inspector {
+    grid-area: inspector;
+    border-left: 1px solid var(--line);
+  }
+
+  @media (max-width: 1179.98px) {
+    .layout {
+      grid-template-areas: "steps code" "steps inspector";
+      grid-template-columns: 276px minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
+    }
+
+    .area-inspector {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  @media (max-width: 719.98px) {
+    .layout {
+      grid-template-areas: "steps" "code" "inspector";
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .area-steps {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+  }
+
+  .tk-plain { color: var(--tk-plain); }
+  .tk-kw { color: var(--tk-kw); }
+  .tk-type { color: var(--tk-type); }
+  .tk-fn { color: var(--tk-fn); }
+  .tk-prop { color: var(--tk-prop); }
+  .tk-str { color: var(--tk-str); }
+  .tk-num { color: var(--tk-num); }
+  .tk-com { color: var(--tk-com); font-style: italic; }
+  .tk-punc { color: var(--tk-punc); }
+  .tk-key { color: var(--tk-key); }
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes rec-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--rec) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility animate-step-in {
+  animation: step-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@utility animate-rec {
+  animation: rec-pulse 1.6s ease-out infinite;
+}
+
+@utility animate-spin-slow {
+  animation: spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

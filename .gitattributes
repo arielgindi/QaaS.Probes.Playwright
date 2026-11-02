@@ -1,2 +1,4 @@
 # LF everywhere, also in a Windows checkout: raw string literals in the code and its tests keep \n line ends.
 * text=auto eol=lf
+# The recorder's panel, built from Panel/ui into one minified file: rebuilt, never merged by hand.
+QaaS.Playwright.Recorder/Panel/panel.html linguist-generated=true -diff

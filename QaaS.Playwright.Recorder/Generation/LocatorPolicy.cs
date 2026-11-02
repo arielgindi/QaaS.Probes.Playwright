@@ -23,6 +23,7 @@ internal static partial class LocatorPolicy
     public static CapturedCandidate? Choose(CapturedTarget? target, bool byName = false)
     {
         if (target is null) return null;
+        if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
         var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)).ToList();
         foreach (var kind in byName ? [.. ByName, .. Order] : Order)
             if (usable.FirstOrDefault(candidate => candidate.Kind == kind) is { } found)
@@ -56,7 +57,7 @@ internal static partial class LocatorPolicy
         {
             if (chosen is { Matches: true } && chosen.Kind == kind) break;
             var tried = target.Candidates.FirstOrDefault(candidate => candidate.Kind == kind);
-            if ((tried is null ? Missing(kind, target) : Lost(tried)) is { } reason) reasons.Add($"{kind}: {reason}");
+            if ((tried is null ? Missing(kind, target) : WhyLost(tried)) is { } reason) reasons.Add($"{kind}: {reason}");
         }
 
         return reasons;
@@ -127,6 +128,9 @@ internal static partial class LocatorPolicy
         return $"GetByRole({role}, new() {{ Name = {name ?? CSharp.Literal(part.Name)}{exact} }})";
     }
 
+    /// <summary>Whether the candidate is stable enough to be a locator at all, whatever it found.</summary>
+    public static bool CanUse(CapturedCandidate candidate) => IsUsable(candidate);
+
     private static bool IsUsable(CapturedCandidate candidate) => candidate.Kind switch
     {
         "name" or "nameValue" or "id" or "select" or "testid" => !UnstableId.IsUnstable(candidate.Value),
@@ -145,7 +149,11 @@ internal static partial class LocatorPolicy
         _ => null,
     };
 
-    private static string? Lost(CapturedCandidate candidate)
+    /// <summary>
+    /// Why the candidate cannot be the locator, e.g. <c>found 2 (1 hidden)</c>, <c>found another element</c> or
+    /// <c>looks generated</c>; null when it found the element alone.
+    /// </summary>
+    public static string? WhyLost(CapturedCandidate candidate)
     {
         if (!IsUsable(candidate))
             return candidate.Kind switch

@@ -115,6 +115,12 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
     }
 
+    /// <summary>The open page of the recording named <paramref name="alias"/> (<c>page</c>, <c>page1</c>, ...), or null.</summary>
+    public IPage? PageNamed(string alias)
+    {
+        lock (_gate) return _aliases.FirstOrDefault(pair => pair.Value == alias && !pair.Key.IsClosed).Key;
+    }
+
     public async ValueTask DisposeAsync()
     {
         try

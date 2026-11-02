@@ -13,6 +13,15 @@
     <NoWarn>$(NoWarn);CS1591;NU5111</NoWarn>
   </PropertyGroup>
 
+  <!-- The panel's page, built from Panel/ui (see its README) and committed, so the build needs no Node. -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Panel/ui/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Panel/panel.html" LogicalName="QaaS.Playwright.Recorder.Panel.panel.html" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="QaaS.Playwright.Tests" />
   </ItemGroup>

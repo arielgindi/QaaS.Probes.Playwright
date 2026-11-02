@@ -26,7 +26,7 @@ internal static class FlowPlanner
 
     private static PlannedAction Prepare(CapturedAction source)
     {
-        var element = source.Kind == "choose" ? source.Field ?? source.Target : source.Target;
+        var element = source.Element;
         var planned = new PlannedAction { Source = source };
         planned.Locator = LocatorPolicy.Choose(element, byName: source.Widget == "radio");
         planned.Key = planned.Locator switch

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
+using QaaS.Playwright.Recorder.Panel;
 
 namespace QaaS.Playwright.Recorder;
 
@@ -21,7 +22,14 @@ internal static class FlowRecorder
         try
         {
             var session = await RecordingSession.StartAsync(new RecordingOptions(request.Url), ConsoleUi.Captured);
-            await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync());
+            var panel = request.Panel ? await OpenPanelAsync(session, request) : null;
+            await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), panel?.SaveRequested ?? session.Closed);
+            if (panel is not null)
+            {
+                await panel.DisposeAsync();
+                request = panel.Request;
+            }
+
             recording = await session.StopAsync();
             if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
         }
@@ -69,6 +77,20 @@ internal static class FlowRecorder
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
             ConsoleUi.Warning($"The recording was not kept: {failure.Message}");
+            return null;
+        }
+    }
+
+    // The panel helps, but the recording does not need it.
+    private static async Task<RecorderPanel?> OpenPanelAsync(RecordingSession session, RecordRequest request)
+    {
+        try
+        {
+            return await RecorderPanel.OpenAsync(session, request);
+        }
+        catch (PlaywrightException failure)
+        {
+            ConsoleUi.Warning($"The panel did not open, recording without it: {failure.Message.Split('\n')[0]}");
             return null;
         }
     }

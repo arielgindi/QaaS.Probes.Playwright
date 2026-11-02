@@ -23,7 +23,13 @@ internal sealed class CaptureLog
     private readonly List<CapturedEffect> _effects = [];
     private readonly List<PageEvent> _pageEvents = [];
     private readonly List<NavigationRequest> _navigationRequests = [];
+    private readonly HashSet<string> _removed = [];
+    private readonly Dictionary<string, int?> _chosen = [];
     private long _sequence;
+    private long _version;
+
+    /// <summary>Changes whenever what <see cref="Build"/> gives may have changed, so a view of the recording refreshes.</summary>
+    public long Version => Interlocked.Read(ref _version);
 
     /// <summary>
     /// Takes a message of the capture script. Returns the action to show the person, once it is complete, or the
@@ -44,6 +50,8 @@ internal sealed class CaptureLog
         if (message is null) return null;
         lock (_gate)
         {
+            // Inside the lock, so a Build that saw this version waits for the change.
+            Changed();
             if (message.Type == "effect")
             {
                 var effect = message.ToEffect();
@@ -71,6 +79,7 @@ internal sealed class CaptureLog
     public void Navigated(string page, string url, long at)
     {
         lock (_gate) _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++));
+        Changed();
     }
 
     /// <summary>
@@ -80,18 +89,40 @@ internal sealed class CaptureLog
     public void NavigationRequested(string page, Task<bool> byThePerson)
     {
         lock (_gate) _navigationRequests.Add(new NavigationRequest(page, _sequence++, byThePerson));
+        Changed();
+        // Who started it tells whether it is an action of its own, once it is known.
+        _ = byThePerson.ContinueWith(_ => Changed(), TaskScheduler.Default);
     }
 
     /// <summary>A page opened: a pop-up, or a tab the person opened.</summary>
     public void PageOpened(string page, long at)
     {
         lock (_gate) _pageEvents.Add(new PageEvent("opened", page, null, at, _sequence++));
+        Changed();
     }
 
     /// <summary>The page showed a browser dialog: an alert, a confirm or a prompt.</summary>
     public void BrowserDialog(string page, string message, long at)
     {
         lock (_gate) _pageEvents.Add(new PageEvent("jsDialog", page, message, at, _sequence++));
+        Changed();
+    }
+
+    /// <summary>Leaves actions out of the recording, with what they caused, as if they had not been done.</summary>
+    public void Remove(IEnumerable<string> actionIds)
+    {
+        lock (_gate) _removed.UnionWith(actionIds);
+        Changed();
+    }
+
+    /// <summary>
+    /// Has the flow find the action's element by its candidate at <paramref name="candidate"/>, whatever the policy
+    /// prefers; null lets the policy choose again.
+    /// </summary>
+    public void Choose(string actionId, int? candidate)
+    {
+        lock (_gate) _chosen[actionId] = candidate;
+        Changed();
     }
 
     /// <summary>Completes once it is known who started each navigation, or after <paramref name="timeout"/>.</summary>
@@ -115,6 +146,10 @@ internal sealed class CaptureLog
         lock (_gate)
         {
             var actions = _actions.Select(Copy).ToList();
+            foreach (var action in actions)
+                if (_chosen.TryGetValue(action.Id, out var chosen) && action.Element is { } element)
+                    element.Chosen = chosen;
+
             var byId = actions.ToDictionary(action => action.Id);
             foreach (var effect in _effects)
                 if (effect.ActionId is not null && byId.TryGetValue(effect.ActionId, out var action) && Belongs(effect))
@@ -124,9 +159,13 @@ internal sealed class CaptureLog
             foreach (var pageEvent in PageEventsThatMatter())
                 Attribute(pageEvent, actions, notRecorded);
 
+            actions.RemoveAll(action => _removed.Contains(action.Id));
+
             return new Recording(startUrl, actions) { NotRecorded = notRecorded.Count > 0 ? notRecorded : null };
         }
     }
+
+    private void Changed() => Interlocked.Increment(ref _version);
 
     private static bool Belongs(CapturedEffect effect) => effect.Kind switch
     {

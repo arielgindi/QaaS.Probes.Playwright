@@ -1,0 +1,23 @@
+{
+  "name": "qaas-recorder-panel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The recorder's panel, built into one self-contained HTML file that the recorder embeds.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "preact": "10.29.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.20.5",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vite-plugin-singlefile": "2.3.3"
+  }
+}
