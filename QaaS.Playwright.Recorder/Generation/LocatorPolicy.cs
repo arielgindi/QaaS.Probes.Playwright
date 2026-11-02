@@ -23,6 +23,7 @@ internal static partial class LocatorPolicy
     public static CapturedCandidate? Choose(CapturedTarget? target, bool byName = false)
     {
         if (target is null) return null;
+        if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
         var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)).ToList();
         foreach (var kind in byName ? [.. ByName, .. Order] : Order)
             if (usable.FirstOrDefault(candidate => candidate.Kind == kind) is { } found)
@@ -79,6 +80,22 @@ internal static partial class LocatorPolicy
         var exact = part.Exact ? ", Exact = true" : "";
         return $"GetByRole({role}, new() {{ Name = {name ?? CSharp.Literal(part.Name)}{exact} }})";
     }
+
+    /// <summary>Why the candidate does not find the element as a flow must, e.g. <c>3 matches</c>; null when it does.</summary>
+    public static string? Rejection(CapturedCandidate candidate) => candidate switch
+    {
+        _ when !IsUsable(candidate) => candidate.Kind switch
+        {
+            "name" or "nameValue" or "id" or "select" or "testid" => "generated id",
+            "role" or "roleInGroup" or "row" => "unknown role",
+            _ => "not a locator",
+        },
+        { Matches: true } => null,
+        { Count: < 0 } => "not checked",
+        { Count: 0 } => "no match",
+        { Count: 1 } => "another element",
+        _ => $"{candidate.Count} matches",
+    };
 
     private static bool IsUsable(CapturedCandidate candidate) => candidate.Kind switch
     {
