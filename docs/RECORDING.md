@@ -9,6 +9,7 @@ dotnet tool install --global QaaS.Playwright.Recorder            # once; or as a
 qaas-playwright                                                  # asks for the URL, name and folder
 qaas-playwright record login-flow https://my-app.com             # the same, without questions
 qaas-playwright record login-flow https://my-app.com --output-dir UiFlows
+qaas-playwright record login-flow https://my-app.com --no-panel  # without the panel beside the browser
 ```
 
 Run it in your test project's folder: the flow is saved in `Flows/` there, in the project's namespace. From a clone
@@ -27,7 +28,8 @@ Work through the site. Each action is printed as it is recorded, with what it ca
       ↳ alert: Maintenance scheduled for HL-775-ZE
 ```
 
-When you are done, close the browser, or press Enter in the console. The recorder saves two files: `Flows/LoginFlow.cs`
+When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
+recorder saves two files: `Flows/LoginFlow.cs`
 (the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints the YAML
 to run the flow, with the page you started on as `BaseUrl`.
 
@@ -41,6 +43,34 @@ to run the flow, with the page you started on as `BaseUrl`.
   (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
   Windows device (`nul`, `com1`), or one too long for a file name.
+
+## The panel
+
+Beside the recorded window, the recorder opens its panel: the flow exactly as it will be saved, written as you work.
+
+- **Steps**, on the left: a card for each action, under the step (method) it is part of, with the locator it uses,
+  what it caused (a dialog opened, the address changed to `/tickets/[id]`, an alert), and in amber what to check by
+  hand.
+- **The code**, in the middle, or the YAML of its values (**Code | YAML** at the top). The selected step's lines are
+  marked, and a line to check by hand has a warning beside its number. Click a line to select its step.
+- **The inspector**, on the right: every locator the recorder found for the selected step's element, each with what it
+  found when you acted (`✓ 1 match`, `✗ 3 matches`, `✗ generated id`). Point at one to see in the app what it finds;
+  click one to use it instead, and the code changes at once. **Use the recorder's choice** goes back to its own. Below
+  them, the values the step records as settings.
+
+| In the panel | Does |
+|---|---|
+| Point at a step or a locator | Highlights in the recorded window what it finds |
+| ↑ / ↓ | Selects the step before or after |
+| **Undo**, Ctrl+Z | Leaves the last step out of the flow; the app stays as it is |
+| The flow's name, at the top | Renames the flow; a name it cannot have is refused, with why |
+| **Save**, Ctrl+S | Ends the recording and saves the flow, as closing the browser does |
+
+The panel is a window of the recorder's own Chrome in a browser context of its own: nothing you do in it is recorded,
+and it needs no network or port. Closing it does not end the recording; closing the recorded window does. It follows
+the system's light or dark theme, and the sun or moon at the top switches it. On a screen with no room beside the
+recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
+part: move it to another screen, or snap it aside. `--no-panel` records without it.
 
 ## What gets generated
 

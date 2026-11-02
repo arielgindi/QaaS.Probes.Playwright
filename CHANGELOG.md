@@ -2,6 +2,14 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- The recorder opens a panel beside the recorded window that shows the flow exactly as it will be saved, step by step,
+  with its code and YAML. For each step it lists every locator found for the element and what each found, highlights
+  it in the app, and takes another; it also undoes the last step, renames the flow and saves.
+  `qaas-playwright record ... --no-panel` records without it.
+- The recorder saves a flow into a folder that does not exist yet, instead of failing after the recording.
+
 ## 1.1.0
 
 First public release.
