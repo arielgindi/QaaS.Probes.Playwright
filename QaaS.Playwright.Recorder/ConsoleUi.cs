@@ -22,6 +22,7 @@ internal static class ConsoleUi
             qaas-playwright                                       Asks for the URL, the name and the folder
             qaas-playwright record <name> <url>                   Records into ./Flows
             qaas-playwright record <name> <url> --output-dir Dir  Records into Dir
+            qaas-playwright record <name> <url> --keep-recording  Also saves the raw recording beside the flow
             qaas-playwright --version                             Prints the version
 
           Uses your installed Google Chrome.
@@ -75,6 +76,7 @@ internal static class ConsoleUi
         Separator();
         WithColor(ConsoleColor.Green, () => Info($"SAVED {saved.CodePath}"));
         Info($"      {saved.YamlPath} (the values it recorded)");
+        if (saved.RecordingPath is { } raw) Info($"      {raw} (the raw recording, with every locator tried)");
         if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
             Info("(the existing flow was kept — merge the new recording into it by hand)");
 

@@ -6,6 +6,9 @@ namespace QaaS.Playwright.Recorder;
 /// <summary>What to record: the flow's class name, the page to start on, and the folder to save the flow in.</summary>
 internal sealed partial record RecordRequest(string ClassName, string Url, string OutputDir)
 {
+    /// <summary>Save the raw recording beside the flow, with every locator tried for each element.</summary>
+    public bool KeepRecording { get; init; }
+
     private const string DefaultOutputDir = "Flows";
 
     // A file name has at most 255 bytes, and a re-recording adds ".recorded-<n>.txt" to the flow's name.
@@ -15,13 +18,16 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     private static readonly string[] TypesAFlowUses =
         ["Task", "IPage", "BasePlaywrightFlow", "Expect", "AriaRole", "Regex", "IDialog", "Console", "Array"];
 
-    /// <summary>Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir]</c>, with the option anywhere.</summary>
+    /// <summary>
+    /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording]</c>, with the options anywhere.
+    /// </summary>
     /// <exception cref="ArgumentException">The arguments are not a valid record command.</exception>
     public static RecordRequest Parse(IReadOnlyList<string> args)
     {
         if (args is not ["record", ..]) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
 
         var outputDir = DefaultOutputDir;
+        var keepRecording = false;
         var positionals = new List<string>();
         for (var index = 1; index < args.Count; index++)
         {
@@ -30,6 +36,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                             && !dir.StartsWith('-')
                     ? args[++index]
                     : throw new ArgumentException("--output-dir needs a directory.");
+            else if (args[index] == "--keep-recording")
+                keepRecording = true;
             else if (args[index].StartsWith('-'))
                 throw new ArgumentException($"Unknown option '{args[index]}'.");
             else
@@ -37,8 +45,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         }
 
         return positionals is [var name, var url]
-            ? Create(name, url, outputDir)
-            : throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir]");
+            ? Create(name, url, outputDir) with { KeepRecording = keepRecording }
+            : throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording]");
     }
 
     /// <summary>Asks for the page, the flow's name and the folder.</summary>
