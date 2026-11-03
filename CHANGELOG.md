@@ -18,11 +18,11 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   to sign in (with Windows, or HTTP authentication), which a flow cannot answer.
 - `--login-assembly` with the test project's own DLL finds a login flow of a package it references, and a YAML of no
   `FlowConfiguration` (`{}`) gives a flow of no settings its defaults instead of being refused.
-- **Test** starts in about a second rather than up to 15: the flow is compiled by the .NET SDK's own C# compiler, with
-  the references, options and implicit usings `dotnet build` gives it, through the compiler's server, without starting
-  MSBuild. The recorder compiles once in the background, at a low priority, as the panel opens, so the first test is as
-  fast as the next. Where that compiler or the reference assemblies are not found, or it fails for another reason than
-  the flow's code, it builds with `dotnet build` as before.
+- **Test** starts far sooner: the flow is compiled by the .NET SDK's own C# compiler, with the references, options and
+  implicit usings `dotnet build` gives it, through the compiler's server, without starting MSBuild, which took up to
+  15 s where an antivirus scans each DLL it loads. The recorder compiles once in the background, at a low priority, as
+  the panel opens, so the first test is as fast as the next. Where that compiler or the reference assemblies are not
+  found, or it fails for another reason than the flow's code, it builds with `dotnet build` as before.
 - Until the first step runs, the panel's test bar says what is going on, with its time so far: building the flow,
   opening the browser window, opening the start page, logging in. The console prints how long each part took after
   each test, e.g. `build 0.2 s · window 0.6 s · start page 1.1 s · run 4.3 s`.
