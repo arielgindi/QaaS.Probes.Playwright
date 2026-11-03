@@ -87,6 +87,7 @@ internal static class ConsoleUi
             ("F8", "Pauses or resumes the recording"),
             ("F6", "Checks something: a click picks the element, then you choose the check"),
             ("F4", "Freezes the page's elements for the panel's Elements tab"),
+            ("Esc", "While your login flow runs: stops it, to log in by hand"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
