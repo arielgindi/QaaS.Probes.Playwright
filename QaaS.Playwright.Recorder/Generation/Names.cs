@@ -107,6 +107,20 @@ internal static partial class Names
         return group is null ? null : LoopFinder.Singular(WithoutKindWords(group));
     }
 
+    /// <summary>
+    /// The setting of a file to upload: its field's label without what it says to the person ("Select File" gives File),
+    /// in the section it is in when that is all (AttachmentFile); else FileToUpload.
+    /// </summary>
+    public static string Upload(CapturedTarget? field)
+    {
+        var said = Prompt(Hintless(field?.Label ?? field?.GroupLabel));
+        if (said is null) return "FileToUpload";
+        return said is "File" or "Files" or "Document" or "Attachment" && CSharp.Pascal(field?.Section) is { } section
+               && CSharp.IsAsciiText(field!.Section) && LoopFinder.Singular(section) is var part && part != said
+            ? part + said
+            : said;
+    }
+
     /// <summary>The name an icon gives the button it is all of: a trash is "Delete", a pencil "Edit".</summary>
     public static string? IconName(string? icon) => icon?.ToLowerInvariant() switch
     {

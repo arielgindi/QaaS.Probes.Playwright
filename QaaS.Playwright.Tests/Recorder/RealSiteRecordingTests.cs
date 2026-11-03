@@ -251,6 +251,12 @@ public class RealSiteRecordingTests
         var hrmFlow = FlowCodeGenerator.Generate(hrm, "AddUser", "Flows");
         var demoqaPlan = FlowPlanner.Plan(demoqa, "PracticeForm");
         var appliedFlow = FlowCodeGenerator.Generate(Applied(demoqa, demoqaPlan), "PracticeForm", "Flows");
+        // OrangeHRM's attachment, had a file been chosen: its group's label and section name it.
+        var file = Captured.Element("button", "", Captured.Css("generator", "input.oxd-file-input"));
+        (file.Tag, file.Type, file.GroupLabel, file.Section) = ("input", "file", "Select File", "Attachments");
+        var upload = Captured.Action("upload", file);
+        upload.Files = ["report.pdf"];
+        var uploaded = FlowCodeGenerator.Generate(Captured.Recording(upload), "Attach", "Flows");
 
         Assert.Multiple(() =>
         {
@@ -267,6 +273,8 @@ public class RealSiteRecordingTests
                 "a menu's link is no user name typed to log in");
             Assert.That(hrmFlow.Code, Does.Contain("CloseSharePhotosAsync").And.Contain("Keyboard.PressAsync(\"Escape\")"),
                 "a dialog that closed with nothing seen is closed by Escape");
+            Assert.That(uploaded.Code + uploaded.Yaml, Does.Contain("SetInputFilesAsync(Configuration.AttachmentFile)")
+                .And.Contain("AttachmentFile: 'report.pdf'").And.Not.Contain("FileToUpload("), "a file uploaded is a setting of its path");
         });
     }
 

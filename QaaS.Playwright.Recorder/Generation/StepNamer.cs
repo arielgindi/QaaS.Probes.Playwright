@@ -413,8 +413,9 @@ internal static partial class StepNamer
             return $"fills in the {Join(fields, " and ")}{after}";
         }
 
-        private static string FieldOf(PlannedAction action) => action.Kind == "upload" ? "file"
-            : Human(action.Value!.DateFormat is null ? action.Value.Name : RelativeDate.Member(action.Value.Name));
+        // A setting numbered to tell it from another of its field says the field: City2 is the city.
+        private static string FieldOf(PlannedAction action) => action is { Kind: "upload", Value: null } ? "file"
+            : Human((action.Value!.DateFormat is null ? action.Value.Name : RelativeDate.Member(action.Value.Name)).TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'));
 
         private string Clicks(PlannedAction action)
         {

@@ -506,7 +506,9 @@ internal static class ConsoleUi
         if (located && LocatorPolicy.Problem(LocatorPolicy.Choose(found, byName: action.Widget == "radio")) is { } problem)
             yield return problem;
         if (action.HoverMenu == true) yield return "the menu opened on hover: add HoverAsync() on what opens it";
-        if (action.Kind == "upload") yield return "the flow needs each file's full path: return it in FileToUpload";
+        if (action.Kind == "upload")
+            yield return action.Files is [_] ? "the flow needs the file's full path: set it in the YAML"
+                : "the flow needs each file's full path: return it in FileToUpload";
         if (action.Kind == "drag") yield return "drag and drop: check where it drops";
     }
 

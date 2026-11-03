@@ -278,6 +278,11 @@ internal static partial class FlowPlanner
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
                     action.Value.Secret = field?.Type == "password";
                     break;
+                // One file uploaded is a setting of its path, named after its field's label, its default the name the
+                // browser told; several stay the flow's FileToUpload to fill in.
+                case "upload" when source.Files is [var file]:
+                    action.Value = new Setting(Names.Upload(field), file) { Qualified = qualified };
+                    break;
                 case "check" or "uncheck" when source.Widget == "radio":
                     action.Value = new Setting(name, action.Locator?.Kind == "nameValue" ? field?.Value : field?.Text)
                         { Qualified = qualified };

@@ -430,6 +430,10 @@ internal sealed partial class FlowWriter
                 }
 
                 break;
+            case "upload" when action.Value is { } file:
+                _step.Add($"await {Locate(action, ref problem)}{Break}.SetInputFilesAsync({Setting(file)});",
+                    Join(problem, $"upload: the recorder saw only the file's name; set {file.Name} to its full path in each case"));
+                break;
             case "upload":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.SetInputFilesAsync({Files(source.Files ?? [])});",
                     Join(problem, "upload: the recorder saw only the file names; return each one's full path in FileToUpload"));
