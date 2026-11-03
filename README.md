@@ -1,7 +1,5 @@
 # QaaS.Playwright
 
-[![CI](https://github.com/arielgindi/QaaS.Probes.Playwright/actions/workflows/ci.yml/badge.svg)](https://github.com/arielgindi/QaaS.Probes.Playwright/actions/workflows/ci.yml)
-
 Browser tests for [QaaS](https://github.com/TheSmokeTeam). Record a flow in Chrome, get a readable C# class, and run
 it from a QaaS test: `PlaywrightFlowProbe` runs the flows, and `PlaywrightFlowAssertion` reports which passed and why
 one failed, with a screenshot.
