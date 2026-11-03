@@ -1,9 +1,12 @@
+using System.Runtime.CompilerServices;
 using QaaS.Playwright.Recorder;
+using QaaS.Playwright.Recorder.Capture;
 
 namespace QaaS.Playwright.Tests.Recorder;
 
 /// <summary>
-/// The recorder's own copy of each recording, which no crash loses and a later recording continues.
+/// The recorder's own copy of each recording, which no crash loses and a later recording continues, and saving a flow
+/// continued, which never overwrites what the person changed.
 /// </summary>
 [TestFixture]
 public class AutosaveTests
@@ -76,4 +79,31 @@ public class AutosaveTests
             Assert.That(kept.Recording.Actions[1].Value, Is.EqualTo("hunter2"));
         });
     }
+
+    [Test]
+    public void Continue_NamesTheFlowOrItsFile_AndSavingReplacesItOnlyWhileItIsAsRecorded()
+    {
+        var flows = Path.Combine(_folder, "Flows");
+        var byFile = RecordRequest.Parse(["--continue", Path.Combine(flows, "ScheduleMaintenance.cs"), "--no-panel"]);
+        var byName = RecordRequest.Parse(["--continue", "schedule-maintenance", "--output-dir", flows]);
+        var recording = Recording.FromJson(File.ReadAllText(Path.Combine(GoldenFolder(), "ScheduleMaintenance.recording.json")));
+        var whole = FlowCodeGenerator.Generate(recording, "ScheduleMaintenance", "Flows");
+        var start = FlowCodeGenerator.Generate(recording with { Actions = [.. recording.Actions.Take(2)] }, "ScheduleMaintenance", "Flows");
+
+        var created = FlowRecorder.Save(byName, start);
+        var replaced = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(start.Code) }, whole);
+        File.AppendAllText(created.CodePath, "// Changed by hand.\n");
+        var beside = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(whole.Code) }, start);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((byFile.ClassName, byFile.OutputDir, byFile.Continue, byFile.Panel), Is.EqualTo(("ScheduleMaintenance", flows, true, false)));
+            Assert.That((byName.ClassName, byName.CodePath, byName.Continue), Is.EqualTo(("ScheduleMaintenance", created.CodePath, true)));
+            Assert.That(replaced, Is.EqualTo(created), "the flow continued is replaced");
+            Assert.That(beside.CodePath, Does.EndWith("ScheduleMaintenance.recorded.txt"), "a flow changed by hand never is");
+            Assert.That(File.ReadAllText(created.CodePath), Is.EqualTo(whole.Code + "// Changed by hand.\n"));
+        });
+    }
+
+    private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");
 }

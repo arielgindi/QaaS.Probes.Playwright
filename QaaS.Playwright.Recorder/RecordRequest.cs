@@ -31,6 +31,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     /// <summary>The login flow is the one last used in this folder, not given in the command.</summary>
     public bool LoginRemembered { get; init; }
 
+    /// <summary>Goes on from the flow's recording: its steps replay first, and what is recorded now comes after them.</summary>
+    public bool Continue { get; init; }
+
     /// <summary>
     /// The flow file saving replaces, by its <see cref="Autosave.Hash"/>: the flow continued, or the one the person chose
     /// to overwrite. When the file changed since, or this is null, saving keeps it, as it keeps any other.
@@ -43,21 +46,23 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     /// <summary>
     /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording] [--no-panel] [--no-auto-checks]
     /// [--login Flow --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options
-    /// anywhere. What the login options leave out comes from <paramref name="remembered"/>, the login last used here.
+    /// anywhere, or <c>--continue &lt;name or .cs&gt;</c> with the same options instead of a name and a URL. What the login
+    /// options leave out comes from <paramref name="remembered"/>, the login last used here.
     /// </summary>
     /// <exception cref="ArgumentException">The arguments are not a valid record command.</exception>
     public static RecordRequest Parse(IReadOnlyList<string> args, LoginFlow? remembered = null)
     {
-        if (args is not ["record", ..]) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
+        var continuing = args is ["--continue", ..];
+        if (args is not ["record", ..] && !continuing) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
 
         var outputDir = DefaultOutputDir;
         var keepRecording = false;
         var panel = true;
         var autoChecks = true;
         var noLogin = false;
-        string? loginFlow = null, loginAssembly = null, loginSettings = null;
+        string? loginFlow = null, loginAssembly = null, loginSettings = null, continued = null;
         var positionals = new List<string>();
-        for (var index = 1; index < args.Count; index++)
+        for (var index = continuing ? 0 : 1; index < args.Count; index++)
         {
             string ValueOf(string option, string what) =>
                 index + 1 < args.Count && args[index + 1] is var value && value.Trim().Length > 0 && !value.StartsWith('-')
@@ -74,23 +79,34 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                 case "--login-assembly": loginAssembly = ValueOf("--login-assembly", "your test project's built .dll"); break;
                 case "--login-settings": loginSettings = ValueOf("--login-settings", "a YAML file"); break;
                 case "--no-login": noLogin = true; break;
+                case "--continue": continued = ValueOf("--continue", "the flow's name, or its .cs file"); break;
                 case var option when option.StartsWith('-'): throw new ArgumentException($"Unknown option '{option}'.");
                 default: positionals.Add(args[index]); break;
             }
         }
 
-        if (positionals is not [var name, var url])
+        if (continued is not null && positionals.Count > 0)
+            throw new ArgumentException("--continue takes the flow's name or its .cs file, without a name or a URL: the " +
+                                        "flow starts where it was recorded.");
+        if (continued is null && positionals is not [_, _])
             throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording] [--no-panel] " +
                                         "[--no-auto-checks] [--login Flow --login-assembly Tests.dll " +
-                                        "[--login-settings Flow.flow.yaml] | --no-login]");
+                                        "[--login-settings Flow.flow.yaml] | --no-login], or --continue <name> with them");
         var given = loginFlow ?? loginAssembly ?? loginSettings;
         if (noLogin && given is not null) throw new ArgumentException("--no-login cannot go with the other login options.");
         var login = noLogin ? null
             : given is null ? remembered is null ? null : CheckedLogin(remembered.Flow, remembered.Assembly, remembered.Settings)
             : CheckedLogin(loginFlow ?? remembered?.Flow, loginAssembly ?? remembered?.Assembly,
                 loginSettings ?? (loginFlow is null || loginFlow == remembered?.Flow ? remembered?.Settings : null));
-        return Create(name, url, outputDir) with
+        // A flow named in the output folder, or its file; the page to start on is its recording's.
+        var isFile = continued?.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) == true;
+        var request = continued is null ? Create(positionals[0], positionals[1], outputDir)
+            : isFile ? new RecordRequest(ClassNameOf(Path.GetFileNameWithoutExtension(continued)), "",
+                Path.GetDirectoryName(continued) is { Length: > 0 } folder ? folder : ".")
+            : new RecordRequest(ClassNameOf(continued), "", outputDir);
+        return request with
         {
+            Continue = continued is not null,
             KeepRecording = keepRecording, Panel = panel, AutoChecks = autoChecks, Login = login,
             LoginRemembered = login is not null && given is null,
         };
@@ -107,8 +123,24 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var url = ConsoleUi.Ask("URL to start on", "", answer => answer.Length == 0
             ? "Type the address of the page to start on, e.g. https://my-app.com/login"
             : Refusal(() => EnsureHttpUrl(answer)));
-        var name = ConsoleUi.Ask("Flow name", "my-flow", answer => Refusal(() => Create(answer, url, DefaultOutputDir)));
-        var request = Create(name, url, ConsoleUi.Ask("Save in folder", DefaultOutputDir));
+        string AskName() => ConsoleUi.Ask("Flow name", "my-flow", answer => Refusal(() => Create(answer, url, DefaultOutputDir)));
+        var request = Create(AskName(), url, ConsoleUi.Ask("Save in folder", DefaultOutputDir));
+        // A flow of that name is there: go on from it, record it anew in its place, or name this one otherwise.
+        while (File.Exists(request.CodePath))
+        {
+            var choice = ConsoleUi.Choose($"{request.CodePath} is there already",
+                ["Continue it", "Overwrite", "Choose another name"]);
+            if (choice < 2)
+            {
+                request = choice == 0
+                    ? request with { Continue = true }
+                    : request with { Replaces = Autosave.Hash(File.ReadAllText(request.CodePath)) };
+                break;
+            }
+
+            request = Create(AskName(), url, request.OutputDir);
+        }
+
         var flow = ConsoleUi.Ask("Log in first with a flow of your tests (its class name, or none)", remembered?.Flow ?? "none");
         if (flow.Equals("none", StringComparison.OrdinalIgnoreCase)) return request;
         var assembly = ConsoleUi.Ask("Test project's built .dll, e.g. bin/Debug/net10.0/MyTests.dll", remembered?.Assembly ?? "",
@@ -133,13 +165,11 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         }
     }
 
-    /// <summary>The same request for a flow named <paramref name="name"/>, checked as a new name is.</summary>
+    /// <summary>
+    /// The same request for a flow named <paramref name="name"/>, checked as a new name is. It replaces no flow file.
+    /// </summary>
     /// <exception cref="ArgumentException">The flow cannot have that name.</exception>
-    public RecordRequest Renamed(string name) =>
-        Create(name, Url, OutputDir) with
-        {
-            Panel = Panel, AutoChecks = AutoChecks, Login = Login, LoginRemembered = LoginRemembered,
-        };
+    public RecordRequest Renamed(string name) => this with { ClassName = ClassNameOf(name), Replaces = null };
 
     // Checked before Chrome opens; the paths are kept whole, so the login is remembered whatever folder it ran in.
     private static LoginFlow CheckedLogin(string? flow, string? assembly, string? settings)
@@ -155,10 +185,15 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         return new LoginFlow(flow.Trim(), Path.GetFullPath(assembly), settings is null ? null : Path.GetFullPath(settings));
     }
 
-    // Checked before recording, so nobody records a flow that cannot be saved or compiled.
     private static RecordRequest Create(string name, string url, string outputDir)
     {
         EnsureHttpUrl(url);
+        return new RecordRequest(ClassNameOf(name), url, outputDir);
+    }
+
+    // Checked before recording, so nobody records a flow that cannot be saved or compiled.
+    private static string ClassNameOf(string name)
+    {
         var className = FlowCodeGenerator.ToPascalCase(name);
         var clash = TypesAFlowUses.Contains(className) ? "a type its code uses"
             : WindowsDeviceName().IsMatch(className) ? "a device on Windows"
@@ -167,7 +202,7 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
             throw new ArgumentException($"A flow cannot be named {className}, {clash}. Try {className}Flow.");
         if (Encoding.UTF8.GetByteCount(className) > MaxNameBytes)
             throw new ArgumentException($"The flow's name is too long to be a file name: '{className}'.");
-        return new RecordRequest(className, url, outputDir);
+        return className;
     }
 
     [GeneratedRegex("^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$", RegexOptions.IgnoreCase)]
