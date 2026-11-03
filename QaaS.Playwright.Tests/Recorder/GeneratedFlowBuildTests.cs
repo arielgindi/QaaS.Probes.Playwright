@@ -104,14 +104,14 @@ public class GeneratedFlowBuildTests
         });
     }
 
-    // The flow's settings as JSON once bound from the YAML as QaaS reads a test's, or its problems. A flow of no
-    // settings has an empty section, which QaaS reads as none.
+    // The flow's settings as JSON once bound from the YAML as QaaS reads a test's, or its problems; a flow of no
+    // settings has an empty section, which reads as none.
     private string Bind(Type type, string yaml)
     {
         var path = Path.Combine(_folder, $"{type.Name}.flow.yaml");
         File.WriteAllText(path, yaml);
         var flow = (IPlaywrightFlow)Activator.CreateInstance(type)!;
-        var settings = LoginSettings.Read(yaml.TrimEnd().EndsWith("{}", StringComparison.Ordinal) ? null : path, type.Name);
+        var settings = LoginSettings.Read(path, type.Name);
         var problems = flow.LoadAndValidateConfiguration(settings.GetSection(type.Name));
         return problems is { Count: > 0 }
             ? string.Join("; ", problems.Select(problem => problem.ErrorMessage))

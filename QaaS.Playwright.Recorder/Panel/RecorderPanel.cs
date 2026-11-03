@@ -98,6 +98,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
             if (beside) await session.Page.BringToFrontAsync();
             session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
+            session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             panel._worker = Task.Run(panel.RunAsync);
             // In the background, so the first test compiles as fast as the next.
             _ = panel._tester.WarmUp(request);
@@ -266,6 +267,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
             case "pause":
                 _session.TogglePause();
                 break;
+            case "loginByHand":
+                _session.LogInByHand();
+                break;
             case "choosePicked" when _picked is { Description.Target: { } target }:
                 target.Chosen = command.Candidate;
                 _refresh = true;
@@ -431,6 +435,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 View = _shown.View with
                 {
                     Notice = _session.Notice,
+                    LoginProgress = _session.LoginProgress is { } login ? new PanelLoginProgress(login.Text, login.Last, login.Slow) : null,
                     Element = _picked is { } picked
                         ? PanelSnapshot.Element(picked.Node, picked.Page, picked.Description, picked.Gone, picked.Fillable)
                         : null,

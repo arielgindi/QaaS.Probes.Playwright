@@ -48,6 +48,11 @@ internal static class CaptureScript
           // flow runs, or 'testing' while the panel tests the flow in a window of its own. The recorder decides, and
           // tells each page; a page that loads asks.
           let state = 'recording';
+          // While a login flow runs, the pill says how it goes, as the recorder tells each second; once it is slow, Esc
+          // stops it, for the person to log in by hand.
+          let loginText = '';
+          let loginHint = '';
+          let loginEscape = false;
           // In check mode a click picks what to check: nothing the person does is an action, while what the page does
           // still belongs to the action before.
           let checking = false;
@@ -693,7 +698,7 @@ internal static class CaptureScript
           // or the focus, and takes no room. F9 hides or shows it. While it shows, Alt+Up picks the element around the one in
           // the box and Alt+Down goes back toward the element under the pointer; a click then records the element picked.
           // Moving to another element drops the pick. While the recording is paused, a pill at the top says so instead,
-          // and while a login flow runs, nothing shows.
+          // and while a login flow runs, how it goes.
           const OVERLAY_CSS = `
             :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
               left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
@@ -844,6 +849,7 @@ internal static class CaptureScript
             clearTimeout(pillTimer);
             if (state === 'paused') showPill('Recording paused', 'F8 resumes');
             else if (state === 'testing') showPill('Testing the flow', 'in its own window; nothing is recorded', true, true);
+            else if (state === 'login' && loginText) showPill(loginText, loginHint, true, true);
             else if (view) view.state.className = 'state';
           }
           function applyState(next) {
@@ -986,6 +992,8 @@ internal static class CaptureScript
               overlayOn = !overlayOn;
               hover = null;
               hideOverlay();
+            } else if (event.key === 'Escape' && state === 'login' && loginEscape && !event.repeat) {
+              control({ type: 'loginByHand' });
             } else if (event.key === 'F8' && !event.altKey && !event.repeat && state !== 'login') {
               // What is being typed belongs before the pause.
               flushTyping();
@@ -996,6 +1004,19 @@ internal static class CaptureScript
               pick(event.key === 'ArrowUp' ? 1 : -1);
             }
           }), { capture: true, passive: true });
+
+          // While a login flow runs, what it clicks and types in, never the value, for the recorder to show how it goes.
+          let loginActed = null;
+          const actedInLogin = (action, event) => safe(() => {
+            if (state !== 'login' || !event.isTrusted) return;
+            const hit = deepTarget(event);
+            const element = hit && (action === 'click' ? retarget(hit) : hit);
+            if (!element || (action === 'type' && loginActed?.element === element && now() - loginActed.at < 1000)) return;
+            loginActed = { element, at: now() };
+            control({ type: 'loginAction', action, role: roleOf(element) ?? '', name: clean(accessibleName(element)).slice(0, 60) });
+          });
+          addEventListener('click', (event) => actedInLogin('click', event), { capture: true, passive: true });
+          addEventListener('input', (event) => actedInLogin('type', event), { capture: true, passive: true });
 
           // ---------------------------------------------------------------------------------------------- check mode
           // F6, or Check in the recorder's panel, turns check mode on: the box follows the pointer as for a click, in
@@ -1571,6 +1592,10 @@ internal static class CaptureScript
               case 'selector': return selectorOf(command.id);
               case 'watch': watch(!!command.on); return null;
               case 'check': command.on ? startChecking() : stopChecking(); return null;
+              case 'login':
+                [loginText, loginHint, loginEscape] = [command.text ?? '', command.hint ?? '', !!command.esc];
+                if (state === 'login') showState();
+                return null;
               default: return null;
             }
           }, null) });

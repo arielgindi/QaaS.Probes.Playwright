@@ -29,6 +29,10 @@ internal static class ConsoleUi
     private static Capture.RecordingState _state;
     private static int _cancelled;
 
+    // The width of the line redrawn in place while the login flow runs, the cursor at its end; 0 when none is.
+    private static int _live;
+    private static bool _slowTold;
+
     public static string Version =>
         typeof(ConsoleUi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             .Split('+')[0] ?? "unknown";
@@ -66,10 +70,13 @@ internal static class ConsoleUi
             ("--keep-recording", "Also saves the raw recording, with every locator tried"),
             ("--no-panel", "Records without the panel beside the browser"),
             ("--no-auto-checks", "Writes no Expect of what each action did; waits stay"),
-            ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with a flow of your tests, e.g. LoginFlow"),
-            ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The built test project that holds it"),
-            ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "Its settings, if it has any"),
-            ("--no-login", "Records without logging in, and forgets the login of this folder"),
+            ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with that flow of your tests, e.g. LoginFlow. Without it, " +
+                                                     "the recorder finds the one your tests run first and asks once"),
+            ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The DLL in your test project's bin folder that has the flow, e.g. " +
+                                                               Path.Combine("bin", "Debug", "net10.0", "YourShared.dll")),
+            ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "The YAML with its values, if it needs any, e.g. " +
+                                                                Path.Combine("Tests", "Smoke.qaas.yaml")),
+            ("--no-login", "Records without logging in, and forgets this folder's answer"),
             ("-h, --help", "Shows this help"),
             ("-v, --version", "Prints the version"),
         ];
@@ -80,6 +87,7 @@ internal static class ConsoleUi
             ("F8", "Pauses or resumes the recording"),
             ("F6", "Checks something: a click picks the element, then you choose the check"),
             ("F4", "Freezes the page's elements for the panel's Elements tab"),
+            ("Esc", "While your login flow runs: stops it, to log in by hand"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
@@ -92,7 +100,7 @@ internal static class ConsoleUi
                  [
                      "qaas-playwright record login-flow https://my-app.com",
                      "qaas-playwright record login-flow https://my-app.com --output-dir UiFlows",
-                     "qaas-playwright record new-ticket https://my-app.com --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll",
+                     "qaas-playwright record new-ticket https://my-app.com --login LoginFlow",
                  ])
             t.WriteLine(Margin + Margin + t.Paint("$ ", Tone.Dim) + example);
 
@@ -106,7 +114,7 @@ internal static class ConsoleUi
     {
         var t = Out;
         t.WriteLine(Margin + t.Paint("Usage: ", Tone.Dim) + "qaas-playwright record <name> <url> "
-                    + t.Paint("[--output-dir <dir>] [--keep-recording] [--no-panel] [--login <flow> --login-assembly <dll>]", Tone.Dim));
+                    + t.Paint("[--output-dir <dir>] [--keep-recording] [--no-panel] [--login <flow>] [--no-login]", Tone.Dim));
         t.WriteLine(Margin + t.Paint("Run ", Tone.Dim) + "qaas-playwright --help" + t.Paint(" for more.", Tone.Dim));
         t.WriteLine();
     }
@@ -179,6 +187,19 @@ internal static class ConsoleUi
             : choices.Index().FirstOrDefault(choice => choice.Item.StartsWith(answer, StringComparison.OrdinalIgnoreCase)) is
                 { Item: not null } found ? found.Index : null;
         return Taken(Ask($"Choose {numbers}", "1", answer => Taken(answer) is null ? $"Type {numbers}." : null))!.Value;
+    }
+
+    /// <summary>Asks a question of yes or no until it is answered; an empty answer is yes.</summary>
+    /// <exception cref="OperationCanceledException">The input ended.</exception>
+    public static bool Confirm(string question)
+    {
+        static bool? Yes(string answer) => answer.ToLowerInvariant() switch
+        {
+            "y/n" or "y" or "yes" => true,
+            "n" or "no" => false,
+            _ => null,
+        };
+        return Yes(Ask(question, "Y/n", answer => Yes(answer) is null ? "Type y or n." : null)) ?? true;
     }
 
     /// <summary>How long ago <paramref name="when"/> was, as a person says it: "5 minutes ago".</summary>
@@ -283,6 +304,7 @@ internal static class ConsoleUi
 
     public static void Error(string message)
     {
+        lock (Gate) EndLive();
         var t = Terminal.Error;
         t.WriteLine();
         Status(t, Margin, t.Glyph("×", "x"), Tone.Error, message);
@@ -538,6 +560,7 @@ internal static class ConsoleUi
             .SelectMany(line => Terminal.Wrap(line, width)).DefaultIfEmpty("").ToList();
         lock (Gate)
         {
+            EndLive();
             t.WriteLine(indent + t.Paint(glyph, glyphTone) + " " + t.Paint(lines[0], tone));
             foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', start) + t.Paint(more, tone));
         }
@@ -626,10 +649,11 @@ internal static class ConsoleUi
         return line[..lead] + t.Paint(line[lead..colon], Tone.Accent) + line[colon..];
     }
 
-    private static string Count(int count, string what) => $"{count} {what}{(count == 1 ? "" : "s")}";
+    /// <summary>"1 test file", "4 test files".</summary>
+    public static string Count(int count, string what) => $"{count} {what}{(count == 1 ? "" : "s")}";
 
-    // Paths as the person would type them from here; absolute when elsewhere.
-    private static string Relative(string path)
+    /// <summary>A path as the person would type it from here; absolute when elsewhere.</summary>
+    public static string Relative(string path)
     {
         var full = Path.GetFullPath(path);
         var relative = Path.GetRelativePath(Environment.CurrentDirectory, full);
@@ -640,8 +664,143 @@ internal static class ConsoleUi
 
     public static void LoggingIn(Login.LoginFlow login, bool remembered)
     {
-        Phase($"Logging in with {login.Flow} from {Path.GetFileName(login.Assembly)}");
+        _slowTold = false;
+        var values = login.Settings is null ? "" : $", its values from {Relative(login.Settings)}";
+        Phase($"Logging in with {login.Flow}, from {Relative(login.Assembly)}{values}");
         if (remembered) Status(Out, Margin, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
+    }
+
+    // ── The login flow found in the tests ───────────────────────────────────────────────────────────────────────
+
+    /// <summary>The login flow found, before the person is asked: what it is, where, why it is the one, and its values.</summary>
+    public static void FoundLogin(Login.FoundFlow flow, string? settings, Login.LoginValues values)
+    {
+        Info(flow.SetupIn > 0
+            ? $"Your tests log in with {flow.Name}, from {Relative(flow.Dll)}: the setup flow of {Count(flow.SetupIn, "test file")}."
+            : $"Found {flow.Name}, from {Relative(flow.Dll)}, which looks like the login of your tests.");
+        LoginValuesOf(flow.Name, settings, values);
+    }
+
+    /// <summary>A flow found, as a choice: "LoginFlow, from bin/Debug/net10.0/Shared.dll (the setup flow of 2 test files)".</summary>
+    public static string Described(Login.FoundFlow flow) =>
+        $"{flow.Name}, from {Relative(flow.Dll)}" + (flow.SetupIn > 0 ? $" (the setup flow of {Count(flow.SetupIn, "test file")})" : "");
+
+    /// <summary>
+    /// Whether a login flow needs values, where they come from, and, for those it needs that are set nowhere, the YAML
+    /// to add and where; <paramref name="onlyWrong"/>, only what is wrong.
+    /// </summary>
+    public static void LoginValuesOf(string flow, string? settings, Login.LoginValues values, bool onlyWrong = false)
+    {
+        if (!values.Has)
+        {
+            if (!onlyWrong) Info("It needs no values.");
+            return;
+        }
+
+        if (!onlyWrong && values.Given.Count > 0) Info($"Its values ({string.Join(", ", values.Given)}) come from {Relative(settings!)}.");
+        else if (!onlyWrong && values.Missing.Count == 0 && values.Problems.Count == 0) Info("It needs no values: it uses its own defaults.");
+        if (values.Problems.Count > 0)
+            Warning($"Some of its values are not right:\n{string.Join("\n", values.Problems)}");
+        if (values.Missing.Count == 0) return;
+
+        var them = values.Missing.Count == 1 ? "it" : "them";
+        Warning($"{flow} needs {List(values.Missing)}, which {(values.Missing.Count == 1 ? "is" : "are")} set nowhere.");
+        Info(settings is null
+            ? $"Add this to your test YAML, under the ProbeConfiguration of the probe that runs {flow}, or to a " +
+              $"{flow}.flow.yaml given with --login-settings:"
+            : $"Add {them} to {Relative(settings)}, under FlowConfiguration: {flow}:");
+        var t = Out;
+        lock (Gate)
+            foreach (var line in (string[])["FlowConfiguration:", $"  {flow}:", .. values.Missing.Select(name => $"    {name}: <value>")])
+                t.WriteLine(Margin + Margin + Margin + Yaml(t, line));
+    }
+
+    /// <summary>The test project did not build; <paramref name="command"/> builds it, when an older build is used instead.</summary>
+    public static void BuildFailed(string project, string log, string? command)
+    {
+        // "Tests/LoginFlow.cs(12,5): error CS0103: ... [/home/.../MyTests.csproj]", once each, its project left out.
+        var errors = log.Split('\n').Select(line => line.Trim())
+            .Where(line => line.Contains(": error ", StringComparison.Ordinal))
+            .Select(line => line.LastIndexOf(" [", StringComparison.Ordinal) is var end and > 0 ? line[..end] : line)
+            .Distinct().Take(8).ToList();
+        if (errors.Count == 0) errors = [.. log.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).TakeLast(8)];
+        Error($"{project} did not build:\n{string.Join("\n", errors)}");
+        Info(command is null
+            ? "Not logging in this time. Fix the build, then record again, or record with --no-login."
+            : $"Logging in with its last build. Once fixed, {command} builds it again.");
+    }
+
+    // "User", "User and Password", "User, Password and Url".
+    private static string List(IReadOnlyList<string> names) =>
+        names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
+
+    /// <summary>
+    /// How the login flow goes, on a line under its own redrawn each second, when a person watches; once it is slow, how
+    /// to stop it, which a log gets too.
+    /// </summary>
+    public static void LoginProgressed(LoginProgress progress)
+    {
+        var t = Out;
+        lock (Gate)
+        {
+            if (progress.Slow && !_slowTold)
+            {
+                _slowTold = true;
+                Info("Taking long? Press Esc to log in by hand.");
+            }
+
+            if (Console.IsOutputRedirected) return;
+            var line = Margin + "  " + t.Fit(Terminal.Clean(progress.Detail), t.Width - 1 - Margin.Length - 2);
+            var width = Terminal.WidthOf(line);
+            t.Writer.Write("\r" + t.Paint(line, Tone.Dim) + new string(' ', Math.Max(0, _live - width)));
+            t.Writer.Flush();
+            _live = Math.Max(width, 1);
+        }
+    }
+
+    // Clears the line redrawn in place, for a line written after it. Under the gate.
+    private static void EndLive()
+    {
+        if (_live == 0) return;
+        Out.Writer.Write("\r" + new string(' ', _live) + "\r");
+        _live = 0;
+    }
+
+    /// <summary>
+    /// Completes with true when the person presses Esc in the console; with false once <paramref name="stop"/> is
+    /// cancelled, or when nobody types here.
+    /// </summary>
+    public static async Task<bool> EscapePressedAsync(CancellationToken stop)
+    {
+        if (Console.IsInputRedirected) return false;
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                while (Console.KeyAvailable)
+                    if (Console.ReadKey(intercept: true).Key == ConsoleKey.Escape)
+                        return true;
+                await Task.Delay(100, stop);
+            }
+        }
+        catch (Exception failure) when (failure is OperationCanceledException or InvalidOperationException or IOException)
+        {
+            // Stopped, or the console takes no keys.
+        }
+
+        return false;
+    }
+
+    /// <summary>The login flow was stopped, for the person to log in by hand: why, and what to do.</summary>
+    /// <param name="why">Why it was stopped, e.g. the person pressed Esc.</param>
+    /// <param name="continued">The flow whose steps were to replay after it, which cannot; null when recording anew.</param>
+    public static void LoginStopped(string why, string? continued = null)
+    {
+        Warning(why);
+        Info(continued is null
+            ? "Nothing is recorded yet. Log in by hand in the browser, then press F8 there (or Resume in the panel) to " +
+              "start recording. To quit, close the browser."
+            : $"The steps of {continued} replay after it, so nothing was replayed: continue {continued} again once it logs in.");
     }
 
     /// <param name="flow">The login flow.</param>

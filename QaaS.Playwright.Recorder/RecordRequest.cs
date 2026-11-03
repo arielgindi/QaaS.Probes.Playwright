@@ -31,6 +31,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     /// <summary>The login flow is the one last used in this folder, not given in the command.</summary>
     public bool LoginRemembered { get; init; }
 
+    /// <summary>The person said to record without logging in (<c>--no-login</c>, or none when asked): none is looked for.</summary>
+    public bool NoLogin { get; init; }
+
     /// <summary>Goes on from the flow's recording: its steps replay first, and what is recorded now comes after them.</summary>
     public bool Continue { get; init; }
 
@@ -45,12 +48,15 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
 
     /// <summary>
     /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording] [--no-panel] [--no-auto-checks]
-    /// [--login Flow --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options
+    /// [--login Flow [--login-assembly Shared.dll] [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options
     /// anywhere, or <c>--continue &lt;name or .cs&gt;</c> with the same options instead of a name and a URL. What the login
-    /// options leave out comes from <paramref name="remembered"/>, the login last used here.
+    /// options leave out comes from <paramref name="find"/>, which finds a flow by its name in the test project of the
+    /// output folder, then from <paramref name="remembered"/>, the login last used here; a login found in the tests,
+    /// rather than given, is found again instead.
     /// </summary>
     /// <exception cref="ArgumentException">The arguments are not a valid record command.</exception>
-    public static RecordRequest Parse(IReadOnlyList<string> args, LoginFlow? remembered = null)
+    public static RecordRequest Parse(IReadOnlyList<string> args, LoginFlow? remembered = null,
+        Func<string, string, LoginFlow?>? find = null)
     {
         var continuing = args is ["--continue", ..];
         if (args is not ["record", ..] && !continuing) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
@@ -76,7 +82,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                 case "--no-panel": panel = false; break;
                 case "--no-auto-checks": autoChecks = false; break;
                 case "--login": loginFlow = ValueOf("--login", "the login flow's class name"); break;
-                case "--login-assembly": loginAssembly = ValueOf("--login-assembly", "your test project's built .dll"); break;
+                case "--login-assembly":
+                    loginAssembly = ValueOf("--login-assembly", "the DLL in your test project's bin folder that has the flow");
+                    break;
                 case "--login-settings": loginSettings = ValueOf("--login-settings", "a YAML file"); break;
                 case "--no-login": noLogin = true; break;
                 case "--continue": continued = ValueOf("--continue", "the flow's name, or its .cs file"); break;
@@ -90,12 +98,15 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                                         "flow starts where it was recorded.");
         if (continued is null && positionals is not [_, _])
             throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording] [--no-panel] " +
-                                        "[--no-auto-checks] [--login Flow --login-assembly Tests.dll " +
+                                        "[--no-auto-checks] [--login Flow [--login-assembly Shared.dll] " +
                                         "[--login-settings Flow.flow.yaml] | --no-login], or --continue <name> with them");
         var given = loginFlow ?? loginAssembly ?? loginSettings;
         if (noLogin && given is not null) throw new ArgumentException("--no-login cannot go with the other login options.");
+        // --login alone: the flow's DLL and values as the tests have them.
+        var named = loginFlow is not null && loginAssembly is null ? find?.Invoke(loginFlow, outputDir) : null;
         var login = noLogin ? null
-            : given is null ? remembered is null ? null : CheckedLogin(remembered.Flow, remembered.Assembly, remembered.Settings)
+            : given is null ? remembered is { Found: false } ? CheckedLogin(remembered.Flow, remembered.Assembly, remembered.Settings) : null
+            : named is not null ? loginSettings is null ? named : CheckedLogin(named.Flow, named.Assembly, loginSettings)
             : CheckedLogin(loginFlow ?? remembered?.Flow, loginAssembly ?? remembered?.Assembly,
                 loginSettings ?? (loginFlow is null || loginFlow == remembered?.Flow ? remembered?.Settings : null));
         // A flow named in the output folder, or its file; the page to start on is its recording's.
@@ -107,17 +118,18 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         return request with
         {
             Continue = continued is not null,
-            KeepRecording = keepRecording, Panel = panel, AutoChecks = autoChecks, Login = login,
+            KeepRecording = keepRecording, Panel = panel, AutoChecks = autoChecks, Login = login, NoLogin = noLogin,
             LoginRemembered = login is not null && given is null,
         };
     }
 
     /// <summary>
     /// Asks for the page, the flow's name and the folder, again until each answer is valid, and for a login flow to run
-    /// first.
+    /// first: the one <paramref name="find"/> finds in the tests, when the folder has no login given before, else by
+    /// its name, DLL and YAML.
     /// </summary>
     /// <exception cref="OperationCanceledException">The input ended before all were given.</exception>
-    public static RecordRequest Ask(LoginFlow? remembered = null)
+    public static RecordRequest Ask(LoginFlow? remembered = null, Func<RecordRequest, RecordRequest?>? find = null)
     {
         ConsoleUi.Intro("Let's record a browser flow.");
         var url = ConsoleUi.Ask("URL to start on", "", answer => answer.Length == 0
@@ -141,11 +153,15 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
             request = Create(AskName(), url, request.OutputDir);
         }
 
-        var flow = ConsoleUi.Ask("Log in first with a flow of your tests (its class name, or none)", remembered?.Flow ?? "none");
-        if (flow.Equals("none", StringComparison.OrdinalIgnoreCase)) return request;
-        var assembly = ConsoleUi.Ask("Test project's built .dll, e.g. bin/Debug/net10.0/MyTests.dll", remembered?.Assembly ?? "",
+        var given = remembered is { Found: false } ? remembered : null;
+        if (given is null && find?.Invoke(request) is { } found) return found;
+        var flow = ConsoleUi.Ask("Log in first with a flow of your tests (its class name, or none)", given?.Flow ?? "none");
+        if (flow.Equals("none", StringComparison.OrdinalIgnoreCase)) return request with { NoLogin = true };
+        var example = Path.Combine("bin", "Debug", "net10.0", "YourShared.dll");
+        var assembly = ConsoleUi.Ask($"The DLL in your test project's bin folder that has {flow}, e.g. {example}", given?.Assembly ?? "",
             answer => Refusal(() => CheckedLogin(flow, answer, null)));
-        var settings = ConsoleUi.Ask("Its settings in a YAML file, or none", remembered?.Settings ?? "none");
+        var settings = ConsoleUi.Ask($"The YAML with its values (FlowConfiguration: {flow}:), or none if it needs none",
+            given?.Settings ?? "none");
         return request with
         {
             Login = CheckedLogin(flow, assembly, settings.Equals("none", StringComparison.OrdinalIgnoreCase) ? null : settings),
@@ -176,8 +192,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     {
         if (string.IsNullOrWhiteSpace(flow)) throw new ArgumentException("--login needs the login flow's class name.");
         if (string.IsNullOrWhiteSpace(assembly))
-            throw new ArgumentException($"--login {flow} needs --login-assembly, your test project's built .dll, e.g. " +
-                                        "bin/Debug/net10.0/MyTests.dll.");
+            throw new ArgumentException($"{flow} is not in a build of the test project here. Build it (dotnet build), or " +
+                                        $"give --login-assembly: the DLL in your test project's bin folder that has {flow}, " +
+                                        $"e.g. {Path.Combine("bin", "Debug", "net10.0", "YourShared.dll")}.");
         if (!File.Exists(assembly))
             throw new ArgumentException($"There is no {assembly}: build your test project first (dotnet build), or " +
                                         "record with --no-login.");

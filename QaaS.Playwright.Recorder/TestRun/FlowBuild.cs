@@ -386,7 +386,7 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
     // Quiet runs it at a low priority where that leaves the compiler's server it may start as it is, on Windows: elsewhere
     // the server would keep that priority for the rest of its life. Alone, the host or the compiler itself, rather than
     // dotnet build: it writes UTF-8, and is stopped without the compiler's server it may have started, which others share.
-    private static async Task<(int ExitCode, string Log)> DotnetAsync(string folder, string[] arguments, CancellationToken cancel,
+    internal static async Task<(int ExitCode, string Log)> DotnetAsync(string folder, string[] arguments, CancellationToken cancel,
         bool quiet = false, bool alone = false)
     {
         var start = new ProcessStartInfo(Dotnet(), arguments)

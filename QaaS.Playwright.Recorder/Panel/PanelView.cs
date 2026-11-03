@@ -25,6 +25,9 @@ internal sealed record PanelView(
     /// <summary>The login flow the recording runs after, by its class name.</summary>
     public string? Login { get; init; }
 
+    /// <summary>How the login flow goes while it runs: "Logging in with LoginFlow… 12 s, on /signin", and what it did last.</summary>
+    public PanelLoginProgress? LoginProgress { get; init; }
+
     /// <summary>The element the person picked in the Elements view, with every way to locate it.</summary>
     public PanelElement? Element { get; init; }
 
@@ -50,6 +53,9 @@ internal sealed record PanelView(
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 }
+
+/// <summary>How the login flow goes while it runs, each second; slow, it has run long enough to offer logging in by hand.</summary>
+internal sealed record PanelLoginProgress(string Text, string? Last, bool Slow);
 
 /// <summary>
 /// A recording that continues another: a divider with <paramref name="Label"/> after the last of that one's actions
