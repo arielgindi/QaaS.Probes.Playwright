@@ -46,8 +46,12 @@ When the URL is on this machine and nothing answers there, the probe starts Chro
 `~/.qaas/chrome-profile-<port>`. That Chrome keeps running, so later runs reuse it and its logins. Use a name or an
 IPv4 address, such as `http://localhost:9222`: Chrome's debugging port does not listen on `[::1]`.
 
-To run a shared test against your own browser without editing it, use a QaaS placeholder and set an environment
-variable only on your machine:
+To run a shared test in a Chrome on your machine without editing it, set `ENV=local` (`$env:ENV = "local"` in
+PowerShell) or `Headless: false`: the run then uses `http://localhost:9222`, and starts a Chrome with a window there
+if none answers, instead of a remote `BrowserUrl`. A `BrowserUrl` that already is on this machine is kept. The log
+says when the local Chrome is used instead.
+
+For another browser per machine, use a QaaS placeholder and set an environment variable only on that machine:
 
 ```yaml
 BrowserUrl: ${BROWSER_URL ?? ws://browserless:3000?token=my-token}
@@ -55,10 +59,9 @@ BrowserUrl: ${BROWSER_URL ?? ws://browserless:3000?token=my-token}
 
 ### Headless
 
-`Headless` does not decide whether Chrome shows a window; that depends only on how Chrome was started. It says
-whether a person is watching: `true` blocks images and fonts for speed, `false` slows every action down (`SlowMo`)
-and allows `KeepOpen`. With `Headless: false` on a Chrome that runs headless, the probe warns that no window will
-appear.
+`Headless` says whether a person is watching. `true` blocks images and fonts for speed. `false` runs in the Chrome on
+this machine, as `ENV=local` does (see [BrowserUrl](#browserurl)), slows every action down (`SlowMo`) and allows
+`KeepOpen`. If that Chrome was started headless by hand, the probe warns that no window will appear.
 
 ### Timeouts
 
