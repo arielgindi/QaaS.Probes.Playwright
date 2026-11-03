@@ -96,7 +96,8 @@ public sealed class TestSite : IDisposable
         if (path == "/automation-practice-form" || path.StartsWith("/web/index.php/", StringComparison.Ordinal))
         {
             var app = path == "/automation-practice-form" ? "practice-form" : "hrm";
-            var shell = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>demosite</title></head><body>" +
+            var title = app == "hrm" ? "OrangeHRM" : "demosite";
+            var shell = $"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{title}</title></head><body>" +
                         $"<div id=\"root\"></div><script src=\"/sites/{app}.js\"></script></body></html>";
             Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(shell));
             return;
