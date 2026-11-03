@@ -120,6 +120,8 @@ internal static partial class LocatorPolicy
             return candidate.Count > 1
                 ? $"this locator found {candidate.Count} elements when recorded"
                 : "this locator did not find the element when recorded";
+        if (candidate.Parts.FirstOrDefault(part => part is { M: "role", Regex: null } && HoldsVolatile(part.Name)) is { } changing)
+            return $"its name holds what may change from run to run (\"{changing.Name}\"): find it by what stays";
         if (candidate.Kind != "generator") return null;
         var code = candidate.Csharp ?? "";
         if (Position().IsMatch(code)) return "Playwright's locator picks the element by its position";
@@ -184,7 +186,7 @@ internal static partial class LocatorPolicy
     /// <summary>Whether the candidate is stable enough to be a locator at all, whatever it found.</summary>
     public static bool CanUse(CapturedCandidate candidate) => IsUsable(candidate);
 
-    private static bool IsUsable(CapturedCandidate candidate) => candidate.Kind switch
+    private static bool IsUsable(CapturedCandidate candidate) => !WholeRow(candidate) && candidate.Kind switch
     {
         "name" or "nameValue" or "id" or "select" or "testid" or "within" => !UnstableId.IsUnstable(candidate.Value) && CssIsStable(candidate),
         "role" or "roleInGroup" or "row" or "group" or "section" or "item" or "icon" or "title" or "structure" =>
@@ -194,6 +196,15 @@ internal static partial class LocatorPolicy
         "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp) && Problem(candidate) is null,
         _ => false,
     };
+
+    // A row by all it says, its counts, statuses and dates with it, which change: never, as its key finds it.
+    private static bool WholeRow(CapturedCandidate candidate) =>
+        candidate.Kind == "role" && candidate.Parts.Any(part => part is { M: "role", Role: "row", Name.Length: > 0 });
+
+    /// <summary>
+    /// Whether a name holds what changes from load to load or what a flow may edit: a price, a date, a time, a percentage.
+    /// </summary>
+    public static bool HoldsVolatile(string? name) => name is not null && VolatileInName().IsMatch(name);
 
     // A class that a CSS-in-JS library hashed changes with each build, and so does the chain it is in.
     private static bool CssIsStable(CapturedCandidate candidate) =>
@@ -256,6 +267,11 @@ internal static partial class LocatorPolicy
 
     [GeneratedRegex(@"[-_]\d+$")]
     private static partial Regex NumberedId();
+
+    // A price, a date, a time, a percentage; a weekday or a month's day, as a calendar's event names its time.
+    [GeneratedRegex(@"[-+]?(\p{Sc}|\b[A-Z]{1,3}\$)\s?\d|\d[\d.,]*\s?\p{Sc}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\b\d{1,2}:\d{2}|\b\d+([.,]\d+)?\s?%" +
+                    @"|\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s\d{1,2}\b", RegexOptions.IgnoreCase)]
+    private static partial Regex VolatileInName();
 
     [GeneratedRegex(@"\.Nth\(|\.First\b|\.Last\b|nth-child|nth-of-type|>> nth=")]
     private static partial Regex Position();

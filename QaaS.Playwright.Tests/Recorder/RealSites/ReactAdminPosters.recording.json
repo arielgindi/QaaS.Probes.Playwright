@@ -1,0 +1,1347 @@
+{
+  "startUrl": "https://marmelab.com/react-admin-demo/",
+  "actions": [
+    {
+      "id": "2rdnfa-1",
+      "t": 1793740878185,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://marmelab.com/react-admin-demo/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "menuitem",
+        "text": "Customers",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Customers",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Customers"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Customers"
+              }
+            ],
+            "count": 2,
+            "text": "Customers"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"a\").Filter(new() { HasTextRegex = new Regex(\"^Customers$\") })",
+            "selector": "a >> internal:has-text=/^Customers$/"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-1",
+          "sinceAction": 1,
+          "t": 1793740878186
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-1",
+          "sinceAction": 108,
+          "t": 1793740878585,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-1",
+          "t": 1793740878195,
+          "url": "https://marmelab.com/react-admin-demo/#/customers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "navigated-1793740900683-page",
+      "t": 1793740900683,
+      "kind": "navigate",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/segments",
+      "effects": [],
+      "afterPause": true
+    },
+    {
+      "id": "2rdnfa-4",
+      "t": 1793740919283,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://marmelab.com/react-admin-demo/#/segments",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "menuitem",
+        "text": "Posters",
+        "section": "Segments",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Posters",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Posters"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"Posters\" })",
+            "selector": "internal:role=menuitem[name=\"Posters\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-4",
+          "sinceAction": 1,
+          "t": 1793740919284
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-4",
+          "sinceAction": 102,
+          "t": 1793740919685,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-4",
+          "t": 1793740919287,
+          "url": "https://marmelab.com/react-admin-demo/#/products",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-6",
+      "t": 1793740936962,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/products",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Black & White 14.4x17.88, US$15.57",
+        "section": "Posters",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Black & White 14.4x17.88, US$15.57",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Black & White 14.4x17.88, US$15.57"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Posters"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Black & White 14.4x17.88, US$15.57",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Posters"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Black & White 14.4x17.88, US$15.57",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Black & White 14.4x17.88, US$15.57",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Black & White 14.4x17.88, US$\" })",
+            "selector": "internal:role=link[name=\"Black & White 14.4x17.88, US$\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-6",
+          "sinceAction": 805,
+          "t": 1793740937767
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-6",
+          "sinceAction": 823,
+          "t": 1793740938485,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-6",
+          "t": 1793740936964,
+          "url": "https://marmelab.com/react-admin-demo/#/products/83",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-7",
+      "t": 1793740945029,
+      "kind": "click",
+      "page": "page",
+      "widget": "tab",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "tab",
+        "id": "tabheader-details",
+        "text": "Details",
+        "section": "Poster \"Black & White\"",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabheader-details']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabheader-details"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "tab",
+                "name": "Details",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Details"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"Details\" })",
+            "selector": "internal:role=tab[name=\"Details\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-7",
+          "sinceAction": 1,
+          "t": 1793740945030
+        },
+        {
+          "kind": "tabSelected",
+          "actionId": "2rdnfa-7",
+          "sinceAction": 302,
+          "t": 1793740945331
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-7",
+          "t": 1793740945034,
+          "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-8",
+      "t": 1793740946631,
+      "kind": "click",
+      "page": "page",
+      "widget": "tab",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "tab",
+        "id": "tabheader-description",
+        "text": "Description",
+        "section": "Poster \"Black & White\"",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabheader-description']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabheader-description"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "tab",
+                "name": "Description",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Description"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"Description\" })",
+            "selector": "internal:role=tab[name=\"Description\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-8",
+          "sinceAction": 1,
+          "t": 1793740946632
+        },
+        {
+          "kind": "tabSelected",
+          "actionId": "2rdnfa-8",
+          "sinceAction": 302,
+          "t": 1793740946933
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-8",
+          "t": 1793740946635,
+          "url": "https://marmelab.com/react-admin-demo/#/products/83/description",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-9",
+      "t": 1793740948234,
+      "kind": "click",
+      "page": "page",
+      "widget": "tab",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/description",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "tab",
+        "id": "tabheader-details",
+        "text": "Details",
+        "section": "Poster \"Black & White\"",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabheader-details']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabheader-details"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "tab",
+                "name": "Details",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Details"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"Details\" })",
+            "selector": "internal:role=tab[name=\"Details\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-9",
+          "sinceAction": 1,
+          "t": 1793740948235
+        },
+        {
+          "kind": "tabSelected",
+          "actionId": "2rdnfa-9",
+          "sinceAction": 302,
+          "t": 1793740948536
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-9",
+          "t": 1793740948238,
+          "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-10",
+      "t": 1793740955938,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "16.90",
+      "raw": "16.90",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "number",
+        "id": ":r3e:",
+        "name": "price",
+        "text": "Price",
+        "label": "Price",
+        "groupLabel": "Price",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='price']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "price"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r3e:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r3e:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Price"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Price"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Price"
+              }
+            ],
+            "text": "Price"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiGrid-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Price"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Price"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabpanel-details']"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabpanel-details"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Price\" })",
+            "selector": "internal:role=spinbutton[name=\"Price\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "2rdnfa-11",
+      "t": 1793740957030,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "70",
+      "raw": "70",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "number",
+        "id": ":r3g:",
+        "name": "stock",
+        "text": "Stock",
+        "label": "Stock",
+        "groupLabel": "Stock",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='stock']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "stock"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r3g:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r3g:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Stock"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Stock"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Stock"
+              }
+            ],
+            "text": "Stock"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiGrid-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Stock"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Stock"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabpanel-details']"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabpanel-details"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Stock\" })",
+            "selector": "internal:role=spinbutton[name=\"Stock\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "2rdnfa-12",
+      "t": 1793740957933,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r38:",
+        "text": "Category",
+        "label": "Category",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r38:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r38:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='category_id'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "category_id"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Category"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiGrid-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Category"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabpanel-details']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabpanel-details"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "people"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "people"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Category people\" })",
+            "selector": "internal:role=combobox[name=\"Category people\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-12",
+          "sinceAction": 1,
+          "t": 1793740957934
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-13",
+      "t": 1793740967954,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "nature",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r38:",
+        "text": "Category",
+        "label": "Category",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r38:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r38:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='category_id'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "category_id"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Category"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiGrid-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Category"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabpanel-details']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabpanel-details"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "people"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "people"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Category people\" })",
+            "selector": "internal:role=combobox[name=\"Category people\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r38:",
+        "text": "Category",
+        "label": "Category",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r38:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r38:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='category_id'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "category_id"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Category"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiGrid-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Category"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Category"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='tabpanel-details']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Category people",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "tabpanel-details"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "people"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "people"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Category people\" })",
+            "selector": "internal:role=combobox[name=\"Category people\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "nature",
+        "label": "Category",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "nature",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "nature"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r3p:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "nature",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r3p:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-category_id']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "nature",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-category_id"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"nature\" })",
+            "selector": "internal:role=option[name=\"nature\"i]"
+          }
+        ]
+      },
+      "opener": "2rdnfa-12",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-13",
+          "sinceAction": 1,
+          "t": 1793740967955
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-13",
+          "sinceAction": 31,
+          "t": 1793740968285,
+          "value": "progressbar"
+        },
+        {
+          "kind": "settled",
+          "actionId": "2rdnfa-13",
+          "sinceAction": 403,
+          "t": 1793740968357,
+          "value": "nature",
+          "raw": "nature",
+          "multi": false
+        }
+      ]
+    },
+    {
+      "id": "2rdnfa-14",
+      "t": 1793740969259,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/products/83/details",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "section": "Poster \"Black & White\"",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Poster \"Black & White\""
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Poster \"Black & White\""
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "2rdnfa-14",
+          "sinceAction": 0,
+          "t": 1793740969259
+        },
+        {
+          "kind": "alert",
+          "actionId": "2rdnfa-14",
+          "sinceAction": 34,
+          "t": 1793740969293,
+          "text": "Poster updated UNDO",
+          "alertCount": 1
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-14",
+          "sinceAction": 126,
+          "t": 1793740969685,
+          "value": "progressbar"
+        },
+        {
+          "kind": "busy",
+          "actionId": "2rdnfa-14",
+          "sinceAction": 4326,
+          "t": 1793740974185,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "2rdnfa-14",
+          "t": 1793740969289,
+          "url": "https://marmelab.com/react-admin-demo/#/products",
+          "page": "page"
+        }
+      ]
+    }
+  ]
+}

@@ -498,7 +498,27 @@ internal static class CaptureScript
             }
             const variants = [{ name: stripped, exact: true }, { name: stripped }];
             if (raw !== stripped && raw.replace(BIDI, '') !== raw) variants.push({ name: raw, exact: true, marks: true });
-            return variants;
+            // A name that holds what changes from load to load, or what the flow may edit, a price, a date, a time or a
+            // count, is found first by the words before it, when they find the element alone: a poster's link by its
+            // title and size, without its price.
+            const stable = beforeVolatile(stripped);
+            return stable ? [{ regex: '^' + regexEscape(stable), text: stable }, ...variants] : variants;
+          }
+          const VOLATILE_IN_NAME = new RegExp([
+            '[-+]?(\\p{Sc}|\\b[A-Z]{1,3}\\$)\\s?\\d', '\\d[\\d.,]*\\s?\\p{Sc}', '\\d{1,4}[/.-]\\d{1,2}[/.-]\\d{1,4}', '\\b\\d{1,2}:\\d{2}',
+            '\\b\\d+([.,]\\d+)?\\s?%', '\\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*day\\b',
+            '\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s\\d{1,2}\\b', '\\b\\d{1,2}\\s(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\b',
+          ].join('|'), 'iu');
+          // The words of a name before what in it changes, without the punctuation and the little words that led to it;
+          // null when nothing in it changes, or too little is left to tell the element by.
+          function beforeVolatile(name) {
+            const found = VOLATILE_IN_NAME.exec(name);
+            if (!found) return null;
+            const words = name.slice(0, found.index).split(/\s+/).filter(Boolean);
+            while (words.length && /^(on|at|of|for|from|to|in|by|and|or|-|–|—|\(|,)$/i.test(words[words.length - 1].replace(/[,:;(]+$/, '') || ','))
+              words.pop();
+            const stable = words.join(' ').replace(/[\s,:;(–—-]+$/, '');
+            return (stable.match(/\p{L}/gu)?.length ?? 0) >= 3 ? stable : null;
           }
 
           // A row of a table and the text that tells it apart from the others: its key, the first cell whose text no other

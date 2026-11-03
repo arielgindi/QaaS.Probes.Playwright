@@ -307,7 +307,9 @@ public class RealSiteRecordingTests
                 "an autocomplete types what the person typed, then takes the option");
             Assert.That(posters.Flow.Yaml + kendoRun.Flow.Yaml, Does.Contain("CustomerSearch: 'Hipol'").And.Contain("Customer: 'Hipolito Bergnaum'")
                 .And.Contain("SportSearch: 'Bask'").And.Contain("Sport: 'Basketball'"), "the letters typed, never the suggestion completed in place");
-            foreach (var run in new[] { antdRun, kendoRun })
+            Assert.That(posters.Flow.Code, Does.Contain("GetByRole(AriaRole.Link, new() { NameRegex = new Regex(\"^Black & White 14\\\\.4x17\\\\.88\") })")
+                .And.Not.Contain("US$"), "a poster's link by its title and size, never by the price the demo makes anew on each load");
+            foreach (var run in new[] { posters, antdRun, kendoRun })
                 Assert.That(run.Report.Outcome, Is.EqualTo(TestOutcome.Passed), $"{run.Report.Failure?.Headline ?? run.Report.Problem}\n{run.Flow.Code}");
         });
     }
@@ -388,6 +390,8 @@ public class RealSiteRecordingTests
         foreach (var typed in customers.Actions.Where(action => action.Target?.Type == "password")) (typed.Value, typed.Raw) = ("demo", "demo");
         var customersFlow = FlowCodeGenerator.Generate(customers, "CustomersFilterEdit", "Flows");
         var widgets = FlowCodeGenerator.Generate(Read("KendoWidgets"), "KendoWidgets", "Flows");
+        var rules = FlowCodeGenerator.Generate(Read("AntdProTable"), "AntdProTable", "Flows");
+        var poster = FlowCodeGenerator.Generate(Read("ReactAdminPosters"), "Posters", "Flows");
 
         Assert.Multiple(() =>
         {
@@ -402,6 +406,10 @@ public class RealSiteRecordingTests
                 "two deletes each confirmed in the browser: one handler accepts both, as a second would accept the same dialog again");
             Assert.That(widgets.Code, Does.Contain("page.Dialog -= AcceptBrowserDialog;").And.Not.Contain("browserDialog.AcceptAsync()"),
                 "and the flow has it once however often it runs on the page");
+            Assert.That(rules.Code, Does.Not.Contain("GetByRole(AriaRole.Row, new() { Name =").And.Not.Contain("5740000"),
+                "a row is never found by all it says, its random counts and statuses with it");
+            Assert.That(poster.Checks.Select(check => check.Message), Has.Some.Contains("may change from run to run (\"Black & White 14.4x17.88, US$15.57\")"),
+                "a name with a price a recording of an older recorder kept is one to check by hand");
         });
     }
 

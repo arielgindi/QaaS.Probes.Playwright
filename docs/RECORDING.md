@@ -821,9 +821,15 @@ For each element the recorder takes the first of these that finds it, and only i
 3. Its test id (`GetByTestId`, i.e. `data-testid`).
 4. Its role and exact name, without direction marks and a required field's ` *`. A tab whose name counts something
    (`Open (3)`) by the start of its name. A field that opens a list by its label, without the value it shows
-   (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it.
+   (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it. A name that holds what
+   changes from load to load, or what the flow may edit, a price, a date, a time or a percentage, by the words before
+   it when they find the element alone: a poster's link `NameRegex = new Regex("^Black & White 14\\.4x17\\.88")`,
+   without its `US$15.57`; else it is listed to check by hand.
 5. In a table: the row by its key cell's text, then the element in it; an icon button there by its icon
    (`row.Locator("button:has(i.bi-trash)")`). A column's name is its header's own text, not a sort menu hidden in it.
+   The key is a reference of letters and digits (`50SKLO`, `TCK-1040`), else a number in a column of ids, else a name;
+   never a price, a date, a time, a count or a status, unless nothing else tells the row apart. A row itself is never
+   found by all it says.
 6. In its form group, by the group's label, though nothing ties the label to the field:
    `page.Locator("div.oxd-input-group").Filter(new() { Has = page.GetByText("User Role", new() { Exact = true }) }).Locator("div.oxd-select-text")`.
    A field named only by a placeholder's example of a value (`yyyy-dd-mm`), or by a prompt when it has a group, is
