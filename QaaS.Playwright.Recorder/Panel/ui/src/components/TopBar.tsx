@@ -29,6 +29,7 @@ interface Props {
   onRename(name: string): void;
   onUndo(): void;
   onCheck(): void;
+  onTry(): void;
   onSave(): void;
   onPause(): void;
   onView(view: View): void;
@@ -38,6 +39,7 @@ interface Props {
 export function TopBar(props: Props) {
   const saving = props.status === 'saving';
   const paused = props.status === 'paused';
+  const trying = props.status === 'trying';
   return (
     <header class="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel pr-2.5 pl-3">
       <Status status={props.status} />
@@ -80,8 +82,21 @@ export function TopBar(props: Props) {
           <kbd class={cls('rounded border px-1 font-sans text-[10.5px] leading-4 font-medium max-[1180px]:hidden', props.checking ? 'border-ok/30 text-ok/80' : 'border-line bg-canvas text-faint')}>F6</kbd>
         </Button>
         <Button
+          onClick={props.onTry}
+          disabled={saving || !(props.status === 'recording' || paused || trying)}
+          title={trying
+            ? 'Stop trying, and record again (F7)'
+            : 'Try things in the app: nothing is recorded, and each action shows what the recorder would write for it (F7)'}
+          active={trying}
+          tone="info"
+        >
+          <Icon name="flask" size={15} />
+          <span class="max-[820px]:hidden">Try</span>
+          <kbd class={cls('rounded border px-1 font-sans text-[10.5px] leading-4 font-medium max-[1180px]:hidden', trying ? 'border-info/30 text-info/80' : 'border-line bg-canvas text-faint')}>F7</kbd>
+        </Button>
+        <Button
           onClick={props.onPause}
-          disabled={saving || props.status === 'login' || props.status === 'testing'}
+          disabled={saving || props.status === 'login' || props.status === 'testing' || trying}
           title={paused ? 'Resume recording (F8 in the app)' : 'Pause recording: what you do in the app is not recorded (F8 in the app)'}
           active={paused}
         >
@@ -116,6 +131,7 @@ const statuses: Record<Status, { text: string; dot: string }> = {
   paused: { text: 'Paused', dot: 'bg-warn' },
   login: { text: 'Logging in', dot: 'bg-info animate-pulse-soft' },
   testing: { text: 'Testing', dot: 'bg-accent animate-pulse-soft' },
+  trying: { text: 'Trying', dot: 'bg-info' },
   saving: { text: 'Saving', dot: 'bg-accent' },
 };
 
@@ -226,7 +242,7 @@ function Button(props: {
   title: string;
   square?: boolean;
   active?: boolean;
-  tone?: 'warn' | 'accent' | 'ok';
+  tone?: 'warn' | 'accent' | 'ok' | 'info';
   children: ComponentChildren;
 }) {
   return (
@@ -244,7 +260,9 @@ function Button(props: {
             ? 'bg-accent/14 text-accent-fg hover:bg-accent/20'
             : props.tone === 'ok'
               ? 'bg-ok/14 text-ok shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--ok)_30%,transparent)] hover:bg-ok/20'
-              : 'bg-warn/14 text-warn hover:bg-warn/20'
+              : props.tone === 'info'
+                ? 'bg-info/14 text-info shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--info)_30%,transparent)] hover:bg-info/20'
+                : 'bg-warn/14 text-warn hover:bg-warn/20'
           : 'text-muted hover:bg-raised hover:text-fg',
         props.square ? 'w-8' : 'px-2.5 max-[820px]:w-8 max-[820px]:px-0',
       )}

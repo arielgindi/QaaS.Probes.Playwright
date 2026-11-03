@@ -7,7 +7,9 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// in, the value a field settled on, and what the page did a moment later. Through <c>__qaasControl</c> it learns
 /// whether to record (F8 pauses), and hands over the page's elements frozen (F4); <c>window.__qaasRecorder</c> answers
 /// the recorder's panel about the page's elements. In check mode (F6) a click picks an element to check instead, and
-/// a chooser in the overlay reports the check the person chose as an action of its own.
+/// a chooser in the overlay reports the check the person chose as an action of its own. While the person tries things
+/// (F7) it reports their actions as when recording, for the recorder to tell them apart; while they record a part
+/// again, F2 tells the recorder it is done.
 /// </summary>
 internal static class CaptureScript
 {
@@ -45,24 +47,26 @@ internal static class CaptureScript
           let counter = 0;
 
           // Whether the person's actions are recorded: 'recording', 'paused' (F8, or the panel), 'login' while a login
-          // flow runs, or 'testing' while the panel tests the flow in a window of its own. The recorder decides, and
-          // tells each page; a page that loads asks.
+          // flow runs, 'testing' while the panel tests the flow in a window of its own or replays it here, or 'trying'
+          // (F7), where they are reported as when recording, and the recorder keeps them apart. The recorder decides, and
+          // tells each page; a page that loads asks. It also names the part of the flow being recorded again, if any.
           let state = 'recording';
           // While a login flow runs, the pill says how it goes, as the recorder tells each second; once it is slow, Esc
           // stops it, for the person to log in by hand.
           let loginText = '';
           let loginHint = '';
           let loginEscape = false;
+          let part = null;
           // In check mode a click picks what to check: nothing the person does is an action, while what the page does
           // still belongs to the action before.
           let checking = false;
-          const recording = () => state === 'recording' && !checking;
+          const recording = () => (state === 'recording' || state === 'trying') && !checking;
           // The recorder's bindings are called without waiting for an answer, which it gives through
           // window.__qaasRecorder: another driver attached to the browser answers each call it does not know with an error.
           const call = (binding, message) => safe(() => {
             Promise.resolve(window[binding]?.(JSON.stringify(message))).catch(() => { /* answered elsewhere, or gone */ });
           });
-          const send = (message) => { if (state === 'recording') call('__qaasRecord', message); };
+          const send = (message) => { if (state === 'recording' || state === 'trying') call('__qaasRecord', message); };
           const control = (message) => call('__qaasControl', message);
           const safe = (work, fallback) => {
             try { return work(); } catch { return fallback; }
@@ -952,16 +956,22 @@ internal static class CaptureScript
           function showState() {
             clearTimeout(pillTimer);
             if (state === 'paused') showPill('Recording paused', 'F8 resumes');
-            else if (state === 'testing') showPill('Testing the flow', 'in its own window; nothing is recorded', true, true);
+            else if (state === 'testing') showPill('Testing the flow', part ? 'replaying it here; nothing is recorded' : 'in its own window; nothing is recorded', true, true);
             else if (state === 'login' && loginText) showPill(loginText, loginHint, true, true);
+            else if (state === 'trying') showPill('Trying: nothing is recorded', 'F7 records again', true, true);
+            else if (state === 'recording' && part) showPill(part, 'F2 when done', true, true);
             else if (view) view.state.className = 'state';
           }
-          function applyState(next) {
-            if (next === state || !['recording', 'paused', 'login', 'testing'].includes(next)) return;
+          function applyState(next, nextPart) {
+            if (!['recording', 'paused', 'login', 'testing', 'trying'].includes(next)) return;
+            const changed = next !== state;
+            part = nextPart || null;
+            if (!changed) { showState(); return; }
             if (next !== 'recording') stopChecking();
+            // What is being typed belongs to the state it was typed in.
+            flushTyping();
             state = next;
             if (!recording()) {
-              flushTyping();
               // What the page does next is no earlier action's doing.
               pending = null;
               lastAction = null;
@@ -1104,6 +1114,9 @@ internal static class CaptureScript
               control({ type: 'pause' });
             } else if (event.key === 'F4' && !event.altKey && !event.repeat && state !== 'login') {
               freeze();
+            } else if (event.key === 'F7' && !event.altKey && !event.repeat && (state === 'recording' || state === 'paused' || state === 'trying')) {
+              flushTyping();
+              control({ type: 'try' });
             } else if ((overlayOn || checking) && !chooser && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
               pick(event.key === 'ArrowUp' ? 1 : -1);
             }
@@ -1121,6 +1134,19 @@ internal static class CaptureScript
           });
           addEventListener('click', (event) => actedInLogin('click', event), { capture: true, passive: true });
           addEventListener('input', (event) => actedInLogin('type', event), { capture: true, passive: true });
+
+          // F7 would toggle Chrome's caret browsing, with a prompt that takes the focus. F2, while a part of the flow is
+          // recorded again, ends it, what is being typed included; else it is the page's.
+          addEventListener('keydown', (event) => safe(() => {
+            if (!event.isTrusted || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            if (event.key === 'F7') event.preventDefault();
+            if (event.key !== 'F2' || !part || state !== 'recording' || checking) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (event.repeat) return;
+            flushTyping();
+            control({ type: 'done' });
+          }), { capture: true });
 
           // ---------------------------------------------------------------------------------------------- check mode
           // F6, or Check in the recorder's panel, turns check mode on: the box follows the pointer as for a click, in
@@ -1240,7 +1266,8 @@ internal static class CaptureScript
           function startChecking() {
             if (checking) return;
             if (state !== 'recording') {
-              showPill(state === 'paused' ? 'Recording paused' : 'Not now', state === 'paused' ? 'F8 resumes, then F6 checks' : 'the recording is busy', true);
+              showPill(state === 'paused' ? 'Recording paused' : state === 'trying' ? 'Trying' : 'Not now',
+                state === 'paused' ? 'F8 resumes, then F6 checks' : state === 'trying' ? 'F7 records again, then F6 checks' : 'the recording is busy', true);
               return;
             }
             flushTyping();
@@ -1262,6 +1289,9 @@ internal static class CaptureScript
             url.addEventListener('click', () => safe(() => openChooser(null)));
             bar.appendChild(document.createElement('kbd')).textContent = 'Esc';
             bar.classList.add('shown');
+            // In its place at the top, the pill of a part being recorded again.
+            clearTimeout(pillTimer);
+            view.state.className = 'state';
             control({ type: 'checking', on: true });
           }
 
@@ -1272,6 +1302,7 @@ internal static class CaptureScript
             hover = null;
             hideOverlay();
             view?.bar.classList.remove('shown');
+            showState();
             control({ type: 'checking', on: false });
           }
 
@@ -1687,7 +1718,8 @@ internal static class CaptureScript
           // The recorder's calls, each answered as JSON. Not enumerable, and not writable by the page.
           Object.defineProperty(window, '__qaasRecorder', { value: (command) => safe(() => {
             switch (command?.op) {
-              case 'state': applyState(command.state); return null;
+              case 'state': applyState(command.state, command.part); return null;
+              case 'flush': flushTyping(); return null;
               case 'explained': explained(command.seq, command.label); return null;
               case 'tree': return JSON.stringify(tree([document.body,
                 ...(command.ids ?? []).map(nodeById).filter((node) => node?.isConnected && node !== document.body)]));

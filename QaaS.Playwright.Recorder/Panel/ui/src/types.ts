@@ -29,6 +29,10 @@ export interface PanelState {
   undo?: string;
   /** The recording this one continues: a divider after its last action left, and a banner while it replays. */
   continued?: { label: string; after?: string; banner?: string };
+  /** A part of the flow recorded again, or recorded after, and how it goes. */
+  rerecord?: Rerecord;
+  /** While trying (F7): each action tried, as the recorder would write it, oldest first. */
+  tried?: Action[];
   code: string;
   yaml: string;
   steps: Step[];
@@ -38,7 +42,29 @@ export interface PanelState {
   error?: string;
 }
 
-export type Status = 'recording' | 'paused' | 'login' | 'testing' | 'saving';
+export type Status = 'recording' | 'paused' | 'login' | 'testing' | 'trying' | 'saving';
+
+/** A part of the flow the person records again, or records after (Panel/PanelView.cs, PanelRerecord). */
+export interface Rerecord {
+  /** What it is called, e.g. the step's method. */
+  part: string;
+  /** Replaying the flow up to it, failed to, recording it, or done. */
+  phase: 'replaying' | 'failed' | 'recording' | 'done';
+  /** Recording after it, rather than it again. */
+  after: boolean;
+  /** It is a loop, recorded again whole. */
+  loop?: boolean;
+  /** The actions of the flow recorded in it so far. */
+  fresh: string[];
+  /** The action what is recorded follows, while nothing is yet; none at the flow's start. */
+  at?: string;
+  /** The action the replay failed at; none when before the first. */
+  failedAt?: string;
+  /** Why the replay could not run at all. */
+  problem?: string;
+  /** Once done: the recording paused, as the app is not where the flow ends. */
+  paused?: boolean;
+}
 
 /** A test run of the flow as recorded so far (Panel/PanelView.cs, PanelTest). */
 export interface TestRun {
@@ -145,6 +171,14 @@ export interface Action {
   added?: boolean;
   /** The checks after it: its auto checks, those dropped too, and those the person chose. */
   expects?: Expect[];
+  /** Tried (F7), not recorded: what the recorder would write for it. */
+  tried?: boolean;
+  /** For an action tried: why each locator before the one chosen lost, as the overlay says it. */
+  reasons?: string[];
+  /** For an action tried: what the overlay notes, e.g. that it is no control. */
+  note?: string;
+  /** For an action tried that the flow would leave out: why. */
+  omitted?: string;
 }
 
 /** A check after an action: an auto check by its key, or one the person chose, by its id. */
@@ -275,6 +309,13 @@ export type Command =
   | { type: 'save' }
   | { type: 'pause' }
   | { type: 'loginByHand' }
+  | { type: 'rerecord'; action: string; step: boolean; after: boolean; label: string }
+  | { type: 'rerecordDone' }
+  | { type: 'rerecordCancel' }
+  | { type: 'rerecordFrom' }
+  | { type: 'rerecordDismiss' }
+  | { type: 'try'; on?: boolean }
+  | { type: 'addTried'; action: string }
   | { type: 'test'; action?: string; slow: boolean }
   | { type: 'stopTest' }
   | { type: 'clearTest' }
