@@ -366,8 +366,13 @@ internal static class CaptureScript
               if (looksClickable(node)) clickable = node;
             }
             if (handled) actionable.add(handled);
-            return handled ?? clickable ?? item ?? interactive ?? hit;
+            // In a header's row, the cell clicked, as it sorts or filters its column: never the whole header for a click on
+            // one of its cells. A row of data is clicked as a whole, as an app opens its record.
+            const cell = interactive?.matches(CONTAINERS) ? closestUp(hit, HEADER_CELLS) : null;
+            return handled ?? clickable ?? item ?? (cell && interactive.contains(cell) ? cell : interactive) ?? hit;
           }
+          const HEADER_CELLS = 'th, [role=columnheader], [role=rowheader]';
+          const CELLS = 'th, td, [role=gridcell], [role=columnheader], [role=rowheader], [role=cell]';
 
           // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
           function onlyChild(element) {
@@ -410,7 +415,8 @@ internal static class CaptureScript
 
           // What the element is beyond its role, for the recorder to write it.
           const widgetOf = (element) => element.matches(TOGGLES)
-            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' || closestUp(element, '[class*=switch i]') ? 'switch' : 'checkbox')
+            // MUI's checkboxes and radios are of its SwitchBase: no switch.
+            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' || closestUp(element, '[class*=switch i]:not([class*=switchbase i])') ? 'switch' : 'checkbox')
             : isMuiSelect(element) ? 'select-open'
             : element.closest('.MuiAutocomplete-root') && element.tagName === 'BUTTON' ? 'autocomplete-button'
             : roleOf(element) === 'tab' ? 'tab'
@@ -498,25 +504,54 @@ internal static class CaptureScript
             }
             const variants = [{ name: stripped, exact: true }, { name: stripped }];
             if (raw !== stripped && raw.replace(BIDI, '') !== raw) variants.push({ name: raw, exact: true, marks: true });
-            return variants;
+            // A name that holds what changes from load to load, or what the flow may edit, a price, a date, a time or a
+            // count, is found first by the words before it, when they find the element alone: a poster's link by its
+            // title and size, without its price.
+            const stable = beforeVolatile(stripped);
+            return stable ? [{ regex: '^' + regexEscape(stable), text: stable }, ...variants] : variants;
+          }
+          const VOLATILE_IN_NAME = new RegExp([
+            '[-+]?(\\p{Sc}|\\b[A-Z]{1,3}\\$)\\s?\\d', '\\d[\\d.,]*\\s?\\p{Sc}', '\\d{1,4}[/.-]\\d{1,2}[/.-]\\d{1,4}', '\\b\\d{1,2}:\\d{2}',
+            '\\b\\d+([.,]\\d+)?\\s?%', '\\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*day\\b',
+            '\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s\\d{1,2}\\b', '\\b\\d{1,2}\\s(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\b',
+          ].join('|'), 'iu');
+          // The words of a name before what in it changes, without the punctuation and the little words that led to it;
+          // null when nothing in it changes, or too little is left to tell the element by.
+          function beforeVolatile(name) {
+            const found = VOLATILE_IN_NAME.exec(name);
+            if (!found) return null;
+            const words = name.slice(0, found.index).split(/\s+/).filter(Boolean);
+            while (words.length && /^(on|at|of|for|from|to|in|by|and|or|-|–|—|\(|,)$/i.test(words[words.length - 1].replace(/[,:;(]+$/, '') || ','))
+              words.pop();
+            const stable = words.join(' ').replace(/[\s,:;(–—-]+$/, '');
+            return (stable.match(/\p{L}/gu)?.length ?? 0) >= 3 ? stable : null;
           }
 
-          // A row of a table and the text that tells it apart from the others: the first cell, preferring one with a digit,
-          // whose text no other row has.
+          // A row of a table and the text that tells it apart from the others: its key, the first cell whose text no other
+          // row has, by what a key is: a reference of letters and digits (TCK-1040, 50SKLO, TradeCode 99), then a number in
+          // a column of ids, then a name; never what changes from load to load or the flow may edit, a price, a date or a
+          // time, a count or a percentage, unless nothing else tells the row apart.
+          const VOLATILE = /^[-+]?\p{Sc}|\p{Sc}\s*[-+]?\d|^[A-Z]{1,3}\$|^[-+]?\d+([.,]\d+)*\s*%?$|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\d{1,2}:\d{2}|^(true|false|yes|no)$/iu;
+          const keyRank = (text, header) => VOLATILE.test(text) ? (/^\d+$/.test(text) && /\b(id|no|nr|number|code|ref|#)\b|^#$/i.test(header) ? 1 : 3)
+            : /\p{L}/u.test(text) && /\d/.test(text) && text.split(/\s+/).length <= 3 ? 0
+            : /\p{L}/u.test(text) ? 2 : 3;
           function rowOf(element) {
             const row = element.closest('tr, [role=row]');
             if (!row || row.querySelector('th[scope=col], [role=columnheader]')) return null;
             const cells = [...row.querySelectorAll(':scope > td, :scope > th, :scope > [role=cell], :scope > [role=gridcell]')];
             const texts = cells.map((cell) => clean(cell.innerText || cell.textContent));
-            const table = row.closest('table, [role=grid], [role=table], [role=treegrid]');
-            const headers = table ? [...table.querySelectorAll('th[scope=col], [role=columnheader], thead th')] : [];
-            const order = texts.map((text, index) => ({ text, index }))
+            // A grid's headers may be in a table of their own, above its rows' (Kendo's).
+            const tables = [row.closest('table, [role=grid], [role=table], [role=treegrid]'), row.closest('[role=grid], [role=table], [role=treegrid]')];
+            const headers = tables.filter(Boolean).map((table) => [...table.querySelectorAll('th[scope=col], [role=columnheader], thead th')])
+              .find((found) => found.length) ?? [];
+            const header = (index) => headers[index] ? shownText(headers[index]) : '';
+            const order = texts.map((text, index) => ({ text, index, rank: keyRank(text, header(index)) }))
               .filter(({ text }) => text.length >= 2 && text.length <= 40)
-              .sort((a, b) => Number(/\d/.test(b.text)) - Number(/\d/.test(a.text)) || a.index - b.index);
+              .sort((a, b) => a.rank - b.rank || a.index - b.index);
             for (const { text, index } of order) {
               const found = matches([{ m: 'role', role: 'row' }, { m: 'filter', hasText: text }]);
               if (found?.length === 1 && found[0] === row)
-                return { key: text, header: headers[index] ? shownText(headers[index]) : '', element: row };
+                return { key: text, header: header(index), element: row };
             }
             return { key: null, header: null, element: row };
           }
@@ -866,6 +901,7 @@ internal static class CaptureScript
               section: nearby.section?.heading || null,
               icon: nearby.icon?.word || null,
               editable: isTextual(element) ? !element.readOnly && !element.disabled : undefined,
+              inForm: isTextual(element) && !!(element.form ?? element.closest('form')) || undefined,
               interactive: options.interactive ??
                 (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,
@@ -909,9 +945,18 @@ internal static class CaptureScript
           // ------------------------------------------------------------------------------------- typing: settled values
           const typing = new Map();
           const valueOf = (element) => element.isContentEditable ? element.innerText : element.value;
+          // What the person typed of a field that completes it in place, the rest of the value selected after it, as a
+          // combobox suggests an option (Kendo's, the browser's datalist): the typed letters, not the suggestion.
+          const typedOf = (element) => {
+            const value = valueOf(element) ?? '';
+            const { selectionStart: start, selectionEnd: end } = element.matches?.('input') ? element : {};
+            return typeof start === 'number' && start > 0 && start < end && end === value.length
+              && (/both|inline/.test(element.getAttribute('aria-autocomplete') ?? '') || element.getAttribute('role') === 'combobox')
+              ? value.slice(0, start) : value;
+          };
           function emitFill(entry, final) {
             clearTimeout(entry.timer);
-            const raw = valueOf(entry.element) ?? '';
+            const raw = typedOf(entry.element);
             record({ ...entry.description, id: entry.id, t: entry.t, kind: 'fill', final, value: normalizeValue(raw), raw,
               widget: isAutocomplete(entry.element) ? 'autocomplete' : entry.element.tagName === 'TEXTAREA' ? 'textarea' : 'text' });
             if (final) typing.delete(entry.element);
@@ -953,8 +998,14 @@ internal static class CaptureScript
             const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
             for (let node = walker.nextNode(); node && days < 28; node = walker.nextNode())
               if (DAY.test(node.textContent.trim()) && node.parentElement?.children.length === 0) days++;
-            return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''));
+            return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''))
+              // A calendar a library names so, in the view of the months of a year or of the years of a decade too, as
+              // Kendo's does: its "Navigate to parent view: 2026" names today's year.
+              || /calendar|datepicker|date-picker|picker-panel|picker-dropdown|picker-popup/i.test(element.getAttribute('class') ?? '')
+                && element.querySelectorAll('td, [role=gridcell], button, a, li').length >= 10;
           }
+          // The button that commits what a picker shows, as antd's OK: a date picked is kept only once it is pressed.
+          const COMMITS = /^(ok|apply|done|set|confirm|select)$/i;
           const holdsTextField = (element) => !!element.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea');
           function calendarOf(hit) {
             let calendar = null;
@@ -1023,7 +1074,8 @@ internal static class CaptureScript
               if (!state || valueOf(state.field) === state.before) return;
               remember(state.id);
               record({ ...state.description, id: state.id, t: state.t, kind: 'fill', final: true, widget: 'date',
-                value: normalizeValue(valueOf(state.field)), raw: valueOf(state.field), picked: true });
+                value: normalizeValue(valueOf(state.field)), raw: valueOf(state.field), picked: true,
+                ...(state.committed ? { committed: true } : {}) });
             }), 150);
           }
 
@@ -1061,6 +1113,18 @@ internal static class CaptureScript
             return lastClick && now() - lastClick.t <= 60000 && near(lastClick.element) ? lastClick.element : null;
           };
 
+          // An option without a role, as antd's virtual list draws them beside a hidden list for assistive technology: an
+          // item of a list that opened in a popup of its own, while one combobox says it is open, which it is the choice of.
+          function optionOfPopup(element) {
+            const option = closestUp(element, '[class*=select-item-option], [class*=-option][class*=item], [class*=option][aria-selected]');
+            if (!option || containsDeep(option, element) === false) return null;
+            const open = [...document.querySelectorAll('[role=combobox][aria-expanded=true]')].filter((field) => !containsDeep(option, field));
+            if (open.length !== 1) return null;
+            let popup = option;
+            while (upFrom(popup) && upFrom(popup) !== document.body && !/dropdown|popup|popover|listbox|menu/i.test(popup.getAttribute('class') ?? '')) popup = upFrom(popup);
+            return { option, owner: open[0], popup };
+          }
+
           function draftFor(hit) {
             const picked = pickedFor(hit);
             const element = picked ?? retarget(hit);
@@ -1070,6 +1134,8 @@ internal static class CaptureScript
             if (calendar) {
               const field = fieldOfCalendar(calendar);
               if (field && !picker) watchPicker(field, calendar);
+              const button = closestUp(hit, 'button, [role=button]');
+              if (picker && button && COMMITS.test(clean(button.innerText || button.textContent || ''))) picker.committed = true;
               return { ignore: 'picker' };
             }
             const fileInput = element.matches('input[type=file]') ? element
@@ -1078,10 +1144,11 @@ internal static class CaptureScript
             if (fileInput) return { ignore: 'file chooser' };
             if (isTextual(element) && !element.readOnly && !fromDecoration.has(element)) return { ignore: 'focus', element };
             const toggle = element.matches(TOGGLES) ? element : null;
-            const option = closestUp(element, '[role=option]');
+            const roleless = closestUp(element, '[role=option]') ? null : optionOfPopup(element);
+            const option = closestUp(element, '[role=option]') ?? roleless?.option;
             if (option) {
-              const listbox = closestUp(option, '[role=listbox]');
-              const owner = listbox ? ownerOf(listbox) : null;
+              const listbox = roleless?.popup ?? closestUp(option, '[role=listbox]');
+              const owner = roleless?.owner ?? (listbox ? ownerOf(listbox) : null);
               const info = describe(option, { pageLevel: true, noRow: true });
               // A Select's menu hides the rest of the page from assistive technology, so the field is described as it was
               // when its menu opened.
@@ -1090,7 +1157,9 @@ internal static class CaptureScript
                 widget: !owner ? 'option' : isAutocomplete(owner) || isTextual(owner) && !owner.readOnly ? 'autocomplete'
                   : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
-                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')), scrolled: scrolledList(option) };
+                ...(roleless ? { optionCss: libraryCss(option), optionText: shownText(option) } : {}),
+                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')),
+                hoverOpener: hoverMenus.get(option.closest('[role=menu], [role=listbox]')) ?? null, scrolled: scrolledList(option) };
             }
             // An element the person picked is what they act on, whatever it is.
             const info = describe(element, picked ? { interactive: true } : {});
@@ -1100,9 +1169,11 @@ internal static class CaptureScript
               ? describe(element.closest('.MuiAutocomplete-root').querySelector('input')).target : null;
             const equivalents = picked || widget ? [] : describeEquivalents(equivalentsOf(hit, element), info.target);
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
+              ...(toggle && !toggle.matches('input') ? { before: toggle.getAttribute('aria-checked') === 'true' } : {}),
               ...(equivalents.length ? { equivalents } : {}),
               adornmentField: !isTextual(element) ? fieldOfAdornment(element) : null,
-              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
+              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), hoverOpener: hoverMenus.get(element.closest('[role=menu]')) ?? null,
+              scrolled: scrolledList(element) };
           }
 
           // A list that renders only what is in sight, scrolled to the element: what the flow scrolls first, as far. It says
@@ -1124,15 +1195,33 @@ internal static class CaptureScript
             if (!state || state.done) return;
             state.done = true;
             const { draft } = state;
-            const { element, adornmentField, owner, listbox, ignore, ...rest } = draft;
+            const { element, adornmentField, owner, listbox, ignore, before: _before, ...rest } = draft;
             if (draft.kind === 'toggle') {
-              const checked = element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
-              record({ ...rest, id: state.id, t: state.t, kind: checked ? 'check' : draft.widget === 'radio' ? 'check' : 'uncheck', checked, via });
+              // A native checkbox has its new state as the click reaches it; a switch or checkbox of ARIA only once the app
+              // handled the click, after this listener, and a framework rendered it, maybe a moment later (antd's, Kendo's).
+              // The state is told as the page then shows it: at once as the click turns it, then as it settled.
+              const on = () => element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
+              const tell = (checked, final) => record({ ...rest, id: state.id, t: state.t,
+                kind: checked || draft.widget === 'radio' ? 'check' : 'uncheck', checked, via, ...(final ? {} : { final: false }) });
+              if (element.matches('input')) { tell(on(), true); return; }
+              const before = draft.before ?? on();
+              tell(!before, false);
+              let waited = 0;
+              const settle = () => safe(() => {
+                const now = element.isConnected ? on() : !before;
+                if (now !== before || waited >= 400) { tell(now, true); return; }
+                waited += 25;
+                setTimeout(settle, 25);
+              });
+              setTimeout(settle, 0);
               return;
             }
             if (draft.kind === 'choose') {
-              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text, opener: owner ? openerOf(owner) : null });
-              if (owner) settleChoice(state.id, owner, listbox, draft.option.text);
+              // An option of no role by the text it shows, as its name may come from a title no person wrote.
+              const { optionText, ...told } = rest;
+              const value = optionText || draft.option.text;
+              record({ ...told, id: state.id, t: state.t, via, value, opener: owner ? openerOf(owner) : null });
+              if (owner) settleChoice(state.id, owner, listbox, value);
               return;
             }
             if (adornmentField) {
@@ -1235,15 +1324,35 @@ internal static class CaptureScript
               state.done = true;
               // A link or an image moved as it was clicked is the browser's own drag of it, which drops nowhere: nothing.
               if (nativeDrag(state.draft.element)) return;
-              const drop = deepTarget(event);
+              const drop = dropTarget(event, state);
               const { element, adornmentField, owner, listbox, ...rest } = state.draft;
-              record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
+              // On a table, the cell dropped on, as a scheduler's slot is.
+              const cell = drop ? closestUp(drop, CELLS) : null;
+              record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(cell ?? retarget(drop)).target : null });
               return;
             }
             // A MUI Select opens on mousedown and its menu then takes the click: without a click on the element, the press
             // itself was the action.
             setTimeout(() => safe(() => { if (pending === state) pending = null; finish(state, 'pointer'); }), 80);
           }), { capture: true, passive: true });
+
+          // Where a drag dropped: the topmost element under the pointer that was there before the drag, so neither the item
+          // dragged, which the app may have moved there already, nor a hint a library moves with the pointer naming where
+          // it would drop (Kendo's scheduler), nor anything that copies the item dragged.
+          const DRAG_HINT = /drag|hint|clue|ghost|placeholder|preview|helper|chosen|dragging/i;
+          function dropTarget(event, state) {
+            const dragged = state.draft.element;
+            const said = clean(dragged?.innerText ?? dragged?.textContent ?? '');
+            const copies = (element) => !!said && clean(element.innerText ?? element.textContent ?? '') === said;
+            for (const element of document.elementsFromPoint(event.clientX, event.clientY)) {
+              if (!dragged || element === dragged || containsDeep(dragged, element) || containsDeep(element, dragged) && element !== document.body) continue;
+              let hint = false;
+              for (let node = element, depth = 0; node && node !== document.body && depth < 4; node = upFrom(node), depth++)
+                if (DRAG_HINT.test(node.getAttribute?.('class') ?? '') || copies(node)) { hint = true; break; }
+              if (!hint) return element;
+            }
+            return deepTarget(event);
+          }
 
           addEventListener('pointercancel', () => safe(() => { pending = null; }), { capture: true, passive: true });
           const nativeDrag = (element) => !!element && !closestUp(element, '[draggable=true]') &&
@@ -1370,6 +1479,8 @@ internal static class CaptureScript
               gap: 8px; max-width: calc(100vw - 24px); padding: 4px 5px 4px 11px; border-radius: 999px; white-space: nowrap;
               pointer-events: none; transition: opacity 120ms ease-out; }
             .pill.shown { display: flex; }
+            /* A test or a replay runs a while: its pill at the bottom, off the app's header. */
+            .pill[data-tone=accent] { top: auto; bottom: 10px; }
             .pill.near { opacity: .18; }
             .pill.interactive { pointer-events: auto; }
             .pill::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone);
@@ -1557,7 +1668,7 @@ internal static class CaptureScript
           // The box over the element, and the label beside it.
           function drawOverlay() {
             const element = hover?.boxed ?? hover?.shown;
-            if (!(overlayOn || checking) || dragging || !element?.isConnected) { hideOverlay(); return; }
+            if (!(overlayOn || checking) || dragging || !element?.isConnected || quietOn && hover?.hit === quietOn) { hideOverlay(); return; }
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
             const { box, label } = overlayView();
@@ -1781,8 +1892,14 @@ internal static class CaptureScript
             moved = { hit: deepTarget(event), buttons: event.buttons };
             if (!moveFrame) moveFrame = requestAnimationFrame(() => { moveFrame = 0; safe(() => movedTo(moved)); });
           }), { capture: true, passive: true });
-          addEventListener('pointerdown', (event) => { if (event.isTrusted) downAt = { x: event.clientX, y: event.clientY }; },
-            { capture: true, passive: true });
+          // Once clicked, the element's box and label step aside until the pointer moves onto another one, as what the
+          // click opens (a menu, a list) shows where they were.
+          let quietOn = null;
+          addEventListener('pointerdown', (event) => {
+            if (!event.isTrusted) return;
+            downAt = { x: event.clientX, y: event.clientY };
+            if (!checking) { quietOn = deepTarget(event); scheduleDraw(); }
+          }, { capture: true, passive: true });
           addEventListener('pointerup', () => safe(() => {
             downAt = null;
             if (dragging) { dragging = false; scheduleDraw(); }
@@ -1796,6 +1913,7 @@ internal static class CaptureScript
             if (dragging) { hideOverlay(); return; }
             if (chooser || !(overlayOn && recording()) && !checking) return;
             const target = hit && !onScrollbar(hit, pointer.x, pointer.y) ? hit : null;
+            if (target !== quietOn) quietOn = null;
             if (target && target === hover?.hit) {
               // The page may have changed under a pointer at rest.
               if (now() - hover.at > 1500) scheduleExplain();
@@ -1952,9 +2070,11 @@ internal static class CaptureScript
           function cellsOf(element) {
             const row = element.closest('tr, [role=row]');
             if (!row || row.querySelector('th[scope=col], [role=columnheader]')) return null;
+            // Each cell's text as the flow's filter matches it, its elements' texts run together as they are; what changes
+            // from load to load or with an edit (a count, a price, a date) left out at first.
             const cells = [...row.querySelectorAll(':scope > td, :scope > th, :scope > [role=cell], :scope > [role=gridcell]')]
-              .map(textOf).filter((text) => text && text.length <= 80);
-            return cells.length ? { row, cells: [...new Set(cells)].map((text) => ({ text, on: true })) } : null;
+              .map((cell) => clean(cell.textContent ?? '')).filter((text) => text && text.length <= 80);
+            return cells.length ? { row, cells: [...new Set(cells)].map((text) => ({ text, on: !VOLATILE.test(text) })) } : null;
           }
 
           // The checks that fit the element, and the one it most likely needs: a checkbox's state, a field's value, the
@@ -2171,6 +2291,12 @@ internal static class CaptureScript
               if (!event.repeat) checking ? stopChecking() : startChecking();
               return;
             }
+            // Ctrl+K opens the panel's commands, as in the panel, not Chrome's search; never in a field the person types in.
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK' && !isTextual(activeElement() ?? document.body)) {
+              handled();
+              if (!event.repeat) control({ type: 'palette' });
+              return;
+            }
             if (!checking) return;
             if (event.key === 'Escape') {
               handled();
@@ -2246,17 +2372,23 @@ internal static class CaptureScript
           // ----------------------------------------------------------------------------------------------- effects
           // What the page shows changes a moment after an action: a dialog opens or closes, an alert appears, a busy
           // indicator (a progress bar, as MUI's CircularProgress and LinearProgress are, or aria-busy) comes and goes.
-          const hoverMenus = new WeakSet();
+          // Each menu that opened as the pointer rested, with what the pointer was on then: what the flow hovers first.
+          const hoverMenus = new WeakMap();
+          let hovered = null;
+          addEventListener('pointermove', (event) => { if (event.isTrusted) hovered = deepTarget(event); }, { capture: true, passive: true });
           const BUSY = '[role=progressbar], [aria-busy=true]';
           const busyKind = (element) => element.matches('[role=progressbar]') ? 'progressbar' : 'ariaBusy';
           const busySince = new WeakMap();
           let shown = { dialogs: new Map(), alerts: new Map(), menus: new Set(), busy: new Set() };
+          // What a message says, without the words of the buttons it holds, as MUI's snackbar's UNDO.
+          const messageOf = (alert) => [...alert.querySelectorAll('button, [role=button]')]
+            .reduce((text, button) => text.replace(button.innerText || button.textContent || '\u0000', ' '), alert.innerText || alert.textContent || '');
           function snapshot() {
             const dialogs = new Map();
             for (const dialog of openDialogs()) dialogs.set(dialog, null);
             const alerts = new Map();
             for (const alert of document.querySelectorAll('[role=alert]'))
-              if (visible(alert)) alerts.set(alert, normalize(alert.innerText || alert.textContent));
+              if (visible(alert)) alerts.set(alert, normalize(messageOf(alert)));
             const menus = new Set([...document.querySelectorAll('[role=menu]')].filter(visible));
             const busy = new Set([...document.querySelectorAll(BUSY)].filter(visible));
             return { dialogs, alerts, menus, busy };
@@ -2276,7 +2408,8 @@ internal static class CaptureScript
             for (const [alert, text] of next.alerts)
               if (shown.alerts.get(alert) !== text && text) effect('alert', { text: normalizeValue(text), alertCount });
             for (const menu of next.menus)
-              if (!shown.menus.has(menu) && now() - lastPointer > 1000) hoverMenus.add(menu);
+              if (!shown.menus.has(menu) && now() - lastPointer > 1000)
+                hoverMenus.set(menu, hovered?.isConnected && !containsDeep(menu, hovered) ? describe(retarget(hovered)).target : null);
             // An indicator that came up after an action is its doing, once none of its kind is left.
             for (const element of next.busy)
               if (!shown.busy.has(element) && lastAction && now() - lastAction.t <= 5000)

@@ -96,7 +96,7 @@ internal static class ConsoleUi
             ("F2", "While a part is recorded again: done"),
             ("Esc", "While your login flow runs: stops it, to log in by hand"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
-            ("Ctrl+K", "In the panel: every command, with its key"),
+            ("Ctrl+K", "In the panel or the app: every command, with its key"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
         Rows(t, "USAGE", usage, ColumnFor(usage), Tone.Plain);
@@ -261,40 +261,81 @@ internal static class ConsoleUi
             t.WriteLine();
             StepOfAction.Clear();
             EffectsShown.Clear();
+            Held.Clear();
             (_lastStep, _stepsBefore) = (0, 0);
             Volatile.Write(ref _recording, true);
         }
     }
 
-    /// <summary>Completes when the person presses Enter; never, when nobody can type here.</summary>
-    public static Task EnterPressedAsync() =>
-        Console.IsInputRedirected ? new TaskCompletionSource().Task : Task.Run(() => Console.ReadLine());
+    /// <summary>
+    /// Completes when the person presses Enter, or a line comes in on an input redirected from a pipe or a FIFO, as a
+    /// script sends it; never at the end of the input (<c>&lt; /dev/null</c>), which nobody typed.
+    /// </summary>
+    public static Task EnterPressedAsync() => Task.Run(async () =>
+    {
+        if (Console.ReadLine() is null) await Task.Delay(Timeout.Infinite);
+    });
 
-    /// <summary>Shows an action as it is captured, with what to check in it, and what the page did after it.</summary>
+    // The actions held back until the flow keeps them, as a click on no control is until it changed something.
+    private static readonly Dictionary<string, CapturedAction> Held = [];
+
+    /// <summary>
+    /// The step number of each action the flow does, as the panel and a test number them, by its id; for the console to
+    /// number its lines alike. Null numbers them as they come.
+    /// </summary>
+    public static Func<IReadOnlyDictionary<string, int>>? Numbering { get; set; }
+
+    /// <summary>
+    /// Shows an action as it is captured, with what to check in it, and what the page did after it, numbered as the flow
+    /// numbers its steps. One the flow leaves out, as a click on no control that changed nothing, shows only once the flow
+    /// keeps it, as what it changed comes in.
+    /// </summary>
     public static void Captured(object news)
     {
         var t = Out;
         lock (Gate)
         {
+            var numbers = Numbering?.Invoke();
             switch (news)
             {
                 case CapturedAction action:
-                    var number = StepOfAction.TryGetValue(action.Id, out var known) ? known : _stepsBefore + StepOfAction.Count + 1;
-                    if (StepLine(t, number, action) is not { } line) return;
-                    StepOfAction[action.Id] = _lastStep = number;
-                    t.WriteLine(line);
-                    foreach (var check in ChecksOf(action))
-                        Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
-                    // Kept as done; but a person may not know what Enter does there.
-                    if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { } field && Noise.IsTextField(field))
-                        t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
-                            new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
+                    if (numbers is not null && action.Kind != "expect" && !numbers.ContainsKey(action.Id))
+                    {
+                        Held[action.Id] = action;
+                        return;
+                    }
+
+                    Held.Remove(action.Id);
+                    Show(t, action, numbers);
                     break;
-                case CapturedEffect effect when EffectLine(t, effect) is { } effectLine:
-                    t.WriteLine(effectLine);
+                case CapturedEffect effect:
+                    if (numbers is not null && effect.ActionId is { } of && Held.TryGetValue(of, out var held) && numbers.ContainsKey(of))
+                    {
+                        Held.Remove(of);
+                        Show(t, held, numbers);
+                    }
+
+                    if (EffectLine(t, effect) is { } effectLine) t.WriteLine(effectLine);
                     break;
             }
         }
+    }
+
+    private static void Show(Terminal t, CapturedAction action, IReadOnlyDictionary<string, int>? numbers)
+    {
+        // A check of yours is of the step before it, as the flow makes it after that step's action.
+        var number = action.Kind == "expect" && numbers is not null ? Math.Max(_lastStep, 1)
+            : numbers?.GetValueOrDefault(action.Id) is > 0 and var planned ? planned
+            : StepOfAction.TryGetValue(action.Id, out var known) ? known : _stepsBefore + StepOfAction.Count + 1;
+        if (StepLine(t, number, action) is not { } line) return;
+        StepOfAction[action.Id] = _lastStep = number;
+        t.WriteLine(line);
+        foreach (var check in ChecksOf(action))
+            Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+        // Kept as done; but a person may not know what Enter does in a form's field.
+        if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { InForm: true } field && Noise.IsTextField(field))
+            t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
+                new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
     }
 
     /// <summary>A stage of the work that takes a moment, such as "Logging in" or "Saving".</summary>
@@ -912,16 +953,23 @@ internal static class ConsoleUi
     public static void ReplayStopped(string part) =>
         Info($"The replay did not get to {part}: in the panel, re-record from the step that failed instead, or cancel.");
 
-    /// <summary>A part recorded again was kept, or kept as it was; the recording is paused when the app is elsewhere.</summary>
-    public static void Rerecorded(string part, bool kept, bool paused)
+    /// <summary>
+    /// A part recorded again was kept, or kept as it was. Cancelled, the app went <paramref name="back"/> to the page it
+    /// was on; else, or kept in the middle of the flow, the recording is paused, as the app is elsewhere, which is said.
+    /// </summary>
+    public static void Rerecorded(string part, bool kept, bool paused, string? back = null)
     {
         var t = Out;
         lock (Gate)
         {
             if (kept) Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Re-recorded", $"{part}. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
             else Mode(t, " ", Tone.Plain, "Kept", $"{part} as it was.");
-            if (paused)
-                Status(t, UnderMode, " ", Tone.Plain, "The app is where that part left it, not at the end of the flow: F8 records at the end from there.", Tone.Dim);
+            if (back is not null)
+                Status(t, UnderMode, " ", Tone.Plain, $"Back on {Terminal.Clean(back)}, where the app was{(paused ? "; still paused, as it was" : "")}.", Tone.Dim);
+            else if (paused)
+                Mode(t, t.Glyph("║", "="), Tone.Warning, "Paused",
+                    (kept ? "the app is where that part left it, not at the end of the flow"
+                        : "the app is where the replay stopped, not where you were") + ": F8 records at the end of the flow from there.");
         }
     }
 

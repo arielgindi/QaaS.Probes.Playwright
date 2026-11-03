@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.TestRun;
@@ -35,7 +36,7 @@ internal sealed partial class RecorderPanel
                 Rerecord(id, command.Step == true, command.After == true, command.Label ?? "the step");
                 break;
             case "replayed":
-                Replayed();
+                await ReplayedAsync();
                 break;
             case "rerecordFrom":
                 RerecordFromFailure();
@@ -71,6 +72,7 @@ internal sealed partial class RecorderPanel
         }
 
         if (_shown?.PartOf(id, wholeStep, after, label) is not { } part) return;
+        var recording = _session.State is RecordingState.Recording or RecordingState.Trying;
         if (_session.State == RecordingState.Trying) _session.ToggleTry(resume: false);
         if (!_session.BeginTest())
         {
@@ -78,7 +80,9 @@ internal sealed partial class RecorderPanel
             return;
         }
 
-        _part = new PartRecording(part, after);
+        // Where the app is now, to go back to when the part is cancelled before anything was recorded in it.
+        var at = _session.PageNamed(_session.CurrentPage());
+        _part = new PartRecording(part, after) { ReturnTo = at is { IsClosed: false } ? (at, at.Url) : null, WasRecording = recording };
         _session.Rerecording(after ? $"Recording after {part.Label}" : $"Re-recording {part.Label}");
         _namespace ??= ProjectNamespace.Of(Request.OutputDir);
         var request = Request;
@@ -90,7 +94,7 @@ internal sealed partial class RecorderPanel
         });
     }
 
-    private void Replayed()
+    private async Task ReplayedAsync()
     {
         if (_part is not { Phase: "replaying" } part) return;
         var report = _tester.Report;
@@ -100,7 +104,7 @@ internal sealed partial class RecorderPanel
                 Record(part.Part);
                 break;
             case TestOutcome.Stopped or null:
-                Ended(kept: false);
+                await EndedAsync(kept: false);
                 break;
             default:
                 // As a test run shows it, with the step it failed at; the person records again from there, or not.
@@ -143,35 +147,60 @@ internal sealed partial class RecorderPanel
                 await _tester.StopAsync();
                 break;
             case "failed":
-                Ended(kept: false);
+                await EndedAsync(kept: false);
                 break;
             case "recording":
                 // What is being typed is part of it.
                 if (keep && _session.PageNamed(_session.CurrentPage()) is { } page) await PageElements.CallAsync(page, new { op = "flush" });
                 _session.Log.EndSplice(keep);
-                Ended(kept: keep);
+                await EndedAsync(kept: keep);
                 break;
         }
     }
 
-    // The part ended: kept, or as it was, by Esc, by Undo, or as the replay did not get to it.
-    private void Ended(bool kept)
+    // The part ended: kept, or as it was, by Esc, by Undo, or as the replay did not get to it. Cancelled before anything
+    // was recorded in it, the app goes back to the page it was on, nothing recorded meanwhile, and the recording to what
+    // it did before: recording again, or paused. Else it pauses where the app is not at the end of the flow, and says so.
+    private async Task EndedAsync(bool kept)
     {
         if (_part is not { } part) return;
         var atEnd = kept && part.Part.Before is null;
-        if (part.Phase is "replaying" or "failed") _session.EndTest(paused: true);
+        var back = false;
+        if (!kept && part.ReturnTo is var (page, url))
+        {
+            if (part.Phase == "recording") _session.Pause();
+            back = await GoBackAsync(page, url);
+        }
+
+        if (part.Phase is "replaying" or "failed") _session.EndTest(paused: !back);
+        else if (back && part.WasRecording) _session.Resume();
         else if (!atEnd && _session.State == RecordingState.Recording) _session.Pause();
         _session.Rerecording(null);
         if (part.Phase != "recording") _tester.Clear();
         var paused = _session.State == RecordingState.Paused;
-        ConsoleUi.Rerecorded(part.Part.Label, kept, paused);
+        ConsoleUi.Rerecorded(part.Part.Label, kept, paused, back ? part.ReturnTo!.Value.Url : null);
         _part = kept ? part with { Phase = "done", Paused = paused } : null;
     }
 
-    // Undo took the part back before anything was recorded in it, or after it was done.
-    private void Undone()
+    // The page back where it was before the replay, while the recording is still paused for it.
+    private static async Task<bool> GoBackAsync(IPage page, string url)
     {
-        if (_part is { Phase: "recording" } && !_session.Log.Splicing) Ended(kept: false);
+        try
+        {
+            if (page.IsClosed) return false;
+            if (page.Url != url) await page.GotoAsync(url, new() { Timeout = 30_000 });
+            return true;
+        }
+        catch (PlaywrightException)
+        {
+            return false;
+        }
+    }
+
+    // Undo took the part back before anything was recorded in it, or after it was done.
+    private async Task UndoneAsync()
+    {
+        if (_part is { Phase: "recording" } && !_session.Log.Splicing) await EndedAsync(kept: false);
         else if (_part is { Phase: "done" }) _part = null;
     }
 
@@ -221,5 +250,11 @@ internal sealed partial class RecorderPanel
         public string? FailedAt { get; set; }
         public string? Problem { get; set; }
         public bool Paused { get; init; }
+
+        /// <summary>The page the app was on when the part began, and its address.</summary>
+        public (IPage Page, string Url)? ReturnTo { get; init; }
+
+        /// <summary>The recording recorded when the part began, rather than being paused.</summary>
+        public bool WasRecording { get; init; }
     }
 }

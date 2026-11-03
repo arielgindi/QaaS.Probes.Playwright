@@ -45,9 +45,15 @@ internal static partial class LocatorPolicy
 
         // Nothing good found the element alone: Playwright's own, which finds it, with what is wrong with it to check by
         // hand; else the closest miss, which the flow's reader must fix.
-        return target.Candidates.FirstOrDefault(candidate => candidate is { Kind: "generator", Matches: true } && !string.IsNullOrWhiteSpace(candidate.Csharp))
-               ?? target.Candidates.Where(IsUsable).OrderBy(candidate => candidate.Count <= 0 ? int.MaxValue : candidate.Count).FirstOrDefault();
+        // Never one by a title or a text no person wrote, nor by a generated id, while another comes close.
+        var generated = target.Candidates.FirstOrDefault(candidate => candidate is { Kind: "generator", Matches: true } && !string.IsNullOrWhiteSpace(candidate.Csharp));
+        var closest = target.Candidates.Where(IsUsable).OrderBy(candidate => candidate.Count <= 0 ? int.MaxValue : candidate.Count).FirstOrDefault();
+        return generated is not null && (closest is null || !Unfit(generated)) ? generated : closest ?? generated;
     }
+
+    // Playwright's own locator by what changes each load or names nothing: a generated id, a title no person wrote.
+    private static bool Unfit(CapturedCandidate generated) =>
+        JunkInCode().IsMatch(generated.Csharp ?? "") || CssStrings(generated.Csharp ?? "").SelectMany(IdsIn).Any(UnstableId.IsUnstable);
 
     /// <summary>
     /// A checkbox or switch whose id only numbers it among others (<c>hobbies-checkbox-3</c>): found by its label, as a
@@ -112,6 +118,9 @@ internal static partial class LocatorPolicy
         return string.Join(" » ", parts);
     }
 
+    /// <summary>What <see cref="Problem"/> says of Playwright's locator by an id made anew on each load.</summary>
+    public const string GeneratedIdProblem = "Playwright's locator uses a generated id";
+
     /// <summary>Why the locator needs a person's look, or null when it is fine.</summary>
     public static string? Problem(CapturedCandidate? candidate)
     {
@@ -120,13 +129,15 @@ internal static partial class LocatorPolicy
             return candidate.Count > 1
                 ? $"this locator found {candidate.Count} elements when recorded"
                 : "this locator did not find the element when recorded";
+        if (candidate.Parts.FirstOrDefault(part => part is { M: "role", Regex: null } && HoldsVolatile(part.Name)) is { } changing)
+            return $"its name holds what may change from run to run (\"{changing.Name}\"): find it by what stays";
         if (candidate.Kind != "generator") return null;
         var code = candidate.Csharp ?? "";
         if (Position().IsMatch(code)) return "Playwright's locator picks the element by its position";
         if (EmptyName().IsMatch(code)) return "Playwright's locator matches an empty name, which many elements have";
         if (CssStrings(code).Any(HasHashedClass)) return "Playwright's locator picks the element by a class a style library generated";
         if (CssStrings(code).Any(HasClass)) return "Playwright's locator picks the element by a style class";
-        if (CssStrings(code).SelectMany(IdsIn).Any(UnstableId.IsUnstable)) return "Playwright's locator uses a generated id";
+        if (CssStrings(code).SelectMany(IdsIn).Any(UnstableId.IsUnstable)) return GeneratedIdProblem;
         if (Texts(code).Any(Glued)) return "Playwright's locator finds a wrapper by the text of everything in it";
         if (Texts(code).Any(text => !text.Any(char.IsLetter))) return "Playwright's locator finds the element by a number alone";
         if (WholeRowName().IsMatch(code)) return "Playwright's locator finds the row by all it says, not by its key";
@@ -176,24 +187,71 @@ internal static partial class LocatorPolicy
     {
         var role = $"AriaRole.{AriaRoleName(part.Role)}";
         if (part.Regex is not null) return $"GetByRole({role}, new() {{ NameRegex = new Regex({CSharp.Literal(part.Regex)}) }})";
+        if (name is null && SteadyName(part.Name) is { } steady) return $"GetByRole({role}, new() {{ NameRegex = new Regex({CSharp.Literal(steady)}) }})";
         if (part.Name is null) return $"GetByRole({role})";
-        var exact = part.Exact ? ", Exact = true" : "";
+        // A name read from a setting without the icon or avatar it starts with is matched in it, as part of it.
+        var exact = part.Exact && (name is null || WithoutIcon(part.Name) == part.Name) ? ", Exact = true" : "";
         return $"GetByRole({role}, new() {{ Name = {name ?? CSharp.Literal(part.Name)}{exact} }})";
     }
+
+    /// <summary>
+    /// A name an icon's label starts, as antd's buttons say "plus New", or "loading Next" while a spinner turns in them, or
+    /// that a flag's label doubles ("EnglishEnglish"), as a pattern that finds the element with it or without it, as the
+    /// icon or the spinner comes and goes; null for any other name.
+    /// </summary>
+    public static string? SteadyName(string? name)
+    {
+        if (name is null) return null;
+        if (IconPrefix().Match(name) is { Success: true } icon)
+            return $"^(?:{PatternOf(icon.Groups["icon"].Value)} )?{PatternOf(icon.Groups["rest"].Value)}$";
+        // A person's name after the initial of their avatar: "L Leonie Abernathy".
+        if (AvatarInitial().Match(name) is { Success: true } avatar)
+            return $"^(?:{PatternOf(avatar.Groups["initial"].Value)} )?{PatternOf(avatar.Groups["rest"].Value)}$";
+        var half = name.Length / 2;
+        return name.Length >= 6 && name.Length % 2 == 0 && name[..half] == name[half..] && !name[..half].Contains(' ')
+            ? $"^(?:{PatternOf(name[..half])})?{PatternOf(name[..half])}$"
+            : null;
+    }
+
+    /// <summary>The name without the icon's label it starts with, as a person reads it: "plus New" is New.</summary>
+    public static string WithoutIcon(string name) =>
+        IconPrefix().Match(name) is { Success: true } icon ? icon.Groups["rest"].Value
+        : AvatarInitial().Match(name) is { Success: true } avatar ? avatar.Groups["rest"].Value
+        : name.Length >= 6 && name.Length % 2 == 0 && name[..(name.Length / 2)] == name[(name.Length / 2)..] ? name[..(name.Length / 2)]
+        : name;
+
+    /// <summary>
+    /// A title or text no person wrote: what a page shows of an object or of nothing (<c>[object Object]</c>,
+    /// <c>undefined</c>).
+    /// </summary>
+    public static bool IsJunk(string? text) => text is not null && JunkText().IsMatch(text);
+
+    private static string PatternOf(string text) => RegexSpecialCharacter().Replace(text, @"\$0");
 
     /// <summary>Whether the candidate is stable enough to be a locator at all, whatever it found.</summary>
     public static bool CanUse(CapturedCandidate candidate) => IsUsable(candidate);
 
-    private static bool IsUsable(CapturedCandidate candidate) => candidate.Kind switch
+    private static bool IsUsable(CapturedCandidate candidate) => !WholeRow(candidate) && candidate.Kind switch
     {
         "name" or "nameValue" or "id" or "select" or "testid" or "within" => !UnstableId.IsUnstable(candidate.Value) && CssIsStable(candidate),
         "role" or "roleInGroup" or "row" or "group" or "section" or "item" or "icon" or "title" or "structure" =>
             candidate.Parts.All(part => part.M != "role" || AriaRoleName(part.Role) is not null) && CssIsStable(candidate)
-            && candidate.Parts.All(part => part is not ({ M: "has" or "title", Text: null or "" } or { M: "filter", HasText: "" })),
-        "text" => candidate.Parts.Any(part => part is { M: "text", Text.Length: > 0 }) && CssIsStable(candidate),
-        "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp) && Problem(candidate) is null,
+            && candidate.Parts.All(part => part is not ({ M: "has" or "title", Text: null or "" } or { M: "filter", HasText: "" }))
+            && !candidate.Parts.Any(part => IsJunk(part.Text) || IsJunk(part.Name)),
+        "text" => candidate.Parts.Any(part => part is { M: "text", Text.Length: > 0 }) && CssIsStable(candidate)
+                  && !candidate.Parts.Any(part => IsJunk(part.Text)),
+        "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp) && Problem(candidate) is null && !JunkInCode().IsMatch(candidate.Csharp),
         _ => false,
     };
+
+    // A row by all it says, its counts, statuses and dates with it, which change: never, as its key finds it.
+    private static bool WholeRow(CapturedCandidate candidate) =>
+        candidate.Kind == "role" && candidate.Parts.Any(part => part is { M: "role", Role: "row", Name.Length: > 0 });
+
+    /// <summary>
+    /// Whether a name holds what changes from load to load or what a flow may edit: a price, a date, a time, a percentage.
+    /// </summary>
+    public static bool HoldsVolatile(string? name) => name is not null && VolatileInName().IsMatch(name);
 
     // A class that a CSS-in-JS library hashed changes with each build, and so does the chain it is in.
     private static bool CssIsStable(CapturedCandidate candidate) =>
@@ -230,8 +288,10 @@ internal static partial class LocatorPolicy
             return candidate.Kind switch
             {
                 "generator" => "none",
-                "role" or "roleInGroup" or "row" =>
-                    $"no AriaRole for '{candidate.Parts.First(part => part.M == "role" && AriaRoleName(part.Role) is null).Role}'",
+                _ when WholeRow(candidate) => "finds the row by all it says",
+                _ when candidate.Parts.Any(part => IsJunk(part.Text) || IsJunk(part.Name)) => "a text no person wrote",
+                "role" or "roleInGroup" or "row" when candidate.Parts.FirstOrDefault(part => part.M == "role" && AriaRoleName(part.Role) is null) is { } unknown =>
+                    $"no AriaRole for '{unknown.Role}'",
                 _ => "looks generated",
             };
         return candidate switch
@@ -252,10 +312,32 @@ internal static partial class LocatorPolicy
     private static bool HasClass(string css) => ClassSelector().IsMatch(AttributeValue().Replace(css, "[]"));
 
     private static IEnumerable<string> IdsIn(string css) =>
-        IdSelector().Matches(css.Replace("\\", "")).Select(match => match.Groups["id"].Value);
+        IdSelector().Matches(css).Select(match => UnstableId.CssUnescape(match.Groups["id"].Value));
 
     [GeneratedRegex(@"[-_]\d+$")]
     private static partial Regex NumberedId();
+
+    // An icon's label in lowercase, then the words a person reads, in capitals or another script.
+    [GeneratedRegex(@"^(?<icon>[a-z]+(?:-[a-z]+)*) (?<rest>[^\p{Ll}\s].*)$")]
+    private static partial Regex IconPrefix();
+
+    // The initial an avatar shows, then the name it is the initial of.
+    [GeneratedRegex(@"^(?<initial>\p{Lu}) (?<rest>\k<initial>\p{Ll}+(?: \p{L}[\p{L}'-]*)+)$")]
+    private static partial Regex AvatarInitial();
+
+    [GeneratedRegex(@"^\s*(\[object \w+\]|undefined|null|NaN)\s*$")]
+    private static partial Regex JunkText();
+
+    [GeneratedRegex(@"""\[object \w+\]""|""undefined""")]
+    private static partial Regex JunkInCode();
+
+    [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
+    private static partial Regex RegexSpecialCharacter();
+
+    // A price, a date, a time, a percentage; a weekday or a month's day, as a calendar's event names its time.
+    [GeneratedRegex(@"[-+]?(\p{Sc}|\b[A-Z]{1,3}\$)\s?\d|\d[\d.,]*\s?\p{Sc}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\b\d{1,2}:\d{2}|\b\d+([.,]\d+)?\s?%" +
+                    @"|\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s\d{1,2}\b", RegexOptions.IgnoreCase)]
+    private static partial Regex VolatileInName();
 
     [GeneratedRegex(@"\.Nth\(|\.First\b|\.Last\b|nth-child|nth-of-type|>> nth=")]
     private static partial Regex Position();

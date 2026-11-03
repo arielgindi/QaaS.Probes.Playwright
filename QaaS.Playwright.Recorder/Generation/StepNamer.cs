@@ -40,6 +40,7 @@ internal static partial class StepNamer
         var used = new HashSet<string>(StringComparer.Ordinal) { "RunAsync", "FileToUpload" };
         var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
+        var openers = new Dictionary<string, string?>();
 
         // A dialog without a title of any kind is told apart by the button that opened it, as every such dialog has the
         // same empty title.
@@ -47,7 +48,7 @@ internal static partial class StepNamer
         {
             if (title.Length == 0 && opener is not null && OpenerSubject(opener) is { } own) return own;
             if (subjects.TryGetValue(title, out var known)) return known;
-            var titleWords = info?.Prefix is { Length: > 0 } prefix ? prefix : title;
+            var titleWords = Subject(info?.Prefix is { Length: > 0 } prefix ? prefix : title);
             var subject = (CSharp.IsAsciiText(titleWords) ? CSharp.Pascal(titleWords) : null) ?? OpenerStem(plan, title);
             if (subject is null && !flowNameTaken)
             {
@@ -69,7 +70,14 @@ internal static partial class StepNamer
             if (step.Loop is { } loop)
                 name = LoopName(step, loop);
             else if (step.Opens is { } opened)
-                name = "Open" + DialogSubject(opened.Title, opened, last);
+            {
+                // A dialog another button opened before, by what its own button does: "Add" opening the "Edit" dialog
+                // that "Edit" opened, never OpenEditAgain.
+                var subject = DialogSubject(opened.Title, opened, last);
+                var firstOpener = openers.TryGetValue(subject, out var before) ? before : openers[subject] = verb;
+                name = firstOpener != verb && verb is not null && IsVerb(FirstWord(verb)) && FirstWord(verb) is not ("Open" or "View" or "Show")
+                       && !Words(subject).Contains(FirstWord(verb)) ? verb : "Open" + subject;
+            }
             else if (step.OpensPage is not null)
                 name = verb is null ? "OpenPage" : verb.StartsWith("Open", StringComparison.Ordinal) ? verb : "Open" + verb;
             else if (step.Actions.All(action => action.Kind == "expect"))
@@ -103,6 +111,19 @@ internal static partial class StepNamer
         }
     }
 
+    /// <summary>
+    /// A dialog's title without the Close button its title bar holds, as Kendo's windows name themselves "Edit Close".
+    /// </summary>
+    public static string WithoutClose(string title) => CloseInTitle().Replace(title, "");
+
+    // What a dialog is, by its title: without its Close, its words up to the first that holds a number, four at most, as
+    // a drawer's title "TradeCode 99 Configuration Subscribe to alerts" is the TradeCode's.
+    private static string Subject(string title)
+    {
+        var words = WithoutClose(title).Split(' ', StringSplitOptions.RemoveEmptyEntries).TakeWhile(word => !word.Any(char.IsDigit)).Take(4).ToList();
+        return words.Count > 0 ? string.Join(' ', words) : WithoutClose(title);
+    }
+
     /// <summary>Whether the word says what a button does: Delete, Save, Add.</summary>
     public static bool IsVerb(string word) => Verbs.Contains(word);
 
@@ -130,14 +151,21 @@ internal static partial class StepNamer
             : !string.IsNullOrWhiteSpace(own) ? own
             : Names.IconName(action.Source.Target?.Icon);
         if (string.IsNullOrWhiteSpace(text)) return null;
+        // Without the icon's label it starts with: "plus New" is New, "loading Next" Next.
+        text = LocatorPolicy.WithoutIcon(text);
         if (without is { Length: > 0 }) text = text.Replace(without, " ", StringComparison.Ordinal);
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
         while (words.Count > 0
-               && (Dangling.Contains(words[^1], StringComparer.OrdinalIgnoreCase) || !words[^1].Any(char.IsLetterOrDigit)))
+               && (Dangling.Contains(words[^1], StringComparer.OrdinalIgnoreCase) && !Phrasal(words) || !words[^1].Any(char.IsLetterOrDigit)))
             words.RemoveAt(words.Count - 1);
         var label = string.Join(' ', words).Trim(' ', ':', '-', ',', '(');
         return label.Any(char.IsLetter) ? label : null;
     }
+
+    // "Sign in", "Log out", "Check in": the little word is the verb's own.
+    private static bool Phrasal(List<string> words) =>
+        words.Count >= 2 && words[^2] is "Sign" or "sign" or "Log" or "log" or "Check" or "check" or "Opt" or "opt"
+        && words[^1].ToLowerInvariant() is "in" or "out" or "up" or "on";
 
     // What the clicked element says, when it is English: "Save changes" gives SaveChanges, a link "Orders" OpenOrders,
     // the "Assign" button of a ticket's row AssignTicket. Else its id or test id: "save-btn" gives Save.
@@ -145,13 +173,16 @@ internal static partial class StepNamer
     {
         if (action.Kind is not ("click" or "dblclick")) return null;
         var target = action.Source.Target;
+        // A row clicked as a whole opens its record, which its key's column names: OpenTicket, never all the row says.
+        if (target?.Role == "row" && action.RowKey is not null)
+            return "Open" + (CSharp.IsAsciiText(target.Row?.Header) && CSharp.Pascal(target.Row!.Header) is { } column ? column : "Row");
         var label = Label(action, without: action.RowKey?.Text);
         var verb = label is { Length: <= 40 } && CSharp.IsAsciiText(label) && !label.Any(char.IsDigit) ? CSharp.Pascal(label)
             : Stem(target);
         if (verb is null) return null;
         // A lone verb says what of by its section: "Add" in Attachments adds an attachment.
         if (Verbs.Contains(verb) && CSharp.IsAsciiText(target?.Section) && CSharp.Pascal(target!.Section) is { } section
-            && !verb.Equals(section, StringComparison.Ordinal))
+            && !verb.Equals(section, StringComparison.Ordinal) && Words(section).Count() <= 2)
             verb += LoopFinder.Singular(section);
         if (target?.Role is "link" or "tab" && !Verbs.Contains(FirstWord(verb))) verb = "Open" + verb;
         if (action.RowKey is not null && CSharp.Pascal(target?.Row?.Header) is { } header
@@ -281,7 +312,10 @@ internal static partial class StepNamer
     private static string? PageSubject(string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
-        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        // An app that routes by the fragment (#/products/5) is on the page its route names, not its own path's.
+        var fragment = uri.Fragment.TrimStart('#').TrimStart('!');
+        var route = fragment.StartsWith('/') ? fragment.Split('?')[0] : uri.AbsolutePath;
+        var segments = route.Split('/', StringSplitOptions.RemoveEmptyEntries);
         bool IsId(string part) => part.Any(char.IsDigit) || (part.Length > 12 && UnstableId.IsGuidLike(part));
         var segment = segments.Select((part, index) => (part, index))
             .LastOrDefault(found => !IsId(found.part) && CSharp.IsAsciiText(found.part) && !found.part.Contains('.')
@@ -314,7 +348,7 @@ internal static partial class StepNamer
         public string Describe(bool outcome)
         {
             var step = Step;
-            if (step.Opens is { } opened) return $"Opens the {Quote(opened.Title) ?? "new"} dialog.";
+            if (step.Opens is { } opened) return $"Opens the {Quote(WithoutClose(opened.Title)) ?? "new"} dialog.";
             var last = step.Actions[^1];
             if (last.Kind == "newTab")
                 return Address(last.Source.Url) is { } address ? $"Opens a new tab at {address}." : "Opens a new tab.";
@@ -436,10 +470,12 @@ internal static partial class StepNamer
             var closed = action.Effects.Where(effect => effect.Kind == "dialogClosed").Select(effect => effect.Dialog?.Title);
             foreach (var title in closed.Distinct())
                 results.Add(title == Step.Dialog ? "closes the dialog" : $"closes {Quote(title) ?? "a dialog"}");
-            if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route)
+            // Not a page of the same route, as a sort or a filter changes only the query.
+            if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route
+                && route != Route(action.Source.Url))
                 results.Add($"goes to {route}");
-            if (action.Effects.FirstOrDefault(effect => effect is { Kind: "alert", Text.Length: > 0 }) is { } alert)
-                results.Add(Short || Quote(alert.Text) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
+            if (action.Effects.FirstOrDefault(FlowWriter.IsAlert) is { } alert)
+                results.Add(Short || Quote(FlowWriter.WithoutButton(alert.Text!)) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
             if (results.Count > 0) return $", which {Join(results, " and ")}";
             return action.Has("busy") ? " and waits for it to load" : "";
         }
@@ -483,7 +519,8 @@ internal static partial class StepNamer
     public static string? Route(string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
-        var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment : uri.AbsolutePath;
+        // A route in the fragment without its query: #/customers?filter=… is #/customers.
+        var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment.Split('?')[0] : uri.AbsolutePath;
         return string.Join('/', route.Split('/').Select(segment =>
             segment.Any(char.IsDigit) || (segment.Length > 12 && UnstableId.IsGuidLike(segment))
                 ? "[id]"
@@ -492,6 +529,9 @@ internal static partial class StepNamer
 
     [GeneratedRegex("^[A-Z][a-z0-9]*")]
     private static partial Regex FirstWordOf();
+
+    [GeneratedRegex(@"\s+(close|close dialog|close window|[×✕✖xX])$", RegexOptions.IgnoreCase)]
+    private static partial Regex CloseInTitle();
 
     [GeneratedRegex(@"^\s*[×✕✖✗xX]\s*$")]
     private static partial Regex CloseGlyph();

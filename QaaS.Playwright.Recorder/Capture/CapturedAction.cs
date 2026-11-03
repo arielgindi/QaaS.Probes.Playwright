@@ -100,6 +100,18 @@ internal sealed class CapturedAction
     /// <summary>The item was in a menu that opened without a click, as one that opens on hover.</summary>
     public bool? HoverMenu { get; set; }
 
+    /// <summary>For an item of a menu that opened on hover: what the pointer was on as it opened, which the flow hovers first.</summary>
+    public CapturedTarget? HoverOpener { get; set; }
+
+    /// <summary>
+    /// For a choice of an option with no role, as antd's virtual list draws them: the CSS of each option of its kind, which
+    /// the flow finds the option in by its text, among those that show.
+    /// </summary>
+    public string? OptionCss { get; set; }
+
+    /// <summary>For a date picked in a calendar: the picker kept it only once its OK, or Enter, committed it.</summary>
+    public bool? Committed { get; set; }
+
     /// <summary>For a click: it left the focus in a text field, the element itself or one in it.</summary>
     public bool? Focus { get; set; }
 
@@ -225,6 +237,9 @@ internal sealed class CapturedTarget
 
     /// <summary>A field the person can type in: a text input that is not read-only, a text area, an editable element.</summary>
     public bool? Editable { get; set; }
+
+    /// <summary>The element is in a form, which Enter in a field of it may send.</summary>
+    public bool? InForm { get; set; }
 
     /// <summary>A checkbox or radio under the box a library draws over it, which a click at its middle lands on.</summary>
     public bool? Covered { get; set; }

@@ -176,6 +176,9 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>Raised, on Playwright's thread, when the person pressed F2 in the app while recording a part again.</summary>
     public event Action? PartDone;
 
+    /// <summary>Raised, on Playwright's thread, when the person pressed Ctrl+K in the app, for the panel's commands.</summary>
+    public event Action? PaletteAsked;
+
     /// <summary>
     /// Opens Chrome on the URL with the capture script installed. <paramref name="onNews"/> receives each action and
     /// effect as it is captured, and each <see cref="RecordingState"/> the recording goes to, on Playwright's thread.
@@ -461,13 +464,14 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>
     /// Brings the recorded page back to how the recording started, before it is replayed from there: its cookies and the
-    /// start page's storage cleared, as a login flow logs in afresh, else as the login the recording started from.
+    /// start page's storage cleared, as a login flow logs in afresh, or a recording that starts by logging in
+    /// (<see cref="Recording.LogsIn"/>), else as the login the recording started from.
     /// </summary>
     public async Task ResetToStartAsync()
     {
         await _context.ClearCookiesAsync();
         var start = new Uri(_options.Url).GetLeftPart(UriPartial.Authority);
-        var saved = _options.LoginFlow is null ? await SavedLoginAsync() : null;
+        var saved = _options.LoginFlow is null && !Build().LogsIn ? await SavedLoginAsync() : null;
         var origins = saved?.Origins.Select(origin => origin.Origin).Append(start).Distinct() ?? [start];
         var devTools = await _context.NewCDPSessionAsync(Page);
         try
@@ -772,6 +776,9 @@ internal sealed class RecordingSession : IAsyncDisposable
                 break;
             case "done" when RerecordingPart is not null:
                 PartDone?.Invoke();
+                break;
+            case "palette":
+                PaletteAsked?.Invoke();
                 break;
         }
     }

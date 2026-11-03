@@ -21,7 +21,9 @@ of this repository, `dotnet run --project QaaS.Playwright.Recorder -- record ...
 
 Work through the site. Each action is printed as it is recorded: its number, what you did, the element's name and
 the value, then dimmer the locator the flow will use, and under it what the page did. The numbers are the step
-numbers the panel and a test run use, as a click that only opens a select is no step:
+numbers the panel, a test run and the summary use, the flow's: a click that only opens a select is no step, and a
+click on no control shows only once it changed something, as the flow leaves it out otherwise. "Enter in a form's
+field may send the form" is said of a field in a form only:
 
 ```text
     1 • click   Actions for HL-775-ZE         button "Actions for HL-775-ZE"
@@ -84,12 +86,13 @@ what the panel points at (`Step`, `Locator`, `Element`). The box glides from ele
 the last element's words, dimmed, until the new ones come, so passing over many elements is quiet; both are drawn
 once a frame, without animation when the system asks for reduced motion. The label goes below the element, else above
 it, else inside it, always on the screen and never over the pointer. The overlay steps aside while you drag or select
-text, or while the pointer is on a scrollbar, and comes back as you let go.
+text, or while the pointer is on a scrollbar, and comes back as you let go; once you click an element, it steps aside
+until the pointer moves onto another one, as a menu or a list the click opens shows where the label was.
 
 When the recording is in another mode than recording, a pill at the top of the page says which, in its colour, and the
 key that leaves it: `Recording paused · F8`, `Trying · F7`, `Check · Esc`, `Inspect · Esc`, the part being recorded
-again with `F2`, or the login flow's progress. It fades as the pointer comes near it, so what is under it can be seen
-and clicked.
+again with `F2`, or the login flow's progress; while the flow is tested or replayed, it is at the bottom, off the app's
+header. It fades as the pointer comes near it, so what is under it can be seen and clicked.
 
 The overlay never changes the page: it is drawn in a closed shadow root on an element of its own outside `<body>`,
 takes no pointer events, no focus and no room, and Playwright's selectors do not see into it. It shows in the main page,
@@ -119,7 +122,8 @@ not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and 
 Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the focus and close the very menu being
 frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
-When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
+When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console (or
+send it a line, when a script gives the console its input through a pipe; the input's end finishes nothing). The
 recorder saves two files: `Flows/LoginFlow.cs`
 (the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints a
 summary: the files it wrote, how many actions, steps and settings the flow has, each line to check by hand as
@@ -135,7 +139,9 @@ summary: the files it wrote, how many actions, steps and settings the flow has, 
   Asked for the name (`qaas-playwright`), the recorder offers instead to [continue](#continuing-a-flow) the flow there,
   overwrite it, or take another name.
 - The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
-  (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
+  (a folder named like a C# keyword gets an `@`, e.g. `@internal`). The project is the nearest one the flow can be
+  built in, which references QaaS.Playwright; a project of something else above the folder, such as a tool's above a
+  scratch folder, names nothing, and the namespace is `Flows`.
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
   Windows device (`nul`, `com1`), or one too long for a file name. Asked for the name, the recorder says why and asks
   again; so it does for a URL that is not http(s). Ctrl+C at a question stops without recording.
@@ -161,7 +167,14 @@ Ctrl+C, or the flow could not be saved), it asks, before anything else:
   ? Choose 1, 2 or 3 (1) ›
 ```
 
-**Save it now** writes the flow and its YAML, as a save at the end of the recording would, without opening Chrome;
+An end nobody asked for never goes unsaid: an error the recorder did not expect, Chrome or its driver going away, or a
+signal from outside (`kill`, a closed terminal: SIGTERM, SIGHUP, SIGQUIT) writes the recording as it is then, prints
+`× The recorder was stopped from outside (SIGTERM). The recording is kept: ...` and writes what happened, with its
+stack, to `~/.qaas/recorder-error.log`. Only `kill -9` ends it with nothing said, as no program sees that one; the
+autosave of half a second before it is offered then.
+
+**Save it now** writes the flow and its YAML, and the raw recording when it was recorded with `--keep-recording`, as a
+save at the end of the recording would, without opening Chrome;
 **Continue recording** goes on from it as `--continue` does; **Discard** deletes it. Then the recorder does what you
 started it for. A file it cannot read is skipped with a warning. A flow saved from it types an empty password, as the
 recording holds none: the recorder says which setting to set in its YAML.
@@ -183,8 +196,10 @@ goes on from where they left the app: what you do is added after them, numbered 
   from there, without the steps from the failed one on (you record them again), or stop, which keeps the flow as it
   is. When the login flow fails, nothing is replayed, and the recorder stops.
 - **Saving regenerates the whole flow** and replaces `NewTicket.cs` and its YAML, unless you changed the `.cs` since it
-  was recorded: then the flow continued is saved beside it, as a re-recording is, and the recorder says so when it
-  starts.
+  was recorded, or you kept recording without steps that did not replay: then the flow stays as it is, the flow
+  continued is saved beside it as `NewTicket.recorded.txt`, as a re-recording is, and the recorder says so.
+- **A flow that logs in itself**, its first actions typing a password, was recorded signed out: it is replayed, and
+  tested, signed out too, never from the login the recorder saved for its Chrome, which would skip its login page.
 - **The recording** is the recorder's own copy in `~/.qaas/recordings/`, or `NewTicket.recording.json` beside the flow
   (`--keep-recording`), whichever is newer. A flow recorded with an older version, on another machine, or before the
   last 30 saved has none: the recorder says so. Record with `--keep-recording` to continue a flow anywhere.
@@ -294,8 +309,8 @@ A tab that opened while paused is opened the same way. When the app is on the sa
 Beside the recorded window, the recorder opens its panel: the flow exactly as it will be saved, written as you work.
 
 - **The top bar**: the flow's name, what the middle shows, and the commands: **Pause**, **Check** and **Try**, each
-  coloured while it is on, **Undo**, **Test** with slow motion beside it, and **Save**; then every command (`Ctrl+K`),
-  the keys (`?`) and the theme. A narrow panel keeps their icons, each named by its tooltip.
+  coloured while it is on, **Undo**, **Test** with slow motion beside it, and **Save**; then every command (`Ctrl+K`,
+  in the panel or in the app, where Chrome's own search would take it otherwise), the keys (`?`) and the theme. A narrow panel keeps their icons, each named by its tooltip.
 - **The status strip**, under it: the one place that says what the recorder is doing and how to leave it, in the
   mode's colour, with the button and the key that end it: `Recording`, `Paused` (**Resume**, `F8`), `Logging in`
   (**Log in by hand**), `Testing` with the step that runs (**Stop**, `Esc`), `Trying` (**Stop trying**, `F7`), `Check`
@@ -381,9 +396,12 @@ after the last action recorded, in its step, marked `// check`, and is listed on
 ```
 
 The element is found as a click on it would be. A value typed or chosen before reads its setting, so each case checks
-its own. A number that is no recorded value, such as a new record's id, changes from run to run: a text with one is
-checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043 created"), as a message is, and a
-row's cell that is only one is left out. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
+its own, where the check looks as well as in what it expects (a row by its key's setting, a cell by the city chosen
+before). An element found by the very text it is checked to have is checked to show (`ToBeVisibleAsync`), as a check of
+its text would pass whenever it is there. A number that is no recorded value, such as a new record's id, changes from
+run to run: a text with one is checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043
+created"), as a message is, and a row's cell that is only one is left out. A row's cells are its texts as the filter
+matches them, and those that change from load to load or with an edit (a count, a price, a date) are off at first. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
 
 ### Editing the steps
 
@@ -422,14 +440,28 @@ it back. It never leaves these out by itself, as what looks like noise may be wh
 | **Leave it out** | A value typed or chosen again in the same field later, before anything used it: no submit, no new address, no dialog or message, no check of yours. Enter pressed in it that did nothing counts as nothing. | Leaves out the first, with the Enter after it and the click that opened its list |
 | **Leave the repeats out** | The same click again right after, and nothing showed after it: a button that seemed to do nothing, clicked again. | Keeps the first click |
 | **Leave both out** | A choice of a multi-select taken back by its "Remove …" button before anything used it. | Leaves out the choice and the removal: the list is the choices that stayed |
+| **Leave it out**, **Leave both out**, **Leave these 4 out** | What was done and undone before anything used it, so the page is as it was: a checkbox or a switch ticked and unticked, a toggle clicked twice ("Toggle light/dark mode", a menu's group opened and closed), a menu's choice made and made back (English, Français, English). Never a column's header clicked twice, which sorts it one way and then the other. | Leaves out all of it |
 | **Leave these out** | In a recording of an older recorder, which did not watch what a click changed: clicks on what is no control that showed nothing. | Leaves them all out |
+
+A checkbox or a switch ticked again and again is the state it ends in, one step; radios of one group picked one after
+the other, the last. A select or a combobox opened and closed with Escape that showed nothing is left out, both; one
+opened and filtered in its list's own field (Kendo's) is chosen in the list they left open, never opened again. Values
+filled in are one step with the click after them only when it sends them (a submit, Save, Search, Log in) or a key
+does: a click on a menu after a search's text is a step of its own. The address the app was at when a pause or a try ended is not gone to when the next click is on a
+menu's item or a tab that goes elsewhere itself.
 
 The console lists the suggestions left when you save. What the recorder leaves out by itself, without asking, is only
 what cannot matter: a click that only put the focus in a field the next action types into or that you left, the click
 that opened the list of the choice next (an arrow hidden from assistive technology included), a click on no control or
 item after which nothing at all changed on the page, the clicks of a date picker's calendar or of a file chooser you
-closed, a link dragged a few pixels as you clicked it, and the letters typed to filter a list, which are part of the
-choice: the flow types the option's own text to find it (`FillAsync(subject)`).
+closed, and a link dragged a few pixels as you clicked it.
+
+The letters you typed to find an option of an autocomplete are part of the choice, as its search: a setting of their
+own, `CustomerSearch: 'Hipol'` beside `Customer: 'Hipolito Bergnaum'`, which the flow types before it takes the option
+(`FillAsync(Configuration.CustomerSearch)`), as a site may find nothing by the option's whole text. A combobox that
+completes what you type in place, the rest selected, is recorded with the letters you typed, never the completion. A
+search the option's text is all of needs no setting. In a loop, each round is a record of its `Search` and the option's
+`Name`.
 
 ### Testing the flow
 
@@ -503,9 +535,11 @@ does in the app, and does it once you confirm:
    the part's actions, its cards marked `new`, and the steps after it stay. Checks (`F6`), pausing (`F8`) and trying
    (`F7`) work as ever.
 3. **Done**, `F2` in the app or the panel, keeps it, and the code is written with it: **Test** the flow to see it run as
-   it will be saved. **Keep it as it was**, `Esc` in the panel, keeps the part as it was. Either way the recording then
-   pauses, as the app is where the part left it, not at the end of the flow, unless the part was the flow's last. Undo
-   (`Ctrl+Z`) brings back the part as it was; before anything is recorded in it, Undo keeps it as it was.
+   it will be saved. **Keep it as it was**, `Esc` in the panel, keeps the part as it was, and takes the app back to the
+   page it was on before the replay, nothing recorded meanwhile, and the recording to what it did then: recording, or
+   paused. Done pauses the recording, as the app is where the part left it, not at the end of the flow, unless the part
+   was the flow's last; the console and the panel say it is paused, and why. Undo (`Ctrl+Z`) brings back the part as
+   it was; before anything is recorded in it, Undo keeps it as it was.
 
 **Record after this**, on a step's name or an action, replays the flow through it instead, and what you record goes
 after it, before the steps after it, which stay; nothing is replaced. It ends in the same way.
@@ -515,7 +549,7 @@ after it, before the steps after it, which stay; nothing is replaced. It ends in
   confirmation says, and recording after one records after the loop.
 - **When the replay does not get to the part**, the panel shows where it failed and why, as a test run does, and so
   does the console. The app is then where the replay stopped: **Re-record from step 3** records again from the step that
-  failed to the end of the part, and **Cancel** keeps the flow as it is.
+  failed to the end of the part, and **Cancel** keeps the flow as it is and takes the app back, as `Esc` does.
 - **It is in the recording**, so autosave, `--keep-recording` and [continuing](#continuing-a-flow) keep the flow as you
   recorded it again, and a recording continued can be recorded again in part too. It needs the panel and the .NET SDK,
   as **Test** does.
@@ -683,19 +717,29 @@ FlowConfiguration:
   a verb a route starts with (`viewPersonalDetails` is `PersonalDetails`). A name taken is the step done again
   (`OpenMyInfoAgainAsync`), numbered only the third time; a second form step of a page is named after what it fills in
   (`FillGenderAndEmailAsync`). Each summary says what a person would: "Fills in the gender, email, first name, last name
-  and mobile number, pressing Enter after the email." A dialog is named after its title,
-  or the heading it shows, else after the button that opened it, each dialog after its own. The click that only opened
+  and mobile number, pressing Enter after the email." A dialog is named after its title, without the Close button its
+  title bar holds ("New Event", never "New Event Close") and up to its first word with a number,
+  or the heading it shows, else after the button that opened it, each dialog after its own; a dialog another button
+  opened before is named after what its own button does (`AddAsync` for "Add" opening the "Edit" window), never
+  `OpenEditAgainAsync`. A lone verb takes a section of one or two words only, never a page's long title; "Sign in" is
+  `SignInAsync`; a page of an app that routes by the address's fragment (`#/products`) is named after its route. The click that only opened
   a select's list is left out: the flow opens it as it chooses.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
-  value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
+  value as its default (a date or a time input's with the format it takes, `yyyy-MM-dd`, in its doc comment; a
+  multi-select's, the option chosen, never what the field then shows with the record's other choices), and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
   (`employee.firstName` gives `EmployeeFirstName`), else its own stable id (by its label when that says the same in
   fewer words: `userEmail` and "Email" give `Email`; `subjectsInput` gives `Subjects`), test id, the stable id of the
-  widget it is part of (react-select's input in `#state` gives `State`), its label, the label beside it in its form
+  widget it is part of (react-select's input in `#state` gives `State`, never a container of the page such as `#root`,
+  `#main-content` or `#demo-runner`), its label, the label beside it in its form
   group, row or column though nothing ties it to it (`User Role`, `Blood Type`), what its prompt says (`Select State`),
   for an option of a list without a field the list's label, else the dialog's title; never a placeholder's example of a
   value (`name@example.com`), nor the value a select shows. A checkbox whose id only numbers it is named after its label
-  (`hobbies-checkbox-3` is `Music`), a row's checkbox after its row (`UsernameSelected`), the header's `SelectAll`. A
+  (`hobbies-checkbox-3` is `Music`), a switch or a checkbox of no label after the words of its list's or its tree's item
+  (`FixedHeader`, `FebruaryPdf`), a row's checkbox after its row (`UsernameSelected`), the header's `SelectAll`; a field
+  of a step form after its name without the step's index (`0_receiverAccount` is `ReceiverAccount`), a name of a letter
+  or two (`q`) after its label or placeholder (`Search`); a choice of no name after the section it is in (a sport chosen
+  under "Hobbies" is `Hobby`); a link to a person without their avatar's initial ("L Leonie Abernathy"). A
   choice drops the `Id` its field's name ends with, as it holds the option's text (`maintenanceTypeId` gives
   `MaintenanceType`). The same words typed again into another field, as a user's name searched for after it was given,
   read the first one's setting. One file uploaded is a setting of its path, named after its field's label
@@ -784,8 +828,15 @@ The element you meant, which is not always the one under the pointer:
 
 A click on a part of a widget hidden from assistive technology, as react-select's arrow is, records the widget's one
 control; one on the value a custom select shows records the select. A click in a date picker's calendar records
-nothing: the date the field then shows is recorded as typed into it. A click that opens a file chooser through what
-stands for it ("Browse") records nothing; the file chosen is the upload.
+nothing, in its view of a month, of a year or of a decade alike, as its "Navigate to parent view: 2026" names today's
+year: the date the field then shows is recorded as typed into it, as MUI's, antd's and Kendo's pickers all take it.
+When the picker kept it only once you pressed its OK, as antd's does, the flow presses Enter in the field after typing
+it. A click that opens a file chooser through what
+stands for it ("Browse") records nothing; the file chosen is the upload. A click on a header's cell records the cell,
+as it sorts its column, never the whole header; a click on a row of data records the row, found by its key, as an app
+opens its record (`OpenTicketAsync`). A drag drops on what was under the pointer before the drop,
+such as a scheduler's slot, never on the item dragged, nor on the hint a library moves with the pointer, which names
+where it would drop.
 
 So a click on the title of a card, a tile or a carousel's slide records the card, and keeps it in the flow, though
 nothing else tells it is clickable. When only its label's text or Playwright's own locator would find that element, or
@@ -801,14 +852,25 @@ For each element the recorder takes the first of these that finds it, and only i
 1. The interactive element itself (the input, not the label or icon you clicked), by its form `name` (Formik's path,
    `[name='employee.firstName']`) or its own stable `id`. Generated ids, like React's `:r1:`, MUI's `mui-12`,
    `-option-3`, `-listbox`, the ids select libraries number by instance (`react-select-2-input`, antd's
-   `rc_select_0`), Headless UI's and Select2's, long numbers and GUIDs, are never used.
+   `rc_select_0`, `rc-tabs-0-tab-rule`), Headless UI's and Select2's, long numbers, GUIDs and runs of hex anywhere in
+   an id, also as CSS escapes them (`\36 d9a47e9-…_k-dialog-content`), are never used. A click on no control that only
+   such an id finds is left out, and listed to check by hand.
 2. An MUI Select by its `id`, else as the box around its hidden input (`div:has(> input[name='x'])`).
 3. Its test id (`GetByTestId`, i.e. `data-testid`).
 4. Its role and exact name, without direction marks and a required field's ` *`. A tab whose name counts something
    (`Open (3)`) by the start of its name. A field that opens a list by its label, without the value it shows
-   (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it.
+   (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it. A name that holds what
+   changes from load to load, or what the flow may edit, a price, a date, a time or a percentage, by the words before
+   it when they find the element alone: a poster's link `NameRegex = new Regex("^Black & White 14\\.4x17\\.88")`,
+   without its `US$15.57`; else it is listed to check by hand. A name an icon's label starts, as antd's "plus New", or
+   "loading Next" while a spinner turns in it, or that a flag's label says twice ("EnglishEnglish"), is found with it
+   or without it (`NameRegex = new Regex("^(?:loading )?Next$")`), and the step is named after what it says. A title or
+   text no person wrote (`[object Object]`, `undefined`) never finds anything.
 5. In a table: the row by its key cell's text, then the element in it; an icon button there by its icon
    (`row.Locator("button:has(i.bi-trash)")`). A column's name is its header's own text, not a sort menu hidden in it.
+   The key is a reference of letters and digits (`50SKLO`, `TCK-1040`), else a number in a column of ids, else a name;
+   never a price, a date, a time, a count or a status, unless nothing else tells the row apart. A row itself is never
+   found by all it says.
 6. In its form group, by the group's label, though nothing ties the label to the field:
    `page.Locator("div.oxd-input-group").Filter(new() { Has = page.GetByText("User Role", new() { Exact = true }) }).Locator("div.oxd-select-text")`.
    A field named only by a placeholder's example of a value (`yyyy-dd-mm`), or by a prompt when it has a group, is
@@ -831,11 +893,19 @@ For each element the recorder takes the first of these that finds it, and only i
     position, an empty name, the glued text of a wrapper (`"Employee Full NameEmployee"`), a number alone, or a row's
     whole name.
 
+A value typed before is read from its setting in a later locator only where the text shows it as a word of its own:
+the link "TradeCode 99" after "TradeCode 9" was typed stays as it is, never `$"{Configuration.Name}9"`.
+
 An element in a dialog is located inside it (`dialog.GetByRole(...)`). A dialog that has no name, as a hand-made
 modal often has, takes the heading it shows as its title, and is found by it:
 `page.GetByRole(AriaRole.Dialog).Filter(new() { Has = page.GetByText("Shipping", new() { Exact = true }) })`. The
 options of a select or autocomplete open outside the dialog, so they come from `dialog.Page`; one that another list on
-the page has too, from its own list (`GetByRole(AriaRole.Listbox, new() { Name = "Delivery window" })`).
+the page has too, from its own list (`GetByRole(AriaRole.Listbox, new() { Name = "Delivery window" })`). An option
+with no role, as antd's list draws them beside a hidden one for assistive technology, is a choice of the one combobox
+that is open, a setting as any choice, found by its text among the options of its kind that show, as closed lists stay
+in the page hidden: `page.Locator("div.ant-select-item:visible").GetByText(Configuration.Status, new() { Exact = true })`,
+never by a title no person wrote (`[object Object]`). An item of a menu that opened as the pointer rested on something,
+as an avatar's menu does, is clicked after the flow hovers that (`page.Locator("[id='avatar']").HoverAsync()`).
 
 ### What each action expects
 
@@ -850,12 +920,15 @@ yourself follow them.
 - A tab: `ToHaveAttributeAsync("aria-selected", "true")`.
 - A click that opened a dialog: the dialog is visible. One that closed it: `ToBeHiddenAsync`, with 30 seconds for the
   save behind it.
-- A message that appeared (`role="alert"`): visible, with its text. A number in it that is no recorded value, such as a
-  new record's, is left out: the message is found by the words around it, those that name a recorded value first
-  (`created: {Configuration.Title}` for "Ticket TCK-1043 created: Printer offline").
+- A message that appeared (`role="alert"`): visible, with its text, without the words of a button it holds ("Customer
+  updated", never "Customer updated UNDO"). A number in it that is no recorded value, such as a new record's, is left
+  out: the message is found by the words around it, those that name a recorded value first (`created:
+  {Configuration.Title}` for "Ticket TCK-1043 created: Printer offline"). Not a message that only says the page is
+  busy and goes by itself ("Loading...", "Please wait"), which a check would race.
 - A new address: `ToHaveURLAsync`, with ids in the path matched as any value. In an app that routes by the fragment
   (`#/orders/5`), the route is checked the same way. Not when the action also opened a dialog or selected a tab, or
-  closed its dialog and showed a message: those say it better.
+  closed its dialog and showed a message: those say it better; nor when the address before the action matched it
+  already, as a sort that changes the query does.
 
 A busy indicator that came up within 5 seconds of an action and went away again is waited for after it, for up to 30
 seconds: a progress bar (`role="progressbar"`, as MUI's `CircularProgress` and `LinearProgress` are, also inside a

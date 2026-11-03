@@ -31,6 +31,26 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
     /// <summary>In the recorder's own copy of a recording, in <c>~/.qaas/recordings</c>: the flow it is of; else null.</summary>
     public AutosavedFlow? Autosave { get; init; }
 
+    /// <summary>
+    /// The recording starts by logging in, as a password is typed before the app went to another address: it was
+    /// recorded signed out, so it is replayed, tested and continued so, never from the recorder's saved login.
+    /// </summary>
+    [JsonIgnore]
+    public bool LogsIn
+    {
+        get
+        {
+            if (After is not null) return false;
+            foreach (var action in Actions)
+            {
+                if (action is { Kind: "fill", Target.Type: "password" }) return true;
+                if (action.Kind is "navigate" or "newTab" || action.Effects.Any(effect => effect.Kind is "urlChanged" or "popup")) return false;
+            }
+
+            return false;
+        }
+    }
+
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     /// <exception cref="JsonException">The text is not a recording.</exception>
@@ -47,4 +67,6 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
 /// <param name="AutoChecks">Whether the flow checks what each action did.</param>
 /// <param name="Login">The login flow the recording ran after.</param>
 /// <param name="Replaces">The flow file that saving it replaces, by its hash (<see cref="RecordRequest.Replaces"/>).</param>
-internal sealed record AutosavedFlow(string Flow, string Folder, bool AutoChecks, LoginFlow? Login, string? Replaces);
+/// <param name="KeepRecording">The raw recording is saved beside the flow too (<c>--keep-recording</c>).</param>
+internal sealed record AutosavedFlow(string Flow, string Folder, bool AutoChecks, LoginFlow? Login, string? Replaces,
+    bool KeepRecording = false);

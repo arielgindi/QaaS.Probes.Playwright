@@ -12,9 +12,21 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// </summary>
 internal static partial class UnstableId
 {
-    public static bool IsUnstable(string? id) =>
-        string.IsNullOrWhiteSpace(id) || Generated().IsMatch(id)
-        || (FieldPath().IsMatch(id) ? PathNames(id).Any(IsGuidLike) : IsGuidLike(id));
+    public static bool IsUnstable(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return true;
+        // As CSS escapes it, a digit first: "\36 d9a47e9-…" is "6d9a47e9-…".
+        id = CssUnescape(id);
+        return Generated().IsMatch(id) || Guid().IsMatch(id) || HexRun().Matches(id).Any(run => run.Value.Count(char.IsAsciiDigit) >= 3
+                                                                                              && run.Value.Count(char.IsAsciiLetter) >= 2)
+               || (FieldPath().IsMatch(id) ? PathNames(id).Any(IsGuidLike) : IsGuidLike(id));
+    }
+
+    /// <summary>A CSS identifier as the id it stands for: <c>\36 d9a</c> gives <c>6d9a</c>, <c>\:r1\:</c> gives <c>:r1:</c>.</summary>
+    public static string CssUnescape(string css) =>
+        CssEscape().Replace(css, escape => escape.Groups["hex"].Success
+            ? char.ConvertFromUtf32(Math.Min(Convert.ToInt32(escape.Groups["hex"].Value, 16), 0x10FFFF))
+            : escape.Groups["char"].Value);
 
     // The names in a path, without the list indexes between them.
     private static IEnumerable<string> PathNames(string path) =>
@@ -56,6 +68,18 @@ internal static partial class UnstableId
     private static partial Regex FieldPath();
 
     [GeneratedRegex(@":[rR][0-9a-zA-Z]*:|«[rR][0-9a-zA-Z]*»|_[rR]_[0-9a-zA-Z]+_|(^|[^a-zA-Z])mui-\d+|-option-\d+|-listbox|\d{5,}" +
-                    @"|^react-select-\d+-|^rc_select_\d+|^downshift-\d+-|^(mat|cdk)-[a-z-]*\d+$|^headlessui-|^radix-|^select2-.+-result-")]
+                    @"|^react-select-\d+-|^rc_select_\d+|^downshift-\d+-|^(mat|cdk)-[a-z-]*\d+$|^headlessui-|^radix-|^select2-.+-result-" +
+                    @"|^rc[-_][a-z]+[-_]\d+([-_]|$)|^(rc-menu-uuid|ant-[a-z]+-\d+)")]
     private static partial Regex Generated();
+
+    // A GUID anywhere in it, as Kendo's widgets number their parts: "6d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content".
+    [GeneratedRegex(@"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")]
+    private static partial Regex Guid();
+
+    // A run of hex of a hash or a random id, its digits and letters mixed: "9b2b62df".
+    [GeneratedRegex(@"(?<![0-9a-zA-Z])[0-9a-f]{8,}(?![0-9a-zA-Z])")]
+    private static partial Regex HexRun();
+
+    [GeneratedRegex(@"\\(?:(?<hex>[0-9a-fA-F]{1,6}) ?|(?<char>[^0-9a-fA-F\r\n]))")]
+    private static partial Regex CssEscape();
 }

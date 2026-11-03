@@ -45,7 +45,7 @@ public class AutosaveTests
         recording = recording with { AutoChecks = false };
         // Two projects, each with a Login flow.
         var shop = new RecordRequest("Login", recording.StartUrl, Path.Combine(_folder, "shop", "Flows"));
-        var crm = shop with { OutputDir = Path.Combine(_folder, "crm", "Flows") };
+        var crm = shop with { OutputDir = Path.Combine(_folder, "crm", "Flows"), KeepRecording = true };
 
         await new Autosave().WriteAsync(recording, shop);
         await new Autosave().WriteAsync(recording, crm);
@@ -65,6 +65,8 @@ public class AutosaveTests
         {
             Assert.That(notSaved.Select(found => found.Recording.Autosave!.Folder), Is.EquivalentTo(new[] { shop.OutputDir, crm.OutputDir }),
                 "one file per folder and flow, and the broken one skipped");
+            Assert.That(notSaved.Single(found => found.Recording.Autosave!.Folder == crm.OutputDir).Recording.Autosave!.KeepRecording, Is.True,
+                "a recording recovered keeps its raw recording beside the flow, as --keep-recording asked");
             Assert.That(written, Has.Count.EqualTo(2), "the shop's saved, the CRM's not yet");
             foreach (var file in written)
             {
@@ -104,6 +106,18 @@ public class AutosaveTests
         var replaced = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(start.Code) }, whole);
         File.AppendAllText(created.CodePath, "// Changed by hand.\n");
         var beside = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(whole.Code) }, start);
+        // Continued without the steps that did not replay, as when the app was signed in already: the flow keeps them.
+        var posters = byName with { ClassName = "Posters" };
+        var recorded = FlowRecorder.Save(posters, whole);
+        var leftOut = FlowRecorder.Save(FlowRecorder.LeftOut(posters with { Replaces = Autosave.Hash(whole.Code) }), start);
+        // A test project of flows, and a tool's project above a scratch folder.
+        Directory.CreateDirectory(Path.Combine(_folder, "Shop.Tests", "Flows"));
+        File.WriteAllText(Path.Combine(_folder, "Shop.Tests", "Shop.Tests.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"QaaS.Playwright\" /></ItemGroup></Project>");
+        Directory.CreateDirectory(Path.Combine(_folder, "scratch", "overnight", "Flows"));
+        File.WriteAllText(Path.Combine(_folder, "scratch", "recorder.final.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><ProjectReference Include=\"..\\QaaS.Playwright\\QaaS.Playwright.csproj\" /></ItemGroup></Project>");
+        var (tests, scratch) = (ProjectNamespace.Of(Path.Combine(_folder, "Shop.Tests", "Flows")), ProjectNamespace.Of(Path.Combine(_folder, "scratch", "overnight", "Flows")));
 
         Assert.Multiple(() =>
         {
@@ -112,6 +126,10 @@ public class AutosaveTests
             Assert.That(replaced, Is.EqualTo(created), "the flow continued is replaced");
             Assert.That(beside.CodePath, Does.EndWith("ScheduleMaintenance.recorded.txt"), "a flow changed by hand never is");
             Assert.That(File.ReadAllText(created.CodePath), Is.EqualTo(whole.Code + "// Changed by hand.\n"));
+            Assert.That((Path.GetFileName(leftOut.CodePath), File.ReadAllText(recorded.CodePath)), Is.EqualTo(("Posters.recorded.txt", whole.Code)),
+                "a flow continued without steps is saved beside the flow, which keeps them");
+            Assert.That((tests, scratch), Is.EqualTo(("Shop.Tests.Flows", "Flows")),
+                "the namespace of the project the flow builds in, never of a project of something else above a scratch folder");
         });
     }
 

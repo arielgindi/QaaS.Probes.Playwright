@@ -49,7 +49,7 @@ public class PickerRecordingTests
                 await person.ClickAsync(page.Locator("[class*='-singleValue']"));
                 await person.ClickAsync(page.Locator("[id$='-option-1']"));
             }),
-        new("antd-select", "ChooseExpressAsync", """Page.GetByText("Express", new() { Exact = true }).ClickAsync()""", async (person, page) =>
+        new("antd-select", "ChooseShippingAsync", """.GetByText(Configuration.Shipping, new() { Exact = true })""", async (person, page) =>
         {
             await person.ClickAsync(page.Locator(".ant-select-selection-item"));
             await person.ClickAsync(page.Locator(".ant-select-item-option-content").Filter(new() { HasText = "Express" }));
@@ -84,8 +84,8 @@ public class PickerRecordingTests
             await person.ClickAsync(page.Locator("[name='carrier']"));
             await page.Keyboard.TypeAsync("Air Courier");
         }),
-        // The letters typed to filter the list are part of the choice: the flow types the option's own text.
-        new("mui-autocomplete", "ChooseShippingAsync", "FillAsync(Configuration.Shipping)", async (person, page) =>
+        // The letters typed to filter the list are the choice's search: the flow types them, then takes the option.
+        new("mui-autocomplete", "ChooseShippingAsync", "FillAsync(Configuration.ShippingSearch)", async (person, page) =>
         {
             await person.ClickAsync(page.GetByRole(AriaRole.Combobox));
             await page.Keyboard.PressAsync("Control+A");

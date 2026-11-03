@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
@@ -92,17 +93,19 @@ public class RealSiteRecordingTests
                 Assert.That(flow.Code, Does.Contain("foreach (var hobby in Configuration.Hobbies)")
                     .And.Contain("GetByRole(AriaRole.Checkbox, new() { Name = hobby, Exact = true }).CheckAsync()"), "the hobbies by their labels");
                 Assert.That(flow.Code, Does.Contain("foreach (var subject in Configuration.Subjects)")
-                    .And.Contain("FillAsync(subject)"), "the subjects as a list, typed to filter as part of each choice");
+                    .And.Contain("FillAsync(subject.Search)").And.Contain("Name = subject.Name"),
+                    "the subjects as a list, each what was typed to find it and the option taken");
                 Assert.That(flow.Code, Does.Not.Contain("CloseCount").And.Not.Contain("for (var i"), "no loop of clicks that did nothing");
                 Assert.That(flow.Code, Does.Contain("PressAsync(\"Escape\")").And.Contain("ToBeHiddenAsync"), "the modal closed by Escape, as it faded");
                 Assert.That(flow.Yaml, Does.Contain("State: 'Haryana'").And.Contain("City").And.Contain("Email: 'blabla@gmail.com'").And.Contain("Subjects:")
-                    .And.Not.Contain("Search").And.Not.Contain("Value:").And.Not.Contain("Value2"), "settings by labels and ids");
+                    .And.Not.Contain("InputSearch").And.Not.Contain("Value:").And.Not.Contain("Value2"), "settings by labels and ids");
                 Assert.That(plan.Suggestions.Select(suggestion => suggestion.Key.Split(':')[0]),
                     Is.SupersetOf(new[] { "replaced", "removed", "repeated" }), "the noise is suggested, never dropped silently");
                 Assert.That(report.Outcome, Is.EqualTo(TestOutcome.Passed), $"{report.Failure?.Headline ?? report.Problem}\n{flow.Code}");
 
                 Assert.That(applied.Code, Does.Not.Contain("Subjects2"), "suggestions applied");
-                Assert.That(applied.Yaml, Does.Contain("- 'Maths'\n      - 'Arts'").And.Not.Contain("Physics").And.Not.Contain("Karnal")
+                Assert.That(applied.Yaml, Does.Contain("- Search: 's'\n        Name: 'Maths'\n      - Search: 'a'\n        Name: 'Arts'")
+                    .And.Not.Contain("Physics").And.Not.Contain("Karnal")
                     .And.Not.Contain("'1234'").And.Not.Contain("1231"), "the net choices, the last values");
                 Assert.That(again.Outcome, Is.EqualTo(TestOutcome.Passed), $"{again.Failure?.Headline ?? again.Problem}\n{applied.Code}");
             });
@@ -227,7 +230,8 @@ public class RealSiteRecordingTests
                 Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.LicenseExpiryDate)"), "the date as typed");
                 Assert.That(flow.Code, Does.Contain("Filter(new() { HasText = \"Joao Santos\" }).Locator(\"[id='heart-svg']\")"), "the post's like by its words");
                 Assert.That(flow.Code, Does.Not.Match(@"[a-z]\d+Async\("), "no numbered step");
-                Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.EmployeeName)"), "the autocomplete typed its hint's own text");
+                Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.EmployeeNameSearch)")
+                    .And.Contain("Name = Configuration.EmployeeName, Exact = true"), "the autocomplete typed as the person did, then its hint taken");
                 Assert.That(flow.Yaml, Does.Contain("UserRole: 'Admin'").And.Contain("EmployeeName: 'Joao Santos'").And.Contain("MaritalStatus: 'Other'").And.Contain("BloodType: 'B-'")
                     .And.Contain("TestField: '124445'").And.Contain("IncludeEmploymentContractDetails: true").And.Contain("UsernamesToDelete:")
                     .And.Not.Contain("Admin: 'Admin'").And.Not.Contain("Value").And.Not.Contain("B:"), "settings by the groups' labels");
@@ -277,6 +281,214 @@ public class RealSiteRecordingTests
                 "a dialog that closed with nothing seen is closed by Escape");
             Assert.That(uploaded.Code + uploaded.Yaml, Does.Contain("SetInputFilesAsync(Configuration.AttachmentFile)")
                 .And.Contain("AttachmentFile: 'report.pdf'").And.Not.Contain("FileToUpload("), "a file uploaded is a setting of its path");
+        });
+    }
+
+    [Test]
+    public async Task ReactAdminAntDesignProAndKendo_RecordedMessily_GiveFlowsThatReplayOnFreshPages()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        // Each site in a Chrome of its own, at the same time, as each takes its time to be clicked through.
+        var reactAdmin = RecordAsync($"{site.Url}/react-admin-demo/", "PostersGalore", ReactAdminAsync);
+        var antd = RecordAsync($"{site.Url}/antd-pro/list", "SearchTable", AntDesignProAsync);
+        var kendo = RecordAsync($"{site.Url}/kendo-ui/grid", "KendoDemos", KendoAsync);
+        await Task.WhenAll(reactAdmin, antd, kendo);
+        var (posters, antdRun, kendoRun) = (await reactAdmin, await antd, await kendo);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(antdRun.Actions.Where(action => action.Widget == "switch").Select(action => action.Kind),
+                Is.EqualTo(new[] { "check", "uncheck", "check" }), "a switch React renders after the click is told as it then shows");
+            Assert.That(kendoRun.Actions.Where(action => action.Widget == "switch").Select(action => action.Kind),
+                Is.EqualTo(new[] { "check" }), "and one its own handler turns");
+            Assert.That(posters.Flow.Code, Does.Contain("FillAsync(Configuration.CustomerSearch)")
+                .And.Contain("GetByRole(AriaRole.Option, new() { Name = Configuration.Customer, Exact = true })"),
+                "an autocomplete types what the person typed, then takes the option");
+            Assert.That(posters.Flow.Yaml + kendoRun.Flow.Yaml, Does.Contain("CustomerSearch: 'Hipol'").And.Contain("Customer: 'Hipolito Bergnaum'")
+                .And.Contain("SportSearch: 'Bask'").And.Contain("Sport: 'Basketball'"), "the letters typed, never the suggestion completed in place");
+            Assert.That(posters.Flow.Code, Does.Contain("GetByRole(AriaRole.Link, new() { NameRegex = new Regex(\"^Black & White 14\\\\.4x17\\\\.88\") })")
+                .And.Not.Contain("US$"), "a poster's link by its title and size, never by the price the demo makes anew on each load");
+            Assert.That(antdRun.Flow.Code, Does.Contain(".GetByText(Configuration.Status, new() { Exact = true })").And.Not.Contain("[object Object]"),
+                "an option of no role is a choice of its select, found by its text among the options that show");
+            Assert.That(antdRun.Flow.Yaml, Does.Contain("Status: 'running'").And.Contain("RuleName: 'Nightly sync'")
+                .And.Contain("FixedHeader").And.Contain("SplitMenus").And.Not.Contain("Root"), "the choice a setting, each switch by its label");
+            Assert.That(kendoRun.Flow.Code + kendoRun.Flow.Yaml, Does.Contain("GetByRole(AriaRole.Dialog, new() { Name = \"Edit\" })")
+                .And.Contain("FebruaryPdf").And.Contain("MarchPdf").And.Not.Contain("Treeview"), "Kendo's window by its title, a tree's checkbox by its item");
+            Assert.That(antdRun.Flow.Code, Does.Match(@"\.HoverAsync\(\);\s+await page\.GetByRole\(AriaRole\.Menuitem, new\(\) \{ Name = ""Account Settings"""),
+                "a menu that opened on hover is hovered open");
+            Assert.That(antdRun.Flow.Code, Does.Match(@"time\.FillAsync\(Configuration\.Time\);\s+await time\.PressAsync\(""Enter""\)"),
+                "a date its picker keeps once OK commits it is committed by Enter");
+            Assert.That(kendoRun.Flow.Code, Does.Not.Match(@"id=\\?[""']_?[0-9a-f]{8}-").And.Contain("DragToAsync(").And.Not.Contain("Home Ec on Tuesday"),
+                "no GUID; the event dropped on the slot it went to, as it was before the drop");
+            foreach (var run in new[] { posters, antdRun, kendoRun })
+                Assert.That(run.Report.Outcome, Is.EqualTo(TestOutcome.Passed), $"{run.Report.Failure?.Headline ?? run.Report.Problem}\n{run.Flow.Code}");
+        });
+    }
+
+    private sealed record SiteRun(IReadOnlyList<CapturedAction> Actions, FlowPlan Plan, GeneratedFlow Flow, TestReport Report);
+
+    // Records on the page as the person does, then plans, writes and tests the flow on a fresh page, as the panel does.
+    private static async Task<SiteRun> RecordAsync(string url, string name, Func<IPage, Person, Task> person)
+    {
+        var session = await StartAsync(url);
+        try
+        {
+            await person(session.Page, new Person(session.Page));
+            await Task.Delay(500);
+            var recording = session.Build();
+            var plan = FlowPlanner.Plan(recording, name);
+            var flow = FlowWriter.Write(plan, "Flows");
+            TestContext.Out.WriteLine(flow.Code);
+            TestContext.Out.WriteLine(flow.Yaml);
+            foreach (var suggestion in plan.Suggestions) TestContext.Out.WriteLine($"suggests: {suggestion.Text}");
+            return new SiteRun(recording.Actions, plan, flow, await TestAsync(session, url));
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
+    }
+
+    // react-admin: logs in as demo / demo, finds a customer's order by the first letters of the name, deletes it, then
+    // changes a poster's price.
+    private static async Task ReactAdminAsync(IPage page, Person person)
+    {
+        await person.TypeAsync(page.Locator("#username"), "demo");
+        await person.TypeAsync(page.Locator("#password"), "demo");
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Menuitem, new() { Name = "Orders" }));
+        await person.TypeAsync(page.Locator("#customer"), "Hipol");
+        await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Hipolito Bergnaum" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Row).Filter(new() { HasText = "K7ZM4A" }).GetByRole(AriaRole.Checkbox));
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Delete" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Menuitem, new() { Name = "Posters" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Link).Filter(new() { HasText = "Black & White" }));
+        await person.TypeAsync(page.Locator("#price"), "16.90", replace: true);
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Save" }));
+        await page.GetByRole(AriaRole.Alert).Filter(new() { HasText = "Poster updated" }).WaitForAsync();
+    }
+
+    // Ant Design Pro: the settings' switches, turned on, off again, and another on.
+    private static async Task AntDesignProAsync(IPage page, Person person)
+    {
+        ILocator Switch(string label) => page.Locator("li.ant-list-item").Filter(new() { HasText = label }).GetByRole(AriaRole.Switch);
+        await person.ClickAsync(Switch("Fixed Header"));
+        await person.ClickAsync(Switch("Fixed Header"));
+        await person.ClickAsync(Switch("Split Menus"));
+        // The Status select: its list opens in a portal, its options of no role, each titled "[object Object]".
+        await person.ClickAsync(page.Locator("#status").Locator(".."));
+        await person.ClickAsync(page.Locator(".ant-select-item-option:visible").Filter(new() { HasText = "running" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Query" }));
+        // The avatar's menu opens as the pointer rests on it.
+        await Task.Delay(1100);
+        await person.MoveAsync(page.Locator("#avatar"));
+        await Task.Delay(300);
+        await person.ClickAsync(page.GetByRole(AriaRole.Menuitem, new() { Name = "Account Settings" }));
+        // A new rule, its starting time picked in the calendar and kept by OK.
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "plus New" }));
+        await person.TypeAsync(page.Locator("#rule-name"), "Nightly sync");
+        await person.ClickAsync(page.Locator("#time"));
+        await person.ClickAsync(page.Locator("td[title='2026-11-17']"));
+        await person.ClickAsync(page.Locator(".ant-picker-footer button"));
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Finish" }));
+        await page.GetByRole(AriaRole.Alert).Filter(new() { HasText = "Added" }).WaitForAsync();
+    }
+
+    // Kendo UI: a product's price changed in its popup, two deleted through the browser's confirm, the switch turned on.
+    private static async Task KendoAsync(IPage page, Person person)
+    {
+        ILocator Row(string product) => page.GetByRole(AriaRole.Row).Filter(new() { HasText = product });
+        page.Dialog += (_, dialog) => dialog.AcceptAsync();
+        await person.ClickAsync(Row("Chang").GetByRole(AriaRole.Button, new() { Name = "Edit" }));
+        await person.TypeAsync(page.Locator("#UnitPrice"), "12.5", replace: true);
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Update" }));
+        await person.ClickAsync(Row("Tofu").GetByRole(AriaRole.Button, new() { Name = "Delete" }));
+        await person.ClickAsync(Row("Konbu").GetByRole(AriaRole.Button, new() { Name = "Delete" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Switch, new() { Name = "All day" }));
+        // Two files of the tree ticked, by checkboxes whose ids are new GUIDs on each load.
+        foreach (var file in new[] { "February.pdf", "March.pdf" })
+            await person.ClickAsync(page.GetByRole(AriaRole.Treeitem, new() { Name = file }).GetByRole(AriaRole.Checkbox));
+        // The event dragged from Monday 10:00 to Tuesday 9:00.
+        await person.DragToAsync(page.Locator(".k-event"), page.Locator(".k-slot[data-day^=Tuesday][data-hour='9:00 AM']"));
+        // The combobox completes "Bask" in place; the person takes the option.
+        await person.TypeAsync(page.Locator("#sport"), "Bask");
+        await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Basketball" }));
+    }
+
+    [Test]
+    public void RawRecordings_OfReactAdminAntDesignProAndKendo_GiveFlowsThatReplay()
+    {
+        // react-admin's demo logs in as demo, with the password demo: typed live, though no file of the recorder keeps it.
+        var customers = Read("ReactAdminCustomers");
+        foreach (var typed in customers.Actions.Where(action => action.Target?.Type == "password")) (typed.Value, typed.Raw) = ("demo", "demo");
+        var customersFlow = FlowCodeGenerator.Generate(customers, "CustomersFilterEdit", "Flows");
+        var widgets = FlowCodeGenerator.Generate(Read("KendoWidgets"), "KendoWidgets", "Flows");
+        var orders = FlowPlanner.Plan(Read("ReactAdminOrders"), "OrdersAndReviews");
+        var rules = FlowCodeGenerator.Generate(Read("AntdProTable"), "AntdProTable", "Flows");
+        var poster = FlowCodeGenerator.Generate(Read("ReactAdminPosters"), "Posters", "Flows");
+        var steps = FlowCodeGenerator.Generate(Read("AntdProStepForm"), "AntdProStepForm", "Flows");
+        var scheduler = FlowCodeGenerator.Generate(Read("KendoScheduler"), "KendoScheduler", "Flows");
+        var search = FlowCodeGenerator.Generate(Read("AntdProSearch"), "AntdProSearch", "Flows");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(customersFlow.Code, Does.Contain("Locator(\"[name='password']\").FillAsync(Configuration.Password)")
+                .And.Not.Contain("[name='password']\").FillAsync(Configuration.Username)"),
+                "a password the user name equals is the password's setting");
+            Assert.That(customersFlow.Yaml, Does.Contain("Username: 'demo'").And.Contain("Password: '${PASSWORD}'").And.Not.Contain("Password: 'demo'"),
+                "the YAML reads it from the environment");
+            Assert.That((customers.LogsIn, Read("ReactAdminOrders").LogsIn), Is.EqualTo((true, false)),
+                "a recording that logs in first is replayed, tested and continued signed out, as it was recorded");
+            Assert.That(Regex.Count(widgets.Code, @"page\.Dialog \+= AcceptBrowserDialog;"), Is.EqualTo(1),
+                "two deletes each confirmed in the browser: one handler accepts both, as a second would accept the same dialog again");
+            Assert.That(widgets.Code, Does.Contain("page.Dialog -= AcceptBrowserDialog;").And.Not.Contain("browserDialog.AcceptAsync()"),
+                "and the flow has it once however often it runs on the page");
+            Assert.That(rules.Code, Does.Not.Contain("GetByRole(AriaRole.Row, new() { Name =").And.Not.Contain("5740000"),
+                "a row is never found by all it says, its random counts and statuses with it");
+            Assert.That(widgets.Code + scheduler.Code + steps.Code, Does.Not.Contain("_9b2b62df").And.Not.Contain("\\\\36 d9a47e9").And.Not.Contain("rc-tabs-0"),
+                "no id made anew on each load or render: a GUID, one CSS escapes, one a library numbers");
+            Assert.That(customersFlow.Code, Does.Contain("SignInAsync").And.Contain("OpenLeonieAbernathyAsync")
+                .And.Contain("GetByRole(AriaRole.Link, new() { NameRegex = new Regex(\"^(?:L )?Leonie Abernathy$\") })")
+                .And.Contain("GetByRole(AriaRole.Link, new() { Name = $\"{Configuration.FirstName} Abernathy\" })").And.Not.Contain("OpenLLeonie"),
+                "a person's link without the initial of their avatar, in its name or its step's");
+            Assert.That(customersFlow.Yaml, Does.Contain("Search: ''").And.Not.Contain("Q:"), "a field named q by what it says");
+            Assert.That(customersFlow.Code, Does.Not.Contain("goes to /react-admin-demo/#/[id]"), "a sort changes the query, and goes to no other page");
+            Assert.That(customersFlow.Code, Does.Not.Contain("UNDO").And.Not.Contain("ToHaveURLAsync(new Regex(\"/react-admin-demo/#/customers\\\\?\"))")
+                .And.Contain("GetByText(\"Customers\")).ToBeVisibleAsync(); // check"),
+                "no message's button, no address the page was at already, no element checked to have the text it is found by");
+            Assert.That(widgets.Code, Does.Not.Contain("\"Loading...\"").And.Contain("GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.RowKey3 })\n" +
+                "            .GetByRole(AriaRole.Gridcell, new() { Name = Configuration.Value, Exact = true })).ToBeVisibleAsync(); // check"),
+                "no message that passes by itself; a check reads the settings where it looks as what it expects");
+            Assert.That(widgets.Code, Does.Contain("await AddAsync(page)").And.Not.Contain("OpenEditAgain").And.Not.Contain("DemoRunner")
+                .And.Not.Contain("TreeviewTvActive").And.Not.Contain("JQueryGridPopupEditing"),
+                "a dialog another button opened before by what its own button does, and no name of a page's container or long heading");
+            Assert.That(scheduler.Code, Does.Contain("OpenNewEventAsync").And.Contain("GetByRole(AriaRole.Dialog, new() { Name = \"New Event\" })")
+                .And.Not.Contain("New Event Close"), "a dialog's title without its Close button");
+            Assert.That(rules.Code, Does.Contain("OpenTradeCodeAsync").And.Not.Contain("ConfigurationSubscribeToAlerts"), "a drawer by the words of its title before its number");
+            Assert.That(Read("AntdProProfile") is var profile ? FlowCodeGenerator.Generate(profile, "AntdProProfile", "Flows").Yaml : "",
+                Does.Contain("FixedHeader:").And.Contain("SplitMenus:").And.Not.Contain("Value"), "a switch by its list item's words");
+            Assert.That(orders.Suggestions.Select(suggestion => suggestion.Text), Has.Some.Contains("“Français” is chosen, then “English” again")
+                .And.Some.Contains("“Toggle light/dark mode” is clicked twice in a row").And.Some.Contains("ticked and unticked again"),
+                "what was done and undone is suggested away, never left out silently");
+            Assert.That(widgets.Code, Does.Not.Contain("Discontinued2").And.Not.Contain("FebruaryPdf2"), "a checkbox ticked again is the state it ends in");
+            Assert.That(widgets.Code, Does.Contain("var field = page.GetByRole(AriaRole.Combobox);\n        await field.ClickAsync();\n" +
+                "        await page.GetByRole(AriaRole.Searchbox, new() { Name = \"Filter\", Exact = true })"),
+                "a list opened and closed with Escape is left out; one opened and filtered is chosen in, never opened again");
+            Assert.That(customersFlow.Code, Does.Not.Contain("GroupsShown").And.Contain("/// <summary>As the field takes it, whatever the browser shows: yyyy-MM-dd.</summary>"),
+                "a multi-select shows the record's other choices, never a setting; a date says its format");
+            Assert.That(poster.Code, Does.Not.Contain("GotoAsync"), "no address gone to after a try, right before a menu's item that goes elsewhere");
+            Assert.That(scheduler.Checks.Select(check => check.Message), Has.Some.Contains("only an id made anew on each load finds was left out"),
+                "a click only such an id finds is left out, and said");
+            Assert.That(steps.Code, Does.Contain("GetByRole(AriaRole.Button, new() { NameRegex = new Regex(\"^(?:loading )?Next$\") })")
+                .And.Not.Contain("LoadingNext").And.Not.Contain("Name = \"loading Next\""),
+                "a button found with or without the spinner it showed, its step named after what it says");
+            Assert.That(search.Code, Does.Contain("NameRegex = new Regex(\"^(?:English)?English$\")").And.Not.Contain("\"EnglishEnglish\""),
+                "a menu's item whose flag says its name again");
+            Assert.That(rules.Code, Does.Not.Contain("{Configuration.Name}9").And.Not.Contain("GetByTitle(\"[object Object]\")"),
+                "a setting only where the text is its value, and never a title no person wrote");
+            Assert.That(poster.Checks.Select(check => check.Message), Has.Some.Contains("may change from run to run (\"Black & White 14.4x17.88, US$15.57\")"),
+                "a name with a price a recording of an older recorder kept is one to check by hand");
         });
     }
 
@@ -341,6 +553,17 @@ public class RealSiteRecordingTests
             var box = await element.BoundingBoxAsync() ?? throw new InvalidOperationException("The element does not show.");
             await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height - fromBottom, new() { Steps = 3 });
             await page.Mouse.DownAsync();
+            await page.Mouse.UpAsync();
+            await Task.Delay(300);
+        }
+
+        // Presses on one element, moves to the other in steps, and lets go there.
+        public async Task DragToAsync(ILocator from, ILocator to)
+        {
+            await MoveAsync(from);
+            await page.Mouse.DownAsync();
+            var box = await to.BoundingBoxAsync() ?? throw new InvalidOperationException("The target does not show.");
+            await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height / 2, new() { Steps = 8 });
             await page.Mouse.UpAsync();
             await Task.Delay(300);
         }

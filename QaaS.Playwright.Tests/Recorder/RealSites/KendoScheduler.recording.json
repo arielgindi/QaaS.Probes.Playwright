@@ -1,0 +1,1542 @@
+{
+  "startUrl": "https://demos.telerik.com/kendo-ui/scheduler/index",
+  "actions": [
+    {
+      "id": "enh1do-1",
+      "t": 1793740848319,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Month",
+        "section": "Kendo UI for jQuery Scheduler Overview",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Month",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Month"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "Kendo UI for jQuery Scheduler Overview"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Month",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Kendo UI for jQuery Scheduler Overview"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='scheduler']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Month",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "scheduler"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Month",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Month\" })",
+            "selector": "internal:role=button[name=\"Month\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-1",
+          "sinceAction": 13,
+          "t": 1793740848332
+        }
+      ]
+    },
+    {
+      "id": "enh1do-3",
+      "t": 1793740852154,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "New Event",
+        "section": "Kendo UI for jQuery Scheduler Overview",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "New Event",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New Event"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "Kendo UI for jQuery Scheduler Overview"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "New Event",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Kendo UI for jQuery Scheduler Overview"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='scheduler']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "New Event",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "scheduler"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "New Event",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"New Event\" })",
+            "selector": "internal:role=button[name=\"New Event\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-3",
+          "sinceAction": 16,
+          "t": 1793740852170
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "enh1do-3",
+          "sinceAction": 142,
+          "t": 1793740852296,
+          "dialog": {
+            "title": "New Event Close",
+            "raw": "New Event Close",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "enh1do-4",
+      "t": 1793740859327,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Team sync",
+      "raw": "Team sync",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "title",
+        "name": "title",
+        "text": "Title",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "[name='title']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "title"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "[id='title']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "title"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Title",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Title"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "title",
+                "text": "Title"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Title"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Title\" })",
+            "selector": "internal:role=textbox[name=\"Title\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "enh1do-5",
+      "t": 1793740860127,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "switch",
+        "text": "All day",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "switch",
+                "name": "All day",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "All day"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "All day"
+              },
+              {
+                "m": "role",
+                "role": "switch",
+                "name": "All day",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "All day"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Switch, new() { Name = \"All day\" })",
+            "selector": "internal:role=switch[name=\"All day\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-5",
+          "sinceAction": 3,
+          "t": 1793740860130
+        }
+      ]
+    },
+    {
+      "id": "rwaw0g-1",
+      "t": 1793741049844,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "switch",
+        "text": "All day",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "switch",
+                "name": "All day",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "All day"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "All day"
+              },
+              {
+                "m": "role",
+                "role": "switch",
+                "name": "All day",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "All day"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "[id='b4822f5f-c956-46b5-8508-e9de69b2e370_k-dialog-content']"
+              },
+              {
+                "m": "role",
+                "role": "switch",
+                "name": "All day",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "b4822f5f-c956-46b5-8508-e9de69b2e370_k-dialog-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Switch, new() { Name = \"All day\" })",
+            "selector": "internal:role=switch[name=\"All day\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "rwaw0g-1",
+          "sinceAction": 24,
+          "t": 1793741049868
+        }
+      ]
+    },
+    {
+      "id": "enh1do-7",
+      "t": 1793740862533,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "div",
+        "id": "6d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "[id='6d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "6d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"[id=\\\"\\\\36 d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content\\\"]\")",
+            "selector": "[id=\"\\36 d9a47e9-59a2-4181-b023-d9bf611ee9b4_k-dialog-content\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-7",
+          "sinceAction": 6,
+          "t": 1793740862539
+        }
+      ]
+    },
+    {
+      "id": "enh1do-8",
+      "t": 1793740870022,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Select date",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Select date"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date"
+              }
+            ],
+            "count": 2,
+            "text": "Select date"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "All day"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date"
+              }
+            ],
+            "count": 2,
+            "text": "All day"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Select date\" }).First",
+            "selector": "internal:role=button[name=\"Select date\"i] >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-8",
+          "sinceAction": 30,
+          "t": 1793740870052
+        }
+      ]
+    },
+    {
+      "id": "enh1do-9",
+      "t": 1793740876750,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "attendee",
+        "label": "attendee",
+        "groupLabel": "attendee",
+        "placeholder": "Jason",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^attendee"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "has",
+                "text": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"attendee\" })",
+            "selector": "internal:role=combobox[name=\"attendee\"i]"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "span",
+          "id": "1993e4e6-aaf2-487c-978d-ed38fdbc2bbe",
+          "text": "Jason",
+          "groupLabel": "attendee",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "dialog",
+                  "name": "New Event Close"
+                },
+                {
+                  "m": "css",
+                  "css": "[id='1993e4e6-aaf2-487c-978d-ed38fdbc2bbe']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "1993e4e6-aaf2-487c-978d-ed38fdbc2bbe"
+            },
+            {
+              "kind": "group",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "dialog",
+                  "name": "New Event Close"
+                },
+                {
+                  "m": "css",
+                  "css": "div.k-form-field"
+                },
+                {
+                  "m": "has",
+                  "text": "attendee"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "attendee"
+            },
+            {
+              "kind": "item",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "dialog",
+                  "name": "New Event Close"
+                },
+                {
+                  "m": "css",
+                  "css": "div.k-form-field"
+                },
+                {
+                  "m": "filter",
+                  "hasText": "attendee"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "attendee"
+            },
+            {
+              "kind": "text",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "dialog",
+                  "name": "New Event Close"
+                },
+                {
+                  "m": "text",
+                  "text": "Jason"
+                }
+              ],
+              "count": 2,
+              "text": "Jason"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"attendee\" }).Locator(\"span\").First",
+              "selector": "internal:role=combobox[name=\"attendee\"i] >> span >> nth=0"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-9",
+          "sinceAction": 21,
+          "t": 1793740876771
+        }
+      ]
+    },
+    {
+      "id": "enh1do-10",
+      "t": 1793740881438,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "Maddie",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "attendee",
+        "label": "attendee",
+        "groupLabel": "attendee",
+        "placeholder": "Jason",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^attendee"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "has",
+                "text": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"attendee\" })",
+            "selector": "internal:role=combobox[name=\"attendee\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "attendee",
+        "label": "attendee",
+        "groupLabel": "attendee",
+        "placeholder": "Jason",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^attendee"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "has",
+                "text": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "attendee"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "attendee",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "attendee"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"attendee\" })",
+            "selector": "internal:role=combobox[name=\"attendee\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Maddie",
+        "label": "attendee",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Maddie",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Maddie"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Maddie\" })",
+            "selector": "internal:role=option[name=\"Maddie\"i]"
+          }
+        ]
+      },
+      "opener": "enh1do-9",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-10",
+          "sinceAction": 9,
+          "t": 1793740881447
+        },
+        {
+          "kind": "settled",
+          "actionId": "enh1do-10",
+          "sinceAction": 152,
+          "t": 1793740881590,
+          "value": "Maddie",
+          "raw": "Maddie",
+          "multi": false
+        }
+      ]
+    },
+    {
+      "id": "enh1do-11",
+      "t": 1793740882770,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "New Event Close",
+        "raw": "New Event Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "New Event Close"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Save",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Event Close"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-11",
+          "sinceAction": 1,
+          "t": 1793740882771
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "enh1do-11",
+          "sinceAction": 90,
+          "t": 1793740882860,
+          "dialog": {
+            "title": "New Event Close",
+            "raw": "New Event Close",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "enh1do-12",
+      "t": 1793740889898,
+      "kind": "drag",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "div",
+        "role": "button",
+        "text": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM",
+        "section": "Spanish",
+        "interactive": true,
+        "item": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.k-scheduler-content"
+              },
+              {
+                "m": "has",
+                "text": "Spanish"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Spanish"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='scheduler']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "scheduler"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Monday, October 06, 2025 at 10:00 AM to 11:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Home Ec on Monday, October 06\" })",
+            "selector": "internal:role=button[name=\"Home Ec on Monday, October 06\"i]"
+          }
+        ]
+      },
+      "to": {
+        "tag": "div",
+        "role": "button",
+        "text": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM",
+        "section": "Art",
+        "interactive": true,
+        "item": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.k-scheduler-content"
+              },
+              {
+                "m": "has",
+                "text": "Art"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Art"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='scheduler']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "scheduler"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Home Ec on Tuesday, October 07, 2025 at 9:00 AM to 10:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Home Ec on Tuesday, October\" })",
+            "selector": "internal:role=button[name=\"Home Ec on Tuesday, October\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-12",
+          "sinceAction": 4,
+          "t": 1793740889902
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "enh1do-12",
+          "sinceAction": 1279,
+          "t": 1793740891177,
+          "dialog": {
+            "title": "Edit Recurring Item Close",
+            "raw": "Edit Recurring Item Close",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "enh1do-13",
+      "t": 1793740896513,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/scheduler/index",
+      "dialog": {
+        "title": "Edit Recurring Item Close",
+        "raw": "Edit Recurring Item Close",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit Recurring Item Close"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Edit current occurrence",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit Recurring Item Close"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit current occurrence",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Edit current occurrence"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Edit current occurrence\" })",
+            "selector": "internal:role=button[name=\"Edit current occurrence\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "enh1do-13",
+          "sinceAction": 8,
+          "t": 1793740896521
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "enh1do-13",
+          "sinceAction": 135,
+          "t": 1793740896648,
+          "dialog": {
+            "title": "Edit Recurring Item Close",
+            "raw": "Edit Recurring Item Close",
+            "titleMatches": true
+          }
+        }
+      ]
+    }
+  ]
+}

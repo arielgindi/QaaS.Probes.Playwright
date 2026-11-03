@@ -103,6 +103,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
+            session.PaletteAsked += () => panel._commands.Writer.TryWrite(new PanelCommand("palette", null, null, null));
             session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
             panel._worker = Task.Run(panel.RunAsync);
             // In the background, so the first test compiles as fast as the next.
@@ -118,6 +119,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
     /// <summary>The flow's test runs, started from the panel.</summary>
     public FlowTester Tester => _tester;
+
+    /// <summary>Saving writes beside the flow's file rather than replacing it: a flow continued left steps out.</summary>
+    public void KeepFlowFile() => Request = Request with { Replaces = null };
 
     /// <summary>Says <paramref name="banner"/> about the replay of the recording continued, under the top bar; null, nothing.</summary>
     public void ShowBanner(string? banner)
@@ -166,7 +170,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                     if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
                     else if (IsPartCommand(command)) await PartAsync(command);
                     else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
-                    else Carry(command);
+                    else await CarryAsync(command);
                 }
 
                 // A highlight replaces the one before, so only the last matters.
@@ -204,7 +208,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         }
     }
 
-    private void Carry(PanelCommand command)
+    private async Task CarryAsync(PanelCommand command)
     {
         if (command.Type == "refresh") _refresh = true;
         // Once saving, the recording is what it is.
@@ -220,9 +224,14 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             case "choose" when command.Action is { } action:
                 _session.Log.Choose(action, command.Candidate);
                 break;
+            case "palette":
+                // Ctrl+K in the app: the panel in front, its commands open.
+                await _page.BringToFrontAsync();
+                await _page.EvaluateAsync("() => window.__qaasPanelPalette?.()");
+                break;
             case "undo" when _shown is { } shown:
                 _session.Log.Undo(shown.Undo);
-                Undone();
+                await UndoneAsync();
                 break;
             case "delete" when command.Action is { } id && _shown is { } shown:
                 _session.Log.Remove(shown.Sources.GetValueOrDefault(id) ?? [id], $"Restore {Called(shown, id)}");
@@ -480,6 +489,14 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         {
             _namespace ??= ProjectNamespace.Of(Request.OutputDir);
             var recording = _session.Build();
+            // An element picked in the Elements view on a page the app has left is no element of the page now: what it
+            // offers ("Use for") would act on what is not there.
+            if (_picked is { Url: { } pickedAt, Gone: false } stale && _session.PageNamed(stale.Page) is { } at && at.Url != pickedAt)
+                (_picked, _elementStep) = (null, null);
+            // A test that failed at a step the flow has no more, deleted or left out since, says nothing of the flow now.
+            if (_tester.Report is { Phase: TestPhase.Done, Outcome: TestOutcome.Failed, Failure.Action: { } failedAt }
+                && recording.Actions.All(action => action.Id != failedAt))
+                _tester.Clear();
             var fresh = _session.Log.Fresh(recording);
             _shown = PanelSnapshot.Of(recording, Request, _namespace, Status(), _error, fresh);
             // Told once: the panel says it, and the next state is without it.

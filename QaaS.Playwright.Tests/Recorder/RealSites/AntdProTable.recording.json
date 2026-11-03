@@ -1,0 +1,3293 @@
+{
+  "startUrl": "https://preview.pro.ant.design/list/table-list",
+  "actions": [
+    {
+      "id": "wv86an-1",
+      "t": 1793740611950,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "TradeCode 9",
+      "raw": "TradeCode 9",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name",
+        "text": "Rule Name",
+        "label": "Rule Name",
+        "groupLabel": "Rule Name",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name",
+                "exact": true
+              }
+            ],
+            "text": "Rule Name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Rule Name :\" })",
+            "selector": "internal:role=textbox[name=\"Rule Name :\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-2",
+      "t": 1793740613278,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Query",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Query",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Query"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Query\" })",
+            "selector": "internal:role=button[name=\"Query\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-2",
+          "sinceAction": 2,
+          "t": 1793740613280
+        }
+      ]
+    },
+    {
+      "id": "wv86an-3",
+      "t": 1793740615704,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "th",
+        "role": "columnheader",
+        "text": "Number of Service Calls",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "columnheader",
+                "name": "Number of Service Calls",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Number of Service Calls"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"Number of Service Calls\" })",
+            "selector": "internal:role=columnheader[name=\"Number of Service Calls\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-3",
+          "sinceAction": 29,
+          "t": 1793740615733
+        }
+      ]
+    },
+    {
+      "id": "wv86an-4",
+      "t": 1793740617127,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "th",
+        "role": "columnheader",
+        "text": "Number of Service Calls",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "columnheader",
+                "name": "Number of Service Calls",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Number of Service Calls"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"Number of Service Calls\" })",
+            "selector": "internal:role=columnheader[name=\"Number of Service Calls\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-4",
+          "sinceAction": 29,
+          "t": 1793740617156
+        }
+      ]
+    },
+    {
+      "id": "wv86an-5",
+      "t": 1793740618538,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Expand",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Expand"
+              },
+              {
+                "m": "css",
+                "css": "a.ant-pro-query-filter-collapse-button"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Expand"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Expand"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Expand"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Expand\")",
+            "selector": "internal:text=\"Expand\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-5",
+          "sinceAction": 14,
+          "t": 1793740618552
+        }
+      ]
+    },
+    {
+      "id": "wv86an-6",
+      "t": 1793740625847,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "status",
+        "text": "Status",
+        "label": "Status",
+        "groupLabel": "Status",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='status']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "status"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Status",
+                "exact": true
+              }
+            ],
+            "text": "Status"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Status"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Status"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Status"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Status"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Status"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "Please select"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Status"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Status :\" })",
+            "selector": "internal:role=combobox[name=\"Status :\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-6",
+          "sinceAction": 6,
+          "t": 1793740625853
+        }
+      ]
+    },
+    {
+      "id": "wv86an-7",
+      "t": 1793740631808,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "[object Object]",
+        "groupLabel": "default",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "default"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 4,
+            "text": "default"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "running"
+              }
+            ],
+            "count": 4,
+            "text": "running"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"[object Object]\").Nth(1)",
+            "selector": "internal:attr=[title=\"[object Object]\"i] >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-7",
+          "sinceAction": 8,
+          "t": 1793740631816
+        }
+      ]
+    },
+    {
+      "id": "wv86an-8",
+      "t": 1793740633613,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "2026-01-5",
+      "raw": "2026-01-5",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "text": "Please select",
+        "groupLabel": "Last Scheduled at",
+        "placeholder": "Please select",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Last Scheduled at"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last Scheduled at"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "Last Scheduled at"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last Scheduled at"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Please select\" })",
+            "selector": "internal:role=textbox[name=\"Please select\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-9",
+      "t": 1793740634042,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "text": "Please select",
+        "groupLabel": "Last Scheduled at",
+        "placeholder": "Please select",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Last Scheduled at"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last Scheduled at"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "Last Scheduled at"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please select",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last Scheduled at"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Please select\" })",
+            "selector": "internal:role=textbox[name=\"Please select\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-10",
+      "t": 1793740635362,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Query",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Query",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Query"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Query\" })",
+            "selector": "internal:role=button[name=\"Query\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-10",
+          "sinceAction": 0,
+          "t": 1793740635362
+        }
+      ]
+    },
+    {
+      "id": "wv86an-11",
+      "t": 1793740644335,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Reset",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Reset",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Reset"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Reset\" })",
+            "selector": "internal:role=button[name=\"Reset\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-11",
+          "sinceAction": 22,
+          "t": 1793740644357
+        }
+      ]
+    },
+    {
+      "id": "wv86an-12",
+      "t": 1793740645743,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Collapse",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Collapse"
+              },
+              {
+                "m": "css",
+                "css": "a.ant-pro-query-filter-collapse-button"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Collapse"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Collapse"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Collapse"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Collapse\")",
+            "selector": "internal:text=\"Collapse\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-12",
+          "sinceAction": 12,
+          "t": 1793740645755
+        }
+      ]
+    },
+    {
+      "id": "wv86an-13",
+      "t": 1793740647154,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "plus New",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus New",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "plus New"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"plus New\" })",
+            "selector": "internal:role=button[name=\"plus New\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-13",
+          "sinceAction": 14,
+          "t": 1793740647168
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "wv86an-13",
+          "sinceAction": 23,
+          "t": 1793740647177,
+          "dialog": {
+            "title": "New Rule",
+            "raw": "New Rule",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-14",
+      "t": 1793740652566,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "tmp",
+      "raw": "tmp",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "New Rule",
+        "raw": "New Rule",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New Rule"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "css",
+                "css": "[id='name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog, new() { Name = \"New Rule\" }).Locator(\"#name\")",
+            "selector": "internal:role=dialog[name=\"New Rule\"i] >> #name"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-15",
+      "t": 1793740652712,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "New Rule",
+        "raw": "New Rule",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New Rule"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "css",
+                "css": "[id='name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog, new() { Name = \"New Rule\" }).Locator(\"#name\")",
+            "selector": "internal:role=dialog[name=\"New Rule\"i] >> #name"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "wv86an-15",
+          "sinceAction": 269,
+          "t": 1793740652956,
+          "dialog": {
+            "title": "New Rule",
+            "raw": "New Rule",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-16",
+      "t": 1793740654011,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "plus New",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus New",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "plus New"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"plus New\" })",
+            "selector": "internal:role=button[name=\"plus New\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-16",
+          "sinceAction": 6,
+          "t": 1793740654017
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "wv86an-16",
+          "sinceAction": 48,
+          "t": 1793740654059,
+          "dialog": {
+            "title": "New Rule",
+            "raw": "New Rule",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-17",
+      "t": 1793740655523,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "tmpNightly sync",
+      "raw": "tmpNightly sync",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "New Rule",
+        "raw": "New Rule",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New Rule"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "css",
+                "css": "[id='name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog, new() { Name = \"New Rule\" }).Locator(\"#name\")",
+            "selector": "internal:role=dialog[name=\"New Rule\"i] >> #name"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-18",
+      "t": 1793740656420,
+      "kind": "fill",
+      "page": "page",
+      "widget": "textarea",
+      "value": "Runs every night",
+      "raw": "Runs every night",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "New Rule",
+        "raw": "New Rule",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New Rule"
+      ],
+      "target": {
+        "tag": "textarea",
+        "role": "textbox",
+        "id": "desc",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "css",
+                "css": "[id='desc']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "desc"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 2,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"textarea\")",
+            "selector": "textarea"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-19",
+      "t": 1793740657880,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "New Rule",
+        "raw": "New Rule",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New Rule"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "OK",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New Rule"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "OK",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "OK"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"OK\" })",
+            "selector": "internal:role=button[name=\"OK\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-19",
+          "sinceAction": 2,
+          "t": 1793740657882
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "wv86an-19",
+          "sinceAction": 376,
+          "t": 1793740658256,
+          "dialog": {
+            "title": "New Rule",
+            "raw": "New Rule",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-20",
+      "t": 1793740665698,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "on",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "TradeCode 98",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 98"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 这是一段描述 5740000\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\"TradeCode 98 这是一段描述 5740000\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-20",
+          "sinceAction": 29,
+          "t": 1793740665727
+        }
+      ]
+    },
+    {
+      "id": "wv86an-21",
+      "t": 1793740666627,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "groupLabel": "abnormal",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "TradeCode 98",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 98"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "tbody.ant-table-tbody"
+              },
+              {
+                "m": "has",
+                "text": "abnormal"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "abnormal"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 这是一段描述 5740000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 98 这是一段描述 5740000\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "wv86an-22",
+      "t": 1793740667524,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "TradeCode 99",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 99"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "wv86an-23",
+      "t": 1793740668427,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "TradeCode 99",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 99"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "wv86an-24",
+      "t": 1793740676399,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "on",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "TradeCode 99",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 99"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-24",
+          "sinceAction": 23,
+          "t": 1793740676422
+        }
+      ]
+    },
+    {
+      "id": "wv86an-25",
+      "t": 1793740685581,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "2",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "listitem",
+                "name": "2",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "2"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.css-var-_r_2_"
+              },
+              {
+                "m": "filter",
+                "hasText": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "listitem",
+                "name": "2",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "title",
+                "text": "2"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "2"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem, new() { Name = \"2\" })",
+            "selector": "internal:role=listitem[name=\"2\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-25",
+          "sinceAction": 11,
+          "t": 1793740685592
+        }
+      ]
+    },
+    {
+      "id": "wv86an-26",
+      "t": 1793740687491,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "1",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "listitem",
+                "name": "1",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "1"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.css-var-_r_2_"
+              },
+              {
+                "m": "filter",
+                "hasText": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "listitem",
+                "name": "1",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "title",
+                "text": "1"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "1"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem, new() { Name = \"1\" })",
+            "selector": "internal:role=listitem[name=\"1\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-26",
+          "sinceAction": 8,
+          "t": 1793740687499
+        }
+      ]
+    },
+    {
+      "id": "wv86an-27",
+      "t": 1793740708830,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Clear",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Clear"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Clear"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Clear\")",
+            "selector": "internal:text=\"Clear\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-27",
+          "sinceAction": 33,
+          "t": 1793740708863
+        }
+      ]
+    },
+    {
+      "id": "wv86an-28",
+      "t": 1793740710251,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "TradeCode 99",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "TradeCode 99",
+          "header": "Rule Name"
+        },
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "td.ant-table-cell"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 99"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "TradeCode 99"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"TradeCode 99\")",
+            "selector": "internal:text=\"TradeCode 99\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-28",
+          "sinceAction": 31,
+          "t": 1793740710282
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "wv86an-28",
+          "sinceAction": 49,
+          "t": 1793740710300,
+          "dialog": {
+            "title": "TradeCode 99 Configuration Subscribe to alerts",
+            "raw": "",
+            "heading": "TradeCode 99 Configuration Subscribe to alerts",
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-29",
+      "t": 1793740716567,
+      "kind": "drag",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "TradeCode 99 Configuration Subscribe to alerts",
+        "raw": "",
+        "heading": "TradeCode 99 Configuration Subscribe to alerts",
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog).Locator(\"div\").Filter(new() { HasText = \"TradeCode 99ConfigurationSubscribe to alertsRule NameTradeCode 99Description\" }).First",
+            "selector": "internal:role=dialog >> div >> internal:has-text=\"TradeCode 99ConfigurationSubscribe to alertsRule NameTradeCode 99Description\"i >> nth=0"
+          }
+        ]
+      },
+      "to": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog).Locator(\"div\").Filter(new() { HasText = \"TradeCode 99ConfigurationSubscribe to alertsRule NameTradeCode 99Description\" }).First",
+            "selector": "internal:role=dialog >> div >> internal:has-text=\"TradeCode 99ConfigurationSubscribe to alertsRule NameTradeCode 99Description\"i >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "wv86an-30",
+      "t": 1793740717394,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "TradeCode 99 Configuration Subscribe to alerts",
+        "raw": "",
+        "heading": "TradeCode 99 Configuration Subscribe to alerts",
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts"
+      ],
+      "target": {
+        "tag": "a",
+        "text": "Configuration",
+        "groupLabel": "TradeCode 99",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-descriptions-header"
+              },
+              {
+                "m": "has",
+                "text": "TradeCode 99"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 2,
+            "text": "TradeCode 99"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog"
+              },
+              {
+                "m": "text",
+                "text": "Configuration"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Configuration"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog).GetByText(\"Configuration\")",
+            "selector": "internal:role=dialog >> internal:text=\"Configuration\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-30",
+          "sinceAction": 33,
+          "t": 1793740717427
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "wv86an-30",
+          "sinceAction": 66,
+          "t": 1793740717460,
+          "dialog": {
+            "title": "Rule configuration",
+            "raw": "Rule configuration",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-31",
+      "t": 1793740724529,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "TradeCode 99b",
+      "raw": "TradeCode 99b",
+      "final": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "0_name",
+        "text": "Rule Name",
+        "label": "Rule Name",
+        "groupLabel": "Rule Name",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[id='0_name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name",
+                "exact": true
+              }
+            ],
+            "text": "Rule Name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-form-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Rule Name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Rule Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"* Rule Name\" })",
+            "selector": "internal:role=textbox[name=\"* Rule Name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-32",
+      "t": 1793740725368,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Next",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Next\" })",
+            "selector": "internal:role=button[name=\"Next\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-32",
+          "sinceAction": 1,
+          "t": 1793740725369
+        }
+      ]
+    },
+    {
+      "id": "wv86an-33",
+      "t": 1793740731208,
+      "kind": "check",
+      "page": "page",
+      "widget": "radio",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "radio",
+        "type": "radio",
+        "name": "type",
+        "value": "1",
+        "text": "弱",
+        "label": "弱",
+        "groupLabel": "Rule Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[name='type']"
+              }
+            ],
+            "count": 2,
+            "value": "type"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[name='type'][value='1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "type"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "弱",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "弱"
+          },
+          {
+            "kind": "roleInGroup",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[role='radiogroup']:has([name='type'])"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "弱",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "弱"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Rule Type"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "弱",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Type"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"弱\" })",
+            "selector": "internal:role=radio[name=\"弱\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-33",
+          "sinceAction": 2,
+          "t": 1793740731210
+        }
+      ]
+    },
+    {
+      "id": "wv86an-34",
+      "t": 1793740731616,
+      "kind": "check",
+      "page": "page",
+      "widget": "radio",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "radio",
+        "type": "radio",
+        "name": "type",
+        "value": "0",
+        "text": "强",
+        "label": "强",
+        "groupLabel": "Rule Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[name='type']"
+              }
+            ],
+            "count": 2,
+            "value": "type"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[name='type'][value='0']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "type"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "强",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "强"
+          },
+          {
+            "kind": "roleInGroup",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[role='radiogroup']:has([name='type'])"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "强",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "强"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Rule Type"
+              },
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "强",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Rule Type"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"强\" })",
+            "selector": "internal:role=radio[name=\"强\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-34",
+          "sinceAction": 3,
+          "t": 1793740731619
+        }
+      ]
+    },
+    {
+      "id": "wv86an-35",
+      "t": 1793740732018,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "1_target",
+        "text": "Monitoring Object",
+        "label": "Monitoring Object",
+        "groupLabel": "Monitoring Object",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[id='1_target']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "1_target"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Monitoring Object",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Monitoring Object"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Monitoring Object"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Monitoring Object",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Monitoring Object"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Monitoring Object\" })",
+            "selector": "internal:role=combobox[name=\"Monitoring Object\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-35",
+          "sinceAction": 6,
+          "t": 1793740732024
+        }
+      ]
+    },
+    {
+      "id": "wv86an-36",
+      "t": 1793740737191,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "表二",
+        "groupLabel": "表一",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "表一"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 2,
+            "text": "表一"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "表二"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "表二"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"表二\")",
+            "selector": "internal:attr=[title=\"表二\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-36",
+          "sinceAction": 3,
+          "t": 1793740737194
+        }
+      ]
+    },
+    {
+      "id": "wv86an-37",
+      "t": 1793740738398,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Next",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Next\" })",
+            "selector": "internal:role=button[name=\"Next\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-37",
+          "sinceAction": 1,
+          "t": 1793740738399
+        }
+      ]
+    },
+    {
+      "id": "wv86an-38",
+      "t": 1793740750416,
+      "kind": "fill",
+      "page": "page",
+      "widget": "date",
+      "value": "2026-11-17 00:01:00",
+      "raw": "2026-11-17 00:01:00",
+      "final": true,
+      "picked": true,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "2_time",
+        "text": "Starting Time",
+        "label": "Starting Time",
+        "groupLabel": "Starting Time",
+        "placeholder": "Please select",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "[id='2_time']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "2_time"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Starting Time",
+                "exact": true
+              }
+            ],
+            "text": "Starting Time"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Starting Time"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Starting Time"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "Starting Time"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Starting Time"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Starting Time"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-form-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Starting Time"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Starting Time"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Starting Time"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"* Starting Time\" })",
+            "selector": "internal:role=textbox[name=\"* Starting Time\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "wv86an-39",
+      "t": 1793740758619,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "dialog": {
+        "title": "Rule configuration",
+        "raw": "Rule configuration",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts",
+        "Rule configuration"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Finish",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Rule configuration"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Finish",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Finish"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Finish\" })",
+            "selector": "internal:role=button[name=\"Finish\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "wv86an-39",
+          "sinceAction": 4,
+          "t": 1793740758623
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "wv86an-39",
+          "sinceAction": 338,
+          "t": 1793740758957,
+          "dialog": {
+            "title": "Rule configuration",
+            "raw": "Rule configuration",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-40",
+      "t": 1793740765251,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [
+        "TradeCode 99 Configuration Subscribe to alerts"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "item": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".ant-drawer\")",
+            "selector": ".ant-drawer"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "wv86an-40",
+          "sinceAction": 613,
+          "t": 1793740765857,
+          "dialog": {
+            "title": "TradeCode 99 Configuration Subscribe to alerts",
+            "raw": "",
+            "heading": "TradeCode 99 Configuration Subscribe to alerts",
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "wv86an-41",
+      "t": 1793740806457,
+      "kind": "expect",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/list/table-list/",
+      "openDialogs": [],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+          }
+        ]
+      },
+      "effects": [],
+      "check": "row",
+      "group": {
+        "tag": "",
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TradeCode 99"
+              },
+              {
+                "m": "filter",
+                "hasText": "这是一段描述"
+              },
+              {
+                "m": "filter",
+                "hasText": "6960000"
+              },
+              {
+                "m": "filter",
+                "hasText": "abnormal"
+              },
+              {
+                "m": "filter",
+                "hasText": "1970-01-01 00:00:00"
+              },
+              {
+                "m": "filter",
+                "hasText": "Configuration Subscribe to alerts"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

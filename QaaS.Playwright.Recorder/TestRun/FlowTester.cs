@@ -163,7 +163,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         ConsoleUi.Testing(report);
         try
         {
-            report = await TestAsync(report, flow, request, front, times, stop);
+            report = await TestAsync(report, flow, request, front, times, stop, recording);
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
@@ -180,7 +180,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     }
 
     private async Task<TestReport> TestAsync(TestReport report, GeneratedFlow flow, RecordRequest request, IPage? front,
-        PhaseTimes times, CancellationToken stop)
+        PhaseTimes times, CancellationToken stop, Recording recording)
     {
         BuiltFlow? built;
         IConfiguration flowConfiguration;
@@ -190,7 +190,8 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
             // A replay to before the flow's first action needs no build.
             built = report.Total > 0 ? await _build.BuildAsync(flow, stop) : null;
             flowConfiguration = await SettingsAsync(flow, request, stop);
-            login = await _build.CopyLoginAsync(session.Options.LoadStorageStatePath, stop);
+            // A flow that logs in itself starts signed out, as it was recorded.
+            login = recording.LogsIn ? null : await _build.CopyLoginAsync(session.Options.LoadStorageStatePath, stop);
         }
         catch (FlowBuildException failure)
         {

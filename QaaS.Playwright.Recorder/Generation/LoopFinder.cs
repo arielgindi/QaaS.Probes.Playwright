@@ -225,12 +225,19 @@ internal static class LoopFinder
             for (var copy = 2; !names.Add(field.Name); copy++) field.Name = $"{name}{copy}";
         }
 
+        var itemType = ItemName(template[^1]);
+        // A choice typed for, each round: its record is the option's, what was typed its Search, the option its Name.
+        if (template[^1] is { Kind: "choose", Value: { } chosen } && fields.Count == 2 && fields[0].Name == chosen.Name + "Search")
+        {
+            itemType = Singular(chosen.Name);
+            (fields[0].Name, fields[1].Name) = ("Search", "Name");
+        }
+
         // Each repeat's values are its record's fields, as the panel shows them.
         foreach (var item in items)
             for (var index = 0; index < fields.Count; index++)
                 item[index].Name = fields[index].Name;
-        var itemType = ItemName(template[^1]);
-        if (names.Contains(itemType)) itemType += "Item";
+        if (fields.Any(field => field.Name.Equals(itemType, StringComparison.OrdinalIgnoreCase))) itemType += "Item";
         return new Loop
         {
             Length = length, Repeats = repeats, Holds = holds,

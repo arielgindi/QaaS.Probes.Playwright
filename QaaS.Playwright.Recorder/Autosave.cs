@@ -194,7 +194,7 @@ internal sealed class Autosave
         WithoutSecrets(recording) with
         {
             Autosave = new AutosavedFlow(request.ClassName, Path.GetFullPath(request.OutputDir), request.AutoChecks,
-                request.Login, request.Replaces),
+                request.Login, request.Replaces, request.KeepRecording),
         };
 
     /// <summary>

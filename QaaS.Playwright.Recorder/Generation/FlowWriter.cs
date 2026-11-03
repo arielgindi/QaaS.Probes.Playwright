@@ -106,6 +106,10 @@ internal sealed partial class FlowWriter
     private readonly Dictionary<string, List<Expectation>> _expects = [];
     private readonly HashSet<Setting> _settings;
 
+    // The method that accepts a browser dialog, and the pages that have it as their handler so far.
+    private const string AcceptBrowserDialog = "AcceptBrowserDialog";
+    private HashSet<string> _acceptsDialogs = [];
+
     // The settings read so far, in order; those typed, which a later locator may show. Each step is written twice from
     // the same ones.
     private List<Setting> _seen = [];
@@ -205,10 +209,10 @@ internal sealed partial class FlowWriter
             ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
             : new Scope(step.Page, step.Page, null, step.Page);
 
-        var (seen, typed) = (_seen.ToList(), _typed.ToList());
+        var (seen, typed, accepts) = (_seen.ToList(), _typed.ToList(), _acceptsDialogs.ToHashSet());
         _step = new StepState(scope, counted: null);
         WriteBody(step, last: false);
-        (_seen, _typed) = (seen, typed);
+        (_seen, _typed, _acceptsDialogs) = (seen, typed, accepts);
         _step = new StepState(scope, _step);
         WriteBody(step, last: true);
 
@@ -333,7 +337,7 @@ internal sealed partial class FlowWriter
         foreach (var (index, alert) in AlertsEveryRepeatShowedAlike(repeats).Where(_ => _autoChecks))
         {
             _step.Actions = [repeats[^1][index].Source.Id];
-            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
+            AddCheck($"alert:{alert.Text}", $"alert “{WithoutButton(alert.Text!)}”", AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
         }
 
         // A check after the last repeat reads what it typed from the list's last item.
@@ -370,11 +374,26 @@ internal sealed partial class FlowWriter
     {
         var source = action.Source;
         var scope = _step.Scope;
-        if (action.Has("jsDialog"))
-            _step.Add($"{scope.Page}.Dialog += (_, browserDialog) => browserDialog.AcceptAsync();",
-                "a browser dialog (alert or confirm) showed here: the flow accepts it; dismiss it where you did");
+        // A browser dialog is accepted by one handler a page has once, however often it shows: a second one would accept
+        // the same dialog again, which throws. Before a loop whose rounds show one.
+        if (action.Has("jsDialog") && _acceptsDialogs.Add(source.Page))
+        {
+            var lines = _step.Depth > 0 ? _step.BeforeLoop : _step.Lines;
+            lines.Add(new Line($"{scope.Page}.Dialog -= {AcceptBrowserDialog};") { Actions = _step.Actions.Take(1).ToList() });
+            lines.Add(new Line($"{scope.Page}.Dialog += {AcceptBrowserDialog};",
+                "a browser dialog (alert or confirm) showed here: the flow accepts each one from here on; dismiss it where you did")
+                { Actions = _step.Actions.Take(1).ToList() });
+        }
 
-        var problem = source.HoverMenu == true
+        // A menu that opened as the pointer rested is opened so: by hovering what the pointer was on.
+        var opener = source.HoverMenu == true && LocatorPolicy.Choose(source.HoverOpener) is { } hovered ? hovered : null;
+        if (opener is not null)
+        {
+            var why = LocatorPolicy.Problem(opener);
+            _step.Add($"await {Render(opener, source)}{Break}.HoverAsync();", why);
+        }
+
+        var problem = source.HoverMenu == true && opener is null
             ? "the menu it is in opened on hover: hover what opens it first (HoverAsync)"
             : null;
         switch (action.Kind)
@@ -402,6 +421,8 @@ internal sealed partial class FlowWriter
             }
             case "fill":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
+                // A picker that keeps a date only once its OK commits it, as antd's, takes Enter as its OK.
+                if (source.Committed == true) _step.Add($"await {Locate(action, ref problem)}{Break}.PressAsync(\"Enter\");");
                 break;
             // A checkbox under the box drawn over it is ticked through that box, as the person clicked it.
             case "check" or "uncheck" when source.Widget == "radio":
@@ -499,18 +520,23 @@ internal sealed partial class FlowWriter
         var list = source.Option?.Candidates.FirstOrDefault(candidate => candidate is { Kind: "role", Matches: true }
             && candidate.Parts is [.., { M: "role", Role: "listbox" }, { M: "role", Role: "option" }])?.Parts[^2];
         var inList = list is null ? "" : LocatorPolicy.Render("", [list], breakBefore: Break);
-        var option = $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
-        var optionProblem = source.Option is null || source.Option.Candidates.Any(candidate =>
+        // An option with no role, among those of its kind that show, by its text: antd's list keeps closed ones, hidden.
+        var option = source.OptionCss is { } optionCss
+            ? $"{scope.Page}.Locator({CSharp.Literal(optionCss + ":visible")}){Break}.GetByText({Setting(action.OptionValue ?? action.Value)}, new() {{ Exact = true }})"
+            : $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
+        var optionProblem = source.Option is null || source.OptionCss is not null || source.Option.Candidates.Any(candidate =>
             candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
             ? null
             : "the option's name did not find it alone when recorded";
         switch (source.Widget)
         {
             case "select" or "autocomplete":
-                // What the person typed to filter the list, the flow types as the option's own text, which finds it.
-                _step.Add(source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null)
-                    ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});"
-                    : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
+                // What the person typed to find the option, the flow types too, then chooses the option by its own text.
+                if (source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null))
+                    _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});", problem);
+                // An option of no role is chosen in the list the click before it opened, as is one of a list opened already.
+                else if (source.OptionCss is null && !action.Opened)
+                    _step.Add($"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
                 ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
                 // In a loop, a check stays only when it reads the loop's item. A field that showed nothing of the choice,
@@ -577,7 +603,9 @@ internal sealed partial class FlowWriter
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
         var shownElsewhere = action.Has("dialogOpened") || action.Has("tabSelected") || (closed.Count > 0 && alerts.Count > 0);
         var changes = action.Effects.Where(effect => _autoChecks && effect.Kind == "urlChanged");
-        foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1))
+        // Not one the address before the action matched already, as a sort's query does: it would check nothing.
+        foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
+                     .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))
         {
             var page = changed.Page is { } alias && alias != action.Source.Page ? alias : scope.Page;
             AddCheck("url", $"URL {StepNamer.Route(changed.Url) ?? changed.Url}",
@@ -597,7 +625,7 @@ internal sealed partial class FlowWriter
 
         // In a loop, a message is checked where it shows the item, as each repeat's did.
         foreach (var alert in alerts.Where(alert => _autoChecks && (repeats is null || ShowsTheItem(alert, repeats.Value))))
-            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, scope));
+            AddCheck($"alert:{alert.Text}", $"alert “{WithoutButton(alert.Text!)}”", AlertExpectation(alert, scope));
 
         // In a loop, the checks after the last repeat follow the loop.
         if (isLast && step.Opens is { } opened)
@@ -643,7 +671,11 @@ internal sealed partial class FlowWriter
             (_expects.TryGetValue(id, out var list) ? list : _expects[id] = []).Add(expectation);
     }
 
-    private static bool IsAlert(CapturedEffect effect) => effect is { Kind: "alert", Text.Length: > 0 };
+    // A message, not a busy one that goes by itself ("Loading...", "Please wait"), which a check would race.
+    internal static bool IsAlert(CapturedEffect effect) => effect is { Kind: "alert", Text.Length: > 0 } && !Passing().IsMatch(effect.Text);
+
+    /// <summary>A message without the words of the button it holds, as MUI's snackbar ends with UNDO.</summary>
+    public static string WithoutButton(string text) => AlertButton().Replace(text, "");
 
     private static CapturedEffect? FirstAlert(PlannedAction action) => action.Effects.FirstOrDefault(IsAlert);
 
@@ -669,7 +701,7 @@ internal sealed partial class FlowWriter
     {
         var alerts = $"{scope.Page}.GetByRole(AriaRole.Alert)";
         var shows = many ? ".Not.ToHaveCountAsync(0)" : ".ToBeVisibleAsync()";
-        var pieces = Pieces(alert.Text!);
+        var pieces = Pieces(WithoutButton(alert.Text!));
         if (!pieces.Where(piece => piece.Code is null).Any(piece => piece.Text.Any(char.IsDigit)))
             return $"await Expect({alerts}{Break}.Filter(new() {{ HasText = {Code(pieces)} }})){Break}{shows};";
         if (WordsAroundNumbers(pieces) is { } words)
@@ -722,7 +754,8 @@ internal sealed partial class FlowWriter
     {
         const string role = "GetByRole(AriaRole.Dialog";
         if (dialog is null) return ($"{page}.{role})", "the recorder did not see this dialog's title");
-        var pieces = Pieces(dialog.Title);
+        // By its title without the Close button in its title bar, which is part of the name it has, so finds it still.
+        var pieces = Pieces(dialog.TitleMatches ? StepNamer.WithoutClose(dialog.Title) : dialog.Title);
         var hasNumber = pieces.Where(piece => piece.Code is null).Any(piece => piece.Text.Any(char.IsDigit));
         if (dialog.TitleMatches && !hasNumber) return ($"{page}.{role}, new() {{ Name = {Code(pieces)} }})", null);
         if (dialog is { PrefixMatches: true, Prefix: { } prefix })
@@ -759,7 +792,11 @@ internal sealed partial class FlowWriter
         string? problem = null;
         string Element() => Located(check, check.Target, ref problem);
 
-        string Shows(Func<string, string> whole, Func<string, string> words) => Expected(expected) switch
+        // An element found by the very text it is checked to have would pass while it is there: it is checked to show.
+        var byItsText = check.Check is "text" or "contains" && LocatorPolicy.Choose(check.Target) is { } found
+                        && expected.Length > 0 && !expected.Any(char.IsDigit) && (found.Parts.Any(part => part.Name == expected || part.Text == expected || part.HasText == expected)
+                                                   || found.Csharp?.Contains(CSharp.Literal(expected), StringComparison.Ordinal) == true);
+        string Shows(Func<string, string> whole, Func<string, string> words) => byItsText ? "ToBeVisibleAsync()" : Expected(expected) switch
         {
             ({ } code, false) => whole(code),
             ({ } code, true) => words(code),
@@ -789,6 +826,7 @@ internal sealed partial class FlowWriter
             }};", kind switch
             {
                 "hidden" => "is gone",
+                "text" or "contains" when byItsText => $"shows “{expected}”",
                 "text" => $"has text “{expected}”",
                 "contains" => $"contains “{expected}”",
                 "value" => $"has value “{expected}”",
@@ -816,8 +854,9 @@ internal sealed partial class FlowWriter
         var parts = new List<LocatorPart>();
         foreach (var part in candidate.Parts)
         {
-            var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : null;
-            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Linked(text);
+            var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : part.M == "text" ? part.Text : null;
+            // What the check expects and where it looks read the same settings: a row's key, a value chosen before.
+            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Seen(text);
             if (code is not null) codes[part] = code;
             if (code is not null || check.Check != "row" || part.M != "filter") parts.Add(part);
         }
@@ -958,7 +997,15 @@ internal sealed partial class FlowWriter
             return $"$\"{CSharp.Escape(part.Name[..at], true)}{{{Setting(rowKey)}}}{CSharp.Escape(part.Name[(at + key.Length)..], true)}\"";
         }
 
-        return Linked(part.Name);
+        return Linked(LocatorPolicy.WithoutIcon(part.Name));
+    }
+
+    // The text with the values read so far in it read from their settings, as a check's expectation reads them; null
+    // when it has none.
+    private string? Seen(string text)
+    {
+        var pieces = Pieces(text);
+        return pieces.Any(piece => piece.Code is not null) ? Code(pieces) : null;
     }
 
     // The text with the loop's item values in it read from the item, and the values typed before from their settings;
@@ -990,7 +1037,7 @@ internal sealed partial class FlowWriter
         _step.UsesFlow = true;
         if (_dates.TryGetValue(setting, out var member)) return member;
         var taken = new HashSet<string>(_dates.Values.Concat(["Configuration", "BaseUrl", "Context", "Item", "ItemIndex",
-            "Unique", "RunAsync", "FileToUpload", "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
+            "Unique", "RunAsync", "FileToUpload", AcceptBrowserDialog, "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
         return _dates[setting] = Unique(RelativeDate.Member(setting.Name), taken);
     }
 
@@ -1030,14 +1077,23 @@ internal sealed partial class FlowWriter
         if (_step.LoopValues.ContainsValue(code)) _step.ReadsItem = true;
     }
 
+    // The text around each place it shows the value, as a word of its own: "TradeCode 99" shows no "TradeCode 9", which
+    // a case changing the setting would make "Alpha9" of.
     private static IEnumerable<(string, string?, Setting?)> Split(string text, (string Text, string Code, Setting? Setting) value)
     {
-        var parts = text.Split(value.Text);
-        for (var index = 0; index < parts.Length; index++)
+        var from = 0;
+        for (var at = text.IndexOf(value.Text, StringComparison.Ordinal); at >= 0; at = text.IndexOf(value.Text, at + 1, StringComparison.Ordinal))
         {
-            if (parts[index].Length > 0) yield return (parts[index], null, null);
-            if (index < parts.Length - 1) yield return (value.Text, value.Code, value.Setting);
+            var end = at + value.Text.Length;
+            var whole = (at == 0 || !char.IsLetterOrDigit(text[at - 1]) || !char.IsLetterOrDigit(value.Text[0]))
+                        && (end == text.Length || !char.IsLetterOrDigit(text[end]) || !char.IsLetterOrDigit(value.Text[^1]));
+            if (!whole || at < from) continue;
+            if (at > from) yield return (text[from..at], null, null);
+            yield return (value.Text, value.Code, value.Setting);
+            from = end;
         }
+
+        if (from < text.Length) yield return (text[from..], null, null);
     }
 
     // The pieces as C#: a literal, a setting alone, or an interpolated string.
@@ -1193,6 +1249,13 @@ internal sealed partial class FlowWriter
         }
 
         foreach (var line in dates) Append(line);
+        if (_acceptsDialogs.Count > 0)
+        {
+            Append("");
+            Append("    // A browser dialog (an alert, a confirm) the flow accepts, as you did.");
+            Append($"    private static void {AcceptBrowserDialog}(object? sender, IDialog dialog) => _ = dialog.AcceptAsync();");
+        }
+
         if (usesUpload)
         {
             Append("");
@@ -1291,6 +1354,8 @@ internal sealed partial class FlowWriter
 
         if (setting.Items is not { } items)
         {
+            if (setting is { Format: { } format, DateFormat: null })
+                yield return $"    /// <summary>As the field takes it, whatever the browser shows: {format}.</summary>";
             yield return $"{declaration} {Default(setting, setting.Type)};";
             yield break;
         }
@@ -1375,6 +1440,13 @@ internal sealed partial class FlowWriter
 
     [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
     private static partial Regex RegexSpecial();
+
+    [GeneratedRegex(@"^\s*(loading|please wait|saving|processing|working|uploading|submitting|fetching|refreshing)\b[^.!?]{0,30}(\.\.\.|…)?\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex Passing();
+
+    // The button a message ends with, its words in capitals as MUI writes them (UNDO, DISMISS), or a cross.
+    [GeneratedRegex(@"(?<=\S)\s+(UNDO|DISMISS|CLOSE|RETRY|OK|VIEW|SHOW|[×✕✖])$")]
+    private static partial Regex AlertButton();
 
     [GeneratedRegex(@"\S*\d\S*")]
     private static partial Regex NumberWord();

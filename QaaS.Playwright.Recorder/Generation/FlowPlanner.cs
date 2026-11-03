@@ -32,6 +32,14 @@ internal static partial class FlowPlanner
         };
         plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
         var prepared = recording.Actions.Select(Prepare).ToList();
+        // A click on no control that only an id made anew on each load finds cannot replay: left out, and said.
+        foreach (var lost in prepared.Where(OnlyByGeneratedId).ToList())
+        {
+            prepared.Remove(lost);
+            plan.NotRecorded.Add($"a click on {Names.Human(lost.Source.Target) ?? $"a {lost.Source.Target?.Tag ?? "element"}"} that only an id " +
+                                 "made anew on each load finds was left out: redo it by hand if the flow needs it");
+        }
+
         var actions = AttachChecks(prepared, Clean([.. prepared.Where(action => action.Kind != "expect")]));
         PlaceInDialogs(actions);
         actions = CloseUnseen(actions);
@@ -61,6 +69,10 @@ internal static partial class FlowPlanner
         return planned;
     }
 
+    private static bool OnlyByGeneratedId(PlannedAction action) =>
+        action is { Kind: "click" or "dblclick", Locator: { Kind: "generator" } generated } && !Noise.IsControl(action.Source.Target)
+        && !Noise.HasResult(action) && LocatorPolicy.Problem(generated) == LocatorPolicy.GeneratedIdProblem;
+
     // What a person does on the way to an action is not a step of its own: opening a select, a click that only put the
     // focus in a field, a click on no control that changed nothing, a drag that dropped nowhere, the click that opened
     // the list of the choice next, and the text typed into an autocomplete to filter the list it then chose from.
@@ -78,6 +90,10 @@ internal static partial class FlowPlanner
             var noResult = !Noise.HasResult(action);
             switch (action.Kind)
             {
+                // A list opened, then closed with Escape that showed nothing: both, as the flow opens it as it chooses.
+                case "press" when action.Source.Key == "Escape" && noEffect && last is { Kind: "click" } opening && OpensAList(opening):
+                    kept.RemoveAt(kept.Count - 1);
+                    continue;
                 // Choosing an option opens its Select first.
                 case "click" when widget == "select-open":
                 // The arrow that opens an Autocomplete's list, when an option of it is chosen next.
@@ -90,15 +106,27 @@ internal static partial class FlowPlanner
                 case "click" when Noise.OnlyFocuses(action, next):
                 case "drag" when Noise.DroppedNowhere(action):
                 case "press" when action.Source.Key == "Escape" && noEffect:
+                // The address the app was at when a pause or a try ended, right before a click on a menu's item or a tab
+                // that goes elsewhere itself, as a menu is on every page: the flow need not go there first.
+                case "navigate" when action.Source.AfterPause == true && next is { Kind: "click" } && next.Has("urlChanged")
+                                     && next.Source.Target?.Role is "menuitem" or "tab":
                     continue;
                 // The click that opened the list of the choice next, which the flow makes as it writes the choice: by the
                 // capture script's word, or a click on the field itself.
+                // Not for an option of no role, whose field may be no element to click (antd's hidden input): the click
+                // that opened its list stays, and the flow chooses in the list it opened.
                 case "choose" when last is { Kind: "click" } && (last.Source.Id == action.Source.Opener || last.Key == action.Key
                                                                    || OpensItsField(last, action))
-                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)):
+                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)) && action.Source.OptionCss is null:
                     kept.RemoveAt(kept.Count - 1);
                     if (kept.LastOrDefault() is { Kind: "fill" } typed && typed.Key == action.Key && widget == "autocomplete")
                         TakeSearch(action, typed, kept);
+                    break;
+                // A select whose list was opened by the click before the text typed into the list's own filter (Kendo's): the
+                // flow keeps both, and chooses in the list they left open.
+                case "choose" when widget == "select" && last is { Kind: "fill" } && kept.Count >= 2 && kept[^2] is { Kind: "click" } opener
+                                   && opener.Key == action.Key && !Noise.HasResult(opener):
+                    action.Opened = true;
                     break;
                 // What was typed to filter the list is part of the choice, never a value of its own.
                 case "choose" when widget == "autocomplete" && last is { Kind: "fill" } && last.Key == action.Key:
@@ -107,8 +135,14 @@ internal static partial class FlowPlanner
                 // Typing on in a field: the value it ends with is the one typed.
                 case "fill" when last is { Kind: "fill" } && last.Key == action.Key && last.Effects.Count == 0
                                  && (action.Source.Value ?? "").StartsWith(last.Source.Value ?? "", StringComparison.Ordinal):
-                case "check" or "uncheck" when last is { Kind: "check" or "uncheck" } && last.Key == action.Key
-                                               && last.Effects.Count == 0:
+                // Ticked again, or turned on and off: the state it ends in, which a suggestion leaves out where it is the
+                // one it had before; a radio of the group picked again, the last.
+                case "check" or "uncheck" when last is { Kind: "check" or "uncheck" } && last.Key == action.Key && !Noise.HasResult(last):
+                    action.Before = last.Before ?? last.Kind != "check";
+                    kept.RemoveAt(kept.Count - 1);
+                    break;
+                case "check" when widget == "radio" && last is { Kind: "check", Source.Widget: "radio" } && !Noise.HasResult(last)
+                                  && last.Source.Target?.Name is { Length: > 0 } group && action.Source.Target?.Name == group:
                 case "dblclick" when last is { Kind: "click" } && last.Key == action.Key:
                     kept.RemoveAt(kept.Count - 1);
                     break;
@@ -119,6 +153,11 @@ internal static partial class FlowPlanner
 
         return kept;
     }
+
+    // A click on a select or a combobox that showed nothing but what it opened: its list.
+    private static bool OpensAList(PlannedAction click) =>
+        !Noise.HasResult(click) && (click.Source.Widget is "select-open" or "autocomplete-button"
+                                    || click.Source.Target is { Role: "combobox" or "listbox" } or { Tag: "select" });
 
     // A click on what is no control just before a choice of a field, which only opened its list: the widget's arrow, or
     // what holds it. The flow opens the list by the field as it writes the choice. A list with no field of its own is
@@ -262,12 +301,17 @@ internal static partial class FlowPlanner
             switch (action.Kind)
             {
                 case "fill":
+                {
                     // Text typed into an autocomplete and left there, no choice of it, is its text: the choices are its name's.
                     if (source.Widget == "autocomplete") (name, qualified) = (name + "Text", qualified is null ? null : qualified + "Text");
                     // The same words typed again, into another field, are the same value: a user's name searched for after
-                    // it was given to the user reads the same setting, so a case that changes one changes both.
-                    if (source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
-                            setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value") is { } earlier
+                    // it was given to the user reads the same setting, so a case that changes one changes both. Never a
+                    // password, nor what a secret's field holds: a demo's password may be its user name too ("demo"),
+                    // and the flow would then type the user name as the password, with no setting for the password.
+                    var secret = IsSecretField(field, name);
+                    if (!secret && source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
+                            setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value"
+                            && !Configuration.Secrets.IsSecretKey(setting.Name)) is { } earlier
                         && actions.Any(other => other.Kind == "fill" && other.Value == earlier
                                                 && (other.Key != action.Key || Path(other.Source.Url) != Path(action.Source.Url))))
                     {
@@ -276,8 +320,15 @@ internal static partial class FlowPlanner
                     }
 
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
-                    action.Value.Secret = field?.Type == "password";
+                    action.Value.Secret = secret;
+                    // A date or a time input takes its value in one format, whatever the browser shows.
+                    action.Value.Format = field?.Type switch
+                    {
+                        "date" => "yyyy-MM-dd", "datetime-local" => "yyyy-MM-ddTHH:mm", "time" => "HH:mm", "month" => "yyyy-MM", "week" => "yyyy-Www",
+                        _ => null,
+                    };
                     break;
+                }
                 // One file uploaded is a setting of its path, named after its field's label, its default the name the
                 // browser told; several stay the flow's FileToUpload to fill in.
                 case "upload" when source.Files is [var file]:
@@ -314,6 +365,10 @@ internal static partial class FlowPlanner
         }
     }
 
+    // A password field, or one whose setting's name says it holds a secret (a token, an API key).
+    private static bool IsSecretField(CapturedTarget? field, string name) =>
+        field?.Type == "password" || Configuration.Secrets.IsSecretKey(name);
+
     // A number field's value as a number, when it is one that reads back the same.
     private static Setting Typed(string name, string text, CapturedTarget? field, string? qualified)
     {
@@ -338,14 +393,20 @@ internal static partial class FlowPlanner
         if (source.Widget == "autocomplete")
         {
             var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
-            // What was typed to filter the list is no setting: the flow types the option's own text.
+            // What the person typed to find the option is the search, a setting of its own: the flow types it, as a site
+            // may find nothing by the option's whole text (react-admin's customers by their first name only), then chooses
+            // the option. A search the option's text is all of needs none.
+            if (action.Search is { Length: > 0 } search && search != option && search != shown)
+                action.SearchValue = Add("Search", search);
             action.Value = Add("", shown);
             if (shown != option) action.OptionValue = Add("Option", option);
             return;
         }
 
         action.Value = Add("", option);
-        if (source.Widget == "select" && settled?.Value is { Length: > 0 } text && text != option && source.Field?.Tag != "input")
+        // What a select shows after the choice, when it shows more than the option's words; never of a multi-select,
+        // whose other choices it shows too, the record's own (Regular as well as Returns).
+        if (source.Widget == "select" && settled is { Value: { Length: > 0 } text, Multi: not true } && text != option && source.Field?.Tag != "input")
             action.ShownValue = Add("Shown", text);
     }
 
@@ -437,7 +498,7 @@ internal static partial class FlowPlanner
             var lastValue = step.Actions.FindLastIndex(action => ValueKinds.Contains(action.Kind));
             if (!step.Ended || lastValue < 0 || lastValue == step.Actions.Count - 1) continue;
             var opens = step.Actions[^1].Effects.Any(effect => effect.Kind is "dialogOpened" or "popup");
-            if (!opens && lastValue == step.Actions.Count - 2
+            if (!opens && lastValue == step.Actions.Count - 2 && (Noise.Sends(step.Actions[^1]) || step.Actions[^1].Kind == "press")
                 && step.Actions.Count(action => ValueKinds.Contains(action.Kind)) <= ValuesKeptWithTheirClick)
                 continue;
             var from = opens ? lastValue + 1 : step.Actions.Count - 1;

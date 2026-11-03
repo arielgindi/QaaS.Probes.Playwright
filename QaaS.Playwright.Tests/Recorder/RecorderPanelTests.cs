@@ -295,7 +295,7 @@ public class RecorderPanelTests
 
             // A click recorded on the row's subject, where the person meant its button.
             await app.GetByText("VPN drops every hour").ClickAsync();
-            await Expect(code).ToContainTextAsync("VPN drops every hour");
+            await Expect(code).ToContainTextAsync("OpenTicketAsync");
             await view.GetByRole(AriaRole.Radio, new() { Name = "Elements" }).ClickAsync();
 
             // Found by role, the second of three: the first is picked as it is found, Enter goes to the next.
@@ -307,7 +307,8 @@ public class RecorderPanelTests
 
             var use = view.GetByRole(AriaRole.Button, new() { Name = "Use for" });
             const string button = ".GetByRole(AriaRole.Button, new() { Name = \"Assign to me\", Exact = true })";
-            await Expect(use).ToContainTextAsync("−    .GetByRole(AriaRole.Row, new() { Name = $\"{Configuration.Ticket} VPN drops every hour Assign to me\"");
+            // The row by its key, never by all it says.
+            await Expect(use).ToContainTextAsync("−await page.GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.Ticket }).ClickAsync();");
             await Expect(use).ToContainTextAsync("+await page.GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.Ticket })");
             await Expect(use).ToContainTextAsync(button);
             await use.ClickAsync();
@@ -315,7 +316,7 @@ public class RecorderPanelTests
             await Expect(code).ToContainTextAsync(button);
 
             await view.Keyboard.PressAsync("Control+z");
-            await Expect(code).ToContainTextAsync("VPN drops every hour Assign to me");
+            await Expect(code).ToContainTextAsync("Filter(new() { HasText = Configuration.Ticket }).ClickAsync();");
             await Expect(code).Not.ToContainTextAsync(button);
         }
         finally

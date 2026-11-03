@@ -1,0 +1,2983 @@
+{
+  "startUrl": "https://preview.pro.ant.design/user/login",
+  "actions": [
+    {
+      "id": "g4ohnn-1",
+      "t": 1793740273012,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "span.ant-dropdown-trigger"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".ant-dropdown-trigger\")",
+            "selector": ".ant-dropdown-trigger"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "g4ohnn-1",
+          "sinceAction": 115,
+          "t": 1793740273127
+        }
+      ]
+    },
+    {
+      "id": "g4ohnn-2",
+      "t": 1793740279606,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": true,
+      "url": "https://preview.pro.ant.design/user/login/",
+      "effects": []
+    },
+    {
+      "id": "g4ohnn-3",
+      "t": 1793740280429,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-pro-form-login-container"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Ant DesignAnt Design 是西湖区最具影响力的 Web 设计规范账户密码登录手机号登录自动登录忘记密码 ?登 录其他登录方式 :\")",
+            "selector": "internal:text=\"Ant DesignAnt Design 是西湖区最具影响力的 Web 设计规范账户密码登录手机号登录自动登录忘记密码 ?登 录其他登录方式 :\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "g4ohnn-3",
+          "sinceAction": 762,
+          "t": 1793740281191
+        }
+      ]
+    },
+    {
+      "id": "g4ohnn-4",
+      "t": 1793740281340,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "span.ant-dropdown-trigger"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".ant-dropdown-trigger\")",
+            "selector": ".ant-dropdown-trigger"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "g4ohnn-4",
+          "sinceAction": 119,
+          "t": 1793740281459
+        }
+      ]
+    },
+    {
+      "id": "g4ohnn-5",
+      "t": 1793740282750,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "فارسیفارسی",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "فارسیفارسی",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "فارسیفارسی"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"فارسیفارسی\" })",
+            "selector": "internal:role=menuitem[name=\"فارسیفارسی\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "g4ohnn-5",
+          "sinceAction": 3,
+          "t": 1793740282753
+        }
+      ]
+    },
+    {
+      "id": "pt7w4t-1",
+      "t": 1793740289073,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "span.ant-dropdown-trigger"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".ant-dropdown-trigger\")",
+            "selector": ".ant-dropdown-trigger"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pt7w4t-1",
+          "sinceAction": 103,
+          "t": 1793740289176
+        }
+      ]
+    },
+    {
+      "id": "pt7w4t-2",
+      "t": 1793740300715,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "EnglishEnglish",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "EnglishEnglish",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "EnglishEnglish"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"EnglishEnglish\" })",
+            "selector": "internal:role=menuitem[name=\"EnglishEnglish\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pt7w4t-2",
+          "sinceAction": 2,
+          "t": 1793740300717
+        }
+      ]
+    },
+    {
+      "id": "5j96lw-1",
+      "t": 1793740306745,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "admin",
+      "raw": "admin",
+      "final": true,
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "username",
+        "text": "Username: admin or user",
+        "placeholder": "Username: admin or user",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='username']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "username"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username: admin or user",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Username: admin or user"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Username: admin or user\" })",
+            "selector": "internal:role=textbox[name=\"Username: admin or user\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "5j96lw-2",
+      "t": 1793740307417,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "final": true,
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "type": "password",
+        "id": "password",
+        "text": "Password: ant.design",
+        "placeholder": "Password: ant.design",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='password']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "password"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Password: ant.design\" })",
+            "selector": "internal:role=textbox[name=\"Password: ant.design\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "5j96lw-3",
+      "t": 1793740308631,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": false,
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "autoLogin",
+        "value": "on",
+        "text": "Remember me",
+        "label": "Remember me",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='autoLogin']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "autoLogin"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Remember me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Remember me"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Remember me\" })",
+            "selector": "internal:role=checkbox[name=\"Remember me\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "5j96lw-3",
+          "sinceAction": 1,
+          "t": 1793740308632
+        }
+      ]
+    },
+    {
+      "id": "5j96lw-4",
+      "t": 1793740309341,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "autoLogin",
+        "value": "on",
+        "text": "Remember me",
+        "label": "Remember me",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='autoLogin']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "autoLogin"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Remember me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Remember me"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Remember me\" })",
+            "selector": "internal:role=checkbox[name=\"Remember me\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "5j96lw-4",
+          "sinceAction": 1,
+          "t": 1793740309342
+        }
+      ]
+    },
+    {
+      "id": "5j96lw-5",
+      "t": 1793740309749,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/user/login/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Login",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Login",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Login"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Login",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Login\" })",
+            "selector": "internal:role=button[name=\"Login\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "5j96lw-5",
+          "sinceAction": 3,
+          "t": 1793740309752
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "5j96lw-5",
+          "t": 1793740310057,
+          "url": "https://preview.pro.ant.design/",
+          "page": "page"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "5j96lw-5",
+          "t": 1793740310471,
+          "url": "https://preview.pro.ant.design/dashboard/analysis",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-1",
+      "t": 1793740318637,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/dashboard/analysis",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "menuitem",
+        "text": "form Form",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "form Form",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "form Form"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.ant-menu-submenu"
+              },
+              {
+                "m": "filter",
+                "hasText": "Form"
+              },
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "form Form",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Form"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"form Form\" })",
+            "selector": "internal:role=menuitem[name=\"form Form\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-1",
+          "sinceAction": 6,
+          "t": 1793740318643
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-2",
+      "t": 1793740323888,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/dashboard/analysis",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Advanced Form",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Form",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Advanced Form"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.ant-menu-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Advanced Form"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Form",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Advanced Form"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='rc-menu-uuid-/form-popup']"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Form",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "rc-menu-uuid-/form-popup"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Advanced Form\" })",
+            "selector": "internal:role=link[name=\"Advanced Form\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-2",
+          "sinceAction": 18,
+          "t": 1793740323906
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "7nswt8-2",
+          "t": 1793740323891,
+          "url": "https://preview.pro.ant.design/form/advanced-form",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-3",
+      "t": 1793740331537,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Main stock",
+      "raw": "Main stock",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name",
+        "text": "仓库名",
+        "label": "仓库名",
+        "groupLabel": "仓库名",
+        "placeholder": "请输入仓库名称",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库名"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "仓库名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库名"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "仓库名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库名"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"仓库名\" })",
+            "selector": "internal:role=textbox[name=\"仓库名\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-4",
+      "t": 1793740332467,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "mainstock",
+      "raw": "mainstock",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "url",
+        "text": "仓库域名",
+        "label": "仓库域名",
+        "groupLabel": "http://",
+        "placeholder": "请输入",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='url']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "url"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库域名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库域名"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "span.ant-input-wrapper"
+              },
+              {
+                "m": "has",
+                "text": "http://"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库域名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "http://"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "http://"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "仓库域名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "http://"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"仓库域名\" })",
+            "selector": "internal:role=textbox[name=\"仓库域名\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-5",
+      "t": 1793740333143,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "owner",
+        "text": "仓库管理员",
+        "label": "仓库管理员",
+        "groupLabel": "仓库管理员",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='owner']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "owner"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "仓库管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "请选择管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "请选择管理员"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
+            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-5",
+          "sinceAction": 7,
+          "t": 1793740333150
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-6",
+      "t": 1793740338012,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "owner",
+        "text": "仓库管理员",
+        "label": "仓库管理员",
+        "groupLabel": "仓库管理员",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='owner']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "owner"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "仓库管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "请选择管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "请选择管理员"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
+            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-7",
+      "t": 1793740338830,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "owner",
+        "text": "仓库管理员",
+        "label": "仓库管理员",
+        "groupLabel": "仓库管理员",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='owner']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "owner"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "仓库管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "仓库管理员"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "请选择管理员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "仓库管理员",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "请选择管理员"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
+            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-7",
+          "sinceAction": 2,
+          "t": 1793740338833
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-8",
+      "t": 1793740339843,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "周毛毛",
+        "groupLabel": "付晓晓",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "付晓晓"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 2,
+            "text": "付晓晓"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "周毛毛"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "周毛毛"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"周毛毛\")",
+            "selector": "internal:attr=[title=\"周毛毛\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-8",
+          "sinceAction": 6,
+          "t": 1793740339849
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-9",
+      "t": 1793740341054,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "approver",
+        "text": "审批人",
+        "label": "审批人",
+        "groupLabel": "审批人",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='approver']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "approver"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "审批人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "审批人"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "审批人"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "审批人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "审批人"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "请选择审批员"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "审批人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "请选择审批员"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"审批人\" })",
+            "selector": "internal:role=combobox[name=\"审批人\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-9",
+          "sinceAction": 5,
+          "t": 1793740341059
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-10",
+      "t": 1793740345766,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "付晓晓",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "付晓晓"
+              }
+            ],
+            "count": 2,
+            "text": "付晓晓"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"付晓晓\").Nth(1)",
+            "selector": "internal:attr=[title=\"付晓晓\"i] >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-10",
+          "sinceAction": 4,
+          "t": 1793740345770
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-13",
+      "t": 1793740391453,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "section": "Ant Design Pro",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\")",
+            "selector": "internal:text=\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-13",
+          "sinceAction": 1,
+          "t": 1793740391454
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-14",
+      "t": 1793740397848,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Count pallets",
+      "raw": "Count pallets",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "name2",
+        "text": "任务名",
+        "label": "任务名",
+        "groupLabel": "任务名",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='name2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "name2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务名"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "任务名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务名"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "任务名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务名",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务名"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"任务名\" })",
+            "selector": "internal:role=textbox[name=\"任务名\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-15",
+      "t": 1793740398784,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Weekly count",
+      "raw": "Weekly count",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "url2",
+        "text": "任务描述",
+        "label": "任务描述",
+        "groupLabel": "任务描述",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='url2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "url2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务描述",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务描述"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "任务描述"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务描述",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务描述"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "任务描述"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "任务描述",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务描述"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"任务描述\" })",
+            "selector": "internal:role=textbox[name=\"任务描述\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-16",
+      "t": 1793740399582,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "owner2",
+        "text": "执行人",
+        "label": "执行人",
+        "groupLabel": "执行人",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='owner2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "owner2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "执行人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "执行人"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "执行人"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "执行人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "执行人"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "Please select"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "执行人",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"执行人\" })",
+            "selector": "internal:role=combobox[name=\"执行人\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-16",
+          "sinceAction": 4,
+          "t": 1793740399586
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-17",
+      "t": 1793740404666,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "周毛毛",
+        "groupLabel": "付晓晓",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "付晓晓"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 6,
+            "hidden": 4,
+            "text": "付晓晓"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "周毛毛"
+              }
+            ],
+            "count": 4,
+            "text": "周毛毛"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"周毛毛\").Nth(3)",
+            "selector": "internal:attr=[title=\"周毛毛\"i] >> nth=3"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-17",
+          "sinceAction": 4,
+          "t": 1793740404670
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-18",
+      "t": 1793740412035,
+      "kind": "fill",
+      "page": "page",
+      "widget": "date",
+      "value": "04:02:00",
+      "raw": "04:02:00",
+      "final": true,
+      "picked": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "dateRange2",
+        "text": "生效日期",
+        "label": "生效日期",
+        "groupLabel": "生效日期",
+        "placeholder": "提醒时间",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='dateRange2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "dateRange2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "生效日期",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "生效日期"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "生效日期"
+              }
+            ],
+            "count": 2,
+            "text": "生效日期"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "生效日期"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "生效日期"
+              }
+            ],
+            "count": 2,
+            "text": "生效日期"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "生效日期"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "生效日期"
+              }
+            ],
+            "count": 2,
+            "text": "生效日期"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByPlaceholder(\"提醒时间\")",
+            "selector": "internal:attr=[placeholder=\"提醒时间\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-19",
+      "t": 1793740427023,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "type2",
+        "text": "任务类型",
+        "label": "任务类型",
+        "groupLabel": "任务类型",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='type2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "type2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "任务类型",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务类型"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "任务类型"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "任务类型",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "任务类型"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "请选择仓库类型"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "任务类型",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "请选择仓库类型"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"任务类型\" })",
+            "selector": "internal:role=combobox[name=\"任务类型\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-19",
+          "sinceAction": 4,
+          "t": 1793740427027
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-20",
+      "t": 1793740431851,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "公开",
+        "groupLabel": "私密",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "私密"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 2,
+            "text": "私密"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "公开"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "公开"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"公开\")",
+            "selector": "internal:attr=[title=\"公开\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-20",
+          "sinceAction": 4,
+          "t": 1793740431855
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-21",
+      "t": 1793740438881,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "plus add a row of data",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus add a row of data",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "plus add a row of data"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-card"
+              },
+              {
+                "m": "filter",
+                "hasText": "成员管理"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus add a row of data",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "成员管理"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"plus add a row of data\" })",
+            "selector": "internal:role=button[name=\"plus add a row of data\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-21",
+          "sinceAction": 2,
+          "t": 1793740438883
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-22",
+      "t": 1793740444519,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Dana Test",
+      "raw": "Dana Test",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Cell, new() { Name = \"D\", Exact = true }).GetByPlaceholder(\"Please enter\")",
+            "selector": "internal:role=cell[name=\"D\"s] >> internal:attr=[placeholder=\"Please enter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-23",
+      "t": 1793740445295,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "00004",
+      "raw": "00004",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Cell, new() { Name = \"0\", Exact = true }).GetByPlaceholder(\"Please enter\")",
+            "selector": "internal:role=cell[name=\"0\"s] >> internal:attr=[placeholder=\"Please enter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-24",
+      "t": 1793740445909,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Haifa No. 4 Pier",
+      "raw": "Haifa No. 4 Pier",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Cell, new() { Name = \"H\", Exact = true }).GetByPlaceholder(\"Please enter\")",
+            "selector": "internal:role=cell[name=\"H\"s] >> internal:attr=[placeholder=\"Please enter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-25",
+      "t": 1793740446868,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Save",
+        "interactive": true,
+        "item": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='members']"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 5,
+            "value": "members"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Save"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Save\")",
+            "selector": "internal:text=\"Save\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-25",
+          "sinceAction": 0,
+          "t": 1793740446868
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-26",
+      "t": 1793740453488,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "编辑",
+        "interactive": true,
+        "row": {
+          "key": "00001",
+          "header": "工号"
+        },
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='members']"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 4,
+            "value": "members"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "编辑"
+              }
+            ],
+            "count": 4,
+            "text": "编辑"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"John Brown 00001 New York No\" }).Locator(\"a\")",
+            "selector": "internal:role=row[name=\"John Brown 00001 New York No\"i] >> a"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-26",
+          "sinceAction": 10,
+          "t": 1793740453498
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-27",
+      "t": 1793740455135,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "John Browne",
+      "raw": "John Browne",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "text": "Please enter",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter",
+                "exact": true
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Please enter"
+              }
+            ],
+            "count": 3,
+            "text": "Please enter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Cell, new() { Name = \"J close-circle\" }).GetByPlaceholder(\"Please enter\")",
+            "selector": "internal:role=cell[name=\"J close-circle\"i] >> internal:attr=[placeholder=\"Please enter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "7nswt8-28",
+      "t": 1793740455894,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Save",
+        "interactive": true,
+        "item": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='members']"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 6,
+            "value": "members"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Save"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Save\")",
+            "selector": "internal:text=\"Save\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-28",
+          "sinceAction": 1,
+          "t": 1793740455895
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-29",
+      "t": 1793740457302,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "plus add a row of data",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus add a row of data",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "plus add a row of data"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-card"
+              },
+              {
+                "m": "filter",
+                "hasText": "成员管理"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "plus add a row of data",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "成员管理"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"plus add a row of data\" })",
+            "selector": "internal:role=button[name=\"plus add a row of data\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-29",
+          "sinceAction": 8,
+          "t": 1793740457310
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-30",
+      "t": 1793740463242,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "text": "Cancel",
+        "interactive": true,
+        "item": true,
+        "row": {},
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='members']"
+              },
+              {
+                "m": "css",
+                "css": "a"
+              }
+            ],
+            "count": 6,
+            "value": "members"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Cancel"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Cancel"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Cancel\")",
+            "selector": "internal:text=\"Cancel\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7nswt8-30",
+          "sinceAction": 4,
+          "t": 1793740463246
+        }
+      ]
+    },
+    {
+      "id": "7nswt8-31",
+      "t": 1793740464644,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "section": "Ant Design Pro",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\")",
+            "selector": "internal:text=\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "7nswt8-32",
+      "t": 1793740502557,
+      "kind": "expect",
+      "page": "page",
+      "value": "Dana Test",
+      "url": "https://preview.pro.ant.design/form/advanced-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "td",
+        "role": "cell",
+        "text": "Dana Test",
+        "item": true,
+        "row": {
+          "key": "00004",
+          "header": "工号"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "cell",
+                "name": "Dana Test",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Dana Test"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "00004"
+              },
+              {
+                "m": "role",
+                "role": "cell",
+                "name": "Dana Test",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Dana Test"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='members']"
+              },
+              {
+                "m": "role",
+                "role": "cell",
+                "name": "Dana Test",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "members"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Cell, new() { Name = \"Dana Test\" })",
+            "selector": "internal:role=cell[name=\"Dana Test\"i]"
+          }
+        ]
+      },
+      "effects": [],
+      "check": "text"
+    }
+  ]
+}
