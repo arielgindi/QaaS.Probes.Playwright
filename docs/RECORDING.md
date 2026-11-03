@@ -827,8 +827,9 @@ nothing, in its view of a month, of a year or of a decade alike, as its "Navigat
 year: the date the field then shows is recorded as typed into it, as MUI's, antd's and Kendo's pickers all take it.
 When the picker kept it only once you pressed its OK, as antd's does, the flow presses Enter in the field after typing
 it. A click that opens a file chooser through what
-stands for it ("Browse") records nothing; the file chosen is the upload. A click on a cell of a table records the cell,
-as a header's cell sorts its column, never the whole row. A drag drops on what was under the pointer before the drop,
+stands for it ("Browse") records nothing; the file chosen is the upload. A click on a header's cell records the cell,
+as it sorts its column, never the whole header; a click on a row of data records the row, found by its key, as an app
+opens its record (`OpenTicketAsync`). A drag drops on what was under the pointer before the drop,
 such as a scheduler's slot, never on the item dragged, nor on the hint a library moves with the pointer, which names
 where it would drop.
 

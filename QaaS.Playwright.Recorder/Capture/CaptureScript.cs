@@ -366,11 +366,12 @@ internal static class CaptureScript
               if (looksClickable(node)) clickable = node;
             }
             if (handled) actionable.add(handled);
-            // In a row, the cell clicked, as a header's cell sorts or filters its column, a slot of a scheduler takes a
-            // drop: never the whole row for a click on one of its cells.
-            const cell = interactive?.matches(CONTAINERS) ? closestUp(hit, CELLS) : null;
+            // In a header's row, the cell clicked, as it sorts or filters its column: never the whole header for a click on
+            // one of its cells. A row of data is clicked as a whole, as an app opens its record.
+            const cell = interactive?.matches(CONTAINERS) ? closestUp(hit, HEADER_CELLS) : null;
             return handled ?? clickable ?? item ?? (cell && interactive.contains(cell) ? cell : interactive) ?? hit;
           }
+          const HEADER_CELLS = 'th, [role=columnheader], [role=rowheader]';
           const CELLS = 'th, td, [role=gridcell], [role=columnheader], [role=rowheader], [role=cell]';
 
           // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
@@ -1325,7 +1326,9 @@ internal static class CaptureScript
               if (nativeDrag(state.draft.element)) return;
               const drop = dropTarget(event, state);
               const { element, adornmentField, owner, listbox, ...rest } = state.draft;
-              record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
+              // On a table, the cell dropped on, as a scheduler's slot is.
+              const cell = drop ? closestUp(drop, CELLS) : null;
+              record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(cell ?? retarget(drop)).target : null });
               return;
             }
             // A MUI Select opens on mousedown and its menu then takes the click: without a click on the element, the press

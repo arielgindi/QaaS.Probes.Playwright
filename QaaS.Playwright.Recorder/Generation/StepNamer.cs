@@ -173,6 +173,9 @@ internal static partial class StepNamer
     {
         if (action.Kind is not ("click" or "dblclick")) return null;
         var target = action.Source.Target;
+        // A row clicked as a whole opens its record, which its key's column names: OpenTicket, never all the row says.
+        if (target?.Role == "row" && action.RowKey is not null)
+            return "Open" + (CSharp.IsAsciiText(target.Row?.Header) && CSharp.Pascal(target.Row!.Header) is { } column ? column : "Row");
         var label = Label(action, without: action.RowKey?.Text);
         var verb = label is { Length: <= 40 } && CSharp.IsAsciiText(label) && !label.Any(char.IsDigit) ? CSharp.Pascal(label)
             : Stem(target);
