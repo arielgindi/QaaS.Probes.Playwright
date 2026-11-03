@@ -21,7 +21,7 @@ public class RecorderPanelTests
         first.Chosen = first.Candidates.FindIndex(candidate => candidate.Kind == "row");
 
         var view = PanelSnapshot.Of(recording, new RecordRequest("ScheduleMaintenance", recording.StartUrl, "Flows"), "Flows",
-            saving: false, error: null).View;
+            status: "recording", error: null).View;
 
         var saved = FlowCodeGenerator.Generate(recording, "ScheduleMaintenance", "Flows");
         var lines = view.Code.Split('\n');
@@ -92,6 +92,47 @@ public class RecorderPanelTests
 
         Assert.That(recording.Actions.Select(action => action.Target?.Text), Is.EqualTo(new[] { "New ticket", "Create ticket" }),
             "undone actions are left out, and nothing done in the panel is recorded");
+    }
+
+    [Test]
+    [Category("EndToEnd")]
+    public async Task ElementsView_PicksAnItemOfAMenuThatClosed_AndAddsItsClick()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var options = new RecordingOptions($"{site.Url}/orders")
+        {
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
+        };
+        var session = await RecordingSession.StartAsync(options, _ => { });
+        Recording recording;
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "archive-order", options.Url]));
+            var app = session.Page;
+            var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+
+            await app.GetByRole(AriaRole.Button, new() { Name = "Actions" }).ClickAsync();
+            await app.Keyboard.PressAsync("F4");
+            // The menu closes, as when the focus goes to the panel.
+            await view.GetByText("Frozen at").WaitForAsync();
+            await app.EvaluateAsync("() => document.activeElement.blur()");
+            await Expect(app.GetByRole(AriaRole.Menu)).ToHaveCountAsync(0);
+
+            await view.GetByRole(AriaRole.Treeitem).Filter(new() { HasText = "Archive" }).ClickAsync();
+            await Expect(view.GetByText("Not on the page now")).ToBeVisibleAsync();
+            await view.GetByRole(AriaRole.Button, new() { Name = "Add click" }).ClickAsync();
+            await view.GetByRole(AriaRole.Radio, new() { Name = "Code" }).ClickAsync();
+            await Expect(view.GetByRole(AriaRole.Region, new() { Name = "Code" }))
+                .ToContainTextAsync("await page.GetByRole(AriaRole.Menuitem, new() { Name = \"Archive\", Exact = true }).ClickAsync();");
+        }
+        finally
+        {
+            recording = await session.StopAsync();
+        }
+
+        Assert.That(recording.Actions.Select(action => (action.Target?.Text, action.Added)),
+            Is.EqualTo(new[] { ("Actions", false), ("Archive", true) }), "F4 and the panel record nothing themselves");
     }
 
     private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");

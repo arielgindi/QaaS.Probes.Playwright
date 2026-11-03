@@ -6,8 +6,8 @@ using System.Text;
 namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
-/// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, and a helpdesk with
-/// a ticket table and a dialog to record in.
+/// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, a helpdesk with
+/// a ticket table and a dialog to record in, and orders with a menu in a portal.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -86,6 +86,7 @@ public sealed class TestSite : IDisposable
             "/tickets/new" => """<form action="/tickets"><label>Name <input name="name"></label><button>Create</button></form>""",
             "/tickets" => $"""<p id="created">{WebUtility.HtmlEncode(CreateTicket(request.QueryString["name"]))}</p>""",
             "/helpdesk" => Helpdesk,
+            "/orders" => Orders,
             _ => "<h1>Home</h1>",
         };
         Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
@@ -122,6 +123,22 @@ public sealed class TestSite : IDisposable
           const openForm = () => { form.hidden = false; };
           const assign = (button) => say(`${button.closest('tr').cells[0].textContent} assigned to you`);
           const create = () => { form.hidden = true; history.pushState({}, '', '/tickets/1043'); say('Ticket TCK-1043 created'); };
+        </script>
+        """;
+
+    // A menu of a row, opened in a portal at the end of the body, which closes as soon as the focus leaves it.
+    private const string Orders = """
+        <h1>Orders</h1>
+        <div id="app"><button aria-haspopup="menu" onclick="openMenu()">Actions</button></div>
+        <script>
+          function openMenu() {
+            const portal = document.body.appendChild(document.createElement('div'));
+            portal.className = 'popover';
+            portal.innerHTML = '<div class="paper"><ul role="menu" aria-label="Order actions">' +
+              '<li role="menuitem" tabindex="-1">Edit</li><li role="menuitem" tabindex="-1">Archive</li></ul></div>';
+            portal.querySelector('li').focus();
+            portal.addEventListener('focusout', () => portal.remove());
+          }
         </script>
         """;
 
