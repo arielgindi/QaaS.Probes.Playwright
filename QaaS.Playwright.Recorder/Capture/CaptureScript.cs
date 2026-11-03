@@ -2056,9 +2056,11 @@ internal static class CaptureScript
           function cellsOf(element) {
             const row = element.closest('tr, [role=row]');
             if (!row || row.querySelector('th[scope=col], [role=columnheader]')) return null;
+            // Each cell's text as the flow's filter matches it, its elements' texts run together as they are; what changes
+            // from load to load or with an edit (a count, a price, a date) left out at first.
             const cells = [...row.querySelectorAll(':scope > td, :scope > th, :scope > [role=cell], :scope > [role=gridcell]')]
-              .map(textOf).filter((text) => text && text.length <= 80);
-            return cells.length ? { row, cells: [...new Set(cells)].map((text) => ({ text, on: true })) } : null;
+              .map((cell) => clean(cell.textContent ?? '')).filter((text) => text && text.length <= 80);
+            return cells.length ? { row, cells: [...new Set(cells)].map((text) => ({ text, on: !VOLATILE.test(text) })) } : null;
           }
 
           // The checks that fit the element, and the one it most likely needs: a checkbox's state, a field's value, the
@@ -2364,12 +2366,15 @@ internal static class CaptureScript
           const busyKind = (element) => element.matches('[role=progressbar]') ? 'progressbar' : 'ariaBusy';
           const busySince = new WeakMap();
           let shown = { dialogs: new Map(), alerts: new Map(), menus: new Set(), busy: new Set() };
+          // What a message says, without the words of the buttons it holds, as MUI's snackbar's UNDO.
+          const messageOf = (alert) => [...alert.querySelectorAll('button, [role=button]')]
+            .reduce((text, button) => text.replace(button.innerText || button.textContent || '\u0000', ' '), alert.innerText || alert.textContent || '');
           function snapshot() {
             const dialogs = new Map();
             for (const dialog of openDialogs()) dialogs.set(dialog, null);
             const alerts = new Map();
             for (const alert of document.querySelectorAll('[role=alert]'))
-              if (visible(alert)) alerts.set(alert, normalize(alert.innerText || alert.textContent));
+              if (visible(alert)) alerts.set(alert, normalize(messageOf(alert)));
             const menus = new Set([...document.querySelectorAll('[role=menu]')].filter(visible));
             const busy = new Set([...document.querySelectorAll(BUSY)].filter(visible));
             return { dialogs, alerts, menus, busy };

@@ -337,7 +337,7 @@ internal sealed partial class FlowWriter
         foreach (var (index, alert) in AlertsEveryRepeatShowedAlike(repeats).Where(_ => _autoChecks))
         {
             _step.Actions = [repeats[^1][index].Source.Id];
-            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
+            AddCheck($"alert:{alert.Text}", $"alert “{WithoutButton(alert.Text!)}”", AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
         }
 
         // A check after the last repeat reads what it typed from the list's last item.
@@ -603,7 +603,9 @@ internal sealed partial class FlowWriter
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
         var shownElsewhere = action.Has("dialogOpened") || action.Has("tabSelected") || (closed.Count > 0 && alerts.Count > 0);
         var changes = action.Effects.Where(effect => _autoChecks && effect.Kind == "urlChanged");
-        foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1))
+        // Not one the address before the action matched already, as a sort's query does: it would check nothing.
+        foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
+                     .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))
         {
             var page = changed.Page is { } alias && alias != action.Source.Page ? alias : scope.Page;
             AddCheck("url", $"URL {StepNamer.Route(changed.Url) ?? changed.Url}",
@@ -623,7 +625,7 @@ internal sealed partial class FlowWriter
 
         // In a loop, a message is checked where it shows the item, as each repeat's did.
         foreach (var alert in alerts.Where(alert => _autoChecks && (repeats is null || ShowsTheItem(alert, repeats.Value))))
-            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, scope));
+            AddCheck($"alert:{alert.Text}", $"alert “{WithoutButton(alert.Text!)}”", AlertExpectation(alert, scope));
 
         // In a loop, the checks after the last repeat follow the loop.
         if (isLast && step.Opens is { } opened)
@@ -669,7 +671,11 @@ internal sealed partial class FlowWriter
             (_expects.TryGetValue(id, out var list) ? list : _expects[id] = []).Add(expectation);
     }
 
-    private static bool IsAlert(CapturedEffect effect) => effect is { Kind: "alert", Text.Length: > 0 };
+    // A message, not a busy one that goes by itself ("Loading...", "Please wait"), which a check would race.
+    internal static bool IsAlert(CapturedEffect effect) => effect is { Kind: "alert", Text.Length: > 0 } && !Passing().IsMatch(effect.Text);
+
+    /// <summary>A message without the words of the button it holds, as MUI's snackbar ends with UNDO.</summary>
+    public static string WithoutButton(string text) => AlertButton().Replace(text, "");
 
     private static CapturedEffect? FirstAlert(PlannedAction action) => action.Effects.FirstOrDefault(IsAlert);
 
@@ -695,7 +701,7 @@ internal sealed partial class FlowWriter
     {
         var alerts = $"{scope.Page}.GetByRole(AriaRole.Alert)";
         var shows = many ? ".Not.ToHaveCountAsync(0)" : ".ToBeVisibleAsync()";
-        var pieces = Pieces(alert.Text!);
+        var pieces = Pieces(WithoutButton(alert.Text!));
         if (!pieces.Where(piece => piece.Code is null).Any(piece => piece.Text.Any(char.IsDigit)))
             return $"await Expect({alerts}{Break}.Filter(new() {{ HasText = {Code(pieces)} }})){Break}{shows};";
         if (WordsAroundNumbers(pieces) is { } words)
@@ -786,7 +792,11 @@ internal sealed partial class FlowWriter
         string? problem = null;
         string Element() => Located(check, check.Target, ref problem);
 
-        string Shows(Func<string, string> whole, Func<string, string> words) => Expected(expected) switch
+        // An element found by the very text it is checked to have would pass while it is there: it is checked to show.
+        var byItsText = check.Check is "text" or "contains" && LocatorPolicy.Choose(check.Target) is { } found
+                        && expected.Length > 0 && !expected.Any(char.IsDigit) && (found.Parts.Any(part => part.Name == expected || part.Text == expected || part.HasText == expected)
+                                                   || found.Csharp?.Contains(CSharp.Literal(expected), StringComparison.Ordinal) == true);
+        string Shows(Func<string, string> whole, Func<string, string> words) => byItsText ? "ToBeVisibleAsync()" : Expected(expected) switch
         {
             ({ } code, false) => whole(code),
             ({ } code, true) => words(code),
@@ -816,6 +826,7 @@ internal sealed partial class FlowWriter
             }};", kind switch
             {
                 "hidden" => "is gone",
+                "text" or "contains" when byItsText => $"shows “{expected}”",
                 "text" => $"has text “{expected}”",
                 "contains" => $"contains “{expected}”",
                 "value" => $"has value “{expected}”",
@@ -843,8 +854,9 @@ internal sealed partial class FlowWriter
         var parts = new List<LocatorPart>();
         foreach (var part in candidate.Parts)
         {
-            var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : null;
-            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Linked(text);
+            var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : part.M == "text" ? part.Text : null;
+            // What the check expects and where it looks read the same settings: a row's key, a value chosen before.
+            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Seen(text);
             if (code is not null) codes[part] = code;
             if (code is not null || check.Check != "row" || part.M != "filter") parts.Add(part);
         }
@@ -986,6 +998,14 @@ internal sealed partial class FlowWriter
         }
 
         return Linked(LocatorPolicy.WithoutIcon(part.Name));
+    }
+
+    // The text with the values read so far in it read from their settings, as a check's expectation reads them; null
+    // when it has none.
+    private string? Seen(string text)
+    {
+        var pieces = Pieces(text);
+        return pieces.Any(piece => piece.Code is not null) ? Code(pieces) : null;
     }
 
     // The text with the loop's item values in it read from the item, and the values typed before from their settings;
@@ -1418,6 +1438,13 @@ internal sealed partial class FlowWriter
 
     [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
     private static partial Regex RegexSpecial();
+
+    [GeneratedRegex(@"^\s*(loading|please wait|saving|processing|working|uploading|submitting|fetching|refreshing)\b[^.!?]{0,30}(\.\.\.|…)?\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex Passing();
+
+    // The button a message ends with, its words in capitals as MUI writes them (UNDO, DISMISS), or a cross.
+    [GeneratedRegex(@"(?<=\S)\s+(UNDO|DISMISS|CLOSE|RETRY|OK|VIEW|SHOW|[×✕✖])$")]
+    private static partial Regex AlertButton();
 
     [GeneratedRegex(@"\S*\d\S*")]
     private static partial Regex NumberWord();

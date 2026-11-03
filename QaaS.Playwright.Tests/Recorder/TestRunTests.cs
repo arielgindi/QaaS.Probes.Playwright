@@ -139,7 +139,8 @@ public class TestRunTests
             await view.GetByRole(AriaRole.Button, new() { Name = "Check something in the app" }).ClickAsync();
             await app.GetByRole(AriaRole.Row, new() { Name = "TCK-1042" }).GetByRole(AriaRole.Button).ClickAsync();
             await app.Keyboard.PressAsync("Enter");
-            await Expect(code).ToContainTextAsync("""ToHaveTextAsync("Assign to me"); // check""");
+            // Found by the text it is checked to have, it is checked to show: a check of its text would pass while it is there.
+            await Expect(code).ToContainTextAsync("""Name = "Assign to me", Exact = true })).ToBeVisibleAsync(); // check""");
 
             await view.GetByRole(AriaRole.List, new() { Name = "Checks" }).GetByRole(AriaRole.Listitem)
                 .Filter(new() { HasText = "dialog closes" }).GetByRole(AriaRole.Button, new() { Name = "Drop this auto check" }).ClickAsync();

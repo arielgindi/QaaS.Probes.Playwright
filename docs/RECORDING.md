@@ -393,9 +393,12 @@ after the last action recorded, in its step, marked `// check`, and is listed on
 ```
 
 The element is found as a click on it would be. A value typed or chosen before reads its setting, so each case checks
-its own. A number that is no recorded value, such as a new record's id, changes from run to run: a text with one is
-checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043 created"), as a message is, and a
-row's cell that is only one is left out. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
+its own, where the check looks as well as in what it expects (a row by its key's setting, a cell by the city chosen
+before). An element found by the very text it is checked to have is checked to show (`ToBeVisibleAsync`), as a check of
+its text would pass whenever it is there. A number that is no recorded value, such as a new record's id, changes from
+run to run: a text with one is checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043
+created"), as a message is, and a row's cell that is only one is left out. A row's cells are its texts as the filter
+matches them, and those that change from load to load or with an edit (a count, a price, a date) are off at first. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
 
 ### Editing the steps
 
@@ -904,12 +907,15 @@ yourself follow them.
 - A tab: `ToHaveAttributeAsync("aria-selected", "true")`.
 - A click that opened a dialog: the dialog is visible. One that closed it: `ToBeHiddenAsync`, with 30 seconds for the
   save behind it.
-- A message that appeared (`role="alert"`): visible, with its text. A number in it that is no recorded value, such as a
-  new record's, is left out: the message is found by the words around it, those that name a recorded value first
-  (`created: {Configuration.Title}` for "Ticket TCK-1043 created: Printer offline").
+- A message that appeared (`role="alert"`): visible, with its text, without the words of a button it holds ("Customer
+  updated", never "Customer updated UNDO"). A number in it that is no recorded value, such as a new record's, is left
+  out: the message is found by the words around it, those that name a recorded value first (`created:
+  {Configuration.Title}` for "Ticket TCK-1043 created: Printer offline"). Not a message that only says the page is
+  busy and goes by itself ("Loading...", "Please wait"), which a check would race.
 - A new address: `ToHaveURLAsync`, with ids in the path matched as any value. In an app that routes by the fragment
   (`#/orders/5`), the route is checked the same way. Not when the action also opened a dialog or selected a tab, or
-  closed its dialog and showed a message: those say it better.
+  closed its dialog and showed a message: those say it better; nor when the address before the action matched it
+  already, as a sort that changes the query does.
 
 A busy indicator that came up within 5 seconds of an action and went away again is waited for after it, for up to 30
 seconds: a progress bar (`role="progressbar"`, as MUI's `CircularProgress` and `LinearProgress` are, also inside a

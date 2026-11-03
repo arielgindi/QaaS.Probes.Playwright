@@ -469,8 +469,8 @@ internal static partial class StepNamer
                 results.Add(title == Step.Dialog ? "closes the dialog" : $"closes {Quote(title) ?? "a dialog"}");
             if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route)
                 results.Add($"goes to {route}");
-            if (action.Effects.FirstOrDefault(effect => effect is { Kind: "alert", Text.Length: > 0 }) is { } alert)
-                results.Add(Short || Quote(alert.Text) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
+            if (action.Effects.FirstOrDefault(FlowWriter.IsAlert) is { } alert)
+                results.Add(Short || Quote(FlowWriter.WithoutButton(alert.Text!)) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
             if (results.Count > 0) return $", which {Join(results, " and ")}";
             return action.Has("busy") ? " and waits for it to load" : "";
         }

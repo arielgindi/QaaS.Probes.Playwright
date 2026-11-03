@@ -452,6 +452,12 @@ public class RealSiteRecordingTests
                 .And.Contain("GetByRole(AriaRole.Link, new() { Name = $\"{Configuration.FirstName} Abernathy\" })").And.Not.Contain("OpenLLeonie"),
                 "a person's link without the initial of their avatar, in its name or its step's");
             Assert.That(customersFlow.Yaml, Does.Contain("Search: ''").And.Not.Contain("Q:"), "a field named q by what it says");
+            Assert.That(customersFlow.Code, Does.Not.Contain("UNDO").And.Not.Contain("ToHaveURLAsync(new Regex(\"/react-admin-demo/#/customers\\\\?\"))")
+                .And.Contain("GetByText(\"Customers\")).ToBeVisibleAsync(); // check"),
+                "no message's button, no address the page was at already, no element checked to have the text it is found by");
+            Assert.That(widgets.Code, Does.Not.Contain("\"Loading...\"").And.Contain("GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.RowKey3 })\n" +
+                "            .GetByRole(AriaRole.Gridcell, new() { Name = Configuration.Value, Exact = true })).ToBeVisibleAsync(); // check"),
+                "no message that passes by itself; a check reads the settings where it looks as what it expects");
             Assert.That(widgets.Code, Does.Contain("await AddAsync(page)").And.Not.Contain("OpenEditAgain").And.Not.Contain("DemoRunner")
                 .And.Not.Contain("TreeviewTvActive").And.Not.Contain("JQueryGridPopupEditing"),
                 "a dialog another button opened before by what its own button does, and no name of a page's container or long heading");
