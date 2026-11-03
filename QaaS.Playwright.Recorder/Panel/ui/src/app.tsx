@@ -247,6 +247,7 @@ export function App() {
           selected={selected}
           status={state.status}
           test={test}
+          continued={state.continued}
           file={file}
           canRun={canTest}
           canEdit={!saving}
@@ -320,9 +321,16 @@ export function App() {
   );
 }
 
-// While paused or logging in, nothing is recorded: the panel says so, and why. Resume is in the top bar. In check mode,
-// it says what a click in the app does.
+// While paused, logging in or replaying the recording continued, nothing is recorded: the panel says so, and why.
+// Resume is in the top bar. In check mode, it says what a click in the app does.
 function Banner({ state }: { state: PanelState }) {
+  if (state.continued?.banner)
+    return (
+      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
+        <Icon name="play" size={14} class="shrink-0" />
+        <span class="min-w-0 flex-1 font-medium">{state.continued.banner}</span>
+      </div>
+    );
   if (state.checking && state.status === 'recording')
     return (
       <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-ok/25 bg-ok/8 px-4 py-2 text-[12.5px] leading-snug text-ok">

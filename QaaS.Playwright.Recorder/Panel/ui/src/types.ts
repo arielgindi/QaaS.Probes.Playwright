@@ -24,6 +24,8 @@ export interface PanelState {
   checking?: boolean;
   /** What Undo takes back, e.g. "Restore the click on “Save”"; none when there is nothing. */
   undo?: string;
+  /** The recording this one continues: a divider after its last action left, and a banner while it replays. */
+  continued?: { label: string; after?: string; banner?: string };
   code: string;
   yaml: string;
   steps: Step[];

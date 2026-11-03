@@ -57,6 +57,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
     private string _elementsPage = "page";
     private FrozenElements? _frozenShown;
     private int _elementsChanged;
+    private readonly HashSet<string>? _continued;
+    private readonly string _continuedLabel;
+    private volatile string? _banner;
 
     private RecorderPanel(RecordingSession session, RecordRequest request, IPage page, TestOptions? testOptions)
     {
@@ -64,6 +67,10 @@ internal sealed class RecorderPanel : IAsyncDisposable
         _page = page;
         Request = request;
         _tester = new FlowTester(session, testOptions);
+        _continued = session.Options.Continues?.Actions.Select(action => action.Id).ToHashSet();
+        _continuedLabel = File.Exists(request.CodePath)
+            ? $"Continued from {request.ClassName}.cs"
+            : "Continued from the unsaved recording";
         // Each change of the test run wakes the worker, which shows it.
         _tester.Changed += () => _commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
     }
@@ -103,6 +110,13 @@ internal sealed class RecorderPanel : IAsyncDisposable
 
     /// <summary>The flow's test runs, started from the panel.</summary>
     public FlowTester Tester => _tester;
+
+    /// <summary>Says <paramref name="banner"/> about the replay of the recording continued, under the top bar; null, nothing.</summary>
+    public void ShowBanner(string? banner)
+    {
+        _banner = banner;
+        _commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
+    }
 
     /// <summary>Stops updating the panel, and a test run going on; the window closes with the browser.</summary>
     public async ValueTask DisposeAsync()
@@ -421,6 +435,12 @@ internal sealed class RecorderPanel : IAsyncDisposable
                     Test = _tester.Report is { } test ? PanelTest.Of(test, _shown.View.Code) : null,
                     Checking = _session.Checking,
                     Undo = _session.Log.NextUndo(_shown.Undo.Count > 0),
+                    Continued = _continued is null ? null : new PanelContinued(_continuedLabel)
+                    {
+                        After = _shown.View.Steps.SelectMany(step => step.Actions)
+                            .LastOrDefault(action => _continued.Contains(action.Id))?.Id,
+                        Banner = _banner,
+                    },
                 },
             };
         }

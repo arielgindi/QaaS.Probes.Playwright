@@ -259,7 +259,7 @@ internal static partial class FlowPlanner
         && role.Parts.LastOrDefault()?.Name?.Contains(key, StringComparison.Ordinal) == true;
 
     // The field's path, as the form names it: a Select's hidden input, the name, a stable id or test id; else its label.
-    private static string SettingName(CapturedTarget? field)
+    internal static string SettingName(CapturedTarget? field)
     {
         if (field is null) return "Value";
         var select = field.Candidates.FirstOrDefault(candidate => candidate.Kind == "select")?.Value;

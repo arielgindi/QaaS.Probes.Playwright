@@ -6,10 +6,11 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// <summary>
 /// Collects what the capture script reports from every page, and what Playwright sees itself (navigations, pop-ups,
 /// browser dialogs), then ties each change of the page to the action that caused it. While paused it collects nothing,
-/// and what happened meanwhile is no action's doing. It also keeps the person's changes in the panel, each of which
+/// and what happened meanwhile is no action's doing. Made from a recording it continues, it starts with that one's
+/// actions, and adds what is recorded after them. It also keeps the person's changes in the panel, each of which
 /// <see cref="Undo"/> takes back, newest first, in turn with the actions recorded. Safe to call from any thread.
 /// </summary>
-internal sealed class CaptureLog(bool paused = false)
+internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 {
     // An action causes what follows it this soon; later, the page changed by itself or the person did something else.
     private const long DialogWindowMs = 5_000;
@@ -20,8 +21,10 @@ internal sealed class CaptureLog(bool paused = false)
         ["click", "dblclick", "press", "choose", "check", "uncheck", "drag"];
 
     private readonly Lock _gate = new();
-    private readonly List<CapturedAction> _actions = [];
-    private readonly Dictionary<string, int> _indexById = [];
+    private readonly List<CapturedAction> _actions = [.. from?.Actions ?? []];
+    private readonly Dictionary<string, int> _indexById = (from?.Actions ?? []).Select((action, index) => (action.Id, index))
+        .DistinctBy(pair => pair.Id).ToDictionary();
+    private readonly IReadOnlyList<string> _notRecordedBefore = from?.NotRecorded ?? [];
     private readonly List<CapturedEffect> _effects = [];
     private readonly List<PageEvent> _pageEvents = [];
     private readonly List<NavigationRequest> _navigationRequests = [];
@@ -31,7 +34,7 @@ internal sealed class CaptureLog(bool paused = false)
     private readonly Dictionary<string, ActionEdit> _edits = [];
     private readonly List<Change> _changes = [];
     private readonly List<(long From, long To)> _pauses = [];
-    private bool? _autoChecks;
+    private bool? _autoChecks = from?.AutoChecks;
     private long _sequence;
     private long _version;
     private bool _paused = paused;
@@ -39,6 +42,7 @@ internal sealed class CaptureLog(bool paused = false)
     // Created paused, the log starts recording when first resumed, on the pages as they are then.
     private bool _started = !paused;
     private long _pausedAt;
+    private long _resumedAt;
 
     /// <summary>Changes whenever what <see cref="Build"/> gives may have changed, so a view of the recording refreshes.</summary>
     public long Version => Interlocked.Read(ref _version);
@@ -62,8 +66,12 @@ internal sealed class CaptureLog(bool paused = false)
         if (message is null) return null;
         lock (_gate)
         {
-            // While paused, only an action begun before the pause is completed, e.g. the field being typed into.
+            // While paused, only an action begun before the pause is completed, e.g. the field being typed into. One begun
+            // while paused stays out when told later, as an action of a replay may be, and so does what it caused.
             if (_paused && !(message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id)))
+                return null;
+            var began = message.Type == "effect" ? message.T - (message.SinceAction ?? 0) : message.T;
+            if (began < _resumedAt && !(message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id)))
                 return null;
             // Inside the lock, so a Build that saw this version waits for the change.
             Changed();
@@ -145,10 +153,12 @@ internal sealed class CaptureLog(bool paused = false)
         lock (_gate)
         {
             if (!_paused) return;
-            _paused = false;
+            (_paused, _resumedAt) = (false, at);
             if (!_started)
             {
                 _started = true;
+                // What the pages do from now on is none of a continued recording's actions' doing.
+                if (_actions.Count > 0) _pauses.Add((_actions.Max(action => action.T), at));
                 foreach (var (page, url) in pages) _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++));
             }
             else
@@ -246,7 +256,10 @@ internal sealed class CaptureLog(bool paused = false)
         lock (_gate)
         {
             Remember(undo, Restore(_edits, actionId));
-            var edit = _edits.TryGetValue(actionId, out var known) ? Copy(known) : new ActionEdit();
+            // A recording continued comes with its edits.
+            var known = _edits.GetValueOrDefault(actionId)
+                        ?? (_indexById.TryGetValue(actionId, out var index) ? _actions[index].Edit : null);
+            var edit = known is null ? new ActionEdit() : Copy(known);
             change(edit);
             _edits[actionId] = edit;
         }
@@ -330,7 +343,7 @@ internal sealed class CaptureLog(bool paused = false)
                 if (effect.ActionId is not null && byId.TryGetValue(effect.ActionId, out var action) && Belongs(effect))
                     action.Effects.Add(effect);
 
-            var notRecorded = new List<string>();
+            var notRecorded = new List<string>(_notRecordedBefore);
             foreach (var pageEvent in PageEventsThatMatter())
                 Attribute(pageEvent, actions, notRecorded, _pauses);
 

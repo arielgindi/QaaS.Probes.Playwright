@@ -40,12 +40,27 @@ internal sealed record PanelView(
     /// <summary>What Undo takes back, as the panel says it, e.g. "Restore the click on “Save”"; null when nothing.</summary>
     public string? Undo { get; init; }
 
+    /// <summary>The recording this one continues, when it does.</summary>
+    public PanelContinued? Continued { get; init; }
+
     /// <summary>The page reads it as JSON: camelCase, text of every script kept readable, nothing missing written.</summary>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+}
+
+/// <summary>
+/// A recording that continues another: a divider with <paramref name="Label"/> after the last of that one's actions
+/// still in the flow, and a banner while they replay, or once they did not.
+/// </summary>
+internal sealed record PanelContinued(string Label)
+{
+    /// <summary>The action the divider follows; null when none of the recording continued is left.</summary>
+    public string? After { get; init; }
+
+    public string? Banner { get; init; }
 }
 
 /// <summary>A method of the flow: the actions on one page or in one dialog.</summary>
@@ -271,7 +286,8 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
         var view = new PanelView(request.ClassName, target, status, flow.Code, flow.Yaml, steps, flow.Checks, error)
         {
-            Kept = File.Exists(target), Login = recording.After, AutoChecks = plan.AutoChecks ?? request.AutoChecks,
+            Kept = request.Replaces is null && File.Exists(target), Login = recording.After,
+            AutoChecks = plan.AutoChecks ?? request.AutoChecks,
         };
 
         var planned = plan.Steps.SelectMany(step => step.Actions).ToList();

@@ -63,6 +63,18 @@ internal sealed class BrowserSession : IAsyncDisposable
         OpenInAsync(browser, config, logger);
 
     /// <summary>
+    /// The run on <paramref name="page"/>, which its caller opened and keeps, e.g. the recorder's recorded page, to go on
+    /// from where the run leaves it. The page and its pop-ups get the run's settings; disposing it closes nothing.
+    /// </summary>
+    public static async Task<BrowserSession> OnPageAsync(IPage page, PlaywrightFlowConfig config, ILogger logger)
+    {
+        var session = new BrowserSession(page.Context, ownsContext: false, config, logger) { KeepPageOpen = true };
+        session.Page = session.Track(page);
+        await session._setup.ApplyAsync(page);
+        return session;
+    }
+
+    /// <summary>
     /// Opens BaseUrl. An error page there fails the run, as flows that start on one verify nothing; a login page's 401
     /// or 403 only warns.
     /// </summary>
