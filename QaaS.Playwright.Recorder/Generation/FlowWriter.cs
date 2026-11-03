@@ -468,11 +468,13 @@ internal sealed partial class FlowWriter
     private void Saw(PlannedAction action)
     {
         if (_step.Depth > 0) return;
+        // What a login typed, a user name, names no record a later locator finds: a menu "Admin" is no user "Admin".
+        var login = _plan.Steps.FirstOrDefault(step => step.Actions.Contains(action))?.Actions.Any(other => other.Value?.Secret == true) == true;
         foreach (var setting in action.Values.Append(action.RowKey).OfType<Setting>().Where(_settings.Contains))
         {
             if (!_seen.Contains(setting)) _seen.Add(setting);
             var typed = setting == action.SearchValue || (action.Kind == "fill" && setting == action.Value);
-            if (typed && !_typed.Contains(setting)) _typed.Add(setting);
+            if (typed && !login && !_typed.Contains(setting)) _typed.Add(setting);
         }
     }
 

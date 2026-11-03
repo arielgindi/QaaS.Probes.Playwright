@@ -258,6 +258,10 @@ public class RealSiteRecordingTests
             Assert.That(hrmFlow.Yaml, Does.Contain("Password: '${PASSWORD}'"), "the YAML reads it from the environment");
             Assert.That(hrmFlow.Code, Does.Not.Contain("FillEmpNumber").And.Not.Contain("drag").And.Not.Contain("HoverAsync"),
                 "no route key as a name, no drag that dropped nowhere");
+            Assert.That(hrmFlow.Code, Does.Contain("GetByRole(AriaRole.Link, new() { Name = \"Admin\", Exact = true })"),
+                "a menu's link is no user name typed to log in");
+            Assert.That(hrmFlow.Code, Does.Contain("CloseSharePhotosAsync").And.Contain("Keyboard.PressAsync(\"Escape\")"),
+                "a dialog that closed with nothing seen is closed by Escape");
         });
     }
 
