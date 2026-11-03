@@ -190,7 +190,18 @@ internal sealed class Autosave
     }
 
     // The recording as kept: of the flow the request names, without the values the recorder hides.
-    private static Recording Stored(Recording recording, RecordRequest request)
+    private static Recording Stored(Recording recording, RecordRequest request) =>
+        WithoutSecrets(recording) with
+        {
+            Autosave = new AutosavedFlow(request.ClassName, Path.GetFullPath(request.OutputDir), request.AutoChecks,
+                request.Login, request.Replaces),
+        };
+
+    /// <summary>
+    /// A copy of the recording without the values the recorder hides, a password and what is typed into a secret's field,
+    /// for any file it writes: its own copy, and the raw recording <c>--keep-recording</c> keeps beside the flow.
+    /// </summary>
+    internal static Recording WithoutSecrets(Recording recording)
     {
         var copy = Recording.FromJson(recording.ToJson());
         foreach (var action in copy.Actions.Where(HoldsSecret))
@@ -199,11 +210,7 @@ internal sealed class Autosave
             if (action.Edit?.Values?.GetValueOrDefault("value") is { } edit) edit.Value = null;
         }
 
-        return copy with
-        {
-            Autosave = new AutosavedFlow(request.ClassName, Path.GetFullPath(request.OutputDir), request.AutoChecks,
-                request.Login, request.Replaces),
-        };
+        return copy;
     }
 
     private static bool HoldsSecret(CapturedAction action) =>

@@ -265,7 +265,9 @@ public class RealSiteRecordingTests
             Assert.That(demoqaFlow.Code, Does.Not.Contain("SubjectsInputSearch").And.Not.Contain("[id='subjectsInput']\").ClickAsync()"),
                 "neither filter letters nor focus clicks");
             Assert.That(appliedFlow.Code, Does.Contain("foreach (var subject in Configuration.Subjects)"), "the subjects left a list");
-            Assert.That(hrmFlow.Code + hrmFlow.Yaml, Does.Not.Contain("admin123"), "no password in the flow or its YAML");
+            Assert.That(hrmFlow.Code + hrmFlow.Yaml, Does.Not.Contain("typed-secret-1"), "no password in the flow or its YAML");
+            Assert.That(Autosave.WithoutSecrets(hrm).ToJson(), Does.Not.Contain("typed-secret-1"),
+                "nor in the raw recording --keep-recording keeps");
             Assert.That(hrmFlow.Yaml, Does.Contain("Password: '${PASSWORD}'"), "the YAML reads it from the environment");
             Assert.That(hrmFlow.Code, Does.Not.Contain("FillEmpNumber").And.Not.Contain("drag").And.Not.Contain("HoverAsync"),
                 "no route key as a name, no drag that dropped nowhere");

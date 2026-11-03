@@ -298,13 +298,14 @@ internal static class FlowRecorder
         return end?.Why;
     }
 
-    // The raw recording, beside the flow and named after it, for a person to share when an element was located badly.
+    // The raw recording, beside the flow and named after it, for a person to share when an element was located badly:
+    // without its secrets, as it may well be shared.
     private static async Task<string?> KeepAsync(SavedFlow saved, Recording recording)
     {
         var path = Path.ChangeExtension(saved.CodePath, ".recording.json");
         try
         {
-            await File.WriteAllTextAsync(path, recording.ToJson());
+            await File.WriteAllTextAsync(path, Autosave.WithoutSecrets(recording).ToJson());
             return path;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)

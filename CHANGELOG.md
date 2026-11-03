@@ -130,6 +130,7 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   `› Testing`, `✓ Passed`, `× Failed`), with the panel's words: a checkbox is ticked and a radio picked, as `check` is a
   check of what the page shows. A click that only opens a select is no longer printed, so the numbers are the panel's
   step numbers; a part's replay no longer prints what the page did again; a check of an element's own text says it once.
+- The raw recording `--keep-recording` keeps beside the flow leaves out passwords and secrets, as autosave does.
 
 ## 2.0.0
 
