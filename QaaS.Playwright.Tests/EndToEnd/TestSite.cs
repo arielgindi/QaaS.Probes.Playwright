@@ -9,8 +9,9 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
 /// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, a helpdesk with
-/// a ticket table and a dialog to record in, orders with a menu in a portal, a to-do list, and under <c>/pickers/</c>
-/// the option pickers of common UI libraries, each in a modal flow (<c>Recorder/Pickers/kit.js</c>).
+/// a ticket table and a dialog to record in, orders with a menu in a portal, a to-do list, under <c>/pickers/</c>
+/// the option pickers of common UI libraries, each in a modal flow (<c>Recorder/Pickers/kit.js</c>), and imitations of
+/// two public practice sites (<c>Recorder/Sites</c>): demoqa's practice form, and OrangeHRM's demo under its own addresses.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -81,6 +82,23 @@ public sealed class TestSite : IDisposable
         if (path.StartsWith("/pickers/", StringComparison.Ordinal))
         {
             ServePicker(response, path["/pickers/".Length..]);
+            return;
+        }
+
+        // Imitations of public practice sites (Recorder/Sites): demoqa's practice form, and OrangeHRM's demo, whose every
+        // page is the same app, as its addresses are.
+        if (path.StartsWith("/sites/", StringComparison.Ordinal) && path.EndsWith(".js", StringComparison.Ordinal))
+        {
+            Send(response, "text/javascript; charset=utf-8", File.ReadAllBytes(Path.Combine(SitesFolder(), Path.GetFileName(path))));
+            return;
+        }
+
+        if (path == "/automation-practice-form" || path.StartsWith("/web/index.php/", StringComparison.Ordinal))
+        {
+            var app = path == "/automation-practice-form" ? "practice-form" : "hrm";
+            var shell = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>demosite</title></head><body>" +
+                        $"<div id=\"root\"></div><script src=\"/sites/{app}.js\"></script></body></html>";
+            Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(shell));
             return;
         }
 
@@ -185,6 +203,9 @@ public sealed class TestSite : IDisposable
 
     private static string PickersFolder([CallerFilePath] string here = "") =>
         Path.Combine(Path.GetDirectoryName(here)!, "..", "Recorder", "Pickers");
+
+    private static string SitesFolder([CallerFilePath] string here = "") =>
+        Path.Combine(Path.GetDirectoryName(here)!, "..", "Recorder", "Sites");
 
     private string CreateTicket(string? name)
     {
