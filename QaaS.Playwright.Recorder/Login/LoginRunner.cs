@@ -1,0 +1,64 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
+using QaaS.Framework.SDK.ContextObjects;
+using QaaS.Playwright.Configuration;
+using QaaS.Playwright.Flows;
+
+namespace QaaS.Playwright.Recorder.Login;
+
+/// <summary>A flow of the person's tests to run before recording, e.g. their login, and where it is.</summary>
+/// <param name="Flow">The flow's class name, as SetupFlows names it.</param>
+/// <param name="Assembly">The test project's built assembly, which has the flow.</param>
+/// <param name="Settings">A YAML file with the flow's settings, or null for their defaults.</param>
+internal sealed record LoginFlow(string Flow, string Assembly, string? Settings);
+
+/// <summary>
+/// Runs a login flow on the recording's page as the probe runs a setup flow: found by its class name, given BaseUrl and
+/// a QaaS context, its settings bound and checked, then run on the page the recording opened on BaseUrl.
+/// </summary>
+internal static class LoginRunner
+{
+    /// <summary>Returns null when the flow passed, else why it failed, as the probe reports it, its secrets hidden.</summary>
+    public static async Task<string?> RunAsync(LoginFlow login, IPage page, string baseUrl)
+    {
+        var secrets = Secrets.None;
+        try
+        {
+            var flowConfiguration = LoginSettings.Read(login.Settings, login.Flow);
+            secrets = Secrets.Of(flowConfiguration, "");
+            FlowAssemblyContext.Load(login.Assembly);
+            var context = new Context { Logger = new ConsoleLogger(secrets) };
+            var (flow, problems) = FlowLoader.Load(login.Flow, context, baseUrl, flowConfiguration);
+            try
+            {
+                if (problems.Count > 0)
+                    throw new InvalidOperationException($"{login.Flow} has invalid settings: {string.Join("; ", problems)}");
+                await flow.RunAsync(page);
+            }
+            finally
+            {
+                await FlowLoader.DisposeAsync(flow);
+            }
+
+            return null;
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            return secrets.Scrub(FlowRunner.Describe(failure));
+        }
+    }
+
+    // What the flow logs, in the console, its secrets hidden.
+    private sealed class ConsoleLogger(Secrets secrets) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (IsEnabled(logLevel)) ConsoleUi.FlowLog(secrets.Scrub(formatter(state, exception)));
+        }
+    }
+}

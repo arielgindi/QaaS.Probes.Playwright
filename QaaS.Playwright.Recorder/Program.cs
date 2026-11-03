@@ -1,11 +1,12 @@
 using System.Reflection;
+using QaaS.Playwright.Recorder.Login;
 
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>
 /// Records a browser flow in the installed Chrome and saves it as a C# flow class with its settings.
 /// <c>qaas-playwright</c> asks for the details; <c>qaas-playwright record &lt;name&gt; &lt;url&gt; [--output-dir Dir]
-/// [--no-panel]</c> takes them.
+/// [--no-panel] [--login Flow --login-assembly Tests.dll]</c> takes them.
 /// </summary>
 public static class Program
 {
@@ -19,22 +20,28 @@ public static class Program
             case ["--help"] or ["-h"] or ["help"]:
                 ConsoleUi.Header();
                 ConsoleUi.Usage();
+                ConsoleUi.LoginUsage();
                 return 0;
         }
 
         ConsoleUi.Header();
         RecordRequest request;
+        // The login flow last used in this folder is used again, unless the command says otherwise.
+        var projectFolder = Environment.CurrentDirectory;
         try
         {
-            request = args is [] or ["record"] ? RecordRequest.Ask() : RecordRequest.Parse(args);
+            var remembered = RememberedLogin.In(projectFolder);
+            request = args is [] or ["record"] ? RecordRequest.Ask(remembered) : RecordRequest.Parse(args, remembered);
         }
         catch (ArgumentException invalid)
         {
             ConsoleUi.Error(invalid.Message);
             ConsoleUi.Usage();
+            ConsoleUi.LoginUsage();
             return 1;
         }
 
+        if (RememberedLogin.Remember(projectFolder, request.Login) is { } notRemembered) ConsoleUi.Warning(notRemembered);
         return FlowRecorder.Record(request);
     }
 

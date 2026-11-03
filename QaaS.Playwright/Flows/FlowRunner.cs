@@ -68,7 +68,8 @@ internal sealed class FlowRunner(Context context, string? sessionName, string? p
         browser.HasCrashed(page) ? (null, "the page crashed") : await TryScreenshotAsync(page);
 
     // The message, or the exception's type when it has none, and the innermost cause, which often names the real problem.
-    private static string Describe(Exception failure)
+    // The recorder tells a login flow's failure the same way.
+    internal static string Describe(Exception failure)
     {
         static string MessageOf(Exception exception) =>
             string.IsNullOrWhiteSpace(exception.Message) ? exception.GetType().Name : exception.Message;
