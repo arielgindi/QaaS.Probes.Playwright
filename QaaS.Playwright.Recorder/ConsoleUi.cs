@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 
@@ -30,7 +31,7 @@ internal static class ConsoleUi
 
     private static Terminal Out => Terminal.Out;
 
-    // ── The header and the help ────────────────────────────────────────────────────────────────────────────
+    // ── The header, the help and the version ────────────────────────────────────────────────────────────────────
 
     public static void Header()
     {
@@ -40,18 +41,76 @@ internal static class ConsoleUi
         t.WriteLine(Margin + badge + t.Paint("Playwright Recorder", Tone.Bold) + t.Paint($"  v{Version}", Tone.Dim));
     }
 
-    public static void Usage() => Console.WriteLine("""
-          Usage:
-            qaas-playwright                                       Asks for the URL, the name and the folder
-            qaas-playwright record <name> <url>                   Records into ./Flows
-            qaas-playwright record <name> <url> --output-dir Dir  Records into Dir
-            qaas-playwright record <name> <url> --keep-recording  Also saves the raw recording beside the flow
-            qaas-playwright record <name> <url> --no-panel        Records without the panel beside the browser
-            qaas-playwright --version                             Prints the version
+    public static void Usage()
+    {
+        var t = Out;
+        t.WriteLine();
+        foreach (var line in Terminal.Wrap(
+                     "Records what you do in Chrome and saves it as a QaaS flow class, with the values you typed and " +
+                     "chose as its settings.", Math.Min(t.Width - 1, 80) - Margin.Length))
+            t.WriteLine(Margin + line);
 
-          Uses your installed Google Chrome.
+        (string, string)[] usage =
+        [
+            ("qaas-playwright", "Asks for the URL, the name and the folder"),
+            ($"qaas-playwright record {t.Paint("<name> <url>", Tone.Dim)}", "Records into ./Flows"),
+        ];
+        (string, string)[] options =
+        [
+            ($"--output-dir {t.Paint("<dir>", Tone.Dim)}", "Saves the flow in <dir> instead of ./Flows"),
+            ("--keep-recording", "Also saves the raw recording, with every locator tried"),
+            ("--no-panel", "Records without the panel beside the browser"),
+            ("-h, --help", "Shows this help"),
+            ("-v, --version", "Prints the version"),
+        ];
+        (string, string)[] keys =
+        [
+            ("F9", "Hides or shows the box over the element a click records"),
+            ($"Alt+{t.Glyph("↑", "Up")} / Alt+{t.Glyph("↓", "Down")}", "Picks the element around the box, or goes back"),
+            ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
+        ];
+        Rows(t, "USAGE", usage, ColumnFor(usage), Tone.Plain);
+        Rows(t, "OPTIONS", options, ColumnFor([.. options, .. keys]));
+        Rows(t, "WHILE RECORDING", keys, ColumnFor([.. options, .. keys]));
 
-        """);
+        Section(t, "EXAMPLES");
+        foreach (var example in (string[])
+                 [
+                     "qaas-playwright record login-flow https://my-app.com",
+                     "qaas-playwright record login-flow https://my-app.com --output-dir UiFlows",
+                 ])
+            t.WriteLine(Margin + Margin + t.Paint("$ ", Tone.Dim) + example);
+
+        t.WriteLine();
+        t.WriteLine(Margin + t.Paint("Uses your installed Google Chrome. More in docs/RECORDING.md.", Tone.Dim));
+        t.WriteLine();
+    }
+
+    /// <summary>The lines under an error in the command line.</summary>
+    public static void UsageHint()
+    {
+        var t = Out;
+        t.WriteLine(Margin + t.Paint("Usage: ", Tone.Dim) + "qaas-playwright record <name> <url> "
+                    + t.Paint("[--output-dir <dir>] [--keep-recording] [--no-panel]", Tone.Dim));
+        t.WriteLine(Margin + t.Paint("Run ", Tone.Dim) + "qaas-playwright --help" + t.Paint(" for more.", Tone.Dim));
+        t.WriteLine();
+    }
+
+    /// <summary>The version alone when the output goes to a script; with what it runs on, for a person.</summary>
+    public static void PrintVersion()
+    {
+        var t = Out;
+        if (Console.IsOutputRedirected)
+        {
+            t.WriteLine(Version);
+            return;
+        }
+
+        var playwright = typeof(Microsoft.Playwright.IPlaywright).Assembly.GetName().Version?.ToString(3);
+        t.WriteLine(t.Paint("qaas-playwright", Tone.Bold) + " " + t.Paint(Version, Tone.Accent));
+        t.WriteLine(t.Paint(string.Join($" {t.Dot} ", $"Playwright {playwright}",
+            $".NET {Environment.Version}", RuntimeInformation.RuntimeIdentifier), Tone.Dim));
+    }
 
     // ── The questions ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -425,6 +484,23 @@ internal static class ConsoleUi
         t.WriteLine();
         t.WriteLine(Margin + (glyph is var (text, tone) ? t.Paint(text, tone) + " " : "") + t.Paint(title, Tone.Bold));
     }
+
+    // A section of the help: each command, option or key, then what it does, from the column on.
+    private static void Rows(Terminal t, string title, IReadOnlyList<(string What, string Does)> rows, int column,
+        Tone tone = Tone.Accent)
+    {
+        Section(t, title);
+        foreach (var (what, does) in rows)
+        {
+            var lines = Terminal.Wrap(does, Math.Max(24, t.Width - 1 - column)).ToList();
+            t.WriteLine(Margin + Margin + t.Paint(what, tone) + new string(' ', column - Margin.Length * 2 - Terminal.WidthOf(what))
+                        + lines[0]);
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', column) + more);
+        }
+    }
+
+    private static int ColumnFor(IEnumerable<(string What, string Does)> rows) =>
+        Margin.Length * 2 + rows.Max(row => Terminal.WidthOf(row.What)) + 4;
 
     private static void Rule(Terminal t) =>
         t.WriteLine(Margin + t.Paint(new string(t.Glyph("─", "-")[0], Math.Min(t.Width - 1, 80) - Margin.Length * 2), Tone.Dim));

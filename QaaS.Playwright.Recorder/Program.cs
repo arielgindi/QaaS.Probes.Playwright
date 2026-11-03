@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>
@@ -11,18 +9,19 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        switch (args)
+        if (args is ["--version"] or ["-v"])
         {
-            case ["--version"]:
-                Console.WriteLine(Version);
-                return 0;
-            case ["--help"] or ["-h"] or ["help"]:
-                ConsoleUi.Header();
-                ConsoleUi.Usage();
-                return 0;
+            ConsoleUi.PrintVersion();
+            return 0;
         }
 
         ConsoleUi.Header();
+        if (args is ["help"] || args.Any(arg => arg is "--help" or "-h"))
+        {
+            ConsoleUi.Usage();
+            return 0;
+        }
+
         RecordRequest request;
         try
         {
@@ -31,14 +30,10 @@ public static class Program
         catch (ArgumentException invalid)
         {
             ConsoleUi.Error(invalid.Message);
-            ConsoleUi.Usage();
+            ConsoleUi.UsageHint();
             return 1;
         }
 
         return FlowRecorder.Record(request);
     }
-
-    private static string Version =>
-        typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            .Split('+')[0] ?? "unknown";
 }
