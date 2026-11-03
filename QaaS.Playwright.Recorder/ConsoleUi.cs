@@ -25,6 +25,7 @@ internal static class ConsoleUi
     private static readonly Dictionary<string, int> StepOfAction = [];
     private static int _lastStep;
     private static bool _recording;
+    private static Capture.RecordingState _state;
     private static int _cancelled;
 
     public static string Version =>
@@ -75,6 +76,7 @@ internal static class ConsoleUi
             ($"Alt+{t.Glyph("↑", "Up")} / Alt+{t.Glyph("↓", "Down")}", "Picks the element around the box, or goes back"),
             ("F8", "Pauses or resumes the recording"),
             ("F4", "Freezes the page's elements for the panel's Elements tab"),
+            ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
         Rows(t, "USAGE", usage, ColumnFor(usage), Tone.Plain);
@@ -599,6 +601,10 @@ internal static class ConsoleUi
 
     public static void StateChanged(Capture.RecordingState state)
     {
+        var before = _state;
+        _state = state;
+        // After a test, the recording goes on as before it, and the test's result says so.
+        if (before == Capture.RecordingState.Testing) return;
         if (state == Capture.RecordingState.Paused) Paused();
         else if (state == Capture.RecordingState.Recording) Resumed();
     }
@@ -606,6 +612,59 @@ internal static class ConsoleUi
     public static void Froze(FrozenElements frozen) =>
         Status(Out, Margin, Out.Glyph("❄", "*"), Tone.Accent,
             $"The elements of {frozen.Page} are frozen: pick them in the panel's Elements tab.", Tone.Dim);
+
+    // ── Testing the flow ────────────────────────────────────────────────────────────────────────────────────────
+
+    public static void Testing(TestRun.TestReport report) =>
+        Phase(report.UpTo is null
+            ? $"Testing {report.Flow}"
+            : $"Testing {report.Flow} up to step {report.Total} of {report.Actions.Count}");
+
+    /// <summary>
+    /// How a test went, in a line or a few: passed, with how long it took; or the step that failed, as its line shows
+    /// while recording, why, as the probe says it, and what to check.
+    /// </summary>
+    public static void Tested(TestRun.TestReport report, Recording recording)
+    {
+        var t = Out;
+        var took = report.Ms is { } ms ? $"{ms / 1000.0:0.0} s" : null;
+        var steps = report.Total == report.Actions.Count
+            ? Count(report.Total, "step")
+            : $"{report.Total} of {report.Actions.Count} steps";
+        lock (Gate)
+        {
+            switch (report.Outcome)
+            {
+                case TestRun.TestOutcome.Passed:
+                    Success($"{report.Flow} passed: {steps}{(took is null ? "" : $" in {took}")}.");
+                    break;
+                case TestRun.TestOutcome.Stopped:
+                    Status(t, Margin, t.Glyph("■", "#"), Tone.Dim, $"Stopped testing {report.Flow}.", Tone.Dim);
+                    break;
+                case TestRun.TestOutcome.Failed when report.Failure is { } failure:
+                    Failed(t, report, failure, recording, took);
+                    break;
+                default:
+                    Status(t, Margin, t.Glyph("×", "x"), Tone.Error, $"Could not test {report.Flow}: {report.Problem}");
+                    break;
+            }
+        }
+    }
+
+    private static void Failed(Terminal t, TestRun.TestReport report, TestRun.TestFailure failure, Recording recording, string? took)
+    {
+        var number = failure.Action is { } id ? report.Actions.TakeWhile(action => action != id).Count() + 1 : 0;
+        var where = failure.InLogin is { } login ? $"in {login}, before its first step"
+            : number > 0 ? $"at step {number} of {report.Actions.Count}{(failure.Line is { } line ? $", line {line}" : "")}"
+            : "before its first step";
+        Status(t, Margin, t.Glyph("×", "x"), Tone.Error, $"{report.Flow} failed {where}{(took is null ? "" : $", after {took}")}.");
+        var indent = new string(' ', StepIndent);
+        if (recording.Actions.FirstOrDefault(action => action.Id == failure.Action) is { } failed && StepLine(t, number, failed) is { } step)
+            t.WriteLine(step);
+        Status(t, indent, t.Glyph("└", "`-"), Tone.Dim, Terminal.Clean(failure.Headline), Tone.Error);
+        foreach (var check in failure.Checks) Status(t, indent, t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+        foreach (var hint in failure.Hints) Status(t, indent, " ", Tone.Plain, hint, Tone.Dim);
+    }
 
     /// <summary>After <see cref="Saved"/>, for a flow recorded after a login flow.</summary>
     public static void RunAfter(string loginFlow) =>

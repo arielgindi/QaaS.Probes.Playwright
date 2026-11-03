@@ -6,7 +6,10 @@ namespace QaaS.Playwright.Recorder.Panel;
 /// <summary>A window's place on the screen, in the screen's pixels.</summary>
 internal sealed record WindowBounds(int Left, int Top, int Width, int Height);
 
-/// <summary>Places the panel's window beside the recorded one, through Chrome's own window commands (CDP).</summary>
+/// <summary>
+/// Places the panel's window beside the recorded one, and a test run's over it, through Chrome's own window commands
+/// (CDP).
+/// </summary>
 internal static class PanelWindow
 {
     private const int WantedWidth = 1200;
@@ -25,28 +28,50 @@ internal static class PanelWindow
             var screen = await panel.EvaluateAsync<int[]>(
                 "() => [screen.availLeft, screen.availTop, screen.availWidth, screen.availHeight]");
             var (bounds, beside) = Arrange(app, new WindowBounds(screen[0], screen[1], screen[2], screen[3]));
-            var session = await panel.Context.NewCDPSessionAsync(panel);
-            try
-            {
-                await session.SendAsync("Browser.setWindowBounds", new()
-                {
-                    ["windowId"] = panelWindow,
-                    ["bounds"] = new Dictionary<string, object>
-                    {
-                        ["left"] = bounds.Left, ["top"] = bounds.Top, ["width"] = bounds.Width, ["height"] = bounds.Height,
-                    },
-                });
-            }
-            finally
-            {
-                await session.DetachAsync();
-            }
-
+            await MoveAsync(panel, panelWindow, bounds);
             return beside;
         }
         catch (Exception failure) when (failure is PlaywrightException or KeyNotFoundException or InvalidOperationException)
         {
             return false; // Where it opened will do.
+        }
+    }
+
+    /// <summary>
+    /// Moves the window of <paramref name="page"/> onto the recorded window, in its place and at its size, e.g. the
+    /// test run's: it shows the app where the person recorded it, and leaves the panel beside it in view.
+    /// </summary>
+    public static async Task PlaceOverAsync(IPage recorded, IPage page)
+    {
+        try
+        {
+            var (_, app) = await WindowOfAsync(recorded);
+            var (window, _) = await WindowOfAsync(page);
+            await MoveAsync(page, window, app);
+        }
+        catch (Exception failure) when (failure is PlaywrightException or KeyNotFoundException or InvalidOperationException)
+        {
+            // Where it opened will do.
+        }
+    }
+
+    private static async Task MoveAsync(IPage page, int window, WindowBounds bounds)
+    {
+        var session = await page.Context.NewCDPSessionAsync(page);
+        try
+        {
+            await session.SendAsync("Browser.setWindowBounds", new()
+            {
+                ["windowId"] = window,
+                ["bounds"] = new Dictionary<string, object>
+                {
+                    ["left"] = bounds.Left, ["top"] = bounds.Top, ["width"] = bounds.Width, ["height"] = bounds.Height,
+                },
+            });
+        }
+        finally
+        {
+            await session.DetachAsync();
         }
     }
 
