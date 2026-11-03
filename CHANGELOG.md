@@ -4,6 +4,16 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- The recorder never loses a recording: it writes it to `~/.qaas/recordings/` after every change, atomically and for
+  the user's eyes only, one file per flow and folder, without the passwords and secrets it hides elsewhere. A recording
+  that did not end in a save is offered when the recorder starts next: save it now without a browser, continue
+  recording, or discard it. A file it cannot read is skipped with a warning.
+- `qaas-playwright --continue <flow or .cs>` goes on with a saved flow: Chrome opens where it started, the login flow
+  runs, the flow's steps replay in the recorded window as a test runs them, nothing recorded, and what is recorded
+  then comes after them. When a step fails, keep recording from there or stop. Saving regenerates the flow and replaces
+  it, unless it was changed by hand since. Asked for a name that is there already, the recorder offers to continue that
+  flow, overwrite it, or take another name.
+
 - The recorder writes cleaner flows. Each step method has a one-line summary of what it does, and is named after what
   was clicked (`AssignTicketAsync` for a row's "Assign" button); a step ends where the page answered a click with a
   message or a busy indicator, and a search or a login of one or two values stays one step with its click. A locator

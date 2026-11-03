@@ -13,6 +13,7 @@ qaas-playwright record login-flow https://my-app.com --keep-recording    # also 
 qaas-playwright record login-flow https://my-app.com --no-panel          # without the panel beside the browser
 qaas-playwright record login-flow https://my-app.com --no-auto-checks    # without the Expect after each action
 qaas-playwright record new-order https://my-app.com --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll
+qaas-playwright --continue new-order                             # replays a saved flow, then records more after it
 ```
 
 Run it in your test project's folder: the flow is saved in `Flows/` there, in the project's namespace. From a clone
@@ -95,11 +96,65 @@ summary: the files it wrote, how many actions, steps and settings the flow has, 
 - Recording again under the same name never overwrites anything you may have edited: the new recording is saved
   beside the flow as `LoginFlow.recorded.txt` with `LoginFlow.recorded.flow.yaml`, then `LoginFlow.recorded-2.txt`
   and so on, to merge by hand. They are not `.cs` files, so the project still builds while they declare the same class.
+  Asked for the name (`qaas-playwright`), the recorder offers instead to [continue](#continuing-a-flow) the flow there,
+  overwrite it, or take another name.
 - The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
   (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
   Windows device (`nul`, `com1`), or one too long for a file name. Asked for the name, the recorder says why and asks
   again; so it does for a URL that is not http(s). Ctrl+C at a question stops without recording.
+
+### Nothing is lost
+
+While you record, the recording is written to `~/.qaas/recordings/` after every change: one file per flow and folder,
+so two projects' `LoginFlow`s do not meet, written whole or not at all, readable by you only (on Windows, as the
+folder allows), in the format `--keep-recording` writes. It never holds a password you typed, as the console never
+shows one, nor what you typed into a field whose setting is named as a secret (password, secret, token, API key,
+pwd), as a test run hides those. Once the flow is saved, the file stays, marked saved, for
+[continuing](#continuing-a-flow) the flow; the newest 30 are kept.
+
+When the recorder starts and finds a recording that did not end in a save (the recorder crashed or was stopped with
+Ctrl+C, or the flow could not be saved), it asks, before anything else:
+
+```text
+  ? Found an unsaved recording of NewTicket (12 actions, 5 minutes ago)
+      1  Save it now
+      2  Continue recording
+      3  Discard
+  ? Choose 1, 2 or 3 (1) ›
+```
+
+**Save it now** writes the flow and its YAML, as a save at the end of the recording would, without opening Chrome;
+**Continue recording** goes on from it as `--continue` does; **Discard** deletes it. Then the recorder does what you
+started it for. A file it cannot read is skipped with a warning. A flow saved from it types an empty password, as the
+recording holds none: the recorder says which setting to set in its YAML.
+
+### Continuing a flow
+
+```bash
+qaas-playwright --continue new-ticket                            # Flows/NewTicket.cs
+qaas-playwright --continue UiFlows/NewTicket.cs --no-panel       # or the flow's file, with the options of record
+```
+
+Chrome opens on the page the flow started on, your [login flow](#logging-in-first) runs first as usual, and the flow's
+steps replay in the recorded window itself, as **Test** runs them: built as saved, through the probe's runner, with its
+timeouts and the flow's values. Nothing is recorded meanwhile; the overlay says `Testing the flow`. Then the recording
+goes on from where they left the app: what you do is added after them, numbered on, and the panel shows a divider
+`Continued from NewTicket.cs` in its steps.
+
+- **When a step fails**, the console and the panel show it as a test run does, and the console asks: keep recording
+  from there, without the steps from the failed one on (you record them again), or stop, which keeps the flow as it
+  is. When the login flow fails, nothing is replayed, and the recorder stops.
+- **Saving regenerates the whole flow** and replaces `NewTicket.cs` and its YAML, unless you changed the `.cs` since it
+  was recorded: then the flow continued is saved beside it, as a re-recording is, and the recorder says so when it
+  starts.
+- **The recording** is the recorder's own copy in `~/.qaas/recordings/`, or `NewTicket.recording.json` beside the flow
+  (`--keep-recording`), whichever is newer. A flow recorded with an older version, on another machine, or before the
+  last 30 saved has none: the recorder says so. Record with `--keep-recording` to continue a flow anywhere.
+- The password and the secrets the recorder's copy does not hold come from the flow's YAML, so the replay types them.
+  The flow keeps its auto checks, or their absence. One recorded after a login flow logs in with it again: as given or
+  remembered for the folder, else as it was recorded.
+- Continuing needs the .NET SDK, as **Test** does.
 
 ### Logging in first
 
