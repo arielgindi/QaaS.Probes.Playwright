@@ -43,6 +43,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     private readonly TaskCompletionSource _saveRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _stop = new();
     private readonly FlowTester _tester;
+    private readonly PanelPrefs _prefs = PanelPrefs.Load();
     private Task _worker = Task.CompletedTask;
 
     // The worker's own: what the panel shows, and what changes it besides the recording.
@@ -95,7 +96,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             var panel = new RecorderPanel(session, request, page, testOptions);
             var beside = await PanelWindow.PlaceAsync(session.Page, page);
             await page.ExposeFunctionAsync<string>(SendFunction, panel.Receive);
-            await page.SetContentAsync(Html.Value);
+            await page.SetContentAsync(panel._prefs.Into(Html.Value));
             if (beside) await session.Page.BringToFrontAsync();
             session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
@@ -211,6 +212,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         {
             case "ready":
                 _refresh = true;
+                break;
+            case "prefs":
+                _ = _prefs.SetAsync(command.Name, command.Value);
                 break;
             case "choose" when command.Action is { } action:
                 _session.Log.Choose(action, command.Candidate);
@@ -502,7 +506,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         var json = JsonSerializer.Serialize(_shown.View, PanelView.Json);
         if (await _page.EvaluateAsync<bool>(ShowFunction, json)) return;
         // The page lost the panel, e.g. it was reloaded: put it back.
-        await _page.SetContentAsync(Html.Value);
+        await _page.SetContentAsync(_prefs.Into(Html.Value));
         await _page.EvaluateAsync<bool>(ShowFunction, json);
     }
 
