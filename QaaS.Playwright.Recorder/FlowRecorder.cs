@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
+using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.Panel;
 
 namespace QaaS.Playwright.Recorder;
@@ -18,11 +19,25 @@ internal static class FlowRecorder
     private static async Task<int> RecordAsync(RecordRequest request)
     {
         ConsoleUi.Recording(request);
+        ConsoleUi.RecorderKeys();
         Recording recording;
         try
         {
-            var session = await RecordingSession.StartAsync(new RecordingOptions(request.Url), ConsoleUi.Captured);
+            // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login.
+            var options = request.Login is { } login
+                ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoadStorageStatePath = null }
+                : new RecordingOptions(request.Url);
+            var loggingIn = request.Login is not null;
+            var session = await RecordingSession.StartAsync(options, news =>
+            {
+                // The login's own way in and out of the pause is told by LogInAsync.
+                if (news is RecordingState state) { if (!Volatile.Read(ref loggingIn)) ConsoleUi.StateChanged(state); }
+                else if (news is FrozenElements frozen) ConsoleUi.Froze(frozen);
+                else ConsoleUi.Captured(news);
+            });
             var panel = request.Panel ? await OpenPanelAsync(session, request) : null;
+            if (request.Login is not null) await LogInAsync(session, request);
+            Volatile.Write(ref loggingIn, false);
             await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), panel?.SaveRequested ?? session.Closed);
             if (panel is not null)
             {
@@ -62,7 +77,20 @@ internal static class FlowRecorder
 
         if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
         ConsoleUi.Saved(request, saved, flow);
+        if (request.Login is { } after) ConsoleUi.RunAfter(after.Flow);
         return 0;
+    }
+
+    // The login flow runs on the page the recording opened on the URL, before anything is recorded. When it fails, the
+    // recording stays paused for the person to log in by hand and resume it, or to close the browser.
+    private static async Task LogInAsync(RecordingSession session, RecordRequest request)
+    {
+        var login = request.Login!;
+        ConsoleUi.LoggingIn(login, request.LoginRemembered);
+        if (await session.LogInAsync(page => LoginRunner.RunAsync(login, page, request.Url)) is { } failure)
+            ConsoleUi.LoginFailed(login.Flow, failure);
+        else
+            ConsoleUi.LoggedIn(login.Flow, session.Page.Url);
     }
 
     // The raw recording, beside the flow and named after it, for a person to share when an element was located badly.

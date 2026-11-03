@@ -87,6 +87,43 @@ public class RecordingSessionTests
         });
     }
 
+    [Test]
+    public async Task Paused_RecordsNothing_AndResumesOnThePageTheAppWentTo()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_folder, "second.html"), "<!doctype html><body><button id=\"last\">Last</button>");
+        await using var session = await StartAsync("""
+            <button id="first">First</button> <input name="note"> <a href="second.html">Second page</a>
+            """);
+        var page = session.Page;
+
+        await page.Locator("#first").ClickAsync();
+        await page.Keyboard.PressAsync("F8");
+        await UntilAsync(() => session.State == RecordingState.Paused);
+        await page.Locator("[name='note']").FillAsync("not recorded");
+        await page.GetByText("Second page").ClickAsync();
+        var overlay = await OverlayTextAsync(page, until: "Recording paused");
+        await page.Keyboard.PressAsync("F8");
+        await UntilAsync(() => session.State == RecordingState.Recording);
+        await page.Locator("#last").ClickAsync();
+        var recording = await session.StopAsync();
+
+        var flow = FlowCodeGenerator.Generate(recording, "PausedFlow", "Flows");
+        Assert.Multiple(() =>
+        {
+            Assert.That(overlay, Does.Contain("Recording paused"), "the new page shows the pause too");
+            Assert.That(recording.Actions.Select(action => action.Target?.Id ?? action.Kind),
+                Is.EqualTo(new[] { "first", "navigate", "last" }), "what was done while paused is not recorded");
+            Assert.That(recording.Actions[1].Url, Does.EndWith("/second.html"));
+            Assert.That(flow.Checks.Select(check => check.Message), Has.Some.StartWith("the recording was paused"));
+        });
+    }
+
+    private static async Task UntilAsync(Func<bool> condition)
+    {
+        for (var wait = 0; wait < 50 && !condition(); wait++) await Task.Delay(100);
+        Assert.That(condition(), Is.True, "timed out");
+    }
+
     private async Task<RecordingSession> StartAsync(string body, Action<object>? onNews = null)
     {
         var page = Path.Combine(_folder, "page.html");

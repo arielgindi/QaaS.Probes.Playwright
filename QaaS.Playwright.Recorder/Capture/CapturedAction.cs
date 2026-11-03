@@ -89,6 +89,15 @@ internal sealed class CapturedAction
 
     public List<CapturedEffect> Effects { get; set; } = [];
 
+    /// <summary>Added in the panel rather than done in the app, so it caused nothing.</summary>
+    public bool Added { get; set; }
+
+    /// <summary>
+    /// For a navigation or a tab: where the page was when the person resumed a paused recording, having changed while it
+    /// was paused.
+    /// </summary>
+    public bool? AfterPause { get; set; }
+
     /// <summary>The element the flow finds to act on: for a choice, its field.</summary>
     [JsonIgnore]
     public CapturedTarget? Element => Kind == "choose" ? Field ?? Target : Target;

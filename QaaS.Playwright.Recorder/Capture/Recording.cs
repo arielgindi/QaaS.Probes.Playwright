@@ -18,6 +18,9 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
     /// <summary>What was seen but cannot be replayed, for the person to do by hand; null when nothing.</summary>
     public IReadOnlyList<string>? NotRecorded { get; init; }
 
+    /// <summary>The flow that ran before the recording started, e.g. a login flow, which the flow must run after.</summary>
+    public string? After { get; init; }
+
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     /// <exception cref="JsonException">The text is not a recording.</exception>

@@ -5,9 +5,10 @@ namespace QaaS.Playwright.Recorder.Capture;
 
 /// <summary>
 /// Collects what the capture script reports from every page, and what Playwright sees itself (navigations, pop-ups,
-/// browser dialogs), then ties each change of the page to the action that caused it. Safe to call from any thread.
+/// browser dialogs), then ties each change of the page to the action that caused it. While paused it collects nothing,
+/// and what happened meanwhile is no action's doing. Safe to call from any thread.
 /// </summary>
-internal sealed class CaptureLog
+internal sealed class CaptureLog(bool paused = false)
 {
     // An action causes what follows it this soon; later, the page changed by itself or the person did something else.
     private const long DialogWindowMs = 5_000;
@@ -25,8 +26,15 @@ internal sealed class CaptureLog
     private readonly List<NavigationRequest> _navigationRequests = [];
     private readonly HashSet<string> _removed = [];
     private readonly Dictionary<string, int?> _chosen = [];
+    private readonly Dictionary<string, ElementDescription> _retargeted = [];
+    private readonly List<(long From, long To)> _pauses = [];
     private long _sequence;
     private long _version;
+    private bool _paused = paused;
+
+    // Created paused, the log starts recording when first resumed, on the pages as they are then.
+    private bool _started = !paused;
+    private long _pausedAt;
 
     /// <summary>Changes whenever what <see cref="Build"/> gives may have changed, so a view of the recording refreshes.</summary>
     public long Version => Interlocked.Read(ref _version);
@@ -50,6 +58,9 @@ internal sealed class CaptureLog
         if (message is null) return null;
         lock (_gate)
         {
+            // While paused, only an action begun before the pause is completed, e.g. the field being typed into.
+            if (_paused && !(message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id)))
+                return null;
             // Inside the lock, so a Build that saw this version waits for the change.
             Changed();
             if (message.Type == "effect")
@@ -76,11 +87,7 @@ internal sealed class CaptureLog
     }
 
     /// <summary>A page went to another address, by a link, a script or the address bar.</summary>
-    public void Navigated(string page, string url, long at)
-    {
-        lock (_gate) _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++));
-        Changed();
-    }
+    public void Navigated(string page, string url, long at) => AddPageEvent("navigated", page, url, at);
 
     /// <summary>
     /// A page asked for a new document. <paramref name="byThePerson"/> tells, once the request's headers are known,
@@ -88,24 +95,113 @@ internal sealed class CaptureLog
     /// </summary>
     public void NavigationRequested(string page, Task<bool> byThePerson)
     {
-        lock (_gate) _navigationRequests.Add(new NavigationRequest(page, _sequence++, byThePerson));
+        lock (_gate)
+        {
+            if (_paused) return;
+            _navigationRequests.Add(new NavigationRequest(page, _sequence++, byThePerson));
+        }
+
         Changed();
         // Who started it tells whether it is an action of its own, once it is known.
         _ = byThePerson.ContinueWith(_ => Changed(), TaskScheduler.Default);
     }
 
     /// <summary>A page opened: a pop-up, or a tab the person opened.</summary>
-    public void PageOpened(string page, long at)
+    public void PageOpened(string page, long at) => AddPageEvent("opened", page, null, at);
+
+    /// <summary>The page showed a browser dialog: an alert, a confirm or a prompt.</summary>
+    public void BrowserDialog(string page, string message, long at) => AddPageEvent("jsDialog", page, message, at);
+
+    public bool Paused
     {
-        lock (_gate) _pageEvents.Add(new PageEvent("opened", page, null, at, _sequence++));
+        get { lock (_gate) return _paused; }
+    }
+
+    /// <summary>Records nothing until <see cref="Resume"/>.</summary>
+    public void Pause(long at)
+    {
+        lock (_gate)
+        {
+            if (_paused) return;
+            (_paused, _pausedAt) = (true, at);
+        }
+
         Changed();
     }
 
-    /// <summary>The page showed a browser dialog: an alert, a confirm or a prompt.</summary>
-    public void BrowserDialog(string page, string message, long at)
+    /// <summary>
+    /// Records again. <paramref name="pages"/> are the open pages and their addresses now. A page that went to another
+    /// address while paused, or opened meanwhile, is gone to by that address, as the person would type it: the step
+    /// after the pause acts on that page, and a replay would otherwise still be where the pause began. How the app got
+    /// there was not recorded, so the flow lists it to check by hand. The first time a log created paused resumes, the
+    /// recording starts on the pages as they are.
+    /// </summary>
+    public void Resume(IReadOnlyCollection<(string Page, string Url)> pages, long at)
     {
-        lock (_gate) _pageEvents.Add(new PageEvent("jsDialog", page, message, at, _sequence++));
+        lock (_gate)
+        {
+            if (!_paused) return;
+            _paused = false;
+            if (!_started)
+            {
+                _started = true;
+                foreach (var (page, url) in pages) _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++));
+            }
+            else
+            {
+                _pauses.Add((_pausedAt, at));
+                foreach (var (page, url) in pages)
+                {
+                    var before = _pageEvents.LastOrDefault(pageEvent => pageEvent.Page == page && pageEvent.Kind == "navigated");
+                    if (_pageEvents.All(pageEvent => pageEvent.Page != page))
+                        _pageEvents.Add(new PageEvent("opened", page, null, at, _sequence++) { Resumed = true });
+                    if (before?.Detail != url)
+                        _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++) { Resumed = before is not null });
+                }
+            }
+        }
+
         Changed();
+    }
+
+    /// <summary>
+    /// Has the action act on another element, as the capture script described it, e.g. one the person picked in the
+    /// panel's Elements view.
+    /// </summary>
+    public void Retarget(string actionId, ElementDescription element)
+    {
+        lock (_gate)
+        {
+            _retargeted[actionId] = Copy(element);
+            // A choice among the other element's locators means nothing for this one's.
+            _chosen.Remove(actionId);
+        }
+
+        Changed();
+    }
+
+    /// <summary>
+    /// Adds an action the person did not do in the app but added in the panel: after the action
+    /// <paramref name="afterId"/>, or last. It caused nothing on the page.
+    /// </summary>
+    public void Insert(CapturedAction action, string? afterId)
+    {
+        lock (_gate)
+        {
+            var at = afterId is not null && _indexById.TryGetValue(afterId, out var after) ? after + 1 : _actions.Count;
+            action.Added = true;
+            action.T = at > 0 ? _actions[at - 1].T : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _actions.Insert(at, action);
+            for (var index = at; index < _actions.Count; index++) _indexById[_actions[index].Id] = index;
+        }
+
+        Changed();
+    }
+
+    /// <summary>The page of the last action, or null before the first.</summary>
+    public string? LastPage()
+    {
+        lock (_gate) return _actions.LastOrDefault()?.Page;
     }
 
     /// <summary>Leaves actions out of the recording, with what they caused, as if they had not been done.</summary>
@@ -147,8 +243,11 @@ internal sealed class CaptureLog
         {
             var actions = _actions.Select(Copy).ToList();
             foreach (var action in actions)
+            {
+                if (_retargeted.TryGetValue(action.Id, out var retargeted)) Retarget(action, retargeted);
                 if (_chosen.TryGetValue(action.Id, out var chosen) && action.Element is { } element)
                     element.Chosen = chosen;
+            }
 
             var byId = actions.ToDictionary(action => action.Id);
             foreach (var effect in _effects)
@@ -157,7 +256,7 @@ internal sealed class CaptureLog
 
             var notRecorded = new List<string>();
             foreach (var pageEvent in PageEventsThatMatter())
-                Attribute(pageEvent, actions, notRecorded);
+                Attribute(pageEvent, actions, notRecorded, _pauses);
 
             actions.RemoveAll(action => _removed.Contains(action.Id));
 
@@ -166,6 +265,26 @@ internal sealed class CaptureLog
     }
 
     private void Changed() => Interlocked.Increment(ref _version);
+
+    private void AddPageEvent(string kind, string page, string? detail, long at)
+    {
+        lock (_gate)
+        {
+            if (_paused) return;
+            _pageEvents.Add(new PageEvent(kind, page, detail, at, _sequence++));
+        }
+
+        Changed();
+    }
+
+    // A copy of the description, so the action's own changes (the person's choice of locator) stay its own.
+    private static void Retarget(CapturedAction action, ElementDescription element)
+    {
+        var copy = Copy(element);
+        if (action.Kind == "choose" && action.Field is not null) action.Field = copy.Target;
+        else action.Target = copy.Target;
+        (action.Dialog, action.OpenDialogs, action.Equivalents) = (copy.Dialog, copy.OpenDialogs, null);
+    }
 
     private static bool Belongs(CapturedEffect effect) => effect.Kind switch
     {
@@ -198,7 +317,10 @@ internal sealed class CaptureLog
             var isFirst = !current.TryGetValue(pageEvent.Page, out var before);
             current[pageEvent.Page] = pageEvent;
             if (!isFirst && before!.Detail != pageEvent.Detail)
-                yield return pageEvent with { ByThePerson = StartedByThePerson(pageEvent.Page, before.Sequence, pageEvent.Sequence) };
+                yield return pageEvent with
+                {
+                    ByThePerson = pageEvent.Resumed || StartedByThePerson(pageEvent.Page, before.Sequence, pageEvent.Sequence),
+                };
         }
     }
 
@@ -215,18 +337,22 @@ internal sealed class CaptureLog
     // What a page did belongs to the action that caused it on that page; a pop-up, to the action that opened it from
     // any page. An address the person went to is an action of its own, and so is a tab they opened. The app's own
     // navigations (a redirect on load, a sign-in round trip, a slow save) are left out: they happen again when the
-    // flow runs, and replaying them would go to a stale address.
-    private static void Attribute(PageEvent pageEvent, List<CapturedAction> actions, List<string> notRecorded)
+    // flow runs, and replaying them would go to a stale address. Nothing is caused across a pause, nor by an action
+    // added in the panel.
+    private static void Attribute(PageEvent pageEvent, List<CapturedAction> actions, List<string> notRecorded,
+        List<(long From, long To)> pauses)
     {
-        var cause = pageEvent.ByThePerson
+        bool CouldCause(CapturedAction action) => !action.Added
+                                                  && !pauses.Any(pause => action.T <= pause.From && pause.From <= pageEvent.At);
+        var cause = pageEvent.ByThePerson || pageEvent.Resumed
             ? null
             : actions.LastOrDefault(action => action.T <= pageEvent.At + 100
                                               && pageEvent.At - action.T <= NavigationWindowMs
                                               && (pageEvent.Kind == "opened" || action.Page == pageEvent.Page)
-                                              && CausesNavigation.Contains(action.Kind));
+                                              && CausesNavigation.Contains(action.Kind) && CouldCause(action));
         // A browser dialog no click or key caused (on leaving a field, say) is answered from the action before it.
         if (cause is null && pageEvent.Kind == "jsDialog")
-            cause = actions.LastOrDefault(action => action.T <= pageEvent.At && action.Page == pageEvent.Page);
+            cause = actions.LastOrDefault(action => action.T <= pageEvent.At && action.Page == pageEvent.Page && CouldCause(action));
 
         if (cause is not null)
         {
@@ -251,20 +377,24 @@ internal sealed class CaptureLog
 
         var action = new CapturedAction
         {
-            Id = $"{pageEvent.Kind}-{pageEvent.At}", T = pageEvent.At, Page = pageEvent.Page,
+            Id = $"{pageEvent.Kind}-{pageEvent.At}-{pageEvent.Page}", T = pageEvent.At, Page = pageEvent.Page,
             Kind = pageEvent.Kind == "navigated" ? "navigate" : "newTab", Url = pageEvent.Detail,
+            AfterPause = pageEvent.Resumed ? true : null,
         };
         var at = actions.FindIndex(other => other.T > pageEvent.At);
         actions.Insert(at < 0 ? actions.Count : at, action);
     }
 
-    private static CapturedAction Copy(CapturedAction action) =>
-        JsonSerializer.Deserialize<CapturedAction>(JsonSerializer.Serialize(action, Recording.Json), Recording.Json)!;
+    private static T Copy<T>(T value) =>
+        JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value, Recording.Json), Recording.Json)!;
 
     private sealed record PageEvent(string Kind, string Page, string? Detail, long At, long Sequence)
     {
         /// <summary>For a navigation: the person went there themselves.</summary>
         public bool ByThePerson { get; init; }
+
+        /// <summary>Where a page was when the recording resumed, having changed while it was paused.</summary>
+        public bool Resumed { get; init; }
     }
 
     private sealed record NavigationRequest(string Page, long Sequence, Task<bool> ByThePerson);

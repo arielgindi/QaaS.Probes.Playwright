@@ -1,4 +1,4 @@
-import type { Command, PanelState } from './types';
+import type { Command, DomNode, DomPatch, PanelState, PickedElement } from './types';
 
 // A recording of a helpdesk's ticket form, as the recorder shows it, for working on the panel with `npm run dev`.
 const sample: PanelState = {
@@ -374,8 +374,81 @@ const sample: PanelState = {
   "kept": false
 };
 
-/** Shows the sample, and logs the commands the panel would send the recorder. */
+// The helpdesk's page as the Elements view lists it: a table of tickets, and a row's menu, open in a portal.
+type Spec = [tag: string, attributes: Partial<DomNode>, children?: Spec[]];
+const page: Spec = ['body', {}, [
+  ['div', { elementId: 'root', classes: 'app css-1q2w3e' }, [
+    ['header', { classes: 'MuiAppBar-root MuiPaper-root css-k008qs', role: 'banner' }, [
+      ['h1', { classes: 'title', text: 'Helpdesk' }],
+      ['button', { elementId: ':r5:', testId: 'new-ticket', classes: 'MuiButton-root MuiButton-contained', text: 'New ticket' }],
+    ]],
+    ['main', { classes: 'content' }, [
+      ['table', { classes: 'MuiTable-root' }, [
+        ['thead', {}, [['tr', {}, [['th', { text: 'Ticket' }], ['th', { text: 'Subject' }], ['th', { text: 'Owner' }]]]]],
+        ['tbody', {}, ['TCK-1040 Password reset', 'TCK-1041 VPN drops every hour', 'TCK-1042 Laptop for a new starter'].map((row) => {
+          const [key, ...subject] = row.split(' ');
+          return ['tr', { classes: 'MuiTableRow-root' }, [['td', { text: key }], ['td', { text: subject.join(' ') }],
+            ['td', {}, [['button', { label: `Actions for ${key}`, classes: 'MuiIconButton-root', text: '⋮' }]]]]] as Spec;
+        })],
+      ]],
+    ]],
+  ]],
+  ['div', { classes: 'MuiPopover-root MuiMenu-root', role: 'presentation' }, [
+    ['div', { classes: 'MuiBackdrop-root MuiBackdrop-invisible', hidden: true }],
+    ['div', { classes: 'MuiPaper-root MuiMenu-paper css-3dzjca' }, [
+      ['ul', { role: 'menu', classes: 'MuiList-root MuiMenu-list', label: 'Ticket actions' }, ['Edit', 'Assign to me', 'Close ticket'].map(
+        (item) => ['li', { role: 'menuitem', classes: 'MuiMenuItem-root MuiButtonBase-root', text: item }] as Spec,
+      )],
+    ]],
+  ]],
+]];
+
+function patch(): DomPatch {
+  const nodes: DomNode[] = [];
+  const children: Record<string, number[]> = {};
+  let next = 0;
+  const add = ([tag, attributes, kids = []]: Spec, parent?: number): number => {
+    const id = ++next;
+    nodes.push({ id, parent, tag, count: kids.length, ...attributes });
+    children[id] = kids.map((kid) => add(kid, id));
+    return id;
+  };
+  return { root: add(page), nodes, children };
+}
+
+const closeTicket: PickedElement = {
+  node: 0,
+  page: 'page',
+  name: 'Close ticket',
+  tag: 'li',
+  locator: 'menuitem "Close ticket"',
+  gone: true,
+  picked: 0,
+  auto: 0,
+  candidates: [
+    { index: 0, kind: 'role', label: 'menuitem "Close ticket"', code: 'page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket", Exact = true })', count: 1, usable: true },
+    { index: 1, kind: 'generator', label: 'GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket" })', code: 'page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket" })', count: 1, usable: true },
+  ],
+};
+
+/** Shows the sample, and logs the commands the panel would send the recorder, answering those about the page's elements. */
 export function start(): void {
-  window.__qaasPanelSend = (json) => console.info('command', JSON.parse(json) as Command);
-  window.__qaasPanelShow?.(JSON.stringify(sample));
+  const tree = patch();
+  const menuItems = tree.nodes.filter((node) => node.role === 'menuitem').map((node) => node.id);
+  const show = (state: PanelState) => window.__qaasPanelShow?.(JSON.stringify(state));
+  const elements = (message: object) => window.__qaasPanelElements?.(JSON.stringify(message));
+  window.__qaasPanelSend = (json) => {
+    const command = JSON.parse(json) as Command;
+    console.info('command', command);
+    if (command.type === 'elements' && command.op === 'tree') elements({ kind: 'tree', page: 'page', url: 'https://helpdesk.example/helpdesk', data: tree });
+    if (command.type === 'elements' && command.op === 'search') {
+      const query = command.query.toLowerCase();
+      const matches = tree.nodes.filter((node) => [node.text, node.elementId, node.label].some((value) => value?.toLowerCase().includes(query))).map((node) => node.id);
+      elements({ kind: 'search', page: 'page', url: 'https://helpdesk.example/helpdesk', data: { ...tree, matches } });
+    }
+    if (command.type === 'pick') show({ ...sample, element: command.node === undefined ? undefined : { ...closeTicket, node: command.node, gone: !!command.frozen } });
+  };
+  show(sample);
+  // `?frozen` shows the menu as if F4 froze it.
+  if (location.search.includes('frozen')) elements({ kind: 'frozen', page: 'page', at: '10:42:07', data: tree, described: menuItems });
 }

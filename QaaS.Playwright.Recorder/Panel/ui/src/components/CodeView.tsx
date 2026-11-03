@@ -139,7 +139,10 @@ function Line({ number, tokens, wrap, marks, state, onClick }: LineProps) {
       >
         {body.map((token, index) => (
           <span key={index} class={`tk-${token.kind}`}>
+            {/* A long line wraps between chained calls, and after an opening parenthesis or a comma, not inside a name. */}
+            {wrap && token.kind === 'punc' && token.text === '.' && body[index - 1]?.text === ')' && <wbr />}
             {token.text}
+            {wrap && token.kind === 'punc' && (token.text === '(' || token.text === ',') && <wbr />}
           </span>
         ))}
         {body.length === 0 && ' '}

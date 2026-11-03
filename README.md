@@ -7,7 +7,8 @@ one failed, with a screenshot.
 - **A recorder that writes clean code.** Stable locators (form field names, ids, roles), one method per step, a check
   after every action, and every typed or chosen value as a setting. While you record, a box under the pointer shows
   what a click records and why, and a panel beside the browser shows the flow as it is written and lets you pick
-  another locator before you save. See [Recording flows](https://github.com/arielgindi/QaaS.Probes.Playwright/blob/master/docs/RECORDING.md).
+  another locator, or an element from the page's own tree, before you save. It can start after your tests' login flow,
+  and pause. See [Recording flows](https://github.com/arielgindi/QaaS.Probes.Playwright/blob/master/docs/RECORDING.md).
 - **Typed, validated settings.** Each flow binds its own settings record; a typo or a wrong value fails the session
   before the browser opens, with every problem listed.
 - **Fast and isolated.** Sessions run in parallel in browser contexts of their own; a login can be saved once and

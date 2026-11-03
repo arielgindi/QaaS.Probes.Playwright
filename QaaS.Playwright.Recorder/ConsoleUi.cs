@@ -157,4 +157,60 @@ internal static class ConsoleUi
         try { write(); }
         finally { Console.ForegroundColor = previous; }
     }
+
+    // ------------------------------------------------------------------------- the login flow, pausing, F4 (appended)
+
+    public static void LoginUsage() => Console.WriteLine("""
+          Log in first, with a flow of your tests, so the recording starts logged in:
+            qaas-playwright record <name> <url> --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll
+                [--login-settings Flows/LoginFlow.flow.yaml]
+          The login is used again in this folder until --no-login.
+
+        """);
+
+    /// <summary>The keys of the recorded window besides those <see cref="Recording"/> tells.</summary>
+    public static void RecorderKeys() =>
+        Info("    F8 pauses or resumes the recording; F4 freezes the page's elements for the panel's Elements tab.\n");
+
+    public static void LoggingIn(Login.LoginFlow login, bool remembered)
+    {
+        Info($"Logging in with {login.Flow} from {Path.GetFileName(login.Assembly)}…");
+        if (remembered) Hint("as last time in this folder; --no-login records without it");
+    }
+
+    public static void LoggedIn(string flow, string url) =>
+        WithColor(ConsoleColor.Green, () => Info($"✓ Logged in with {flow}. Recording from {url}\n"));
+
+    public static void LoginFailed(string flow, string reason)
+    {
+        Error($"{flow} failed: {reason}");
+        Info("Nothing is recorded yet. Log in by hand in the browser, then press F8 there (or Resume in the panel) to");
+        Info("start recording. To quit, close the browser.\n");
+    }
+
+    /// <summary>A line the login flow logged.</summary>
+    public static void FlowLog(string message) => WithColor(ConsoleColor.DarkGray, () => Info($"  {message}"));
+
+    public static void StateChanged(RecordingState state)
+    {
+        lock (Gate)
+        {
+            if (state == RecordingState.Paused)
+                WithColor(ConsoleColor.Yellow, () => Info("❚❚ Paused: nothing is recorded. F8 or Resume in the panel goes on."));
+            else if (state == RecordingState.Recording)
+                WithColor(ConsoleColor.Green, () => Info("▶ Recording, from the page the app is on now."));
+        }
+    }
+
+    public static void Froze(FrozenElements frozen)
+    {
+        lock (Gate) WithColor(ConsoleColor.DarkGray, () => Info($"  ❄ The elements of {frozen.Page} are frozen: pick them in the panel's Elements tab."));
+    }
+
+    /// <summary>After <see cref="Saved"/>, for a flow recorded after a login flow.</summary>
+    public static void RunAfter(string loginFlow)
+    {
+        Info($"It was recorded after {loginFlow}: run that first, with SetupFlows: [{loginFlow}] and its settings.");
+        Console.WriteLine();
+    }
 }

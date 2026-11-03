@@ -171,11 +171,17 @@ internal sealed partial class FlowWriter
                         Join(problem, "a drag the recorder could not follow: add DragToAsync() to where you dropped it"));
                 break;
             case "navigate":
-                yield return new Line($"await {scope.Page}.GotoAsync({Address(source.Url ?? _plan.StartUrl)});");
+                yield return new Line($"await {scope.Page}.GotoAsync({Address(source.Url ?? _plan.StartUrl)});",
+                    source.AfterPause == true
+                        ? "the recording was paused, and the app was at this address when it resumed: the flow goes there " +
+                          "by the address; check that it can, as what led there was not recorded"
+                        : null);
                 break;
             case "newTab":
                 yield return new Line($"var {source.Page} = await {scope.Page}.Context.NewPageAsync();",
-                    "a tab you opened yourself: the flow opens it here");
+                    source.AfterPause == true
+                        ? "a tab that opened while the recording was paused: the flow opens it here"
+                        : "a tab you opened yourself: the flow opens it here");
                 if (source.Url is { } opened) yield return new Line($"await {source.Page}.GotoAsync({Address(opened)});");
                 break;
             default:
@@ -452,7 +458,13 @@ internal sealed partial class FlowWriter
         Append($"namespace {namespaceName};");
         Append("");
         Append("/// <summary>");
-        Append($"/// Recorded on {XmlText(_plan.StartUrl)}. The values it types and chooses are the settings in");
+        if (_plan.After is { } after)
+        {
+            Append($"/// Recorded on {XmlText(_plan.StartUrl)} after <c>{after}</c>, so it runs after that flow:");
+            Append($"/// <c>SetupFlows: [{after}]</c>. The values it types and chooses are the settings in");
+        }
+        else
+            Append($"/// Recorded on {XmlText(_plan.StartUrl)}. The values it types and chooses are the settings in");
         Append($"/// <see cref=\"{configName}\"/>: give each case its own under FlowConfiguration:{className}:.");
         Append("/// </summary>");
         Append($"public sealed class {className} : BasePlaywrightFlow<{configName}>");

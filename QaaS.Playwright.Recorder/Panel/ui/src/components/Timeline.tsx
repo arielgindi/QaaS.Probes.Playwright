@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { cls, detailOf, effectLabel, subjectOf, verbOf } from '../text';
-import type { Action, Effect, Step } from '../types';
+import type { Action, Effect, Status, Step } from '../types';
 import { Icon, type IconName, kindIcon } from './icons';
 import { PaneHeader } from './PaneHeader';
 
@@ -9,12 +9,13 @@ interface Props {
   count: number;
   notes: string[];
   selected: string | null;
+  status: Status;
   onSelect(id: string): void;
   onHover(id: string | null): void;
 }
 
 /** The steps of the flow, each a method, with a card per action. */
-export function Timeline({ steps, count, notes, selected, onSelect, onHover }: Props) {
+export function Timeline({ steps, count, notes, selected, status, onSelect, onHover }: Props) {
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
     list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -25,7 +26,7 @@ export function Timeline({ steps, count, notes, selected, onSelect, onHover }: P
       <PaneHeader title="Steps">{count > 0 && <span class="tabular-nums">{count}</span>}</PaneHeader>
       <div ref={list} class="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onMouseLeave={() => onHover(null)}>
         {steps.length === 0 ? (
-          <Empty />
+          <Empty status={status} />
         ) : (
           steps.map((step) => (
             <div key={step.name} class="pt-3">
@@ -44,6 +45,12 @@ export function Timeline({ steps, count, notes, selected, onSelect, onHover }: P
               </ol>
             </div>
           ))
+        )}
+        {status === 'paused' && steps.length > 0 && (
+          <div class="mx-1 mt-3 flex items-center gap-2 rounded-lg border border-dashed border-warn/40 px-3 py-2 text-[12px] text-warn">
+            <Icon name="pause" size={13} class="shrink-0" />
+            Paused here: nothing is recorded until you resume
+          </div>
         )}
         {notes.length > 0 && (
           <div class="mx-1 mt-4 rounded-lg border border-warn/30 bg-warn/8 p-2.5 text-[12px] text-warn">
@@ -93,6 +100,11 @@ function Card({ action, selected, onSelect, onHover }: { action: Action; selecte
           <span dir="auto" class="min-w-0 truncate font-medium text-fg">
             {subjectOf(action)}
           </span>
+          {action.added && (
+            <span title="Added in the panel's Elements view" class="ml-auto shrink-0 rounded border border-accent/30 bg-accent/10 px-1 text-[10px] leading-4 font-medium text-accent-fg">
+              added
+            </span>
+          )}
         </span>
         {detail && (
           <span class="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-[12px]">
@@ -151,17 +163,21 @@ function Badge({ effect }: { effect: Effect }) {
   );
 }
 
-function Empty() {
+function Empty({ status }: { status: Status }) {
+  const [icon, title, text]: [IconName, string, string] =
+    status === 'login'
+      ? ['key', 'Logging in…', 'Your login flow is running. The recording starts on the page it leaves the app on.']
+      : status === 'paused'
+        ? ['pause', 'Recording paused', 'Resume to record your first step. What you do in the app meanwhile is not recorded.']
+        : ['pointer', 'Click something in the app to record the first step', 'Each action shows up here as it is recorded, with the code it writes and how its element is found.'];
   return (
     <div class="flex h-full flex-col items-center justify-center px-8 pb-12 text-center">
       <div class="relative mb-5 grid size-12 place-items-center rounded-lg border border-line-strong bg-raised text-accent-fg">
         <span class="absolute -inset-1.5 rounded-[11px] border border-accent/25" />
-        <Icon name="pointer" size={20} />
+        <Icon name={icon} size={20} />
       </div>
-      <p class="text-[13.5px] font-medium text-fg">Click something in the app to record the first step</p>
-      <p class="mt-1.5 max-w-[32ch] text-[12.5px] leading-relaxed text-muted">
-        Each action shows up here as it is recorded, with the code it writes and how its element is found.
-      </p>
+      <p class="text-[13.5px] font-medium text-fg">{title}</p>
+      <p class="mt-1.5 max-w-[32ch] text-[12.5px] leading-relaxed text-muted">{text}</p>
     </div>
   );
 }
