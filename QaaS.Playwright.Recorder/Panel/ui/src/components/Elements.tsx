@@ -3,6 +3,7 @@ import { highlight } from '../bridge';
 import { type Elements as Model, type ElementsActions, type Row as TreeRow, ancestors, hasChildren, nodeLabel, rows, shortClasses } from '../elements';
 import { cls, plural } from '../text';
 import { Icon, type IconName } from './icons';
+import { Button, EmptyState, Kbd as Key } from './ui';
 
 interface Props {
   model: Model;
@@ -113,7 +114,7 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
   const path = selected !== undefined && model.nodes.has(selected) ? [...ancestors(model, selected), selected] : [];
   return (
     <section aria-label="Elements" class="area-code flex min-h-0 min-w-0 flex-col bg-canvas">
-      <div class="flex h-11 shrink-0 items-center gap-1.5 border-b border-line bg-panel px-2">
+      <div class="flex h-11 shrink-0 items-center gap-1 border-b border-line bg-panel px-2">
         <ToolButton
           icon="inspect"
           pressed={model.inspecting}
@@ -123,7 +124,7 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
         />
         <label
           data-elements-search
-          class="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 transition focus-within:border-accent/60 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_18%,transparent)]"
+          class="mx-1 flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-line-strong bg-canvas px-2.5 transition focus-within:border-accent-fg/60 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_18%,transparent)]"
         >
           <Icon name="search" size={14} class="shrink-0 text-faint" />
           <input
@@ -147,14 +148,14 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
                 tree.current?.focus();
               }
             }}
-            class="min-w-0 flex-1 bg-transparent text-[12.5px] text-fg outline-none placeholder:text-faint focus-visible:outline-none"
+            class="min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-faint focus-visible:outline-none"
           />
           {model.query.trim() && (
-            <span class="flex shrink-0 items-center gap-0.5 text-[11.5px] text-muted tabular-nums">
+            <span class="flex shrink-0 items-center gap-0.5 text-meta text-muted tabular-nums">
               <span aria-live="polite">
                 {model.matches.length
                   ? `${model.match + 1} of ${model.total > model.matches.length ? `${model.matches.length}+` : model.matches.length}`
-                  : model.loading ? '…' : 'No match'}
+                  : model.loading ? '…' : '0 of 0'}
               </span>
               <IconButton title="Previous match (Shift+Enter)" disabled={!model.matches.length} onClick={() => move(-1)} icon="up" />
               <IconButton title="Next match (Enter)" disabled={!model.matches.length} onClick={() => move(1)} icon="down" />
@@ -171,32 +172,30 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
           <ToolButton icon="refresh" title={model.stale ? 'The page changed: read it again' : 'Read the page again'} onClick={actions.refresh} dot={model.stale} />
         )}
       </div>
-      {model.inspecting && (
-        <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-accent/25 bg-accent/8 px-3 py-1.5 text-[12px] text-accent-fg">
-          <Icon name="inspect" size={14} class="shrink-0" />
-          <span class="min-w-0 flex-1 leading-snug">
-            <span class="font-medium">Point at an element in the app;</span> a click there picks it here, and nothing else.
+      {frozen && (
+        <div class="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-info/[0.06] pr-1.5 pl-3 text-meta">
+          <Icon name="freeze" size={13} class="shrink-0 text-info" />
+          <span class="min-w-0 flex-1 truncate">
+            <span class="font-semibold text-info">Frozen at {model.at}</span>
+            <span class="text-muted"> · {model.page} as it was when you pressed F4</span>
           </span>
-          <button type="button" onClick={() => actions.inspect(false)} class="shrink-0 rounded-md px-2 py-0.5 font-medium transition hover:bg-accent/15">
-            Stop <Kbd>Esc</Kbd>
-          </button>
+          <Button size="sm" variant="secondary" onClick={actions.goLive}>
+            Back to live
+          </Button>
         </div>
       )}
-      {frozen && (
-        <div class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-3 py-2 text-[12px] text-info">
-          <Icon name="freeze" size={14} class="shrink-0" />
-          <span class="min-w-0 flex-1 leading-snug">
-            <span class="font-medium">Frozen at {model.at}</span>
-            <span class="text-info/80"> · {model.page} as it was when you pressed F4</span>
+      {model.query.trim() && !model.loading && model.matches.length === 0 && (
+        <div role="status" class="flex h-8 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 text-meta text-muted">
+          <Icon name="search" size={12} class="shrink-0 text-faint" />
+          <span class="min-w-0 truncate">
+            No element matches <span class="font-mono text-fg/85">{model.query.trim()}</span>
+            {frozen ? ': a frozen page is searched by text, id, class or role.' : '. Try its text, an id, CSS or role=button.'}
           </span>
-          <button type="button" onClick={actions.goLive} class="shrink-0 rounded-md px-2 py-1 font-medium transition hover:bg-info/15">
-            Back to live
-          </button>
         </div>
       )}
       {model.opened.length > 0 && !frozen && (
-        <div class="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel px-3 py-1.5 text-[12px] whitespace-nowrap">
-          <span class="text-faint">Open on the page:</span>
+        <div class="flex h-9 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line bg-panel pr-1.5 pl-3 text-meta whitespace-nowrap">
+          <span class="text-muted">Open on the page</span>
           {model.opened.map((open) => (
             <button
               key={open.id}
@@ -210,15 +209,13 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
                 onPick(open.id);
                 tree.current?.focus();
               }}
-              class="inline-flex max-w-[34ch] items-center gap-1 rounded-full border border-accent/35 bg-accent/8 px-2 py-px text-accent-fg transition hover:bg-accent/15"
+              class="inline-flex h-6 max-w-[34ch] items-center gap-1 rounded-full border border-line-strong bg-raised px-2 text-fg transition hover:border-faint/70"
             >
               <span class="truncate">{open.label}</span>
               <Icon name="chevron" size={11} class="shrink-0" />
             </button>
           ))}
-          <button type="button" aria-label="Dismiss" title="Dismiss" onClick={() => actions.dismiss()} class="ml-auto grid size-5 shrink-0 place-items-center rounded text-faint transition hover:bg-raised hover:text-fg">
-            <Icon name="cross" size={12} />
-          </button>
+          <Button size="sm" iconOnly icon="cross" label="Dismiss" onClick={() => actions.dismiss()} class="ml-auto" />
         </div>
       )}
       <div
@@ -236,12 +233,14 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
         onPointerMove={actions.touch}
         onWheel={actions.touch}
         onMouseLeave={() => highlight(null)}
-        class="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-[22px] focus-visible:outline-offset-[-2px]"
+        class="min-h-0 flex-1 overflow-auto font-mono text-meta leading-[22px] focus-visible:outline-offset-[-2px]"
       >
         {model.loading && model.root === null ? (
-          <Placeholder title="Reading the page's elements…" spinner />
+          <Skeleton />
         ) : shown.length === 0 ? (
-          <Placeholder title="No page to show" text="The recorded window has no page open." />
+          <EmptyState icon="elements" title="No page to show" class="h-full font-sans">
+            The recorded window has no page open.
+          </EmptyState>
         ) : (
           <div class="relative w-max min-w-full" style={{ height: `${shown.length * ROW + 12}px` }}>
             <div style={{ transform: `translateY(${first * ROW + 6}px)` }}>
@@ -265,7 +264,7 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
           </div>
         )}
       </div>
-      <div class="flex h-7 shrink-0 items-center gap-2 border-t border-line bg-panel pl-2 text-[11.5px] text-faint">
+      <div class="flex h-7 shrink-0 items-center gap-2 border-t border-line bg-panel pl-2 text-meta text-muted">
         {path.length > 0 ? (
           <Breadcrumb model={model} path={path} onPick={(id) => choose(id)} />
         ) : frozen ? (
@@ -275,11 +274,11 @@ export function ElementsView({ model, actions, picked, onPick, onPrimary }: Prop
           </span>
         ) : (
           <span class="flex min-w-0 items-center gap-1.5 truncate px-1">
-            <Kbd>Ctrl Shift C</Kbd> picks in the app · <Kbd>F4</Kbd> there freezes its elements, e.g. with a menu open
+            <Key>Ctrl Shift C</Key> picks in the app · <Key>F4</Key> there freezes the page, e.g. with a menu open
           </span>
         )}
         <span class="ml-auto hidden shrink-0 items-center gap-1.5 pr-3 xl:flex">
-          <Kbd>↑↓←→</Kbd> move <Kbd>↵</Kbd> make a step
+          <Key>↑↓←→</Key> move <Key>↵</Key> make a step
         </span>
       </div>
     </section>
@@ -339,7 +338,7 @@ function Row({ row: { node, depth, via }, open, parent, picked, pointed, match, 
         <Icon name="chevron" size={12} class={cls('transition-transform duration-150', open && 'rotate-90')} />
       </button>
       {via > 0 && (
-        <span title={`${plural(via, 'wrapper')} around it left out`} class="-ml-1 font-sans text-[11px] text-faint">
+        <span title={`${plural(via, 'wrapper')} around it left out`} class="-ml-1 font-sans text-meta text-faint">
           ⋯
         </span>
       )}
@@ -357,7 +356,7 @@ function Row({ row: { node, depth, via }, open, parent, picked, pointed, match, 
           {more > 0 && <span class="pl-0.5 text-faint">+{more}</span>}
         </span>
       )}
-      <span class="flex min-w-0 items-center gap-1.5 font-sans text-[11.5px]">
+      <span class="flex min-w-0 items-center gap-1.5 font-sans text-meta">
         {role && <span class="text-muted">{role}</span>}
         {name && (
           <span dir="auto" class="max-w-[36ch] truncate text-fg/70">
@@ -376,8 +375,8 @@ function Row({ row: { node, depth, via }, open, parent, picked, pointed, match, 
         )}
         {node.testId && <span class="text-faint">testid={node.testId}</span>}
         {node.name && node.name !== node.elementId && <span class="text-faint">name={node.name}</span>}
-        {node.hidden && <span class="text-[10.5px] text-faint">hidden</span>}
-        {node.framed && node.tag === 'body' && <span class="text-[10.5px] text-faint">frame</span>}
+        {node.hidden && <span class="text-tag text-faint">hidden</span>}
+        {node.framed && node.tag === 'body' && <span class="text-tag text-faint">frame</span>}
       </span>
       {described && (
         <span title="A click may act on it: its locators were found when frozen" class="grid size-3.5 place-items-center text-info">
@@ -396,7 +395,7 @@ function Breadcrumb({ model, path, onPick }: { model: Model; path: number[]; onP
   }, [path.at(-1)]);
   const frozen = model.source === 'frozen';
   return (
-    <div ref={trail} aria-label="Where the element is" class="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto font-mono text-[11px] [scrollbar-width:none]" onMouseLeave={() => highlight(null)}>
+    <div ref={trail} aria-label="Where the element is" class="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto font-mono text-meta [scrollbar-width:none]" onMouseLeave={() => highlight(null)}>
       {path.map((id, at) => {
         const node = model.nodes.get(id);
         if (!node) return null;
@@ -431,18 +430,18 @@ function ToolButton({ icon, title, pressed, disabled, dot, onClick }: { icon: Ic
       disabled={disabled}
       onClick={onClick}
       class={cls(
-        'relative grid size-8 shrink-0 place-items-center rounded-lg transition disabled:opacity-40',
-        pressed ? 'bg-accent/15 text-accent-fg shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--accent)_45%,transparent)]' : 'text-muted hover:bg-raised hover:text-fg',
+        'relative grid size-8 shrink-0 place-items-center rounded-md transition disabled:opacity-40',
+        pressed
+          ? icon === 'inspect'
+            ? 'bg-inspect/14 text-inspect shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--inspect)_40%,transparent)]'
+            : 'bg-accent/15 text-accent-fg shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--accent-fg)_35%,transparent)]'
+          : 'text-muted hover:bg-raised hover:text-fg',
       )}
     >
       <Icon name={icon} size={15} />
       {dot && <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-accent" />}
     </button>
   );
-}
-
-function Kbd({ children }: { children: string }) {
-  return <kbd class="rounded border border-line bg-canvas px-1 font-sans text-[10.5px] leading-4 text-muted">{children}</kbd>;
 }
 
 function IconButton({ title, disabled, onClick, icon }: { title: string; disabled: boolean; onClick(): void; icon: 'up' | 'down' }) {
@@ -463,12 +462,16 @@ function IconButton({ title, disabled, onClick, icon }: { title: string; disable
   );
 }
 
-function Placeholder({ title, text, spinner }: { title: string; text?: string; spinner?: boolean }) {
+// The tree's first rows while the page's elements are read.
+function Skeleton() {
   return (
-    <div class="flex h-full flex-col items-center justify-center gap-2 px-8 text-center font-sans">
-      {spinner && <span class="size-4 animate-spin-slow rounded-full border-2 border-line-strong border-t-accent" />}
-      <p class="text-[13px] font-medium text-fg">{title}</p>
-      {text && <p class="max-w-[34ch] text-[12.5px] text-muted">{text}</p>}
+    <div aria-label="Reading the page's elements" class="space-y-2 px-3 py-3">
+      {[72, 48, 60, 40, 66, 52, 30].map((width, row) => (
+        <div key={row} class="flex items-center gap-2" style={{ paddingLeft: `${(row % 3) * 14}px` }}>
+          <span class="skeleton h-3 w-3" />
+          <span class="skeleton h-3" style={{ width: `${width}%` }} />
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeElements } from './bridge';
+import { getPref, setPref } from './prefs';
 import type { DomNode, DomPatch, ElementsMessage, Opened } from './types';
 
 // The Elements view's model: the recorded page's elements, live and loaded a level at a time, or as they were when the
@@ -77,15 +78,8 @@ const empty = (source: Elements['source'] = 'live', compact = false): Elements =
 });
 
 const QUIET_MS = 1500;
-const COMPACT_KEY = 'qaas.elements.compact';
 
-function remembered(): boolean {
-  try {
-    return localStorage.getItem(COMPACT_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
+const remembered = () => getPref('compactTree') === '1';
 
 /**
  * The model, following the page while <paramref name="active"/>. `onInspected` hears of each element a click picked
@@ -239,11 +233,7 @@ export function useElements(active: boolean, onInspected: (event: { picked?: num
     },
     setCompact(on) {
       const was = current.current;
-      try {
-        localStorage.setItem(COMPACT_KEY, on ? '1' : '0');
-      } catch {
-        // Remembered for this time only.
-      }
+      setPref('compactTree', on ? '1' : '0');
       // The frozen tree is shown here without the wrappers or with them; the live one is read again, and the element
       // selected shows in it, or what holds it.
       const next = { ...was, compact: on };

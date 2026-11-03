@@ -380,4 +380,5 @@ export type Command =
   | { type: 'useForStep'; action: string }
   | { type: 'addClick' }
   | { type: 'addFill'; value: string }
-  | { type: 'addCheck'; check: string };
+  | { type: 'addCheck'; check: string }
+  | { type: 'prefs'; name: string; value: string };

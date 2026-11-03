@@ -536,13 +536,36 @@ function testIn(state: string): TestRun | undefined {
   }
 }
 
+// `?mode=` opens on a mode: paused, trying, login, checking, replaying, rerecording or done.
+function modeIn(mode: string): Partial<PanelState> {
+  const part = { part: 'FillNewTicketAsync', after: false, fresh: [] as string[], at: 'a3' };
+  switch (mode) {
+    case 'paused':
+      return { status: 'paused' };
+    case 'trying':
+      return { status: 'trying', tried: [{ ...sample.steps[0].actions[0], id: 't1', tried: true, reasons: ['id: none', 'testid: none', 'role: found 3'] }] };
+    case 'login':
+      return { status: 'login', login: 'LoginFlow', steps: [], code: '', loginProgress: { text: 'Logging in with LoginFlow… 4 s, on /signin', last: 'typed in “Username”', slow: false } };
+    case 'checking':
+      return { checking: true };
+    case 'replaying':
+      return { status: 'testing', rerecord: { ...part, phase: 'replaying' } };
+    case 'rerecording':
+      return { rerecord: { ...part, phase: 'recording', fresh: ['a4'] } };
+    case 'done':
+      return { status: 'paused', rerecord: { ...part, phase: 'done', paused: true } };
+    default:
+      return {};
+  }
+}
+
 /** Shows the sample, and logs the commands the panel would send the recorder, answering those about the page's elements. */
 export function start(): void {
   const tree = patch();
   const menuItems = tree.nodes.filter((node) => node.role === 'menuitem').map((node) => node.id);
   const initial = testIn(new URLSearchParams(location.search).get('test') ?? '');
   const going = isGoing(initial);
-  let current: PanelState = { ...sample, status: going ? 'testing' : sample.status, test: initial };
+  let current: PanelState = { ...sample, status: going ? 'testing' : sample.status, test: initial, ...modeIn(new URLSearchParams(location.search).get('mode') ?? '') };
   const show = (state: PanelState) => {
     current = state;
     window.__qaasPanelShow?.(JSON.stringify(state));
@@ -603,6 +626,11 @@ export function start(): void {
       show({ ...current, status: 'recording', test: { ...current.test!, state: 'stopped', steps, ms: Date.now() - current.test!.started } });
     }
     if (command.type === 'clearTest') show({ ...current, test: undefined });
+    // The modes, as the recorder goes in and out of them.
+    if (command.type === 'pause') show({ ...current, status: current.status === 'paused' ? 'recording' : 'paused' });
+    if (command.type === 'try') show({ ...current, status: current.status === 'trying' ? 'recording' : 'trying', tried: current.status === 'trying' ? undefined : [] });
+    if (command.type === 'checkMode') show({ ...current, checking: command.on ?? !current.checking });
+    if (command.type === 'rerecordDone' || command.type === 'rerecordCancel' || command.type === 'rerecordDismiss') show({ ...current, rerecord: undefined, status: 'recording' });
   };
   show(current);
   // `?frozen` shows the menu as if F4 froze it.

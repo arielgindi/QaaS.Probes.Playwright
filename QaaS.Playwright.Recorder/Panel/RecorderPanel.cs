@@ -475,6 +475,8 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             var recording = _session.Build();
             var fresh = _session.Log.Fresh(recording);
             _shown = PanelSnapshot.Of(recording, Request, _namespace, Status(), _error, fresh);
+            // Told once: the panel says it, and the next state is without it.
+            _error = null;
             _shown = _shown with
             {
                 View = _shown.View with

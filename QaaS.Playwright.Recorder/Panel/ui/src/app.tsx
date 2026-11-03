@@ -1,19 +1,30 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { flash, highlight, send, subscribe } from './bridge';
 import { CodeView } from './components/CodeView';
 import { ElementsView } from './components/Elements';
 import { Icon } from './components/icons';
 import { ElementInspector, Inspector } from './components/Inspector';
-import { Lightbox, TestBar } from './components/TestRun';
+import { type Command, KeysSheet, Palette, Splitter, ToastView } from './components/Overlays';
+import { StatusStrip } from './components/StatusStrip';
+import { Lightbox } from './components/TestRun';
 import { Timeline } from './components/Timeline';
 import { TopBar, type View } from './components/TopBar';
+import { Kbd } from './components/ui';
 import { useElements } from './elements';
-import { isGoing, numberOf, useSlowMotion } from './test';
-import { cls, plural, subjectOf, verbOf } from './text';
+import { usePref } from './prefs';
+import { isGoing, useSlowMotion } from './test';
+import { plural, subjectOf, verbOf } from './text';
 import { useTheme } from './theme';
-import type { Action, PanelState, Rerecord } from './types';
+import { toast } from './toast';
+import type { Action, PanelState } from './types';
 
 const waiting: PanelState = { flow: '', target: '', status: 'recording', code: '', yaml: '', steps: [], checks: [] };
+
+// The panes' sizes the person can drag, with their defaults and limits.
+const STEPS = { fallback: 300, min: 220, max: 520 };
+const INSPECTOR = { fallback: 360, min: 280, max: 600 };
+const CODE_SHARE = { fallback: 56, min: 20, max: 80 };
 
 export function App() {
   const [state, setState] = useState<PanelState>(waiting);
@@ -21,11 +32,11 @@ export function App() {
   const [follow, setFollow] = useState(true);
   const [hovered, setHovered] = useState<string | null>(null);
   const [view, setView] = useState<View>('code');
-  const [dismissed, setDismissed] = useState<string | null>(null);
   const [theme, toggleTheme] = useTheme();
   const [slow, toggleSlow] = useSlowMotion();
   const [enlarged, setEnlarged] = useState<{ src: string; caption: string } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<'palette' | 'keys' | null>(null);
+  const [seenPalette, setSeenPalette] = usePref('seenPalette', '');
   // Inspect mode in the app shows the Elements view; a click there picks its element, and the keys go on here.
   const [elements, elementActions] = useElements(view === 'elements', ({ picked, on }) => {
     if (picked !== undefined) pick(picked, false, true);
@@ -34,12 +45,19 @@ export function App() {
   const [checkKind, setCheckKind] = useState<string | undefined>(undefined);
   const primary = useRef<(() => void) | null>(null);
   const pickTimer = useRef(0);
+  const shownError = useRef<string | null>(null);
 
   useEffect(() => {
     const stop = subscribe(setState);
     send({ type: 'ready' });
     return stop;
   }, []);
+
+  // Why a command did not work, once, as a toast that says it out loud.
+  useEffect(() => {
+    if (state.error && state.error !== shownError.current) toast({ text: state.error, alert: true });
+    shownError.current = state.error ?? null;
+  }, [state]);
 
   const actions = useMemo(() => state.steps.flatMap((step) => step.actions), [state]);
   const owners = useMemo(() => {
@@ -94,7 +112,6 @@ export function App() {
   };
   const undo = () => {
     if (state.undo && !saving) send({ type: 'undo' });
-    setToast(null);
   };
   // A deleted action's card goes, and the one after it is selected; Undo brings it back.
   const remove = (id: string) => {
@@ -102,8 +119,11 @@ export function App() {
     const at = actions.findIndex((action) => action.id === id);
     const action = actions[at];
     send({ type: 'delete', action: id });
-    if (!action) return;
-    setToast(action.kind === 'expect' ? 'Deleted the check' : `Deleted ${verbOf(action).toLowerCase()} “${subjectOf(action)}”`);
+    if (!action) {
+      toast({ text: 'Deleted the check', icon: 'trash', action: { label: 'Undo', icon: 'undo', run: () => send({ type: 'undo' }) } });
+      return;
+    }
+    toast({ text: `Deleted ${verbOf(action).toLowerCase()} “${subjectOf(action)}”`, icon: 'trash', action: { label: 'Undo', icon: 'undo', run: () => send({ type: 'undo' }) } });
     if (id === selected) {
       const next = actions[at + 1] ?? actions[at - 1];
       setSelected(next?.id ?? null);
@@ -153,13 +173,41 @@ export function App() {
     setView('elements');
     elementActions.inspect();
   };
+  const openPalette = () => {
+    setOverlay('palette');
+    if (!seenPalette) setSeenPalette('1');
+  };
+
+  // Every command, for the palette: what it is called, its key, and why it cannot run now.
+  const recordingOrPaused = state.status === 'recording' || state.status === 'paused';
+  const commands: Command[] = [
+    { id: 'test', group: 'Test', icon: 'play', label: 'Test the flow', keys: 'Ctrl ↵', off: !canTest && 'Nothing to test now', run: () => runTest() },
+    { id: 'runTo', group: 'Test', icon: 'runTo', label: 'Run to the selected step', keys: 'Ctrl Shift ↵', off: (!canTest || !selected) && 'Select a step, with nothing running', run: () => runTest(selected ?? undefined) },
+    { id: 'stop', group: 'Test', icon: 'stop', label: 'Stop the test', keys: 'Esc', off: !testing && 'No test runs', run: stopTest },
+    { id: 'slow', group: 'Test', icon: 'gauge', label: slow ? 'Test at full speed' : 'Test in slow motion', run: toggleSlow },
+    { id: 'pause', group: 'Record', icon: state.status === 'paused' ? 'play' : 'pause', label: state.status === 'paused' ? 'Resume recording' : 'Pause recording', keys: 'F8', off: !recordingOrPaused && 'Not while it is busy', run: pause },
+    { id: 'check', group: 'Record', icon: 'checkCircle', label: state.checking ? 'Leave check mode' : 'Check something in the app', keys: 'F6', off: (saving || (state.status !== 'recording' && !state.checking)) && 'Only while recording', run: check },
+    { id: 'try', group: 'Record', icon: 'flask', label: state.status === 'trying' ? 'Stop trying' : 'Try things without recording them', keys: 'F7', off: !(recordingOrPaused || state.status === 'trying') && 'Not while it is busy', run: toggleTry },
+    { id: 'inspect', group: 'Record', icon: 'inspect', label: elements.inspecting ? 'Stop picking in the app' : 'Pick an element in the app', keys: 'Ctrl Shift C', run: inspect },
+    { id: 'done', group: 'Record', icon: 'tick', label: 'Done re-recording', keys: 'F2', off: part?.phase !== 'recording' && 'No part is being re-recorded', run: partDone },
+    { id: 'keep', group: 'Record', icon: 'restore', label: 'Keep the part as it was', keys: 'Esc', off: !(part && part.phase !== 'done') && 'No part is being re-recorded', run: partCancel },
+    { id: 'undo', group: 'Edit', icon: 'undo', label: state.undo ? `Undo: ${state.undo}` : 'Undo', keys: 'Ctrl Z', off: (!state.undo || saving) && 'Nothing to undo', run: undo },
+    { id: 'delete', group: 'Edit', icon: 'trash', label: 'Delete the selected step', keys: 'Delete', off: (!selected || saving) && 'Select a step first', run: () => selected && remove(selected) },
+    { id: 'autoChecks', group: 'Edit', icon: 'checkCircle', label: state.autoChecks === false ? 'Turn auto checks on' : 'Turn auto checks off', off: saving && 'Saving', run: () => send({ type: 'autoChecks', on: state.autoChecks === false }) },
+    { id: 'code', group: 'Show', icon: 'file', label: 'Show the code', run: () => setView('code') },
+    { id: 'yaml', group: 'Show', icon: 'list', label: 'Show the YAML', run: () => setView('yaml') },
+    { id: 'elements', group: 'Show', icon: 'elements', label: 'Show the page’s elements', run: () => setView('elements') },
+    { id: 'theme', group: 'Show', icon: theme === 'dark' ? 'sun' : 'moon', label: theme === 'dark' ? 'Light theme' : 'Dark theme', run: toggleTheme },
+    { id: 'keys', group: 'Help', icon: 'keyboard', label: 'Keyboard shortcuts', keys: '?', run: () => setOverlay('keys') },
+    { id: 'save', group: 'Flow', icon: 'file', label: 'Save the flow and end the recording', keys: 'Ctrl S', off: (actions.length === 0 || saving) && 'Nothing recorded yet', run: save },
+  ];
 
   // Keys: ↑ and ↓ move through the steps, Delete deletes the selected one, Ctrl+Z undoes the last change, Ctrl+S saves,
   // F8 pauses or resumes, F6 checks something in the app, F7 tries things there; Ctrl+Enter or F5 tests the flow,
   // Ctrl+Shift+Enter runs it to the selected step, Esc or Shift+F5 stops the test. While a part is recorded again, F2 is
-  // done with it, and Esc keeps it as it was.
-  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect });
-  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect };
+  // done with it, and Esc keeps it as it was. Ctrl+K lists every command, ? every key.
+  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect, openPalette });
+  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect, openPalette };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = keys.current;
@@ -168,6 +216,11 @@ export function App() {
       if (command && key === 's') {
         event.preventDefault();
         current.save();
+        return;
+      }
+      if (command && key === 'k' && !event.shiftKey) {
+        event.preventDefault();
+        current.openPalette();
         return;
       }
       if (event.key === 'F8' && !event.repeat) {
@@ -206,7 +259,12 @@ export function App() {
         else current.runTest();
         return;
       }
-      if (event.target instanceof Element && event.target.closest('input, textarea, [data-own-keys]')) return;
+      if (event.target instanceof Element && event.target.closest('input, textarea, select, [data-own-keys]')) return;
+      if (event.key === '?' && !command) {
+        event.preventDefault();
+        setOverlay('keys');
+        return;
+      }
       if (command && event.key === 'Enter' && !event.repeat) {
         event.preventDefault();
         current.runTest(event.shiftKey ? (current.selected ?? undefined) : undefined);
@@ -217,7 +275,7 @@ export function App() {
         current.stopTest();
         return;
       }
-      if (event.key === 'Escape' && (current.part?.phase === 'recording' || current.part?.phase === 'failed')) {
+      if (event.key === 'Escape' && (current.part?.phase === 'recording' || current.part?.phase === 'failed' || current.part?.phase === 'replaying')) {
         event.preventDefault();
         current.partCancel();
         return;
@@ -246,11 +304,6 @@ export function App() {
   const notes = state.checks.filter((check) => !check.line).map((check) => check.message);
   const file = state.target.slice(Math.max(state.target.lastIndexOf('/'), state.target.lastIndexOf('\\')) + 1);
   const enlarge = (src: string, caption: string) => setEnlarged({ src, caption });
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(null), 6000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   return (
     <div class="flex h-full flex-col">
@@ -277,31 +330,30 @@ export function App() {
         onPause={pause}
         onView={setView}
         onTheme={toggleTheme}
+        onPalette={openPalette}
+        onKeys={() => setOverlay('keys')}
       />
-      <Banner state={state} canTest={canTest} onDone={partDone} onCancel={partCancel} onTest={() => runTest()} />
-      {test && (
-        <TestBar
-          test={test}
-          actions={actions}
-          onAgain={() => runTest(test.upTo && actions.some((action) => action.id === test.upTo) ? test.upTo : undefined)}
-          onStop={stopTest}
-          onClear={() => send({ type: 'clearTest' })}
-          onShow={(id) => {
-            setSelected(id);
-            setFollow(false);
-          }}
-        />
-      )}
-      {state.error && state.error !== dismissed && (
-        <div role="alert" class="flex shrink-0 items-start gap-2 border-b border-bad/30 bg-bad/10 px-4 py-2 text-[12.5px] text-bad">
-          <Icon name="warn" size={14} class="mt-0.5 shrink-0" />
-          <span class="min-w-0 flex-1">{state.error}</span>
-          <button type="button" aria-label="Dismiss" onClick={() => setDismissed(state.error ?? null)} class="rounded p-0.5 transition hover:bg-bad/15">
-            <Icon name="cross" size={13} />
-          </button>
-        </div>
-      )}
-      <main class="layout min-h-0 flex-1">
+      <StatusStrip
+        state={state}
+        actions={actions}
+        inspecting={elements.inspecting}
+        canTest={canTest}
+        onPause={pause}
+        onTry={toggleTry}
+        onCheck={check}
+        onInspect={() => elementActions.inspect(false)}
+        onDone={partDone}
+        onCancelPart={partCancel}
+        onTest={() => runTest()}
+        onAgain={() => runTest(test?.upTo && actions.some((action) => action.id === test.upTo) ? test.upTo : undefined)}
+        onStopTest={stopTest}
+        onClearTest={() => send({ type: 'clearTest' })}
+        onShowStep={(id) => {
+          setSelected(id);
+          setFollow(false);
+        }}
+      />
+      <Panes>
         <Timeline
           steps={state.steps}
           count={actions.length}
@@ -375,236 +427,134 @@ export function App() {
             onEdit={(action, setting, change) => send({ type: 'editValue', action: action.id, role: setting.role, ...change })}
           />
         )}
-      </main>
-      <StatusBar state={state} actions={actions} />
-      {toast && (
-        <div role="status" class="pointer-events-none fixed inset-x-0 bottom-10 z-40 flex justify-center px-4">
-          <div class="pointer-events-auto flex animate-step-in items-center gap-3 rounded-xl border border-line-strong bg-raised py-1.5 pr-1.5 pl-3.5 text-[12.5px] text-fg shadow-[0_10px_30px_rgb(0_0_0/0.28)]">
-            <Icon name="trash" size={13} class="shrink-0 text-muted" />
-            <span dir="auto" class="max-w-[48ch] truncate">{toast}</span>
-            <button type="button" onClick={undo} class="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent/14 px-2.5 font-medium text-accent-fg transition hover:bg-accent/22">
-              <Icon name="undo" size={13} />
-              Undo
-            </button>
-          </div>
-        </div>
-      )}
+      </Panes>
+      <StatusBar state={state} actions={actions} hint={!seenPalette} onPalette={openPalette} />
+      <ToastView />
+      {overlay === 'palette' && <Palette commands={commands} onClose={() => setOverlay(null)} />}
+      {overlay === 'keys' && <KeysSheet onClose={() => setOverlay(null)} />}
       {enlarged && <Lightbox src={enlarged.src} caption={enlarged.caption} onClose={() => setEnlarged(null)} />}
     </div>
   );
 }
 
-// While paused, logging in or replaying the recording continued, nothing is recorded: the panel says so, and why.
-// Resume is in the top bar. In check mode, it says what a click in the app does. While a part is recorded again, it
-// says how far that got, and how to end it; while trying, that nothing is recorded.
-function Banner({ state, canTest, onDone, onCancel, onTest }: { state: PanelState; canTest: boolean; onDone(): void; onCancel(): void; onTest(): void }) {
-  if (state.rerecord && !(state.rerecord.phase === 'done' && state.status === 'trying'))
-    return <PartBanner part={state.rerecord} actions={state.steps.flatMap((step) => step.actions)} canTest={canTest} onDone={onDone} onCancel={onCancel} onTest={onTest} />;
-  if (state.status === 'trying')
-    return (
-      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
-        <Icon name="flask" size={14} class="shrink-0" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">Trying: nothing is recorded.</span>
-          <span class="text-info/85"> Each action shows under the steps as the recorder would write it; Add to flow keeps one. Try (F7) again goes back to recording.</span>
-        </span>
-        <button type="button" onClick={() => send({ type: 'try', on: false })} class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-info/35 px-2 text-[11.5px] font-medium text-info transition hover:bg-info/10">
-          Stop trying
-          <kbd class="rounded border border-info/30 px-1 font-sans text-[10.5px] leading-4">F7</kbd>
-        </button>
-      </div>
-    );
-  if (state.continued?.banner)
-    return (
-      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
-        <Icon name="play" size={14} class="shrink-0" />
-        <span class="min-w-0 flex-1 font-medium">{state.continued.banner}</span>
-      </div>
-    );
-  if (state.checking && state.status === 'recording')
-    return (
-      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-ok/25 bg-ok/8 px-4 py-2 text-[12.5px] leading-snug text-ok">
-        <Icon name="checkCircle" size={14} class="shrink-0" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">Check mode.</span>
-          <span class="text-ok/85"> Click what the flow should check in the app, then choose the check; Enter adds it. Nothing is clicked there. Esc leaves.</span>
-        </span>
-      </div>
-    );
-  if (state.status === 'login') {
-    const progress = state.loginProgress;
-    return (
-      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
-        <span class="size-3.5 shrink-0 animate-spin-slow rounded-full border-[1.5px] border-info border-t-transparent" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">{progress?.text ?? `Logging in with ${state.login}…`}</span>
-          {progress?.last && <span class="text-info/80"> Last: {progress.last}.</span>}
-          <span class="text-info/80">
-            {progress?.slow ? ' Taking long? Log in by hand.' : ' Nothing it does is recorded; the recording starts on the page it leaves.'}
-          </span>
-        </span>
-        <button
-          type="button"
-          onClick={() => send({ type: 'loginByHand' })}
-          title="Stop the login flow, and log in in the app yourself (Esc there)"
-          class="inline-flex h-7 shrink-0 items-center rounded-md border border-info/35 px-2 text-[11.5px] font-medium text-info transition hover:bg-info/10"
-        >
-          Log in by hand
-        </button>
-      </div>
-    );
-  }
-  if (state.status !== 'paused') return null;
+// Which layout the panel's width gives: three columns, the code over the inspector beside the steps, or all stacked.
+function useLayout(): 'wide' | 'medium' | 'narrow' {
+  const of = (): 'wide' | 'medium' | 'narrow' => (matchMedia('(min-width: 1180px)').matches ? 'wide' : matchMedia('(min-width: 720px)').matches ? 'medium' : 'narrow');
+  const [layout, setLayout] = useState(of);
+  useEffect(() => {
+    const follow = () => setLayout(of());
+    addEventListener('resize', follow);
+    return () => removeEventListener('resize', follow);
+  }, []);
+  return layout;
+}
+
+// The three panes, with handles between them that the person drags; the sizes are remembered.
+function Panes({ children }: { children: ComponentChildren }) {
+  const layout = useLayout();
+  const main = useRef<HTMLElement>(null);
+  const [steps, setSteps] = usePref('stepsWidth', '');
+  const [inspector, setInspector] = usePref('inspectorWidth', '');
+  const [share, setShare] = usePref('codeShare', '');
+  const [dragging, setDragging] = useState<{ steps?: number; inspector?: number; share?: number }>({});
+  const number = (text: string, fallback: number) => (Number.isFinite(Number.parseFloat(text)) ? Number.parseFloat(text) : fallback);
+  const stepsWidth = dragging.steps ?? number(steps, STEPS.fallback);
+  const inspectorWidth = dragging.inspector ?? number(inspector, INSPECTOR.fallback);
+  const codeShare = dragging.share ?? number(share, CODE_SHARE.fallback);
+  const height = () => main.current?.clientHeight ?? 600;
+  const style = {
+    '--steps-width': `${layout === 'wide' ? stepsWidth : Math.min(stepsWidth, 340)}px`,
+    '--inspector-width': `${inspectorWidth}px`,
+    '--code-share': `${codeShare}fr`,
+    '--inspector-share': `${100 - codeShare}fr`,
+  } as Record<string, string>;
+  // A double-click (-1) goes back to the default.
+  const done = (value: number, store: (text: string) => void) => {
+    setDragging({});
+    store(value < 0 ? '' : String(value));
+  };
+  const [stepsPane, codePane, inspectorPane] = children as ComponentChildren[];
   return (
-    <div role="status" class="flex shrink-0 items-start gap-2.5 border-b border-warn/25 bg-warn/9 px-4 py-2 text-[12.5px] leading-snug text-warn">
-      <Icon name={state.notice ? 'warn' : 'pause'} size={14} class="mt-[2px] shrink-0" />
-      <span class="min-w-0 flex-1">
-        {state.notice ? (
-          <>
-            <span class="font-medium">{state.notice}</span>
-            <span class="text-warn/85"> Log in by hand in the app, then Resume (F8) to start recording.</span>
-          </>
-        ) : (
-          <>
-            <span class="font-medium">Recording paused.</span>
-            <span class="text-warn/85"> What you do in the app is not recorded. Resume (F8) goes on from the page the app is on.</span>
-          </>
-        )}
-      </span>
-    </div>
+    <main ref={main} class="layout min-h-0 flex-1" style={style}>
+      {stepsPane}
+      {layout !== 'narrow' && (
+        <Splitter
+          class="area-split-left"
+          label="Resize the steps"
+          orientation="vertical"
+          value={stepsWidth}
+          min={STEPS.min}
+          max={layout === 'wide' ? STEPS.max : 340}
+          grows={1}
+          onChange={(value) => setDragging({ steps: value })}
+          onDone={(value) => done(value, setSteps)}
+        />
+      )}
+      {codePane}
+      {layout === 'wide' && (
+        <Splitter
+          class="area-split-right"
+          label="Resize the inspector"
+          orientation="vertical"
+          value={inspectorWidth}
+          min={INSPECTOR.min}
+          max={INSPECTOR.max}
+          grows={-1}
+          onChange={(value) => setDragging({ inspector: value })}
+          onDone={(value) => done(value, setInspector)}
+        />
+      )}
+      {layout === 'medium' && (
+        <Splitter
+          class="area-split-right"
+          label="Resize the code and the inspector"
+          orientation="horizontal"
+          value={(codeShare / 100) * height()}
+          min={(CODE_SHARE.min / 100) * height()}
+          max={(CODE_SHARE.max / 100) * height()}
+          grows={1}
+          onChange={(value) => setDragging({ share: Math.round((value / height()) * 100) })}
+          onDone={(value) => done(value < 0 ? -1 : Math.round((value / height()) * 100), setShare)}
+        />
+      )}
+      {inspectorPane}
+    </main>
   );
 }
 
-// A part recorded again: the replay up to it, the replay failed, the part recording, or done.
-function PartBanner({ part, actions, canTest, onDone, onCancel, onTest }: { part: Rerecord; actions: Action[]; canTest: boolean; onDone(): void; onCancel(): void; onTest(): void }) {
-  const what = part.after ? `Recording after ${part.part}` : `Re-recording ${part.part}`;
-  const button = 'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition';
-  if (part.phase === 'replaying')
-    return (
-      <div role="status" aria-label="Re-recording" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
-        <span class="size-3.5 shrink-0 animate-spin-slow rounded-full border-[1.5px] border-info border-t-transparent" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">Replaying the flow up to {part.after ? 'the end of ' : ''}{part.part}…</span>
-          <span class="text-info/85"> In the recorded window, from its start, as a test runs it; nothing is recorded.</span>
-        </span>
-        <button type="button" onClick={onCancel} class={cls(button, 'border-info/35 text-info hover:bg-info/10')}>
-          Cancel
-          <kbd class="rounded border border-info/30 px-1 font-sans text-[10.5px] leading-4">Esc</kbd>
-        </button>
-      </div>
-    );
-  if (part.phase === 'failed') {
-    const at = numberOf(actions, part.failedAt);
-    return (
-      <div role="alert" aria-label="Re-recording" class="flex shrink-0 items-start gap-2.5 border-b border-bad/30 bg-bad/[0.07] px-4 py-2 text-[12.5px] leading-snug text-bad">
-        <Icon name="warn" size={14} class="mt-[2px] shrink-0" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">The replay did not get to {part.part}.</span>
-          <span class="text-bad/85">
-            {part.problem ? ` ${part.problem}` : at ? ` It failed at step ${at}: see why on its card. The app is where it stopped, so you can record again from there.` : ' It failed before the first step.'}
-          </span>
-        </span>
-        {at > 0 && (
-          <button type="button" onClick={() => send({ type: 'rerecordFrom' })} class={cls(button, 'border-bad/40 bg-bad/10 text-bad hover:bg-bad/16')}>
-            <Icon name="rerecord" size={12} />
-            Re-record from step {at}
-          </button>
-        )}
-        <button type="button" onClick={onCancel} class={cls(button, 'border-transparent text-bad/85 hover:bg-bad/10')}>
-          Cancel
-        </button>
-      </div>
-    );
-  }
-  if (part.phase === 'recording')
-    return (
-      <div role="status" aria-label="Re-recording" class="flex shrink-0 items-start gap-2.5 border-b border-rec/30 bg-rec/[0.07] px-4 py-2 text-[12.5px] leading-snug text-fg">
-        <span class="mt-[5px] size-2 shrink-0 animate-rec rounded-full bg-rec" />
-        <span class="min-w-0 flex-1">
-          <span class="font-medium">
-            {what}: {part.after ? 'record what goes there' : 'do it again'}, then press Done (or Esc to keep {part.after ? 'the flow' : 'it'} as it was).
-          </span>
-          <span class="text-muted">
-            {part.loop && !part.after ? ' It is a loop: its repeats are recorded again together.' : ''}
-            {part.fresh.length > 0 ? ` ${plural(part.fresh.length, 'action')} so far; the steps after it stay.` : ' The steps after it stay.'}
-          </span>
-        </span>
-        <button type="button" onClick={onDone} class={cls(button, 'border-rec/40 bg-rec text-white hover:brightness-110')}>
-          <Icon name="tick" size={12} class="stroke-[2.4]" />
-          Done
-          <kbd class="rounded bg-white/20 px-1 font-sans text-[10.5px] leading-4">F2</kbd>
-        </button>
-        <button type="button" onClick={onCancel} class={cls(button, 'border-line-strong text-muted hover:bg-raised hover:text-fg')}>
-          Keep it as it was
-          <kbd class="rounded border border-line px-1 font-sans text-[10.5px] leading-4 text-faint">Esc</kbd>
-        </button>
-      </div>
-    );
-  return (
-    <div role="status" aria-label="Re-recording" class="flex shrink-0 items-center gap-2.5 border-b border-ok/25 bg-ok/8 px-4 py-2 text-[12.5px] leading-snug text-ok">
-      <Icon name="checkCircle" size={14} class="shrink-0" />
-      <span class="min-w-0 flex-1">
-        <span class="font-medium">{part.after ? `Recorded after ${part.part}.` : `Re-recorded ${part.part}.`}</span>
-        <span class="text-ok/85">
-          {' '}Test the flow to see it run as it will be saved; Ctrl+Z brings it back as it was.
-          {part.paused ? ' Paused: the app is where that part left it, not at the end of the flow.' : ''}
-        </span>
-      </span>
-      <button type="button" disabled={!canTest} onClick={onTest} class={cls(button, 'border-ok/40 bg-ok/10 text-ok hover:bg-ok/16 disabled:opacity-40')}>
-        <Icon name="play" size={11} fill="currentColor" />
-        Test
-      </button>
-      <button type="button" aria-label="Dismiss" onClick={() => send({ type: 'rerecordDismiss' })} class="rounded p-0.5 transition hover:bg-ok/15">
-        <Icon name="cross" size={13} />
-      </button>
-    </div>
-  );
-}
-
-function StatusBar({ state, actions }: { state: PanelState; actions: Action[] }) {
+function StatusBar({ state, actions, hint, onPalette }: { state: PanelState; actions: Action[]; hint: boolean; onPalette(): void }) {
   const settings = new Set(actions.flatMap((action) => action.settings.map((setting) => setting.name))).size;
   const toCheck = state.checks.length;
   return (
-    <footer class="flex h-7 shrink-0 items-center gap-3 border-t border-line bg-panel px-4 text-[11.5px] whitespace-nowrap text-faint">
-      <span class="tabular-nums">
+    <footer class="flex h-7 shrink-0 items-center gap-3 overflow-hidden border-t border-line bg-panel px-3 text-meta whitespace-nowrap text-muted">
+      <span class="shrink-0 tabular-nums">
         {plural(state.steps.length, 'step')} · {plural(actions.length, 'action')} · {plural(settings, 'setting')}
       </span>
       {toCheck > 0 && (
-        <span class="flex items-center gap-1 text-warn">
+        <span class="flex shrink-0 items-center gap-1 text-warn">
           <Icon name="warn" size={12} />
-          {toCheck} to check
+          {toCheck} to check by hand
         </span>
       )}
       {state.login && (
         <span class="flex min-w-0 items-center gap-1 max-[860px]:hidden" title={`Recorded after ${state.login}: run it with SetupFlows: [${state.login}]`}>
-          <Icon name="key" size={12} />
-          after <span class="font-mono text-muted">{state.login}</span>
+          <Icon name="key" size={12} class="shrink-0" />
+          <span class="truncate">
+            after <span class="font-mono text-fg/85">{state.login}</span>
+          </span>
         </span>
       )}
-      <span class="ml-auto hidden items-center gap-3 lg:flex">
-        <Hint keys="↑ ↓">steps</Hint>
-        <Hint keys="Ctrl ↵">test</Hint>
-        <Hint keys="F6">check</Hint>
-        <Hint keys="F8">pause</Hint>
-        <Hint keys="F7">try</Hint>
-        <Hint keys="Ctrl Z">undo</Hint>
-        <Hint keys="Ctrl S">save</Hint>
-      </span>
-      {state.target && (
-        <span class="min-w-0 truncate max-lg:ml-auto" title={state.kept ? 'The flow is there already: it is kept, and the recording is saved beside it.' : undefined}>
-          {state.kept ? 'Saves beside ' : 'Saves to '}
-          <span dir="ltr" class="font-mono text-muted">{state.target}</span>
+      {state.kept && (
+        <span class="flex min-w-0 items-center gap-1 text-warn" title="The flow is there already: it is kept, and the recording is saved beside it, to merge by hand.">
+          <Icon name="file" size={12} class="shrink-0" />
+          <span class="truncate">saves beside the flow</span>
         </span>
       )}
+      <button type="button" onClick={onPalette} class="ml-auto flex shrink-0 items-center gap-1.5 rounded-sm px-1 transition hover:text-fg">
+        {hint && <span class="text-accent-fg max-[640px]:hidden">Every command and its key:</span>}
+        <Kbd>Ctrl K</Kbd>
+        <span class="max-[640px]:hidden">commands</span>
+      </button>
     </footer>
-  );
-}
-
-function Hint({ keys, children }: { keys: string; children: string }) {
-  return (
-    <span class="flex items-center gap-1.5">
-      <kbd class="rounded border border-line bg-canvas px-1 font-sans text-[10.5px] leading-4 text-muted">{keys}</kbd>
-      {children}
-    </span>
   );
 }

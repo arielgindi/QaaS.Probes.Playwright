@@ -18,8 +18,9 @@ npm run build   # type-checks, then writes dist/panel.html and copies it to ../p
 `npm run dev` serves the panel with a sample recording (`src/sample.ts`) and reloads as you edit; the commands it
 would send the recorder are logged in the browser's console, and the Elements view shows a sample page
 (`/panel.html?frozen` as frozen with F4). **Test** runs a simulated test run (`?fail` makes it fail at a step), and
-`?test=building`, `window`, `start`, `running`, `passed`, `failed` or `error` opens on one. `npm run check` only
-type-checks.
+`?test=building`, `window`, `start`, `running`, `passed`, `failed` or `error` opens on one; `?mode=paused`, `trying`,
+`login`, `checking`, `replaying`, `rerecording` or `done` opens on a mode, and Pause, Try and Check go in and out of
+theirs. `npm run check` only type-checks.
 
 ## How it talks to the recorder
 
@@ -37,7 +38,9 @@ and the two talk through two functions on the window (`src/bridge.ts`):
   `useForStep`, `addClick`, `addFill` and `addCheck`, for testing the flow
   `test`, `stopTest` and `clearTest`, for checks and edits `checkMode`, `autoChecks`, `dropCheck`, `delete`,
   `renameStep` and `editValue`, for recording a part again `rerecord`, `rerecordDone`, `rerecordCancel`, `rerecordFrom`
-  and `rerecordDismiss`, and for trying `try` and `addTried`.
+  and `rerecordDismiss`, for trying `try` and `addTried`, and `prefs` for a choice the recorder keeps.
+- `window.__qaasPanelPrefs`: the choices the recorder kept (`../PanelPrefs.cs`), the theme, slow motion, the panes'
+  sizes, put in the page before its script runs, as the page has no storage of its own (`src/prefs.ts`).
 
 ## Rules
 
@@ -47,4 +50,13 @@ and the two talk through two functions on the window (`src/bridge.ts`):
 - Text from the app (element names, values, dialog titles) may be right-to-left: show it with `dir="auto"`. Code stays
   left-to-right.
 - C# and YAML are highlighted by the small tokenizers in `src/syntax`, not by a library.
-- Colours are tokens in `src/styles.css`, one set per theme.
+- One design system (`src/styles.css`, `src/components/ui.tsx`): colours are tokens, one set per theme, each text
+  colour with a contrast of 4.5:1 or more; five type sizes (`text-tag`, `text-meta`, `text-body`, `text-title`,
+  `text-head`); radii by what a thing is (a tag, a control, a card, a dialog); three shadows (`shadow-e1` to `e3`); one
+  `Button` in four variants; each mode one colour (`rec`, `warn`, `info`, `accent`, `try`, `ok`, `inspect`), as the
+  overlay in the recorded page has it too.
+- What the recorder is doing is said in one place, the status strip (`src/components/StatusStrip.tsx`), never in a
+  banner of its own; what a change did is a toast (`src/toast.ts`), one at a time.
+- Every command is in the palette (`Ctrl+K`, in `src/app.tsx`); a new one goes there, with its key.
+- Motion is short and respects `prefers-reduced-motion`; a field or a button that appears takes the focus with
+  `focusOnMount`, as a page honours `autofocus` only once.
