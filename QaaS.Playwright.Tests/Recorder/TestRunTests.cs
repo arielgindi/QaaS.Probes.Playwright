@@ -274,6 +274,17 @@ public class TestRunTests
 
             await view.Keyboard.PressAsync("Control+z");
             await Expect(code).ToContainTextAsync("\"Printer jammed\"");
+            // Recorded again once more, then cancelled: the app goes back where it was, and the recording records again.
+            session.Resume();
+            var before = app.Url;
+            await card.ClickAsync();
+            await card.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Re-record") }).ClickAsync();
+            await view.GetByRole(AriaRole.Dialog, new() { Name = "Re-record" }).GetByRole(AriaRole.Button, new() { Name = "Re-record", Exact = true }).ClickAsync();
+            await Expect(banner).ToContainTextAsync("do it again, then press Done", new() { Timeout = 60_000 });
+            await view.Keyboard.PressAsync("Escape");
+            for (var waited = 0; waited < 100 && (session.RerecordingPart is not null || session.State != RecordingState.Recording); waited++)
+                await Task.Delay(100);
+            var cancelled = (session.State, app.Url);
             Assert.Multiple(() =>
             {
                 Assert.That(rerecorded.Actions.Select(action => (action.Target?.Text, action.Value)),
@@ -282,6 +293,8 @@ public class TestRunTests
                 Assert.That(state, Is.EqualTo(RecordingState.Paused), "the app is in the dialog, not where the flow ends");
                 Assert.That(pages, Is.EqualTo(1), "it replays in the recorded window");
                 Assert.That(session.Build().Actions.Select(action => action.Value), Has.Member("Printer jammed"));
+                Assert.That(cancelled, Is.EqualTo((RecordingState.Recording, before)),
+                    "a part cancelled goes back to the page and the state the app was in, never silently paused");
             });
         }
         finally

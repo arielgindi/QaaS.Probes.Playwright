@@ -518,9 +518,11 @@ does in the app, and does it once you confirm:
    the part's actions, its cards marked `new`, and the steps after it stay. Checks (`F6`), pausing (`F8`) and trying
    (`F7`) work as ever.
 3. **Done**, `F2` in the app or the panel, keeps it, and the code is written with it: **Test** the flow to see it run as
-   it will be saved. **Keep it as it was**, `Esc` in the panel, keeps the part as it was. Either way the recording then
-   pauses, as the app is where the part left it, not at the end of the flow, unless the part was the flow's last. Undo
-   (`Ctrl+Z`) brings back the part as it was; before anything is recorded in it, Undo keeps it as it was.
+   it will be saved. **Keep it as it was**, `Esc` in the panel, keeps the part as it was, and takes the app back to the
+   page it was on before the replay, nothing recorded meanwhile, and the recording to what it did then: recording, or
+   paused. Done pauses the recording, as the app is where the part left it, not at the end of the flow, unless the part
+   was the flow's last; the console and the panel say it is paused, and why. Undo (`Ctrl+Z`) brings back the part as
+   it was; before anything is recorded in it, Undo keeps it as it was.
 
 **Record after this**, on a step's name or an action, replays the flow through it instead, and what you record goes
 after it, before the steps after it, which stay; nothing is replaced. It ends in the same way.
@@ -530,7 +532,7 @@ after it, before the steps after it, which stay; nothing is replaced. It ends in
   confirmation says, and recording after one records after the loop.
 - **When the replay does not get to the part**, the panel shows where it failed and why, as a test run does, and so
   does the console. The app is then where the replay stopped: **Re-record from step 3** records again from the step that
-  failed to the end of the part, and **Cancel** keeps the flow as it is.
+  failed to the end of the part, and **Cancel** keeps the flow as it is and takes the app back, as `Esc` does.
 - **It is in the recording**, so autosave, `--keep-recording` and [continuing](#continuing-a-flow) keep the flow as you
   recorded it again, and a recording continued can be recorded again in part too. It needs the panel and the .NET SDK,
   as **Test** does.

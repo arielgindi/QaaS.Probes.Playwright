@@ -912,16 +912,23 @@ internal static class ConsoleUi
     public static void ReplayStopped(string part) =>
         Info($"The replay did not get to {part}: in the panel, re-record from the step that failed instead, or cancel.");
 
-    /// <summary>A part recorded again was kept, or kept as it was; the recording is paused when the app is elsewhere.</summary>
-    public static void Rerecorded(string part, bool kept, bool paused)
+    /// <summary>
+    /// A part recorded again was kept, or kept as it was. Cancelled, the app went <paramref name="back"/> to the page it
+    /// was on; else, or kept in the middle of the flow, the recording is paused, as the app is elsewhere, which is said.
+    /// </summary>
+    public static void Rerecorded(string part, bool kept, bool paused, string? back = null)
     {
         var t = Out;
         lock (Gate)
         {
             if (kept) Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Re-recorded", $"{part}. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
             else Mode(t, " ", Tone.Plain, "Kept", $"{part} as it was.");
-            if (paused)
-                Status(t, UnderMode, " ", Tone.Plain, "The app is where that part left it, not at the end of the flow: F8 records at the end from there.", Tone.Dim);
+            if (back is not null)
+                Status(t, UnderMode, " ", Tone.Plain, $"Back on {Terminal.Clean(back)}, where the app was{(paused ? "; still paused, as it was" : "")}.", Tone.Dim);
+            else if (paused)
+                Mode(t, t.Glyph("║", "="), Tone.Warning, "Paused",
+                    (kept ? "the app is where that part left it, not at the end of the flow"
+                        : "the app is where the replay stopped, not where you were") + ": F8 records at the end of the flow from there.");
         }
     }
 

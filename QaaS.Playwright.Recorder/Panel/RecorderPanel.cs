@@ -169,7 +169,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                     if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
                     else if (IsPartCommand(command)) await PartAsync(command);
                     else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
-                    else Carry(command);
+                    else await CarryAsync(command);
                 }
 
                 // A highlight replaces the one before, so only the last matters.
@@ -207,7 +207,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         }
     }
 
-    private void Carry(PanelCommand command)
+    private async Task CarryAsync(PanelCommand command)
     {
         if (command.Type == "refresh") _refresh = true;
         // Once saving, the recording is what it is.
@@ -225,7 +225,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 break;
             case "undo" when _shown is { } shown:
                 _session.Log.Undo(shown.Undo);
-                Undone();
+                await UndoneAsync();
                 break;
             case "delete" when command.Action is { } id && _shown is { } shown:
                 _session.Log.Remove(shown.Sources.GetValueOrDefault(id) ?? [id], $"Restore {Called(shown, id)}");
