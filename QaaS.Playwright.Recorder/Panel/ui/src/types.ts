@@ -45,6 +45,8 @@ export interface TestRun {
   started: number;
   /** How long the browser's part took, once it ended. */
   ms?: number;
+  /** The lines of the statement running; in a loop, of its body's statement, which every repeat runs. */
+  running?: Lines;
   /** Each action's state, by its id. */
   steps: Record<string, TestStep>;
   failure?: TestFailure;

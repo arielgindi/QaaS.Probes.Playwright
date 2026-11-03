@@ -230,6 +230,7 @@ export function App() {
             selected={selectedAction}
             hovered={hoveredAction}
             owners={owners}
+            actions={actions}
             test={test}
             onSelect={select}
           />

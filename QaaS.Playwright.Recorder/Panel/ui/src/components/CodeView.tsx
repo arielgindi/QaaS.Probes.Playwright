@@ -17,6 +17,8 @@ interface Props {
   hovered?: Action;
   /** The action each line of the code was written for. */
   owners: Map<number, string>;
+  /** The flow's actions; in a loop, each repeat's has the lines of the loop's body. */
+  actions: Action[];
   /** The last test run, whose steps are marked in the gutter while the code is the one it ran. */
   test?: TestRun;
   onSelect(id: string): void;
@@ -26,7 +28,7 @@ interface Props {
  * The flow's code or YAML, highlighted, with the lines of the selected and hovered actions marked, and how each action
  * went in the last test run, the failed line in red.
  */
-export function CodeView({ view, code, yaml, target, checks, selected, hovered, owners, test, onSelect }: Props) {
+export function CodeView({ view, code, yaml, target, checks, selected, hovered, owners, actions, test, onSelect }: Props) {
   const [wrap, setWrap] = useState(true);
   const text = view === 'code' ? code : yaml;
   const lines = useMemo(() => {
@@ -43,14 +45,13 @@ export function CodeView({ view, code, yaml, target, checks, selected, hovered, 
   // Marked only on the code the run ran: once it changed, its lines may be others.
   const tested = view === 'code' && test && !test.stale ? test : undefined;
   const failedLine = tested?.state === 'failed' ? tested.failure?.line : undefined;
+  const tests = useMemo(() => (tested ? lineStates(actions, tested) : new Map<number, TestStep['state']>()), [actions, tested]);
 
   const inSelected = linesOf(view, yaml, selected);
   const inHovered = hovered === selected ? null : linesOf(view, yaml, hovered);
 
-  // While a test runs, the code follows the step it runs; else the selected one.
-  const running = tested && Object.entries(tested.steps).find(([, step]) => step.state === 'running')?.[0];
-  const inRunning = running ? [...owners].filter(([, owner]) => owner === running).map(([line]) => line) : [];
-  const shown = inRunning.length > 0 ? inRunning : inSelected ? [...inSelected] : null;
+  // While a test runs, the code follows the statement it runs; else the selected step.
+  const shown = tested?.running ? [tested.running.first, tested.running.last] : inSelected ? [...inSelected] : null;
 
   const scroller = useRef<HTMLDivElement>(null);
   const first = shown ? Math.min(...shown) : null;
@@ -117,7 +118,7 @@ export function CodeView({ view, code, yaml, target, checks, selected, hovered, 
                 wrap={wrap}
                 marks={marks.get(number)}
                 state={inSelected?.has(number) ? 'selected' : inHovered?.has(number) ? 'hovered' : undefined}
-                test={owner ? tested?.steps[owner]?.state : undefined}
+                test={tests.get(number)}
                 failure={number === failedLine ? tested?.failure?.message : undefined}
                 onClick={owner ? () => onSelect(owner) : undefined}
               />
@@ -153,11 +154,13 @@ function Line({ number, tokens, wrap, marks, state, test, failure, onClick }: Li
     ? 'var(--line-failed-strong)'
     : test === 'failed'
       ? 'var(--line-failed)'
-      : state === 'selected'
-        ? 'var(--line-selected)'
-        : state === 'hovered'
-          ? 'var(--line-hovered)'
-          : 'var(--canvas)';
+      : test === 'running'
+        ? 'color-mix(in oklab, var(--accent) 10%, var(--canvas))'
+        : state === 'selected'
+          ? 'var(--line-selected)'
+          : state === 'hovered'
+            ? 'var(--line-hovered)'
+            : 'var(--canvas)';
   const indent = tokens[0]?.kind === 'plain' && !tokens[0].text.trim() ? tokens[0].text.length : 0;
   const body = indent ? tokens.slice(1) : tokens;
   const bar = test && gutterBars[test];
@@ -219,6 +222,22 @@ function FailedMark({ message }: { message: string }) {
       </span>
     </span>
   );
+}
+
+// How each line's actions went: failed when one did; passed when all did, every repeat of a loop's line; the
+// statement running as such.
+function lineStates(actions: Action[], test: TestRun): Map<number, TestStep['state']> {
+  const byLine = new Map<number, string[]>();
+  for (const action of actions)
+    if (action.lines) for (let line = action.lines.first; line <= action.lines.last; line++) byLine.set(line, [...(byLine.get(line) ?? []), action.id]);
+  const states = new Map<number, TestStep['state']>();
+  for (const [line, ids] of byLine) {
+    const each = ids.map((id) => test.steps[id]?.state);
+    if (each.includes('failed')) states.set(line, 'failed');
+    else if (each.every((state) => state === 'passed')) states.set(line, 'passed');
+  }
+  if (test.running) for (let line = test.running.first; line <= test.running.last; line++) states.set(line, 'running');
+  return states;
 }
 
 // The lines to mark for an action: in the code, those it was written to; in the YAML, its settings.
