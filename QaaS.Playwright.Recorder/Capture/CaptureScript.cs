@@ -950,9 +950,12 @@ internal static class CaptureScript
             .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
             .locator { font-size: 12px; font-weight: 600; color: #fff; }
             .pick, .problem { color: #fbbf24; }
-            .pick { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; color: #a1a1aa; }
-            .pick .on { color: #fbbf24; font-weight: 600; }
-            .pick .keys { margin-left: 8px; color: #71717a; }
+            .pick { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; color: #a1a1aa; }
+            .pick b { color: #c4b5fd; font-weight: 600; }
+            .pick i { color: #93c5fd; font-style: normal; }
+            .pick .on { padding: 0 3px; border-radius: 3px; background: rgba(227, 116, 0, .28); color: #fbbf24; }
+            .pick .on b, .pick .on i { color: #fbbf24; }
+            .pick .keys { margin-left: 8px; color: #71717a; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
             .reasons, .note { color: #a1a1aa; }
             .state { position: fixed; display: none; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box;
               align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; pointer-events: none;
@@ -1145,14 +1148,16 @@ internal static class CaptureScript
 
           const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
-          // As a person reads an element in a breadcrumb: its tag, then its id or its first class without the hash a
+          // An element in a breadcrumb as Inspect names it: its tag, then its id or its first class, here without the hash a
           // framework put in it (css-1x2y3z-card gives card).
           const crumbOf = (element) => {
-            const tag = element.tagName.toLowerCase();
-            if (element.id) return `${tag}#${element.id}`;
+            const crumb = document.createElement('span');
+            crumb.appendChild(document.createElement('b')).textContent = element.tagName.toLowerCase();
             const name = [...element.classList].map((each) => each.replace(/^(css|sc|jss)-[a-z0-9]+-?/i, '').replace(/__[A-Za-z0-9-]{4,}$/, ''))
               .find((each) => each.length > 1);
-            return name ? `${tag}.${name}` : tag;
+            if (element.id) crumb.appendChild(document.createElement('i')).textContent = `#${element.id}`;
+            else if (name) crumb.append(`.${name}`);
+            return crumb;
           };
 
           // The elements Alt+Up and Alt+Down step through, as a breadcrumb from the outermost: the one picked marked, the
@@ -1167,8 +1172,7 @@ internal static class CaptureScript
             if (to < state.chain.length) part.append(`${range(0x2026)} ${range(0x203a)} `);
             shown.forEach((element, at) => {
               if (at > 0) part.append(` ${range(0x203a)} `);
-              const crumb = part.appendChild(document.createElement('span'));
-              crumb.textContent = crumbOf(element);
+              const crumb = part.appendChild(crumbOf(element));
               if (element === state.chain[state.index]) crumb.className = 'on';
             });
             if (from > 0) part.append(` ${range(0x203a)} ${range(0x2026)}`);
