@@ -471,6 +471,11 @@ public class RealSiteRecordingTests
                 .And.Some.Contains("“Toggle light/dark mode” is clicked twice in a row").And.Some.Contains("ticked and unticked again"),
                 "what was done and undone is suggested away, never left out silently");
             Assert.That(widgets.Code, Does.Not.Contain("Discontinued2").And.Not.Contain("FebruaryPdf2"), "a checkbox ticked again is the state it ends in");
+            Assert.That(widgets.Code, Does.Contain("var field = page.GetByRole(AriaRole.Combobox);\n        await field.ClickAsync();\n" +
+                "        await page.GetByRole(AriaRole.Searchbox, new() { Name = \"Filter\", Exact = true })"),
+                "a list opened and closed with Escape is left out; one opened and filtered is chosen in, never opened again");
+            Assert.That(customersFlow.Code, Does.Not.Contain("GroupsShown").And.Contain("/// <summary>As the field takes it, whatever the browser shows: yyyy-MM-dd.</summary>"),
+                "a multi-select shows the record's other choices, never a setting; a date says its format");
             Assert.That(poster.Code, Does.Not.Contain("GotoAsync"), "no address gone to after a try, right before a menu's item that goes elsewhere");
             Assert.That(scheduler.Checks.Select(check => check.Message), Has.Some.Contains("only an id made anew on each load finds was left out"),
                 "a click only such an id finds is left out, and said");

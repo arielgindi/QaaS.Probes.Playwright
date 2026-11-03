@@ -95,7 +95,8 @@ internal static partial class Noise
         "Log", "Sign", "Register", "Book", "Pay", "Upload", "Import", "Filter", "Go", "Done", "Finish", "Insert", "Enter",
     };
 
-    private static bool Sends(PlannedAction action) =>
+    /// <summary>The action sends a form's values: a submit, or a button that says it saves, adds, searches or logs in.</summary>
+    public static bool Sends(PlannedAction action) =>
         action is { Kind: "click" or "dblclick" or "press" }
         && (action.Source.Target is { Type: "submit" } || action.Kind == "click" && action.Source.Target?.Role is "button" or "link"
             && StepNamer.Label(action) is { } label && Sending.Contains(StepNamer.Words(CSharp.Pascal(label) ?? "").FirstOrDefault() ?? ""));

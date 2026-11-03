@@ -55,6 +55,9 @@ internal sealed class PlannedAction
     /// </summary>
     public bool? Before { get; set; }
 
+    /// <summary>The choice's list is open already, as the steps before it opened it and typed into its filter.</summary>
+    public bool Opened { get; set; }
+
     /// <summary>What was typed into an Autocomplete before an option was chosen.</summary>
     public string? Search { get; set; }
 
@@ -107,6 +110,9 @@ internal sealed class Setting(string name, string? text, bool? flag = null)
 
     /// <summary>The flow types it with its run's stamp appended (<c>Unique(...)</c>), so it never repeats.</summary>
     public bool Unique { get; set; }
+
+    /// <summary>The format a date or a time input takes its value in, as its record's doc comment says; null for text.</summary>
+    public string? Format { get; set; }
 
     /// <summary>A date the flow types as <see cref="Value"/> days from the day it runs, in this format.</summary>
     public string? DateFormat { get; set; }

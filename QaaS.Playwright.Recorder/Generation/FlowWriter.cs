@@ -534,8 +534,8 @@ internal sealed partial class FlowWriter
                 // What the person typed to find the option, the flow types too, then chooses the option by its own text.
                 if (source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null))
                     _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});", problem);
-                // An option of no role is chosen in the list the click before it opened.
-                else if (source.OptionCss is null)
+                // An option of no role is chosen in the list the click before it opened, as is one of a list opened already.
+                else if (source.OptionCss is null && !action.Opened)
                     _step.Add($"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
                 ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
@@ -1354,6 +1354,8 @@ internal sealed partial class FlowWriter
 
         if (setting.Items is not { } items)
         {
+            if (setting is { Format: { } format, DateFormat: null })
+                yield return $"    /// <summary>As the field takes it, whatever the browser shows: {format}.</summary>";
             yield return $"{declaration} {Default(setting, setting.Type)};";
             yield break;
         }

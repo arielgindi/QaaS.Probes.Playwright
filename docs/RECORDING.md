@@ -444,7 +444,10 @@ it back. It never leaves these out by itself, as what looks like noise may be wh
 | **Leave these out** | In a recording of an older recorder, which did not watch what a click changed: clicks on what is no control that showed nothing. | Leaves them all out |
 
 A checkbox or a switch ticked again and again is the state it ends in, one step; radios of one group picked one after
-the other, the last. The address the app was at when a pause or a try ended is not gone to when the next click is on a
+the other, the last. A select or a combobox opened and closed with Escape that showed nothing is left out, both; one
+opened and filtered in its list's own field (Kendo's) is chosen in the list they left open, never opened again. Values
+filled in are one step with the click after them only when it sends them (a submit, Save, Search, Log in) or a key
+does: a click on a menu after a search's text is a step of its own. The address the app was at when a pause or a try ended is not gone to when the next click is on a
 menu's item or a tab that goes elsewhere itself.
 
 The console lists the suggestions left when you save. What the recorder leaves out by itself, without asking, is only
@@ -722,7 +725,8 @@ FlowConfiguration:
   `SignInAsync`; a page of an app that routes by the address's fragment (`#/products`) is named after its route. The click that only opened
   a select's list is left out: the flow opens it as it chooses.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
-  value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
+  value as its default (a date or a time input's with the format it takes, `yyyy-MM-dd`, in its doc comment; a
+  multi-select's, the option chosen, never what the field then shows with the record's other choices), and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
   (`employee.firstName` gives `EmployeeFirstName`), else its own stable id (by its label when that says the same in
   fewer words: `userEmail` and "Email" give `Email`; `subjectsInput` gives `Subjects`), test id, the stable id of the
