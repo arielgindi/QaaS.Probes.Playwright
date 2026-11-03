@@ -4,6 +4,22 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- Checks you choose: `F6` in the recorded page, or **Check** in the panel, turns on check mode, where a click picks an
+  element instead of reaching the app, and a chooser beside it offers the checks that fit, the likeliest chosen: its
+  text, a field's value, a checkbox's state, how many items there are, a table row by its cells, visible or gone,
+  enabled or disabled, or the page's address. Enter adds it after the last action, as an `Expect` marked `// check`,
+  which `--no-auto-checks` keeps. A value typed before reads its setting; a new record's number is matched as a
+  message's is.
+- The auto checks under control: a switch in the panel turns them all off or on, live, as `--no-auto-checks`, and each
+  one's ✕ on its action's card drops it; a dropped check stays dropped, kept in the recording.
+- The steps can be edited in the panel: delete an action (Delete), rename a step's method, change a setting's name or
+  default, have a value typed unique per run, or type a date as days from today (`DueInDays: 3`), which the panel
+  suggests for a date typed near the day of the recording. Undo takes back each change in turn. The edits and checks
+  are part of the recording, so `--keep-recording`, autosave and `--continue` keep them.
+- A later locator that shows a value typed before, such as a link to the ticket just named, reads its setting, as text
+  and checks do.
+- `BasePlaywrightFlow` has a protected `Unique(value)`: the value with the run's stamp appended (`Printer offline
+  1103-142501-k7q`), the same for the whole run. Flows that mark a value unique need this version of QaaS.Playwright.
 - The recorder never loses a recording: it writes it to `~/.qaas/recordings/` after every change, atomically and for
   the user's eyes only, one file per flow and folder, without the passwords and secrets it hides elsewhere. A recording
   that did not end in a save is offered when the recorder starts next: save it now without a browser, continue
