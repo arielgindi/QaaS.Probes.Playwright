@@ -900,6 +900,7 @@ internal static class CaptureScript
               section: nearby.section?.heading || null,
               icon: nearby.icon?.word || null,
               editable: isTextual(element) ? !element.readOnly && !element.disabled : undefined,
+              inForm: isTextual(element) && !!(element.form ?? element.closest('form')) || undefined,
               interactive: options.interactive ??
                 (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,

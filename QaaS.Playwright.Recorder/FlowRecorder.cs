@@ -83,6 +83,8 @@ internal static class FlowRecorder
                 else ConsoleUi.Captured(news);
             });
             recorded = session;
+            // The console numbers each action as the flow, the panel and a test do.
+            ConsoleUi.Numbering = () => StepNumbers(session.Build(), (shown?.Request ?? request).ClassName);
             var panel = shown = request.Panel ? await OpenPanelAsync(session, request) : null;
             using var stopWatching = new CancellationTokenSource();
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
@@ -116,6 +118,7 @@ internal static class FlowRecorder
             }
 
             recording = await session.StopAsync();
+            ConsoleUi.Numbering = null;
             await stopWatching.CancelAsync();
             await watching;
             if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
@@ -151,6 +154,22 @@ internal static class FlowRecorder
         // On disk as it ended, in case saving it fails.
         await autosave.WriteAsync(recording, request);
         return await SaveAsync(request, recording, autosave);
+    }
+
+    // Each action the flow does by its step number, as the panel and a test number them: a click that only opened a
+    // list, or did nothing, has none.
+    private static IReadOnlyDictionary<string, int> StepNumbers(Recording recording, string flow)
+    {
+        try
+        {
+            return FlowPlanner.Plan(recording, flow).Steps.SelectMany(step => step.Actions).Where(action => action.Kind != "expect")
+                .Select(action => action.Source.Id).Distinct().Select((id, index) => (id, index + 1)).ToDictionary();
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            // A recording the planner cannot plan yet is numbered as it comes.
+            return recording.Actions.Select((action, index) => (action.Id, index + 1)).DistinctBy(pair => pair.Id).ToDictionary();
+        }
     }
 
     // "12 actions", as the flow does them and its summary counts them once saved; as recorded when the flow cannot be

@@ -21,7 +21,9 @@ of this repository, `dotnet run --project QaaS.Playwright.Recorder -- record ...
 
 Work through the site. Each action is printed as it is recorded: its number, what you did, the element's name and
 the value, then dimmer the locator the flow will use, and under it what the page did. The numbers are the step
-numbers the panel and a test run use, as a click that only opens a select is no step:
+numbers the panel, a test run and the summary use, the flow's: a click that only opens a select is no step, and a
+click on no control shows only once it changed something, as the flow leaves it out otherwise. "Enter in a form's
+field may send the form" is said of a field in a form only:
 
 ```text
     1 • click   Actions for HL-775-ZE         button "Actions for HL-775-ZE"

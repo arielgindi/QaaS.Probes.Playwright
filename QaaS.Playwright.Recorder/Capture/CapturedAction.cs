@@ -238,6 +238,9 @@ internal sealed class CapturedTarget
     /// <summary>A field the person can type in: a text input that is not read-only, a text area, an editable element.</summary>
     public bool? Editable { get; set; }
 
+    /// <summary>The element is in a form, which Enter in a field of it may send.</summary>
+    public bool? InForm { get; set; }
+
     /// <summary>A checkbox or radio under the box a library draws over it, which a click at its middle lands on.</summary>
     public bool? Covered { get; set; }
 

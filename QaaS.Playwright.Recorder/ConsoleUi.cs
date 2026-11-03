@@ -261,6 +261,7 @@ internal static class ConsoleUi
             t.WriteLine();
             StepOfAction.Clear();
             EffectsShown.Clear();
+            Held.Clear();
             (_lastStep, _stepsBefore) = (0, 0);
             Volatile.Write(ref _recording, true);
         }
@@ -275,31 +276,66 @@ internal static class ConsoleUi
         if (Console.ReadLine() is null) await Task.Delay(Timeout.Infinite);
     });
 
-    /// <summary>Shows an action as it is captured, with what to check in it, and what the page did after it.</summary>
+    // The actions held back until the flow keeps them, as a click on no control is until it changed something.
+    private static readonly Dictionary<string, CapturedAction> Held = [];
+
+    /// <summary>
+    /// The step number of each action the flow does, as the panel and a test number them, by its id; for the console to
+    /// number its lines alike. Null numbers them as they come.
+    /// </summary>
+    public static Func<IReadOnlyDictionary<string, int>>? Numbering { get; set; }
+
+    /// <summary>
+    /// Shows an action as it is captured, with what to check in it, and what the page did after it, numbered as the flow
+    /// numbers its steps. One the flow leaves out, as a click on no control that changed nothing, shows only once the flow
+    /// keeps it, as what it changed comes in.
+    /// </summary>
     public static void Captured(object news)
     {
         var t = Out;
         lock (Gate)
         {
+            var numbers = Numbering?.Invoke();
             switch (news)
             {
                 case CapturedAction action:
-                    var number = StepOfAction.TryGetValue(action.Id, out var known) ? known : _stepsBefore + StepOfAction.Count + 1;
-                    if (StepLine(t, number, action) is not { } line) return;
-                    StepOfAction[action.Id] = _lastStep = number;
-                    t.WriteLine(line);
-                    foreach (var check in ChecksOf(action))
-                        Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
-                    // Kept as done; but a person may not know what Enter does there.
-                    if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { } field && Noise.IsTextField(field))
-                        t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
-                            new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
+                    if (numbers is not null && action.Kind != "expect" && !numbers.ContainsKey(action.Id))
+                    {
+                        Held[action.Id] = action;
+                        return;
+                    }
+
+                    Held.Remove(action.Id);
+                    Show(t, action, numbers);
                     break;
-                case CapturedEffect effect when EffectLine(t, effect) is { } effectLine:
-                    t.WriteLine(effectLine);
+                case CapturedEffect effect:
+                    if (numbers is not null && effect.ActionId is { } of && Held.TryGetValue(of, out var held) && numbers.ContainsKey(of))
+                    {
+                        Held.Remove(of);
+                        Show(t, held, numbers);
+                    }
+
+                    if (EffectLine(t, effect) is { } effectLine) t.WriteLine(effectLine);
                     break;
             }
         }
+    }
+
+    private static void Show(Terminal t, CapturedAction action, IReadOnlyDictionary<string, int>? numbers)
+    {
+        // A check of yours is of the step before it, as the flow makes it after that step's action.
+        var number = action.Kind == "expect" && numbers is not null ? Math.Max(_lastStep, 1)
+            : numbers?.GetValueOrDefault(action.Id) is > 0 and var planned ? planned
+            : StepOfAction.TryGetValue(action.Id, out var known) ? known : _stepsBefore + StepOfAction.Count + 1;
+        if (StepLine(t, number, action) is not { } line) return;
+        StepOfAction[action.Id] = _lastStep = number;
+        t.WriteLine(line);
+        foreach (var check in ChecksOf(action))
+            Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+        // Kept as done; but a person may not know what Enter does in a form's field.
+        if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { InForm: true } field && Noise.IsTextField(field))
+            t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
+                new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
     }
 
     /// <summary>A stage of the work that takes a moment, such as "Logging in" or "Saving".</summary>
