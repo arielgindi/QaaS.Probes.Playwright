@@ -35,7 +35,11 @@ const sample: PanelState = {
           "settings": [
             {
               "name": "Ticket",
-              "value": "'TCK-1042'"
+              "value": "'TCK-1042'",
+              "role": "row",
+              "text": "TCK-1042",
+              "type": "string",
+              "renamable": true
             }
           ],
           "candidates": [
@@ -161,7 +165,12 @@ const sample: PanelState = {
           "settings": [
             {
               "name": "Title",
-              "value": "'Printer on floor 3 is jammed'"
+              "value": "'Printer on floor 3 is jammed'",
+              "role": "value",
+              "text": "Printer on floor 3 is jammed",
+              "type": "string",
+              "renamable": true,
+              "unique": false
             }
           ],
           "candidates": [
@@ -211,7 +220,11 @@ const sample: PanelState = {
           "settings": [
             {
               "name": "Category",
-              "value": "'Software'"
+              "value": "'Software'",
+              "role": "value",
+              "text": "Software",
+              "type": "string",
+              "renamable": true
             }
           ],
           "candidates": [
@@ -260,7 +273,11 @@ const sample: PanelState = {
           "settings": [
             {
               "name": "Priority",
-              "value": "'High'"
+              "value": "'High'",
+              "role": "value",
+              "text": "High",
+              "type": "string",
+              "renamable": true
             }
           ],
           "candidates": [
@@ -373,6 +390,21 @@ const sample: PanelState = {
   "checks": [],
   "kept": false
 };
+
+// The checks after the sample's actions: auto checks, one dropped, and one the person chose; the title may be typed
+// unique per run.
+{
+  const byId = Object.fromEntries(sample.steps.flatMap((step) => step.actions).map((action) => [action.id, action]));
+  byId.a1.expects = [{ key: 'alert:TCK-1042 assigned to you', text: 'alert “TCK-1042 assigned to you”', auto: true }];
+  byId.a2.expects = [{ key: 'opened', text: 'dialog shows', auto: true }];
+  byId.a6.expects = [
+    { key: 'closed:New ticket', text: 'dialog closes', auto: true },
+    { key: 'url', text: 'URL /tickets/[id]', auto: true, dropped: true },
+    { key: 'alert:Ticket TCK-1043 created', text: 'alert “Ticket TCK-1043 created”', auto: true },
+    { key: 'c1', text: 'a row of “Printer on floor 3 is jammed”', auto: false },
+  ];
+  Object.assign(sample, { autoChecks: true, undo: 'Remove the last step' });
+}
 
 // The helpdesk's page as the Elements view lists it: a table of tickets, and a row's menu, open in a portal.
 type Spec = [tag: string, attributes: Partial<DomNode>, children?: Spec[]];

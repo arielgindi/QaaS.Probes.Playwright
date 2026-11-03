@@ -9,7 +9,7 @@ import { Timeline } from './components/Timeline';
 import { TopBar, type View } from './components/TopBar';
 import { useElements } from './elements';
 import { isGoing, useSlowMotion } from './test';
-import { plural } from './text';
+import { plural, subjectOf, verbOf } from './text';
 import { useTheme } from './theme';
 import type { Action, PanelState } from './types';
 
@@ -25,6 +25,7 @@ export function App() {
   const [theme, toggleTheme] = useTheme();
   const [slow, toggleSlow] = useSlowMotion();
   const [enlarged, setEnlarged] = useState<{ src: string; caption: string } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [elements, elementActions] = useElements(view === 'elements');
 
   useEffect(() => {
@@ -80,7 +81,25 @@ export function App() {
     highlight(id === null ? null : { action: id });
   };
   const undo = () => {
-    if (actions.length > 0 && !saving) send({ type: 'undo' });
+    if (state.undo && !saving) send({ type: 'undo' });
+    setToast(null);
+  };
+  // A deleted action's card goes, and the one after it is selected; Undo brings it back.
+  const remove = (id: string) => {
+    if (saving) return;
+    const at = actions.findIndex((action) => action.id === id);
+    const action = actions[at];
+    send({ type: 'delete', action: id });
+    if (!action) return;
+    setToast(action.kind === 'expect' ? 'Deleted the check' : `Deleted ${verbOf(action).toLowerCase()} “${subjectOf(action)}”`);
+    if (id === selected) {
+      const next = actions[at + 1] ?? actions[at - 1];
+      setSelected(next?.id ?? null);
+      setFollow(!actions[at + 1]);
+    }
+  };
+  const check = () => {
+    if (!saving && (state.status === 'recording' || state.checking)) send({ type: 'checkMode', on: !state.checking });
   };
   const save = () => {
     if (actions.length > 0 && !saving) send({ type: 'save' });
@@ -97,10 +116,11 @@ export function App() {
   const choose = (action: Action, candidate: number | null) => send({ type: 'choose', action: action.id, candidate });
   const pick = (node: number) => send({ type: 'pick', node, frozen: elements.source === 'frozen' });
 
-  // Keys: ↑ and ↓ move through the steps, Ctrl+Z undoes the last, Ctrl+S saves, F8 pauses or resumes; Ctrl+Enter or F5
-  // tests the flow, Ctrl+Shift+Enter runs it to the selected step, Esc or Shift+F5 stops the test.
-  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing });
-  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing };
+  // Keys: ↑ and ↓ move through the steps, Delete deletes the selected one, Ctrl+Z undoes the last change, Ctrl+S saves,
+  // F8 pauses or resumes, F6 checks something in the app; Ctrl+Enter or F5 tests the flow, Ctrl+Shift+Enter runs it to the
+  // selected step, Esc or Shift+F5 stops the test.
+  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check });
+  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = keys.current;
@@ -114,6 +134,12 @@ export function App() {
       if (event.key === 'F8' && !event.repeat) {
         event.preventDefault();
         current.pause();
+        return;
+      }
+      // F6 would move the focus to the address bar.
+      if (event.key === 'F6') {
+        event.preventDefault();
+        if (!event.repeat) current.check();
         return;
       }
       // F5 would reload the panel.
@@ -138,6 +164,9 @@ export function App() {
       if (command && key === 'z' && !event.shiftKey) {
         event.preventDefault();
         current.undo();
+      } else if ((event.key === 'Delete' || event.key === 'Backspace') && !command && current.selected) {
+        event.preventDefault();
+        current.remove(current.selected);
       } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !command && current.actions.length > 0) {
         event.preventDefault();
         const at = current.actions.findIndex((action) => action.id === current.selected);
@@ -156,6 +185,11 @@ export function App() {
   const notes = state.checks.filter((check) => !check.line).map((check) => check.message);
   const file = state.target.slice(Math.max(state.target.lastIndexOf('/'), state.target.lastIndexOf('\\')) + 1);
   const enlarge = (src: string, caption: string) => setEnlarged({ src, caption });
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   return (
     <div class="flex h-full flex-col">
@@ -164,7 +198,8 @@ export function App() {
         stamp={state}
         status={state.status}
         canSave={actions.length > 0}
-        canUndo={actions.length > 0}
+        undo={state.undo}
+        checking={!!state.checking}
         view={view}
         theme={theme}
         testing={testing}
@@ -175,6 +210,7 @@ export function App() {
         onSlow={toggleSlow}
         onRename={(name) => send({ type: 'rename', name })}
         onUndo={undo}
+        onCheck={check}
         onSave={save}
         onPause={pause}
         onView={setView}
@@ -213,10 +249,16 @@ export function App() {
           test={test}
           file={file}
           canRun={canTest}
+          canEdit={!saving}
+          autoChecks={state.autoChecks !== false}
           onSelect={select}
           onHover={hover}
           onRunTo={runTest}
           onEnlarge={enlarge}
+          onDelete={remove}
+          onRenameStep={(action, name) => send({ type: 'renameStep', action, name })}
+          onDropCheck={(action, key, drop) => send({ type: 'dropCheck', action, key, drop })}
+          onAutoChecks={(on) => send({ type: 'autoChecks', on })}
         />
         {view === 'elements' ? (
           <ElementsView model={elements} actions={elementActions} picked={state.element?.node} onPick={pick} />
@@ -256,17 +298,41 @@ export function App() {
             onChoose={choose}
             onHighlight={(action, candidate) => highlight(action === null ? null : { action, candidate })}
             onRunTo={runTest}
+            onEdit={(action, setting, change) => send({ type: 'editValue', action: action.id, role: setting.role, ...change })}
           />
         )}
       </main>
       <StatusBar state={state} actions={actions} />
+      {toast && (
+        <div role="status" class="pointer-events-none fixed inset-x-0 bottom-10 z-40 flex justify-center px-4">
+          <div class="pointer-events-auto flex animate-step-in items-center gap-3 rounded-xl border border-line-strong bg-raised py-1.5 pr-1.5 pl-3.5 text-[12.5px] text-fg shadow-[0_10px_30px_rgb(0_0_0/0.28)]">
+            <Icon name="trash" size={13} class="shrink-0 text-muted" />
+            <span dir="auto" class="max-w-[48ch] truncate">{toast}</span>
+            <button type="button" onClick={undo} class="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent/14 px-2.5 font-medium text-accent-fg transition hover:bg-accent/22">
+              <Icon name="undo" size={13} />
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
       {enlarged && <Lightbox src={enlarged.src} caption={enlarged.caption} onClose={() => setEnlarged(null)} />}
     </div>
   );
 }
 
-// While paused or logging in, nothing is recorded: the panel says so, and why. Resume is in the top bar.
+// While paused or logging in, nothing is recorded: the panel says so, and why. Resume is in the top bar. In check mode,
+// it says what a click in the app does.
 function Banner({ state }: { state: PanelState }) {
+  if (state.checking && state.status === 'recording')
+    return (
+      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-ok/25 bg-ok/8 px-4 py-2 text-[12.5px] leading-snug text-ok">
+        <Icon name="checkCircle" size={14} class="shrink-0" />
+        <span class="min-w-0 flex-1">
+          <span class="font-medium">Check mode.</span>
+          <span class="text-ok/85"> Click what the flow should check in the app, then choose the check; Enter adds it. Nothing is clicked there. Esc leaves.</span>
+        </span>
+      </div>
+    );
   if (state.status === 'login')
     return (
       <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
@@ -321,6 +387,7 @@ function StatusBar({ state, actions }: { state: PanelState; actions: Action[] })
       <span class="ml-auto hidden items-center gap-3 lg:flex">
         <Hint keys="↑ ↓">steps</Hint>
         <Hint keys="Ctrl ↵">test</Hint>
+        <Hint keys="F6">check</Hint>
         <Hint keys="F8">pause</Hint>
         <Hint keys="Ctrl Z">undo</Hint>
         <Hint keys="Ctrl S">save</Hint>

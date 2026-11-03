@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -29,6 +30,15 @@ internal sealed record PanelView(
 
     /// <summary>The flow's test run going on, or the last one.</summary>
     public PanelTest? Test { get; init; }
+
+    /// <summary>Whether the flow writes its auto checks: as the person turned them here, else as the command line says.</summary>
+    public bool AutoChecks { get; init; } = true;
+
+    /// <summary>The recorded page is in check mode: a click there picks an element to check.</summary>
+    public bool Checking { get; init; }
+
+    /// <summary>What Undo takes back, as the panel says it, e.g. "Restore the click on “Save”"; null when nothing.</summary>
+    public string? Undo { get; init; }
 
     /// <summary>The page reads it as JSON: camelCase, text of every script kept readable, nothing missing written.</summary>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -79,6 +89,9 @@ internal sealed record PanelAction(string Id, string Kind)
 
     /// <summary>Added in the panel's Elements view rather than done in the app.</summary>
     public bool Added { get; init; }
+
+    /// <summary>The checks after the action: its auto checks, those dropped too, and those the person chose.</summary>
+    public IReadOnlyList<Expectation> Expects { get; init; } = [];
 }
 
 /// <summary>An element picked in the Elements view, located as a recorded action's element is.</summary>
@@ -187,7 +200,36 @@ internal sealed record PanelTestStep(string State)
 /// <summary>What an action did to the page: a dialog opened, the address changed, an alert showed.</summary>
 internal sealed record PanelEffect(string Kind, string? Text);
 
-internal sealed record PanelSetting(string Name, string Value);
+/// <summary>A setting an action reads, with its value as YAML, and how the person may change it.</summary>
+internal sealed record PanelSetting(string Name, string Value)
+{
+    /// <summary>Its part in the action, by which an edit names it: <c>value</c>, <c>search</c>, <c>option</c>, <c>shown</c> or <c>row</c>.</summary>
+    public string Role { get; init; } = "value";
+
+    /// <summary>Its value as text, to edit; for a date relative to today, the days.</summary>
+    public string? Text { get; init; }
+
+    /// <summary><c>string</c>, <c>bool</c>, <c>int</c> or <c>decimal</c>.</summary>
+    public string Type { get; init; } = "string";
+
+    /// <summary>It may be renamed and typed another way; in a loop, only its value may change.</summary>
+    public bool Renamable { get; init; }
+
+    /// <summary>Whether the flow types it unique per run; null when it cannot, as it is not text typed.</summary>
+    public bool? Unique { get; init; }
+
+    /// <summary>The date relative to today the flow types it as.</summary>
+    public PanelDate? Relative { get; init; }
+
+    /// <summary>A date typed within a year of the day it was recorded: what typing it relative to today gives.</summary>
+    public PanelDate? Suggest { get; init; }
+
+    /// <summary>The value recorded, when the person gave it another.</summary>
+    public string? Recorded { get; init; }
+}
+
+/// <summary>A date as days from today, in the format it was typed in, e.g. <c>dd/MM/yyyy</c> and 3.</summary>
+internal sealed record PanelDate(string Format, int Days);
 
 /// <summary>One way to find an element, and what it found when the action was recorded.</summary>
 internal sealed record PanelCandidate(int Index, string Kind, string Label, string Code, int Count)
@@ -208,6 +250,12 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     /// <summary>The recorded actions that undoing the last action leaves out: it, and what led to it.</summary>
     public IReadOnlyList<string> Undo { get; init; } = [];
 
+    /// <summary>
+    /// The recorded actions that deleting an action of the flow leaves out, by its id: it, what only led to it, and the
+    /// checks after it.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Sources { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
+
     /// <summary>Plans and writes the recording as the recorder saves it, and describes it for the panel.</summary>
     /// <param name="recording">The recording so far.</param>
     /// <param name="request">The flow's name and folder.</param>
@@ -219,31 +267,50 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         var plan = FlowPlanner.Plan(recording, request.ClassName);
         var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
-            [.. step.Actions.Select(action => Describe(action, flow))])).ToList();
+            [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null))])).ToList();
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
         var view = new PanelView(request.ClassName, target, status, flow.Code, flow.Yaml, steps, flow.Checks, error)
         {
-            Kept = File.Exists(target), Login = recording.After,
+            Kept = File.Exists(target), Login = recording.After, AutoChecks = plan.AutoChecks ?? request.AutoChecks,
         };
 
         var planned = plan.Steps.SelectMany(step => step.Actions).ToList();
         return new PanelSnapshot(view, planned.DistinctBy(action => action.Source.Id).ToDictionary(action => action.Source.Id))
         {
-            Undo = UndoOf(recording, planned),
+            Undo = UndoOf(recording, planned), Sources = SourcesOf(recording, planned),
         };
     }
 
+    // Each action of the flow, what only led to it since the action before it (opening a Select, typing into an
+    // Autocomplete), and the checks after it.
+    private static Dictionary<string, IReadOnlyList<string>> SourcesOf(Recording recording, List<PlannedAction> planned)
+    {
+        var ids = recording.Actions.Select(action => action.Id).ToList();
+        var sources = new Dictionary<string, IReadOnlyList<string>>();
+        for (var index = 0; index < planned.Count; index++)
+        {
+            var action = planned[index];
+            var at = ids.IndexOf(action.Source.Id);
+            var from = index > 0 ? ids.IndexOf(planned[index - 1].Source.Id) + 1 : 0;
+            var led = at > from ? recording.Actions.Skip(from).Take(at - from).Where(other => other.Kind != "expect") : [];
+            sources.TryAdd(action.Source.Id, [.. led.Select(other => other.Id), action.Source.Id, .. action.Checks.Select(check => check.Id)]);
+        }
+
+        return sources;
+    }
+
     // The last action the flow does, and every recorded action after the one before it: what only led to it (opening
-    // a Select, typing into an Autocomplete) goes with it.
+    // a Select, typing into an Autocomplete) goes with it. A check chosen last goes alone.
     private static List<string> UndoOf(Recording recording, List<PlannedAction> planned)
     {
         if (planned.Count == 0) return [];
+        if (recording.Actions[^1] is { Kind: "expect" } check) return [check.Id];
         var ids = recording.Actions.Select(action => action.Id).ToList();
         var before = planned.Count > 1 ? ids.IndexOf(planned[^2].Source.Id) : -1;
         return planned.Count > 1 && before < 0 ? [planned[^1].Source.Id] : [.. ids.Skip(before + 1)];
     }
 
-    private static PanelAction Describe(PlannedAction action, GeneratedFlow flow)
+    private static PanelAction Describe(PlannedAction action, GeneratedFlow flow, bool inLoop)
     {
         var source = action.Source;
         var element = source.Element;
@@ -263,13 +330,31 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
             Effects = [.. action.Effects.Select(EffectOf).OfType<PanelEffect>().Distinct()],
             Checks = [.. flow.Checks.Where(check => lines is not null && check.Line >= lines.First && check.Line <= lines.Last)
                 .Select(check => check.Message)],
-            Settings = [.. new[] { action.SearchValue, action.Value, action.OptionValue, action.ShownValue, action.RowKey }
-                .OfType<Setting>().Distinct().Select(setting => new PanelSetting(setting.Name, FlowYaml.Scalar(setting)))],
+            Settings = [.. action.Parts.DistinctBy(part => part.Setting).Select(part => SettingOf(action, part.Role, part.Setting, inLoop))],
             Candidates = CandidatesOf(candidates),
             Chosen = element?.Chosen,
             Picked = IndexOf(candidates, action.Locator),
             Auto = IndexOf(candidates, auto),
             Added = source.Added,
+            Expects = flow.Expects.GetValueOrDefault(source.Id) ?? [],
+        };
+    }
+
+    // A setting, and how the person may change it: text typed may be unique per run, and a date typed within a year of
+    // the day it was recorded may be typed as days from the day the flow runs.
+    private static PanelSetting SettingOf(PlannedAction action, string role, Setting setting, bool inLoop)
+    {
+        var typed = role == "value" && action.Kind == "fill" && !inLoop && setting.Flag is null;
+        return new PanelSetting(setting.Name, FlowYaml.Scalar(setting))
+        {
+            Role = role, Text = setting.Value, Type = setting.Type, Renamable = !inLoop,
+            Unique = typed && setting.DateFormat is null ? setting.Unique : null,
+            Relative = setting.DateFormat is { } format ? new PanelDate(format, int.Parse(setting.Value ?? "0", CultureInfo.InvariantCulture)) : null,
+            Suggest = typed && setting.DateFormat is null && !setting.Unique
+                      && RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T)) is { } date
+                ? new PanelDate(date.Format, date.Days)
+                : null,
+            Recorded = setting.Default is not null && setting.DateFormat is null && setting.Default != setting.Text ? setting.Text : null,
         };
     }
 

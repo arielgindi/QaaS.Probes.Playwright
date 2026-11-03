@@ -18,6 +18,12 @@ export interface PanelState {
   element?: PickedElement;
   /** The flow's test run going on, or the last one. */
   test?: TestRun;
+  /** Whether the flow writes its auto checks: as turned here, else as the command line says. */
+  autoChecks?: boolean;
+  /** The recorded page is in check mode: a click there picks an element to check. */
+  checking?: boolean;
+  /** What Undo takes back, e.g. "Restore the click on “Save”"; none when there is nothing. */
+  undo?: string;
   code: string;
   yaml: string;
   steps: Step[];
@@ -129,6 +135,19 @@ export interface Action {
   auto?: number;
   /** Added in the Elements view rather than done in the app. */
   added?: boolean;
+  /** The checks after it: its auto checks, those dropped too, and those the person chose. */
+  expects?: Expect[];
+}
+
+/** A check after an action: an auto check by its key, or one the person chose, by its id. */
+export interface Expect {
+  key: string;
+  /** What it expects, e.g. "dialog closes", "has text “Save”". */
+  text: string;
+  /** Of what, for a check the person chose: the element as its locator reads. */
+  of?: string;
+  auto: boolean;
+  dropped?: boolean;
 }
 
 export interface PickedElement {
@@ -191,7 +210,28 @@ export interface Effect {
 
 export interface Setting {
   name: string;
+  /** As YAML: quoted text, a number or a flag. */
   value: string;
+  /** Its part in the action, which an edit names: value, search, option, shown or row. */
+  role: string;
+  /** Its value as text, to edit; for a date relative to today, the days. */
+  text?: string;
+  type: 'string' | 'bool' | 'int' | 'decimal';
+  /** It may be renamed and typed another way; in a loop only its value may change. */
+  renamable: boolean;
+  /** Whether it is typed unique per run; absent when it cannot be. */
+  unique?: boolean;
+  /** The date relative to today it is typed as. */
+  relative?: DateShift;
+  /** A date typed within a year of the recording: what typing it relative to today gives. */
+  suggest?: DateShift;
+  /** The value recorded, when it was given another. */
+  recorded?: string;
+}
+
+export interface DateShift {
+  format: string;
+  days: number;
 }
 
 export interface Candidate {
@@ -217,6 +257,12 @@ export type Command =
   | { type: 'highlight'; candidate: number }
   | { type: 'unhighlight' }
   | { type: 'undo' }
+  | { type: 'delete'; action: string }
+  | { type: 'renameStep'; action: string; name: string }
+  | { type: 'editValue'; action: string; role: string; name?: string; value?: string; reset?: boolean; unique?: boolean; relative?: boolean }
+  | { type: 'dropCheck'; action: string; key: string; drop: boolean }
+  | { type: 'autoChecks'; on: boolean }
+  | { type: 'checkMode'; on?: boolean }
   | { type: 'rename'; name: string }
   | { type: 'save' }
   | { type: 'pause' }

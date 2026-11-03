@@ -13,7 +13,10 @@ interface Props {
   stamp: object;
   status: Status;
   canSave: boolean;
-  canUndo: boolean;
+  /** What Undo takes back; none when there is nothing. */
+  undo?: string;
+  /** The recorded page is in check mode. */
+  checking: boolean;
   view: View;
   theme: Theme;
   /** A test runs. */
@@ -25,6 +28,7 @@ interface Props {
   onSlow(): void;
   onRename(name: string): void;
   onUndo(): void;
+  onCheck(): void;
   onSave(): void;
   onPause(): void;
   onView(view: View): void;
@@ -63,6 +67,19 @@ export function TopBar(props: Props) {
         </Button>
         <span class="mx-1.5 h-5 w-px bg-line" />
         <Button
+          onClick={props.onCheck}
+          disabled={saving || (props.status !== 'recording' && !props.checking)}
+          title={props.checking
+            ? 'Leave check mode (F6, or Esc in the app)'
+            : 'Check something in the app: the next click there picks an element, then you choose what the flow checks of it (F6)'}
+          active={props.checking}
+          tone="ok"
+        >
+          <Icon name="checkCircle" size={15} />
+          <span class="max-[820px]:hidden">Check</span>
+          <kbd class={cls('rounded border px-1 font-sans text-[10.5px] leading-4 font-medium max-[1180px]:hidden', props.checking ? 'border-ok/30 text-ok/80' : 'border-line bg-canvas text-faint')}>F6</kbd>
+        </Button>
+        <Button
           onClick={props.onPause}
           disabled={saving || props.status === 'login' || props.status === 'testing'}
           title={paused ? 'Resume recording (F8 in the app)' : 'Pause recording: what you do in the app is not recorded (F8 in the app)'}
@@ -71,7 +88,7 @@ export function TopBar(props: Props) {
           <Icon name={paused ? 'play' : 'pause'} size={15} />
           <span class="max-[820px]:hidden">{paused ? 'Resume' : 'Pause'}</span>
         </Button>
-        <Button onClick={props.onUndo} disabled={!props.canUndo || saving} title="Remove the last step from the flow (Ctrl+Z). The app stays as it is.">
+        <Button onClick={props.onUndo} disabled={!props.undo || saving} title={props.undo ? `Undo: ${props.undo} (Ctrl+Z). The app stays as it is.` : 'Nothing to undo'}>
           <Icon name="undo" size={15} />
           <span class="max-[820px]:hidden">Undo</span>
         </Button>
@@ -209,7 +226,7 @@ function Button(props: {
   title: string;
   square?: boolean;
   active?: boolean;
-  tone?: 'warn' | 'accent';
+  tone?: 'warn' | 'accent' | 'ok';
   children: ComponentChildren;
 }) {
   return (
@@ -225,7 +242,9 @@ function Button(props: {
         props.active
           ? props.tone === 'accent'
             ? 'bg-accent/14 text-accent-fg hover:bg-accent/20'
-            : 'bg-warn/14 text-warn hover:bg-warn/20'
+            : props.tone === 'ok'
+              ? 'bg-ok/14 text-ok shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--ok)_30%,transparent)] hover:bg-ok/20'
+              : 'bg-warn/14 text-warn hover:bg-warn/20'
           : 'text-muted hover:bg-raised hover:text-fg',
         props.square ? 'w-8' : 'px-2.5 max-[820px]:w-8 max-[820px]:px-0',
       )}

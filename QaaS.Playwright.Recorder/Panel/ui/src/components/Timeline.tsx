@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { isGoing, useNow } from '../test';
 import { cls, detailOf, effectLabel, subjectOf, verbOf } from '../text';
-import type { Action, Effect, Status, Step, TestFailure, TestRun, TestStep } from '../types';
+import type { Action, Effect, Expect, Status, Step, TestFailure, TestRun, TestStep } from '../types';
 import { Icon, type IconName, kindIcon } from './icons';
 import { PaneHeader } from './PaneHeader';
 import { FailureDetails, Spinner, StepStatus } from './TestRun';
@@ -18,14 +18,26 @@ interface Props {
   file: string;
   /** Whether "Run to here" can start: no test runs, and the recording is not saving or logging in. */
   canRun: boolean;
+  /** Whether the person may change the flow: not while it is saved. */
+  canEdit: boolean;
+  /** Whether the flow writes its auto checks. */
+  autoChecks: boolean;
   onSelect(id: string): void;
   onHover(id: string | null): void;
   onRunTo(id: string): void;
   onEnlarge(src: string, caption: string): void;
+  onDelete(id: string): void;
+  onRenameStep(action: string, name: string): void;
+  onDropCheck(action: string, key: string, drop: boolean): void;
+  onAutoChecks(on: boolean): void;
 }
 
-/** The steps of the flow, each a method, with a card per action, and how each went in the last test run. */
-export function Timeline({ steps, count, notes, selected, status, test, file, canRun, onSelect, onHover, onRunTo, onEnlarge }: Props) {
+/**
+ * The steps of the flow, each a method, with a card per action, the checks after it, and how each went in the last test
+ * run. A step is renamed in place, an action deleted from its card, and an auto check dropped with its ✕.
+ */
+export function Timeline(props: Props) {
+  const { steps, count, notes, selected, status, test, file, canRun, canEdit, autoChecks, onSelect, onHover, onRunTo, onEnlarge } = props;
   const list = useRef<HTMLDivElement>(null);
   const now = useNow(isGoing(test), 100);
   const running = test && Object.entries(test.steps).find(([, step]) => step.state === 'running')?.[0];
@@ -40,7 +52,10 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
   const failure = test?.failure;
   return (
     <section aria-label="Steps" class="area-steps flex min-h-0 flex-col border-r border-line bg-panel">
-      <PaneHeader title="Steps">{count > 0 && <span class="tabular-nums">{count}</span>}</PaneHeader>
+      <PaneHeader title="Steps">
+        {count > 0 && <span class="tabular-nums">{count}</span>}
+        <Switch on={autoChecks} disabled={!canEdit} onChange={props.onAutoChecks} />
+      </PaneHeader>
       <div ref={list} class="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onMouseLeave={() => onHover(null)}>
         {failure && !failure.action && test.state === 'failed' && (
           <div class="px-1 pt-3">
@@ -51,9 +66,9 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
           <Empty status={status} />
         ) : (
           steps.map((step) => (
-            <div key={step.name} class="pt-3">
+            <div key={step.actions[0]?.id ?? step.name} class="pt-3">
               <div class="flex min-w-0 items-center gap-2 px-2 pb-1.5 text-[11px] text-faint">
-                <span class="truncate font-mono">{step.name}</span>
+                <StepName name={step.name} disabled={!canEdit || step.actions.length === 0} onRename={(name) => props.onRenameStep(step.actions[0].id, name)} />
                 {step.dialog && (
                   <span dir="auto" class="min-w-0 truncate rounded border border-line px-1.5 leading-4">
                     {step.dialog}
@@ -72,10 +87,13 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
                     file={file}
                     now={now}
                     canRun={canRun}
+                    canEdit={canEdit}
                     onSelect={onSelect}
                     onHover={onHover}
                     onRunTo={onRunTo}
                     onEnlarge={onEnlarge}
+                    onDelete={props.onDelete}
+                    onDropCheck={props.onDropCheck}
                   />
                 ))}
               </ol>
@@ -108,7 +126,7 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
   );
 }
 
-interface CardProps extends Pick<Props, 'file' | 'canRun' | 'onSelect' | 'onHover' | 'onRunTo' | 'onEnlarge'> {
+interface CardProps extends Pick<Props, 'file' | 'canRun' | 'canEdit' | 'onSelect' | 'onHover' | 'onRunTo' | 'onEnlarge' | 'onDelete' | 'onDropCheck'> {
   action: Action;
   selected: boolean;
   test?: TestStep;
@@ -116,30 +134,30 @@ interface CardProps extends Pick<Props, 'file' | 'canRun' | 'onSelect' | 'onHove
   now: number;
 }
 
-function Card({ action, selected, test, failure, file, now, canRun, onSelect, onHover, onRunTo, onEnlarge }: CardProps) {
+function Card({ action, selected, test, failure, file, now, canRun, canEdit, onSelect, onHover, onRunTo, onEnlarge, onDelete, onDropCheck }: CardProps) {
   const warn = action.checks.length > 0;
   const detail = detailOf(action);
   const state = test?.state;
+  const expects = action.expects ?? [];
   return (
-    <li data-action={action.id} class={cls('group/card relative animate-step-in', state === 'skipped' && 'opacity-55')}>
-      <button
-        type="button"
-        aria-current={selected}
-        onClick={() => onSelect(action.id)}
-        onMouseEnter={() => onHover(action.id)}
-        class={cls(
-          'relative block w-full rounded-lg border py-2 pr-2.5 pl-11 text-left transition',
-          state === 'failed'
-            ? selected
-              ? 'border-bad/60 bg-bad/12'
-              : 'border-bad/40 bg-bad/[0.07] hover:bg-bad/10'
-            : state === 'running'
-              ? 'border-accent/50 bg-accent/[0.08] shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_10%,transparent)]'
-              : selected
-                ? 'border-accent/45 bg-accent/10'
-                : 'border-transparent hover:bg-raised',
-        )}
-      >
+    <li
+      data-action={action.id}
+      onMouseEnter={() => onHover(action.id)}
+      class={cls(
+        'group/card relative animate-step-in rounded-lg border transition',
+        state === 'skipped' && 'opacity-55',
+        state === 'failed'
+          ? selected
+            ? 'border-bad/60 bg-bad/12'
+            : 'border-bad/40 bg-bad/[0.07] hover:bg-bad/10'
+          : state === 'running'
+            ? 'border-accent/50 bg-accent/[0.08] shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_10%,transparent)]'
+            : selected
+              ? 'border-accent/45 bg-accent/10'
+              : 'border-transparent hover:bg-raised',
+      )}
+    >
+      <button type="button" aria-current={selected} onClick={() => onSelect(action.id)} class="relative block w-full rounded-lg py-2 pr-2.5 pl-11 text-left">
         <span
           class={cls(
             'absolute top-[7px] left-[10px] grid size-6 place-items-center rounded-md border bg-panel transition',
@@ -164,7 +182,7 @@ function Card({ action, selected, test, failure, file, now, canRun, onSelect, on
             {subjectOf(action)}
           </span>
           {(action.added || test) && (
-            <span class={cls('ml-auto flex shrink-0 items-center gap-1.5 self-center', canRun && 'group-hover/card:invisible')}>
+            <span class={cls('ml-auto flex shrink-0 items-center gap-1.5 self-center', (canRun || canEdit) && 'group-hover/card:invisible')}>
               {action.added && (
                 <span title="Added in the panel's Elements view" class="rounded border border-accent/30 bg-accent/10 px-1 text-[10px] leading-4 font-medium text-accent-fg">
                   added
@@ -203,19 +221,134 @@ function Card({ action, selected, test, failure, file, now, canRun, onSelect, on
           </span>
         ))}
       </button>
-      {canRun && (
-        <button
-          type="button"
-          onClick={() => onRunTo(action.id)}
-          title="Run the flow up to this step, and this step too (Ctrl+Shift+Enter on the selected step)"
-          class="absolute top-[6px] right-1.5 hidden h-6 items-center gap-1 rounded-md border border-line-strong bg-panel px-1.5 text-[11px] font-medium text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition group-hover/card:inline-flex hover:border-faint/60 hover:text-fg focus-visible:inline-flex"
-        >
-          <Icon name="runTo" size={11} class="text-ok" />
-          Run to here
-        </button>
+      {expects.length > 0 && (
+        <ul aria-label="Checks" class="space-y-px pr-1.5 pb-1.5 pl-[38px]">
+          {expects.map((expect) => (
+            <ExpectRow key={expect.key} expect={expect} canEdit={canEdit} onDrop={(drop) => (expect.auto ? onDropCheck(action.id, expect.key, drop) : onDelete(expect.key))} />
+          ))}
+        </ul>
       )}
+      <span class="absolute top-[6px] right-1.5 hidden items-center gap-1 group-hover/card:flex group-focus-within/card:flex">
+        {canRun && (
+          <button
+            type="button"
+            onClick={() => onRunTo(action.id)}
+            title="Run the flow up to this step, and this step too (Ctrl+Shift+Enter on the selected step)"
+            class="inline-flex h-6 items-center gap-1 rounded-md border border-line-strong bg-panel px-1.5 text-[11px] font-medium text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-faint/60 hover:text-fg"
+          >
+            <Icon name="runTo" size={11} class="text-ok" />
+            Run to here
+          </button>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => onDelete(action.id)}
+            title="Delete this action from the flow (Delete). Undo brings it back."
+            aria-label={`Delete ${verbOf(action)} ${subjectOf(action)}`}
+            class="grid size-6 place-items-center rounded-md border border-line-strong bg-panel text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-bad/50 hover:text-bad"
+          >
+            <Icon name="trash" size={12} />
+          </button>
+        )}
+      </span>
       {failure && <FailureDetails failure={failure} file={file} onEnlarge={onEnlarge} />}
     </li>
+  );
+}
+
+// A check after the action: an auto check, which its ✕ drops and ↺ brings back, or one the person chose, which ✕
+// deletes.
+function ExpectRow({ expect, canEdit, onDrop }: { expect: Expect; canEdit: boolean; onDrop(drop: boolean): void }) {
+  const dropped = !!expect.dropped;
+  const action = !expect.auto ? 'Delete this check' : dropped ? 'Bring this auto check back' : 'Drop this auto check';
+  return (
+    <li class="group/expect flex min-w-0 items-center gap-1.5 rounded-md py-px pr-0.5 pl-1.5 text-[11.5px] leading-5 hover:bg-canvas/70">
+      <Icon name={expect.auto ? 'tick' : 'checkCircle'} size={12} class={cls('shrink-0', dropped ? 'text-faint/70' : expect.auto ? 'text-ok/75' : 'text-ok', expect.auto && 'stroke-[2.4]')} />
+      <span dir="auto" class={cls('min-w-0 truncate', dropped ? 'text-faint line-through decoration-faint/60' : expect.auto ? 'text-muted' : 'text-fg')} title={expect.of ? `${expect.text} · ${expect.of}` : expect.text}>
+        {expect.text}
+        {expect.of && <span class="text-faint"> · <span dir="ltr" class="font-mono text-[10.5px]">{expect.of}</span></span>}
+      </span>
+      <span class={cls('ml-auto shrink-0 rounded px-1 text-[10px] leading-4 font-medium', expect.auto ? 'text-faint' : 'bg-ok/12 text-ok')}>
+        {dropped ? 'dropped' : expect.auto ? 'auto' : 'check'}
+      </span>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={() => onDrop(!dropped)}
+          title={action}
+          aria-label={action}
+          class={cls(
+            'grid size-5 shrink-0 place-items-center rounded opacity-0 transition group-hover/expect:opacity-100 focus-visible:opacity-100',
+            dropped ? 'text-accent-fg hover:bg-accent/12' : 'text-muted hover:bg-bad/12 hover:text-bad',
+          )}
+        >
+          <Icon name={dropped ? 'restore' : 'cross'} size={11} class="stroke-[2.4]" />
+        </button>
+      )}
+    </li>
+  );
+}
+
+// The step's method name, renamed in place: Enter or leaving the field renames it, Escape keeps it, and an empty name
+// gives it back the recorder's.
+function StepName({ name, disabled, onRename }: { name: string; disabled: boolean; onRename(name: string): void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft === null)
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setDraft(name.replace(/Async$/, ''))}
+        title="Rename the step's method"
+        class="group/name -mx-1 inline-flex min-w-0 items-center gap-1 rounded px-1 font-mono transition hover:bg-raised hover:text-fg disabled:pointer-events-none"
+      >
+        <span class="truncate">{name}</span>
+        <Icon name="pencil" size={11} class="shrink-0 opacity-0 transition group-hover/name:opacity-100" />
+      </button>
+    );
+  const commit = () => {
+    const next = draft.trim();
+    setDraft(null);
+    if (next !== name.replace(/Async$/, '')) onRename(next);
+  };
+  return (
+    <label class="-mx-1 flex min-w-0 items-center rounded border border-accent/50 bg-panel px-1 font-mono text-fg">
+      <span class="sr-only">Step name</span>
+      <input
+        autoFocus
+        value={draft}
+        spellcheck={false}
+        onInput={(event) => setDraft(event.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+          if (event.key === 'Escape') setDraft(null);
+        }}
+        class="min-w-[6ch] bg-transparent outline-none [field-sizing:content]"
+      />
+      <span class="text-faint">Async</span>
+    </label>
+  );
+}
+
+// Auto checks on or off for the whole flow, as --no-auto-checks.
+function Switch({ on, disabled, onChange }: { on: boolean; disabled: boolean; onChange(on: boolean): void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      title={on ? 'Auto checks are on: after each action the flow checks what it did. Click to turn them all off, as --no-auto-checks.' : 'Auto checks are off. Click to have the flow check after each action what it did.'}
+      class="-mr-1 inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[11px] font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-50"
+    >
+      Auto checks
+      <span class={cls('relative h-3.5 w-6 rounded-full transition', on ? 'bg-ok' : 'bg-line-strong')}>
+        <span class={cls('absolute top-0.5 size-2.5 rounded-full bg-white shadow-[0_1px_1px_rgb(0_0_0/0.25)] transition-all', on ? 'left-3' : 'left-0.5')} />
+      </span>
+    </button>
   );
 }
 

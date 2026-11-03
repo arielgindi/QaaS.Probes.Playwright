@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
+using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder.Panel;
@@ -15,7 +16,9 @@ namespace QaaS.Playwright.Recorder.Panel;
 /// shown each state by <see cref="IPage.EvaluateAsync"/>, and it sends its commands through an exposed function.
 /// Closing it leaves the recording going. Its Elements view shows the recorded page's elements, live or as frozen with
 /// F4, and adds or re-targets steps on the one the person picks. Test runs the flow so far in a window of its own
-/// (<see cref="FlowTester"/>), and shows how each step went.
+/// (<see cref="FlowTester"/>), and shows how each step went. Check puts the recorded page in check mode, as F6 there
+/// does; the person deletes steps, renames them, changes their values and drops auto checks here, each change undone
+/// with Undo.
 /// </summary>
 internal sealed class RecorderPanel : IAsyncDisposable
 {
@@ -87,6 +90,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
             await page.SetContentAsync(Html.Value);
             if (beside) await session.Page.BringToFrontAsync();
             session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
+            session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             panel._worker = Task.Run(panel.RunAsync);
             return panel;
         }
@@ -137,6 +141,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 foreach (var command in commands.Where(command => command.Type is not ("highlight" or "unhighlight")))
                 {
                     if (command.Type is "elements" or "pick") await ElementsAsync(command);
+                    else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
                     else Carry(command);
                 }
 
@@ -187,8 +192,32 @@ internal sealed class RecorderPanel : IAsyncDisposable
             case "choose" when command.Action is { } action:
                 _session.Log.Choose(action, command.Candidate);
                 break;
-            case "undo" when _shown is { Undo.Count: > 0 } shown:
-                _session.Log.Remove(shown.Undo);
+            case "undo" when _shown is { } shown:
+                _session.Log.Undo(shown.Undo);
+                break;
+            case "delete" when command.Action is { } id && _shown is { } shown:
+                _session.Log.Remove(shown.Sources.GetValueOrDefault(id) ?? [id], $"Restore {Called(shown, id)}");
+                break;
+            case "renameStep" when command.Action is { } id:
+                var method = StepNamer.MethodName(command.Name);
+                if (method is null && !string.IsNullOrWhiteSpace(command.Name)) Refuse("A step's name needs a letter.");
+                else _session.Log.Edit(id, "Undo the rename", edit => edit.Step = method);
+                break;
+            case "editValue" when command is { Action: { } id, Role: { } role }:
+                EditValue(id, role, command);
+                break;
+            case "dropCheck" when command is { Action: { } id, Key: { } key }:
+                var drop = command.Drop != false;
+                _session.Log.Edit(id, drop ? "Restore the check" : "Drop the check again", edit =>
+                {
+                    var dropped = edit.Dropped ?? [];
+                    if (!drop) dropped.Remove(key);
+                    else if (!dropped.Contains(key)) dropped.Add(key);
+                    edit.Dropped = dropped.Count > 0 ? dropped : null;
+                });
+                break;
+            case "autoChecks" when command.On is { } on:
+                _session.Log.AutoChecks(on);
                 break;
             case "rename" when command.Name is { } name:
                 try
@@ -232,6 +261,48 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 _session.Log.Insert(NewAction(command, picked), command.Action);
                 break;
         }
+    }
+
+    // A setting the person renamed, gave another default, or has typed unique per run or as a date from today.
+    private void EditValue(string id, string role, PanelCommand command)
+    {
+        if (_shown?.Actions.GetValueOrDefault(id) is not { } action || action.Parts.FirstOrDefault(part => part.Role == role).Setting is not { } setting)
+            return;
+        (string Undo, Action<ValueEdit> Change)? edit = command switch
+        {
+            { Name: { } name } when CSharp.Pascal(name) is null && name.Trim().Length > 0 => null,
+            { Name: { } name } => ($"Name it {setting.Name} again", value => value.Name = CSharp.Pascal(name)),
+            { Value: { } text } => ("Undo the value", value => value.Value = text),
+            { Reset: true } => ("Undo the value", value => value.Value = value.DateFormat is null ? null : value.Value),
+            { Unique: { } unique } => (unique ? "Type it as recorded" : "Make it unique again", value => value.Unique = unique ? true : null),
+            { Relative: true } when RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T)) is { } date =>
+                ("Type the date as recorded", value => (value.DateFormat, value.Value) = (date.Format, CSharp.Number(date.Days))),
+            { Relative: false } => ("Type it relative to today again", value => (value.DateFormat, value.Value) = (null, null)),
+            _ => null,
+        };
+        if (edit is not var (undo, change))
+        {
+            if (command.Name is not null) Refuse("A setting's name needs a letter.");
+            return;
+        }
+
+        _session.Log.Edit(id, undo, actionEdit =>
+        {
+            var values = actionEdit.Values ??= [];
+            var value = values.GetValueOrDefault(role) ?? new ValueEdit();
+            change(value);
+            values[role] = value;
+        });
+    }
+
+    private void Refuse(string why) => (_error, _refresh) = (why, true);
+
+    // An action as Undo names it: the click on "Save", the check.
+    private static string Called(PanelSnapshot shown, string id)
+    {
+        var action = shown.View.Steps.SelectMany(step => step.Actions).FirstOrDefault(action => action.Id == id);
+        if (action is null || action.Kind == "expect") return "the check";
+        return action.Element is { Length: > 0 } element ? $"the {action.Kind} on “{element}”" : $"the {action.Kind}";
     }
 
     // A click or a fill on the picked element, as the capture script would have recorded it.
@@ -348,6 +419,8 @@ internal sealed class RecorderPanel : IAsyncDisposable
                         ? PanelSnapshot.Element(picked.Node, picked.Page, picked.Description, picked.Gone, picked.Fillable)
                         : null,
                     Test = _tester.Report is { } test ? PanelTest.Of(test, _shown.View.Code) : null,
+                    Checking = _session.Checking,
+                    Undo = _session.Log.NextUndo(_shown.Undo.Count > 0),
                 },
             };
         }
@@ -466,6 +539,24 @@ internal sealed class RecorderPanel : IAsyncDisposable
 
         /// <summary>For a test run: in slow motion.</summary>
         public bool? Slow { get; init; }
+
+        /// <summary>For an edit of a setting: its part in the action (<c>value</c>, <c>row</c>, ...).</summary>
+        public string? Role { get; init; }
+
+        /// <summary>For an edit of a setting: back to the value recorded.</summary>
+        public bool? Reset { get; init; }
+
+        /// <summary>For an edit of a setting: typed unique per run, or as recorded.</summary>
+        public bool? Unique { get; init; }
+
+        /// <summary>For an edit of a setting: typed as days from today, or as recorded.</summary>
+        public bool? Relative { get; init; }
+
+        /// <summary>For an auto check: its key.</summary>
+        public string? Key { get; init; }
+
+        /// <summary>For an auto check: dropped, or back.</summary>
+        public bool? Drop { get; init; }
     }
 
     /// <summary>The element picked in the Elements view: where it is, and how to locate it.</summary>
