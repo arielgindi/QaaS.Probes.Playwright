@@ -4,9 +4,11 @@ import { CodeView } from './components/CodeView';
 import { ElementsView } from './components/Elements';
 import { Icon } from './components/icons';
 import { ElementInspector, Inspector } from './components/Inspector';
+import { Lightbox, TestBar } from './components/TestRun';
 import { Timeline } from './components/Timeline';
 import { TopBar, type View } from './components/TopBar';
 import { useElements } from './elements';
+import { isGoing, useSlowMotion } from './test';
 import { plural } from './text';
 import { useTheme } from './theme';
 import type { Action, PanelState } from './types';
@@ -21,6 +23,8 @@ export function App() {
   const [view, setView] = useState<View>('code');
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [theme, toggleTheme] = useTheme();
+  const [slow, toggleSlow] = useSlowMotion();
+  const [enlarged, setEnlarged] = useState<{ src: string; caption: string } | null>(null);
   const [elements, elementActions] = useElements(view === 'elements');
 
   useEffect(() => {
@@ -37,6 +41,9 @@ export function App() {
   }, [actions]);
   const saving = state.status === 'saving';
   const last = actions.at(-1)?.id ?? null;
+  const test = state.test;
+  const testing = isGoing(test);
+  const canTest = actions.length > 0 && !saving && !testing && state.status !== 'login';
 
   // The newest action is selected as it comes, unless the person is looking at an older one.
   useEffect(() => {
@@ -49,6 +56,14 @@ export function App() {
   useEffect(() => {
     document.title = state.flow ? `${state.flow} · QaaS Recorder` : 'QaaS Recorder';
   }, [state.flow]);
+
+  // A run that failed at a step selects it, so its lines show in the code and its element in the inspector.
+  const failedAction = test?.state === 'failed' && !test.stale ? test.failure?.action : undefined;
+  useEffect(() => {
+    if (!failedAction) return;
+    setSelected(failedAction);
+    setFollow(false);
+  }, [test?.run, failedAction]);
 
   // F4 in the app shows its frozen elements here.
   const frozenAt = elements.source === 'frozen' ? elements.at : undefined;
@@ -73,12 +88,19 @@ export function App() {
   const pause = () => {
     if (state.status === 'recording' || state.status === 'paused') send({ type: 'pause' });
   };
+  const runTest = (upTo?: string) => {
+    if (canTest) send({ type: 'test', action: upTo, slow });
+  };
+  const stopTest = () => {
+    if (testing) send({ type: 'stopTest' });
+  };
   const choose = (action: Action, candidate: number | null) => send({ type: 'choose', action: action.id, candidate });
   const pick = (node: number) => send({ type: 'pick', node, frozen: elements.source === 'frozen' });
 
-  // Keys: ↑ and ↓ move through the steps, Ctrl+Z undoes the last, Ctrl+S saves, F8 pauses or resumes.
-  const keys = useRef({ actions, selected, select, undo, save, pause });
-  keys.current = { actions, selected, select, undo, save, pause };
+  // Keys: ↑ and ↓ move through the steps, Ctrl+Z undoes the last, Ctrl+S saves, F8 pauses or resumes; Ctrl+Enter or F5
+  // tests the flow, Ctrl+Shift+Enter runs it to the selected step, Esc or Shift+F5 stops the test.
+  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing });
+  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = keys.current;
@@ -94,7 +116,25 @@ export function App() {
         current.pause();
         return;
       }
+      // F5 would reload the panel.
+      if (event.key === 'F5') {
+        event.preventDefault();
+        if (event.repeat) return;
+        if (event.shiftKey) current.stopTest();
+        else current.runTest();
+        return;
+      }
       if (event.target instanceof Element && event.target.closest('input, textarea, [data-own-keys]')) return;
+      if (command && event.key === 'Enter' && !event.repeat) {
+        event.preventDefault();
+        current.runTest(event.shiftKey ? (current.selected ?? undefined) : undefined);
+        return;
+      }
+      if (event.key === 'Escape' && current.testing) {
+        event.preventDefault();
+        current.stopTest();
+        return;
+      }
       if (command && key === 'z' && !event.shiftKey) {
         event.preventDefault();
         current.undo();
@@ -114,6 +154,8 @@ export function App() {
   const selectedAction = actions.find((action) => action.id === selected);
   const hoveredAction = actions.find((action) => action.id === hovered);
   const notes = state.checks.filter((check) => !check.line).map((check) => check.message);
+  const file = state.target.slice(Math.max(state.target.lastIndexOf('/'), state.target.lastIndexOf('\\')) + 1);
+  const enlarge = (src: string, caption: string) => setEnlarged({ src, caption });
 
   return (
     <div class="flex h-full flex-col">
@@ -125,6 +167,12 @@ export function App() {
         canUndo={actions.length > 0}
         view={view}
         theme={theme}
+        testing={testing}
+        canTest={canTest}
+        slow={slow}
+        onTest={() => runTest()}
+        onStopTest={stopTest}
+        onSlow={toggleSlow}
         onRename={(name) => send({ type: 'rename', name })}
         onUndo={undo}
         onSave={save}
@@ -133,6 +181,19 @@ export function App() {
         onTheme={toggleTheme}
       />
       <Banner state={state} />
+      {test && (
+        <TestBar
+          test={test}
+          actions={actions}
+          onAgain={() => runTest(test.upTo && actions.some((action) => action.id === test.upTo) ? test.upTo : undefined)}
+          onStop={stopTest}
+          onClear={() => send({ type: 'clearTest' })}
+          onShow={(id) => {
+            setSelected(id);
+            setFollow(false);
+          }}
+        />
+      )}
       {state.error && state.error !== dismissed && (
         <div role="alert" class="flex shrink-0 items-start gap-2 border-b border-bad/30 bg-bad/10 px-4 py-2 text-[12.5px] text-bad">
           <Icon name="warn" size={14} class="mt-0.5 shrink-0" />
@@ -143,7 +204,20 @@ export function App() {
         </div>
       )}
       <main class="layout min-h-0 flex-1">
-        <Timeline steps={state.steps} count={actions.length} notes={notes} selected={selected} status={state.status} onSelect={select} onHover={hover} />
+        <Timeline
+          steps={state.steps}
+          count={actions.length}
+          notes={notes}
+          selected={selected}
+          status={state.status}
+          test={test}
+          file={file}
+          canRun={canTest}
+          onSelect={select}
+          onHover={hover}
+          onRunTo={runTest}
+          onEnlarge={enlarge}
+        />
         {view === 'elements' ? (
           <ElementsView model={elements} actions={elementActions} picked={state.element?.node} onPick={pick} />
         ) : (
@@ -156,6 +230,7 @@ export function App() {
             selected={selectedAction}
             hovered={hoveredAction}
             owners={owners}
+            test={test}
             onSelect={select}
           />
         )}
@@ -175,12 +250,16 @@ export function App() {
           <Inspector
             action={selectedAction}
             disabled={saving}
+            test={selectedAction && test?.steps[selectedAction.id]}
+            canRun={canTest}
             onChoose={choose}
             onHighlight={(action, candidate) => highlight(action === null ? null : { action, candidate })}
+            onRunTo={runTest}
           />
         )}
       </main>
       <StatusBar state={state} actions={actions} />
+      {enlarged && <Lightbox src={enlarged.src} caption={enlarged.caption} onClose={() => setEnlarged(null)} />}
     </div>
   );
 }
@@ -240,6 +319,7 @@ function StatusBar({ state, actions }: { state: PanelState; actions: Action[] })
       )}
       <span class="ml-auto hidden items-center gap-3 lg:flex">
         <Hint keys="↑ ↓">steps</Hint>
+        <Hint keys="Ctrl ↵">test</Hint>
         <Hint keys="F8">pause</Hint>
         <Hint keys="Ctrl Z">undo</Hint>
         <Hint keys="Ctrl S">save</Hint>

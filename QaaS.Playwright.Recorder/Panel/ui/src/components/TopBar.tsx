@@ -16,6 +16,13 @@ interface Props {
   canUndo: boolean;
   view: View;
   theme: Theme;
+  /** A test runs. */
+  testing: boolean;
+  canTest: boolean;
+  slow: boolean;
+  onTest(): void;
+  onStopTest(): void;
+  onSlow(): void;
   onRename(name: string): void;
   onUndo(): void;
   onSave(): void;
@@ -44,9 +51,20 @@ export function TopBar(props: Props) {
           onChange={props.onView}
         />
         <span class="mx-1.5 h-5 w-px bg-line" />
+        <TestButton testing={props.testing} disabled={!props.canTest} onTest={props.onTest} onStop={props.onStopTest} />
+        <Button
+          onClick={props.onSlow}
+          title={props.slow ? 'Slow motion is on: a test waits 500 ms before each action. Click to test at full speed.' : 'Slow motion: a test waits 500 ms before each action, to watch it'}
+          active={props.slow}
+          tone="accent"
+          square
+        >
+          <Icon name="gauge" size={15} />
+        </Button>
+        <span class="mx-1.5 h-5 w-px bg-line" />
         <Button
           onClick={props.onPause}
-          disabled={saving || props.status === 'login'}
+          disabled={saving || props.status === 'login' || props.status === 'testing'}
           title={paused ? 'Resume recording (F8 in the app)' : 'Pause recording: what you do in the app is not recorded (F8 in the app)'}
           active={paused}
         >
@@ -80,8 +98,36 @@ const statuses: Record<Status, { text: string; dot: string }> = {
   recording: { text: 'Recording', dot: 'bg-rec animate-rec' },
   paused: { text: 'Paused', dot: 'bg-warn' },
   login: { text: 'Logging in', dot: 'bg-info animate-pulse-soft' },
+  testing: { text: 'Testing', dot: 'bg-accent animate-pulse-soft' },
   saving: { text: 'Saving', dot: 'bg-accent' },
 };
+
+// Test, which turns into Stop while a test runs.
+function TestButton({ testing, disabled, onTest, onStop }: { testing: boolean; disabled: boolean; onTest(): void; onStop(): void }) {
+  const base =
+    'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border text-[12.5px] font-medium transition max-[820px]:w-8 max-[820px]:px-0 disabled:pointer-events-none disabled:opacity-40';
+  if (testing)
+    return (
+      <button type="button" onClick={onStop} title="Stop the test (Esc or Shift+F5)" aria-label="Stop the test" class={cls(base, 'border-bad/40 bg-bad/10 px-2.5 text-bad hover:bg-bad/16')}>
+        <Icon name="stop" size={12} fill="currentColor" />
+        <span class="max-[820px]:hidden">Stop</span>
+      </button>
+    );
+  return (
+    <button
+      type="button"
+      onClick={onTest}
+      disabled={disabled}
+      title="Test the flow: run it as it will be saved, in a window of its own, and see each step pass or fail (Ctrl+Enter or F5)"
+      aria-label="Test the flow"
+      class={cls(base, 'border-line-strong bg-raised pr-2 pl-2.5 text-fg shadow-[0_1px_2px_rgb(0_0_0/0.1)] hover:border-faint/60 hover:brightness-[1.04]')}
+    >
+      <Icon name="play" size={13} fill="currentColor" class="text-ok" />
+      <span class="max-[820px]:hidden">Test</span>
+      <kbd class="rounded border border-line bg-canvas px-1 font-sans text-[10.5px] leading-4 font-medium text-faint max-[1180px]:hidden">Ctrl ↵</kbd>
+    </button>
+  );
+}
 
 function Status({ status }: { status: Status }) {
   const { text, dot } = statuses[status];
@@ -157,7 +203,15 @@ function Segmented<T extends string>(props: { label: string; value: T; options: 
   );
 }
 
-function Button(props: { onClick(): void; disabled?: boolean; title: string; square?: boolean; active?: boolean; children: ComponentChildren }) {
+function Button(props: {
+  onClick(): void;
+  disabled?: boolean;
+  title: string;
+  square?: boolean;
+  active?: boolean;
+  tone?: 'warn' | 'accent';
+  children: ComponentChildren;
+}) {
   return (
     <button
       type="button"
@@ -168,7 +222,11 @@ function Button(props: { onClick(): void; disabled?: boolean; title: string; squ
       aria-pressed={props.active}
       class={cls(
         'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg text-[12.5px] font-medium transition disabled:pointer-events-none disabled:opacity-40',
-        props.active ? 'bg-warn/14 text-warn hover:bg-warn/20' : 'text-muted hover:bg-raised hover:text-fg',
+        props.active
+          ? props.tone === 'accent'
+            ? 'bg-accent/14 text-accent-fg hover:bg-accent/20'
+            : 'bg-warn/14 text-warn hover:bg-warn/20'
+          : 'text-muted hover:bg-raised hover:text-fg',
         props.square ? 'w-8' : 'px-2.5 max-[820px]:w-8 max-[820px]:px-0',
       )}
     >

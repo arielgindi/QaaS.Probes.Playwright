@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
+using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -25,6 +26,9 @@ internal sealed record PanelView(
 
     /// <summary>The element the person picked in the Elements view, with every way to locate it.</summary>
     public PanelElement? Element { get; init; }
+
+    /// <summary>The flow's test run going on, or the last one.</summary>
+    public PanelTest? Test { get; init; }
 
     /// <summary>The page reads it as JSON: camelCase, text of every script kept readable, nothing missing written.</summary>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -99,6 +103,81 @@ internal sealed record PanelElement(int Node, string Page)
 
     /// <summary>A text field, which a fill can type into.</summary>
     public bool Fillable { get; init; }
+}
+
+/// <summary>A test run of the flow as the panel shows it: where it is, each action's state, and how it ended.</summary>
+/// <param name="Run">The run's number, which changes with each run.</param>
+/// <param name="State"><c>building</c>, <c>login</c>, <c>running</c>, <c>passed</c>, <c>failed</c>, <c>stopped</c> or <c>error</c>.</param>
+/// <param name="Total">How many actions the run goes through.</param>
+internal sealed record PanelTest(int Run, string State, int Total)
+{
+    /// <summary>The action "Run to here" runs to; null for the whole flow.</summary>
+    public string? UpTo { get; init; }
+
+    public bool SlowMotion { get; init; }
+
+    /// <summary>The login flow that runs first.</summary>
+    public string? Login { get; init; }
+
+    /// <summary>When it started, in Unix milliseconds.</summary>
+    public long Started { get; init; }
+
+    /// <summary>How long the browser's part took, once it ended.</summary>
+    public long? Ms { get; init; }
+
+    /// <summary>Each action's state, by its id.</summary>
+    public IReadOnlyDictionary<string, PanelTestStep> Steps { get; init; } = new Dictionary<string, PanelTestStep>();
+
+    public TestFailure? Failure { get; init; }
+
+    /// <summary>Why it could not run, and more about it.</summary>
+    public string? Problem { get; init; }
+
+    public string? ProblemDetail { get; init; }
+
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>The flow changed since the run: its results are of the code as it was then.</summary>
+    public bool Stale { get; init; }
+
+    /// <summary>The report as the panel shows it, against the code it shows now.</summary>
+    public static PanelTest Of(TestReport report, string code) => new(report.Run, StateOf(report), report.Total)
+    {
+        UpTo = report.UpTo, SlowMotion = report.SlowMotion, Login = report.Login, Started = report.Started, Ms = report.Ms,
+        Steps = report.Steps.ToDictionary(pair => pair.Key, pair => new PanelTestStep(pair.Value.State switch
+        {
+            StepState.Running => "running",
+            StepState.Passed => "passed",
+            StepState.Failed => "failed",
+            _ => "skipped",
+        }) { Ms = pair.Value.Ms, Since = pair.Value.Since }),
+        Failure = report.Failure, Problem = report.Problem, ProblemDetail = report.ProblemDetail, Warnings = report.Warnings,
+        Stale = report.Code != code,
+    };
+
+    private static string StateOf(TestReport report) => report.Outcome switch
+    {
+        TestOutcome.Passed => "passed",
+        TestOutcome.Failed => "failed",
+        TestOutcome.Stopped => "stopped",
+        TestOutcome.NotRun => "error",
+        _ => report.Phase switch
+        {
+            TestPhase.Building => "building",
+            TestPhase.LoggingIn => "login",
+            _ => "running",
+        },
+    };
+}
+
+/// <summary>An action's state in a test run: <c>running</c>, <c>passed</c>, <c>failed</c> or <c>skipped</c>.</summary>
+internal sealed record PanelTestStep(string State)
+{
+    /// <summary>How long it took, in milliseconds.</summary>
+    public long? Ms { get; init; }
+
+    /// <summary>When it began, in Unix milliseconds, while it runs.</summary>
+    public long? Since { get; init; }
 }
 
 /// <summary>What an action did to the page: a dialog opened, the address changed, an alert showed.</summary>
