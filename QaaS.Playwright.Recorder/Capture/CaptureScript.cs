@@ -1103,8 +1103,9 @@ internal static class CaptureScript
             frozen = kept;
             // What a click may act on and shows, in a menu, a list or a dialog first, then the latest in the page, where a
             // portal puts them; as many as there is time for.
+            const actsOn = (node) => (node.matches(INTERACTIVE) || node.matches(TOGGLES) || looksClickable(node)) && retarget(node) === node;
             const targets = [...kept.values()]
-              .filter((node) => node.nodeType === 1 && node !== document.body && visible(node) && safe(() => retarget(node) === node, false))
+              .filter((node) => node.nodeType === 1 && node !== document.body && visible(node) && safe(() => actsOn(node), false))
               .reverse()
               .map((node) => ({ node, transient: !!node.closest(TRANSIENT) }))
               .sort((a, b) => Number(b.transient) - Number(a.transient));
