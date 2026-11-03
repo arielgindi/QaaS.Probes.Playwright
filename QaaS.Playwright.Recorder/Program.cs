@@ -7,6 +7,9 @@ namespace QaaS.Playwright.Recorder;
 /// </summary>
 public static class Program
 {
+    // What a shell returns for a program stopped by Ctrl+C.
+    private const int Cancelled = 130;
+
     public static int Main(string[] args)
     {
         if (args is ["--version"] or ["-v"])
@@ -22,6 +25,7 @@ public static class Program
             return 0;
         }
 
+        ConsoleUi.CancelOnCtrlC();
         RecordRequest request;
         try
         {
@@ -29,9 +33,14 @@ public static class Program
         }
         catch (ArgumentException invalid)
         {
-            ConsoleUi.Error(invalid.Message);
+            ConsoleUi.Error(ConsoleUi.Reason(invalid));
             ConsoleUi.UsageHint();
             return 1;
+        }
+        catch (OperationCanceledException)
+        {
+            ConsoleUi.Cancelled();
+            return Cancelled;
         }
 
         return FlowRecorder.Record(request);

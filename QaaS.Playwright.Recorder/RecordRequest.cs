@@ -55,14 +55,29 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
             : throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording] [--no-panel]");
     }
 
-    /// <summary>Asks for the page, the flow's name and the folder.</summary>
+    /// <summary>Asks for the page, the flow's name and the folder, again until each answer is valid.</summary>
+    /// <exception cref="OperationCanceledException">The input ended before all were given.</exception>
     public static RecordRequest Ask()
     {
-        ConsoleUi.Info("Let's record a browser flow.\n");
-        var url = ConsoleUi.Ask("What website do you want to record?", "");
-        EnsureHttpUrl(url);
-        var name = ConsoleUi.Ask("Give this flow a name", "my-flow");
-        return Create(name, url, ConsoleUi.Ask("Where to save it?", DefaultOutputDir));
+        ConsoleUi.Intro("Let's record a browser flow.");
+        var url = ConsoleUi.Ask("URL to start on", "", answer => answer.Length == 0
+            ? "Type the address of the page to start on, e.g. https://my-app.com/login"
+            : Refusal(() => EnsureHttpUrl(answer)));
+        var name = ConsoleUi.Ask("Flow name", "my-flow", answer => Refusal(() => Create(answer, url, DefaultOutputDir)));
+        return Create(name, url, ConsoleUi.Ask("Save in folder", DefaultOutputDir));
+    }
+
+    private static string? Refusal(Action check)
+    {
+        try
+        {
+            check();
+            return null;
+        }
+        catch (ArgumentException refused)
+        {
+            return ConsoleUi.Reason(refused);
+        }
     }
 
     /// <summary>The same request for a flow named <paramref name="name"/>, checked as a new name is.</summary>

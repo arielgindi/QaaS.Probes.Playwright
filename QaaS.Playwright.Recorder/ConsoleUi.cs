@@ -24,6 +24,8 @@ internal static class ConsoleUi
     private static readonly Lock Gate = new();
     private static readonly Dictionary<string, int> StepOfAction = [];
     private static int _lastStep;
+    private static bool _recording;
+    private static int _cancelled;
 
     public static string Version =>
         typeof(ConsoleUi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -114,15 +116,56 @@ internal static class ConsoleUi
 
     // ── The questions ───────────────────────────────────────────────────────────────────────────────────────────
 
-    public static string Ask(string prompt, string defaultValue)
+    /// <summary>The line before the questions.</summary>
+    public static void Intro(string text)
+    {
+        Out.WriteLine();
+        Out.WriteLine(Margin + Terminal.Clean(text));
+        Out.WriteLine();
+    }
+
+    /// <summary>
+    /// Asks until the answer is valid: <paramref name="problem"/> tells what is wrong with one, or null. An empty
+    /// answer takes <paramref name="defaultValue"/>.
+    /// </summary>
+    /// <exception cref="OperationCanceledException">The input ended (Ctrl+D, or Ctrl+Z and Enter on Windows).</exception>
+    public static string Ask(string prompt, string defaultValue, Func<string, string?>? problem = null)
     {
         var t = Out;
-        var hint = defaultValue.Length > 0 ? t.Paint($" ({defaultValue})", Tone.Dim) : "";
-        t.Writer.Write(Margin + t.Paint("?", Tone.Accent) + " " + t.Paint(prompt, Tone.Bold) + hint
-                       + t.Paint($" {t.Glyph("›", ">")} ", Tone.Dim) + t.Start(Tone.Accent));
-        var answer = Console.ReadLine()?.Trim() ?? "";
-        t.Writer.Write(t.Stop);
-        return answer.Length > 0 ? answer : defaultValue;
+        while (true)
+        {
+            var hint = defaultValue.Length > 0 ? t.Paint($" ({defaultValue})", Tone.Dim) : "";
+            t.Writer.Write(Margin + t.Paint("?", Tone.Accent) + " " + t.Paint(prompt, Tone.Bold) + hint
+                           + t.Paint($" {t.Glyph("›", ">")} ", Tone.Dim) + t.Start(Tone.Accent));
+            var typed = Console.ReadLine();
+            t.Writer.Write(t.Stop);
+            if (typed is null) throw new OperationCanceledException("The input ended.");
+
+            var answer = typed.Trim().Length > 0 ? typed.Trim() : defaultValue;
+            // Typed answers show by themselves; piped ones are shown, so a log reads as the questions went.
+            if (Console.IsInputRedirected) t.WriteLine(t.Paint(Terminal.Clean(answer), Tone.Accent));
+            if (problem?.Invoke(answer) is not { } wrong) return answer;
+            Status(t, Margin + Margin, t.Glyph("×", "x"), Tone.Error, wrong, Tone.Error);
+        }
+    }
+
+    /// <summary>The message of a refused argument, without the parameter's name .NET adds to it.</summary>
+    public static string Reason(ArgumentException refused) =>
+        refused.ParamName is { } name ? refused.Message.Replace($" (Parameter '{name}')", "") : refused.Message;
+
+    /// <summary>Says goodbye on Ctrl+C instead of leaving a half-written line.</summary>
+    public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, _) => Cancelled();
+
+    public static void Cancelled()
+    {
+        if (Interlocked.Exchange(ref _cancelled, 1) == 1) return;
+        var t = Out;
+        t.Writer.Write(t.Stop); // The colour of an answer being typed.
+        t.WriteLine();
+        t.WriteLine();
+        Status(t, Margin, t.Glyph("×", "x"), Tone.Dim,
+            Volatile.Read(ref _recording) ? "Cancelled. The recording was not saved." : "Cancelled.");
+        t.WriteLine();
     }
 
     // ── While recording ─────────────────────────────────────────────────────────────────────────────────────────
@@ -143,6 +186,7 @@ internal static class ConsoleUi
             t.WriteLine();
             StepOfAction.Clear();
             _lastStep = 0;
+            Volatile.Write(ref _recording, true);
         }
     }
 
@@ -206,6 +250,7 @@ internal static class ConsoleUi
         var t = Out;
         lock (Gate)
         {
+            Volatile.Write(ref _recording, false);
             var settings = flow.Yaml.Split('\n').Count(line => line.StartsWith("    ", StringComparison.Ordinal));
             var counts = new[]
                 {
