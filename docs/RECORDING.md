@@ -176,6 +176,10 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 | **Undo**, Ctrl+Z | Leaves the last step out of the flow; the app stays as it is |
 | The flow's name, at the top | Renames the flow; a name it cannot have is refused, with why |
 | **Pause** / **Resume**, F8 | Pauses or resumes the recording, as `F8` in the recorded window does |
+| **Test**, Ctrl+Enter or F5 | [Tests the flow](#testing-the-flow) recorded so far, as it will be saved, in a window of its own |
+| **Run to here**, Ctrl+Shift+Enter | Tests it up to the selected step, and that step too |
+| **Stop**, Esc or Shift+F5 | Stops the test |
+| The gauge, beside **Test** | Tests in slow motion: each action waits 500 ms first |
 | **Save**, Ctrl+S | Ends the recording and saves the flow, as closing the browser does |
 
 The panel is a window of the recorder's own Chrome in a browser context of its own: nothing you do in it is recorded,
@@ -183,6 +187,52 @@ and it needs no network or port. Closing it does not end the recording; closing 
 the system's light or dark theme, and the sun or moon at the top switches it. On a screen with no room beside the
 recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
 part: move it to another screen, or snap it aside. `--no-panel` records without it.
+
+### Testing the flow
+
+**Test** in the panel's top bar, `Ctrl+Enter` or `F5` there, runs the flow recorded so far and shows, step by step,
+whether it works and where it fails, before you save it.
+
+- **It runs the code that will be saved**, with or without auto checks as it will be saved. The code the panel shows is
+  built as your test project builds it, with the
+  .NET SDK, in a temporary folder only you can read, against the recorder's own QaaS.Playwright and Playwright: nothing
+  is restored, so no package feed is needed. A test of code that has not changed uses the same build again. Each run
+  loads the build afresh, and unloads it after.
+- **It runs as the probe runs it**, in a window of its own over the recorded one: a browser context of its own in the
+  recorder's Chrome, `BaseUrl` the page you started on, your [login flow](#logging-in-first) first when you record with
+  one (as `SetupFlows`), else the login the recording started from (`~/.qaas/auth.json`), and the recorded values as
+  the flow's settings (its YAML). It has the probe's timeouts (30 s for an action, 5 s for an `Expect`), page setup and
+  failure screenshot, and hides the run's secrets, so a flow that passes here passes in the probe with that YAML.
+- **It really does what the flow does**, in your app: a flow that creates an order creates another one.
+- **Nothing it does is recorded.** The recording is paused while it runs, as with `F8`, and the overlay in the
+  recorded window says `Testing the flow`; the recorded window is left as it is. Then the recording goes on as before
+  the test, or stays paused if it was.
+
+While it runs, a bar under the top bar says which step runs, with the time, and each step on the left gets a spinner,
+then a ✓ with how long it took. When a step fails, the bar says which, the step turns red and opens on why, as the
+probe reports it: what it waited for, on which page and on which line, the screenshot of the page then (click it to
+see it whole), what the recorder listed to check by hand there, and Playwright's call log. The steps after it show
+`Not run`. In the code, the statement running is marked as it runs, each step's lines green once it passed, and the
+line that failed in red. A [loop](#repeated-actions)'s line runs once for each item: it is marked as each repeat runs
+it, each repeat's step on the left gets its own ✓, a failure is told at the repeat it happened in, and the line turns
+green once every repeat of it passed. The console prints the result too:
+
+```text
+  › Testing NewTicket…
+  × NewTicket failed at step 4 of 6, line 34, after 31.8 s.
+    4 ▼ choose  Category → Software           [name='category']
+        └ Timeout 30000ms exceeded (waiting for Locator("[name='category']")) on https://helpdesk.example/helpdesk
+```
+
+The result stays until you test again or dismiss it; once you change the flow, it is marked `Changed since`.
+
+- **Run to here**, on a step (point at it) or in the inspector, or `Ctrl+Shift+Enter`, runs the flow from the start up
+  to the selected step, that step included, and stops there: the steps after it do not run. It checks the start of a
+  flow without its end, e.g. without the final save.
+- **Slow motion**, the gauge beside **Test**, has each step wait 500 ms first, to watch it. The panel remembers it.
+- **Stop**, `Esc` or `Shift+F5` closes the test's window and ends the run; closing that window does too.
+- **It needs the .NET SDK** of the recorder's .NET (10), which a test project needs anyway; the recorder itself runs
+  on the runtime. Without it, **Test** says so, and the recording goes on.
 
 ### The Elements view
 

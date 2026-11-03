@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
+using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -13,7 +14,8 @@ namespace QaaS.Playwright.Recorder.Panel;
 /// its own, so nothing done in it is recorded, and it needs no server or port: its page is embedded in the tool, it is
 /// shown each state by <see cref="IPage.EvaluateAsync"/>, and it sends its commands through an exposed function.
 /// Closing it leaves the recording going. Its Elements view shows the recorded page's elements, live or as frozen with
-/// F4, and adds or re-targets steps on the one the person picks.
+/// F4, and adds or re-targets steps on the one the person picks. Test runs the flow so far in a window of its own
+/// (<see cref="FlowTester"/>), and shows how each step went.
 /// </summary>
 internal sealed class RecorderPanel : IAsyncDisposable
 {
@@ -36,6 +38,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
     private readonly Channel<PanelCommand> _commands = Channel.CreateUnbounded<PanelCommand>(new() { SingleReader = true });
     private readonly TaskCompletionSource _saveRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _stop = new();
+    private readonly FlowTester _tester;
     private Task _worker = Task.CompletedTask;
 
     // The worker's own: what the panel shows, and what changes it besides the recording.
@@ -52,11 +55,14 @@ internal sealed class RecorderPanel : IAsyncDisposable
     private FrozenElements? _frozenShown;
     private int _elementsChanged;
 
-    private RecorderPanel(RecordingSession session, RecordRequest request, IPage page)
+    private RecorderPanel(RecordingSession session, RecordRequest request, IPage page, TestOptions? testOptions)
     {
         _session = session;
         _page = page;
         Request = request;
+        _tester = new FlowTester(session, testOptions);
+        // Each change of the test run wakes the worker, which shows it.
+        _tester.Changed += () => _commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
     }
 
     /// <summary>The request, under the name the person gave the flow in the panel.</summary>
@@ -65,9 +71,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
     /// <summary>Completes when the person clicked Save: the recording ends and is saved as when the window closes.</summary>
     public Task SaveRequested => _saveRequested.Task;
 
-    /// <summary>Opens the panel beside the recorded window.</summary>
+    /// <summary>Opens the panel beside the recorded window; <paramref name="testOptions"/> are for its test runs.</summary>
     /// <exception cref="PlaywrightException">The browser could not open it.</exception>
-    public static async Task<RecorderPanel> OpenAsync(RecordingSession session, RecordRequest request)
+    public static async Task<RecorderPanel> OpenAsync(RecordingSession session, RecordRequest request, TestOptions? testOptions = null)
     {
         var browser = session.Page.Context.Browser ?? throw new PlaywrightException("The recording has no browser.");
         // No viewport, so the page fills its window; no color scheme, so it follows the system's.
@@ -75,7 +81,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
         try
         {
             var page = await context.NewPageAsync();
-            var panel = new RecorderPanel(session, request, page);
+            var panel = new RecorderPanel(session, request, page, testOptions);
             var beside = await PanelWindow.PlaceAsync(session.Page, page);
             await page.ExposeFunctionAsync<string>(SendFunction, panel.Receive);
             await page.SetContentAsync(Html.Value);
@@ -91,11 +97,15 @@ internal sealed class RecorderPanel : IAsyncDisposable
         }
     }
 
-    /// <summary>Stops updating the panel; the window closes with the browser.</summary>
+    /// <summary>The flow's test runs, started from the panel.</summary>
+    public FlowTester Tester => _tester;
+
+    /// <summary>Stops updating the panel, and a test run going on; the window closes with the browser.</summary>
     public async ValueTask DisposeAsync()
     {
         await _stop.CancelAsync();
         await _worker;
+        await _tester.DisposeAsync();
         _stop.Dispose();
     }
 
@@ -166,6 +176,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
 
     private void Carry(PanelCommand command)
     {
+        if (command.Type == "refresh") _refresh = true;
         // Once saving, the recording is what it is.
         if (_saving) return;
         switch (command.Type)
@@ -194,7 +205,18 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 break;
             case "save":
                 _saving = _refresh = true;
+                _ = _tester.StopAsync();
                 _saveRequested.TrySetResult();
+                break;
+            case "test":
+                _namespace ??= ProjectNamespace.Of(Request.OutputDir);
+                _ = _tester.RunAsync(Request, _namespace, command.Action, command.Slow == true, _page);
+                break;
+            case "stopTest":
+                _ = _tester.StopAsync();
+                break;
+            case "clearTest":
+                _tester.Clear();
                 break;
             case "pause":
                 _session.TogglePause();
@@ -325,6 +347,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
                     Element = _picked is { } picked
                         ? PanelSnapshot.Element(picked.Node, picked.Page, picked.Description, picked.Gone, picked.Fillable)
                         : null,
+                    Test = _tester.Report is { } test ? PanelTest.Of(test, _shown.View.Code) : null,
                 },
             };
         }
@@ -346,6 +369,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
     {
         RecordingState.Paused => "paused",
         RecordingState.LoggingIn => "login",
+        RecordingState.Testing => "testing",
         _ => "recording",
     };
 
@@ -439,6 +463,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
 
         /// <summary>Whether the view follows the page as it changes.</summary>
         public bool? On { get; init; }
+
+        /// <summary>For a test run: in slow motion.</summary>
+        public bool? Slow { get; init; }
     }
 
     /// <summary>The element picked in the Elements view: where it is, and how to locate it.</summary>

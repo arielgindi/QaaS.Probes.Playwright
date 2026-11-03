@@ -17,7 +17,8 @@ npm run build   # type-checks, then writes dist/panel.html and copies it to ../p
 
 `npm run dev` serves the panel with a sample recording (`src/sample.ts`) and reloads as you edit; the commands it
 would send the recorder are logged in the browser's console, and the Elements view shows a sample page
-(`/panel.html?frozen` as frozen with F4). `npm run check` only type-checks.
+(`/panel.html?frozen` as frozen with F4). **Test** runs a simulated test run (`?fail` makes it fail at a step), and
+`?test=building`, `running`, `passed`, `failed` or `error` opens on one. `npm run check` only type-checks.
 
 ## How it talks to the recorder
 
@@ -29,8 +30,8 @@ and the two talk through two functions on the window (`src/bridge.ts`):
 - `window.__qaasPanelElements(json)`: the recorder calls it with the recorded page's elements for the Elements view: a
   level of the live tree, a search's matches, the tree frozen with F4, or that the page changed.
 - `window.__qaasPanelSend(json)`: the recorder exposes it for the panel's commands: `ready`, `choose`, `highlight`,
-  `unhighlight`, `undo`, `rename`, `save`, `pause`, and for the Elements view `elements`, `pick`, `choosePicked`,
-  `useForStep`, `addClick` and `addFill`.
+  `unhighlight`, `undo`, `rename`, `save`, `pause`, for the Elements view `elements`, `pick`, `choosePicked`,
+  `useForStep`, `addClick` and `addFill`, and for testing the flow `test`, `stopTest` and `clearTest`.
 
 ## Rules
 

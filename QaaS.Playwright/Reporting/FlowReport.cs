@@ -90,8 +90,11 @@ internal static class FlowReport
               $"({string.Join(", ", failed.Select(outcome => outcome.FlowName))}); first '{first.FlowName}': {Describe(first)}";
     }
 
-    // e.g. "Timeout 3000ms exceeded (waiting for GetByRole(...)) on http://app/cart, with pop-up http://app/help open".
-    private static string Describe(PlaywrightFlowOutcome failure)
+    /// <summary>
+    /// The failure on one line, as the assertion's message tells it: e.g. "Timeout 3000ms exceeded (waiting for
+    /// GetByRole(...)) on http://app/cart, with pop-up http://app/help open". The recorder's test run tells it so too.
+    /// </summary>
+    internal static string Describe(PlaywrightFlowOutcome failure)
     {
         var description = Summarize(failure.FailureMessage);
         if (WaitingFor(failure.FailureMessage) is { } element) description += $" ({element})";
@@ -103,13 +106,18 @@ internal static class FlowReport
         return description;
     }
 
-    private static string? WaitingFor(string? failureMessage) =>
+    /// <summary>The element the flow was stuck on, from the first "waiting for" line of Playwright's call log.</summary>
+    internal static string? WaitingFor(string? failureMessage) =>
         failureMessage?.Split(CallLogMarker, 2).ElementAtOrDefault(1)?
             .Split('\n', StringSplitOptions.TrimEntries)
             .FirstOrDefault(line => line.StartsWith(WaitingForPrefix, StringComparison.Ordinal))?[2..];
 
-    // The failure message on one line, without the call log or a closing period (the message adds its own).
-    private static string Summarize(string? failureMessage)
+    /// <summary>Playwright's call log in the failure message: what it did and waited for, a line each; null when none.</summary>
+    internal static string? CallLog(string? failureMessage) =>
+        failureMessage?.Split(CallLogMarker, 2).ElementAtOrDefault(1)?.Trim('\n', '\r', ' ') is { Length: > 0 } log ? log : null;
+
+    /// <summary>The failure message on one line, without the call log or a closing period (the message adds its own).</summary>
+    internal static string Summarize(string? failureMessage)
     {
         if (string.IsNullOrWhiteSpace(failureMessage)) return NoDetail;
         var beforeCallLog = failureMessage.Split(CallLogMarker, 2)[0];

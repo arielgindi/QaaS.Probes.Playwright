@@ -14,9 +14,17 @@ internal static class FlowLoader
     /// The flow cannot be found or created, or its LoadAndValidateConfiguration threw; the message names the flow.
     /// </exception>
     public static (IPlaywrightFlow Flow, List<string> Problems) Load(string flowName, Context context, string baseUrl,
-        IConfiguration flowConfiguration, FlowItem? item = null)
+        IConfiguration flowConfiguration, FlowItem? item = null) =>
+        Load(FlowDiscovery.Resolve(flowName), flowName, context, baseUrl, flowConfiguration, item);
+
+    /// <summary>
+    /// Sets up a flow its caller created, as <see cref="Load(string, Context, string, IConfiguration, FlowItem?)"/> sets
+    /// up one it finds by name, e.g. the one the recorder has just built to test.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Its LoadAndValidateConfiguration threw; the message names the flow.</exception>
+    public static (IPlaywrightFlow Flow, List<string> Problems) Load(IPlaywrightFlow flow, string flowName, Context context,
+        string baseUrl, IConfiguration flowConfiguration, FlowItem? item = null)
     {
-        var flow = FlowDiscovery.Resolve(flowName);
         flow.Context = context;
         flow.BaseUrl = baseUrl;
         flow.Item = item?.Data;

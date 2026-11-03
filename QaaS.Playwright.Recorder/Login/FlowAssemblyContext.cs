@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -17,6 +18,9 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
             .Select(Path.GetFileNameWithoutExtension).OfType<string>()]);
 
+    // Each assembly once, by its path: loaded again, its flows would be there twice, which no flow name could tell apart.
+    private static readonly ConcurrentDictionary<string, Lazy<Assembly>> Loaded = new(StringComparer.Ordinal);
+
     private readonly AssemblyDependencyResolver _resolver;
     private readonly string _folder;
 
@@ -26,13 +30,27 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
         _folder = Path.GetDirectoryName(path)!;
     }
 
-    /// <summary>Loads the assembly at <paramref name="path"/>, so its flows can be found by name.</summary>
+    /// <summary>
+    /// Loads the assembly at <paramref name="path"/>, so its flows can be found by name; once, so a login flow that runs
+    /// again, as before each test of the flow, is the same flow.
+    /// </summary>
     /// <exception cref="BadImageFormatException">It is not a .NET assembly.</exception>
     /// <exception cref="FileLoadException">It, or an assembly it needs, could not be loaded.</exception>
     public static Assembly Load(string path)
     {
         var fullPath = Path.GetFullPath(path);
-        return new FlowAssemblyContext(fullPath).LoadFromAssemblyName(AssemblyName.GetAssemblyName(fullPath));
+        var loaded = Loaded.GetOrAdd(fullPath, _ => new Lazy<Assembly>(() =>
+            new FlowAssemblyContext(fullPath).LoadFromAssemblyName(AssemblyName.GetAssemblyName(fullPath))));
+        try
+        {
+            return loaded.Value;
+        }
+        catch
+        {
+            // Not loaded: the person may build the project and try again.
+            Loaded.TryRemove(KeyValuePair.Create(fullPath, loaded));
+            throw;
+        }
     }
 
     protected override Assembly? Load(AssemblyName assemblyName)

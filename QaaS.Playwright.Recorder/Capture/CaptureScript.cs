@@ -42,8 +42,9 @@ internal static class CaptureScript
           const page = Math.random().toString(36).slice(2, 8);
           let counter = 0;
 
-          // Whether the person's actions are recorded: 'recording', 'paused' (F8, or the panel), or 'login' while a login
-          // flow runs. The recorder decides, and tells each page; a page that loads asks.
+          // Whether the person's actions are recorded: 'recording', 'paused' (F8, or the panel), 'login' while a login
+          // flow runs, or 'testing' while the panel tests the flow in a window of its own. The recorder decides, and
+          // tells each page; a page that loads asks.
           let state = 'recording';
           const recording = () => state === 'recording';
           // The recorder's bindings are called without waiting for an answer, which it gives through
@@ -755,22 +756,23 @@ internal static class CaptureScript
 
           // The pill at the top: the recording is paused, or, for a moment, what a key did.
           let pillTimer = 0;
-          function showPill(text, hint, note) {
+          function showPill(text, hint, note, keep) {
             clearTimeout(pillTimer);
             const { state: pill } = overlayView();
             pill.className = `state shown${note ? ' note' : ''}`;
             pill.textContent = text;
             const span = pill.appendChild(document.createElement('span'));
             span.textContent = hint;
-            if (note) pillTimer = setTimeout(() => safe(showState), 2500);
+            if (note && !keep) pillTimer = setTimeout(() => safe(showState), 2500);
           }
           function showState() {
             clearTimeout(pillTimer);
             if (state === 'paused') showPill('Recording paused', 'F8 resumes');
+            else if (state === 'testing') showPill('Testing the flow', 'in its own window; nothing is recorded', true, true);
             else if (view) view.state.className = 'state';
           }
           function applyState(next) {
-            if (next === state || !['recording', 'paused', 'login'].includes(next)) return;
+            if (next === state || !['recording', 'paused', 'login', 'testing'].includes(next)) return;
             state = next;
             if (!recording()) {
               flushTyping();

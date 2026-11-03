@@ -10,6 +10,12 @@ internal sealed record CheckByHand(int? Line, string Message);
 /// <summary>Lines of a flow's code, numbered from 1, both included.</summary>
 internal sealed record LineSpan(int First, int Last);
 
+/// <summary>
+/// A statement of a step written for recorded actions: its lines, and the actions it does, in the order it does them:
+/// one, or in a loop's body the action of each repeat, the first repeat's first.
+/// </summary>
+internal sealed record ActionStatement(LineSpan Lines, IReadOnlyList<string> Actions);
+
 /// <summary>The flow's source, its settings as YAML, and what to check by hand.</summary>
 internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks)
 {
@@ -21,6 +27,9 @@ internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<Che
 
     /// <summary>The lines of each step's method, by the method's name.</summary>
     public IReadOnlyDictionary<string, LineSpan> StepLines { get; init; } = new Dictionary<string, LineSpan>();
+
+    /// <summary>Each statement written for recorded actions, in the order of the code.</summary>
+    public IReadOnlyList<ActionStatement> Statements { get; init; } = [];
 }
 
 /// <summary>
@@ -37,7 +46,8 @@ internal sealed partial class FlowWriter
 
     // Where a statement may break onto the next line, indented once more.
     private const string Break = "\u001F";
-    private const string AutoCheck = " // auto check";
+    /// <summary>What ends the line of a check the recorder added itself.</summary>
+    public const string AutoCheck = " // auto check";
     private const string SlowTimeout = "new() { Timeout = 30_000 }";
 
     private const string FileToUploadMethod = """
@@ -808,6 +818,7 @@ internal sealed partial class FlowWriter
         var checks = new List<CheckByHand>();
         var actionLines = new Dictionary<string, LineSpan>();
         var stepLines = new Dictionary<string, LineSpan>();
+        var statements = new List<ActionStatement>();
         var lineNumber = 0;
         void Append(string text, string? check = null, IReadOnlyList<string>? actions = null)
         {
@@ -822,11 +833,14 @@ internal sealed partial class FlowWriter
         void Statement(Line line, int indent)
         {
             var wrapped = Wrap(line.Text, indent + line.Depth * 4).ToList();
+            var first = lineNumber + 1;
             for (var index = 0; index < wrapped.Count; index++)
             {
                 var mark = line.Auto && index == wrapped.Count - 1 ? AutoCheck : "";
                 Append(wrapped[index] + mark, index == 0 ? line.Check : null, line.Actions);
             }
+
+            if (line.Actions.Count > 0) statements.Add(new ActionStatement(new LineSpan(first, lineNumber), line.Actions));
         }
 
         var all = _run.Concat(_methods.SelectMany(method => method.Body)).Select(line => line.Text).ToList();
@@ -886,7 +900,7 @@ internal sealed partial class FlowWriter
         foreach (var missing in _plan.NotRecorded) checks.Add(new CheckByHand(null, missing));
         return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
         {
-            ActionLines = actionLines, StepLines = stepLines,
+            ActionLines = actionLines, StepLines = stepLines, Statements = statements,
         };
     }
 

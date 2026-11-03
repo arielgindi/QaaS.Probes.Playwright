@@ -1,4 +1,4 @@
-import type { Command, DomNode, DomPatch, PanelState, PickedElement } from './types';
+import type { Command, DomNode, DomPatch, PanelState, PickedElement, TestRun } from './types';
 
 // A recording of a helpdesk's ticket form, as the recorder shows it, for working on the panel with `npm run dev`.
 const sample: PanelState = {
@@ -431,11 +431,100 @@ const closeTicket: PickedElement = {
   ],
 };
 
+// A failure screenshot: the helpdesk's ticket dialog, drawn small.
+const screenshot = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#f4f5f7"/><rect width="1920" height="72" fill="#1f2a44"/>
+  <text x="40" y="47" font-family="Segoe UI, sans-serif" font-size="28" fill="#fff">Helpdesk</text>
+  <rect x="40" y="120" width="1840" height="900" rx="10" fill="#fff" stroke="#dfe2e7"/>
+  ${[0, 1, 2].map((row) => `<rect x="80" y="${200 + row * 90}" width="1760" height="64" rx="6" fill="${row === 2 ? '#eef2ff' : '#fafbfc'}" stroke="#e5e7eb"/><text x="110" y="${241 + row * 90}" font-family="Segoe UI, sans-serif" font-size="24" fill="#374151">TCK-104${row} · ${['Password reset', 'VPN drops every hour', 'Laptop for a new starter'][row]}</text>`).join('')}
+  <rect x="0" y="0" width="1920" height="1080" fill="#0b1020" opacity="0.35"/>
+  <rect x="610" y="250" width="700" height="520" rx="14" fill="#fff"/>
+  <text x="650" y="315" font-family="Segoe UI, sans-serif" font-size="30" font-weight="600" fill="#111827">New ticket</text>
+  <rect x="650" y="360" width="620" height="56" rx="8" fill="#fff" stroke="#d1d5db"/><text x="670" y="396" font-family="Segoe UI, sans-serif" font-size="22" fill="#6b7280">Title</text>
+  <rect x="650" y="440" width="620" height="56" rx="8" fill="#fff" stroke="#d1d5db"/><text x="670" y="476" font-family="Segoe UI, sans-serif" font-size="22" fill="#6b7280">Category</text>
+  <rect x="1090" y="690" width="180" height="52" rx="8" fill="#4f46e5"/><text x="1118" y="724" font-family="Segoe UI, sans-serif" font-size="22" fill="#fff">Create ticket</text>
+</svg>`)}`;
+
+const order = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'];
+
+const failure: TestRun['failure'] = {
+  message: 'Timeout 30000ms exceeded.',
+  headline: `Timeout 30000ms exceeded (waiting for Locator("[name='category']")) on https://helpdesk.example/helpdesk`,
+  action: 'a4',
+  line: 34,
+  waitingFor: `Locator("[name='category']")`,
+  url: 'https://helpdesk.example/helpdesk',
+  screenshot,
+  callLog: `- waiting for Locator("[name='category']")\n- locator resolved to <select name="category">…</select>\n- attempting select option action\n- waiting for element to be visible and enabled\n- element is not enabled\n- retrying select option action`,
+  checks: [],
+  hints: [],
+};
+
+/** A test run of the sample in one of its states, as `?test=<state>` shows it. */
+function testIn(state: string): TestRun | undefined {
+  const at = (count: number, last?: TestRun['steps'][string]) =>
+    Object.fromEntries(order.slice(0, count).map((id, index) => [id, index === count - 1 && last ? last : { state: 'passed' as const, ms: [412, 186, 233, 145, 98, 1290][index] }]));
+  const started = Date.now() - 2300;
+  switch (state) {
+    case 'building':
+      return { run: 1, state: 'building', total: 6, started, steps: {}, warnings: [] };
+    case 'running':
+      return { run: 1, state: 'running', total: 6, started, steps: at(3, { state: 'running', since: Date.now() - 700 }), warnings: [], slowMotion: true };
+    case 'passed':
+      return { run: 1, state: 'passed', total: 6, started, ms: 2364, steps: at(6), warnings: [] };
+    case 'failed':
+      return { run: 1, state: 'failed', total: 6, started, ms: 31840, steps: { ...at(3), a4: { state: 'failed', ms: 30012 }, a5: { state: 'skipped' }, a6: { state: 'skipped' } }, failure, warnings: [] };
+    case 'error':
+      return {
+        run: 1, state: 'error', total: 6, started, steps: {}, warnings: [],
+        problem: 'Testing builds the flow with the .NET 10 SDK, which is not installed here (recording needs only the .NET runtime). Install the SDK from https://dot.net, then test again.',
+      };
+    default:
+      return undefined;
+  }
+}
+
 /** Shows the sample, and logs the commands the panel would send the recorder, answering those about the page's elements. */
 export function start(): void {
   const tree = patch();
   const menuItems = tree.nodes.filter((node) => node.role === 'menuitem').map((node) => node.id);
-  const show = (state: PanelState) => window.__qaasPanelShow?.(JSON.stringify(state));
+  const initial = testIn(new URLSearchParams(location.search).get('test') ?? '');
+  const going = initial?.state === 'building' || initial?.state === 'running';
+  let current: PanelState = { ...sample, status: going ? 'testing' : sample.status, test: initial };
+  const show = (state: PanelState) => {
+    current = state;
+    window.__qaasPanelShow?.(JSON.stringify(state));
+  };
+  // A test run that goes through the steps as the recorder's would, and fails at the Category with `?fail`.
+  let timer = 0;
+  const simulate = (upTo: string | undefined, slow: boolean) => {
+    const total = upTo ? order.indexOf(upTo) + 1 : order.length;
+    const run: TestRun = { run: (current.test?.run ?? 0) + 1, state: 'building', total, upTo, slowMotion: slow, started: Date.now(), steps: {}, warnings: [] };
+    show({ ...current, status: 'testing', test: run });
+    let index = -1;
+    let began = Date.now();
+    const next = () => {
+      const steps = { ...current.test!.steps };
+      if (index >= 0) steps[order[index]] = { state: 'passed', ms: Date.now() - began };
+      index++;
+      if (location.search.includes('fail') && order[index] === 'a4') {
+        steps.a4 = { state: 'failed', ms: 1200 };
+        for (const id of order.slice(index + 1)) steps[id] = { state: 'skipped' };
+        show({ ...current, status: 'recording', test: { ...current.test!, state: 'failed', steps, failure, ms: Date.now() - run.started } });
+        return;
+      }
+      if (index >= total) {
+        for (const id of order.slice(total)) steps[id] = { state: 'skipped' };
+        show({ ...current, status: 'recording', test: { ...current.test!, state: 'passed', steps, ms: Date.now() - run.started } });
+        return;
+      }
+      began = Date.now();
+      steps[order[index]] = { state: 'running', since: began };
+      show({ ...current, test: { ...current.test!, state: 'running', steps } });
+      timer = window.setTimeout(next, (slow ? 900 : 350) + Math.random() * 400);
+    };
+    timer = window.setTimeout(next, 700);
+  };
   const elements = (message: object) => window.__qaasPanelElements?.(JSON.stringify(message));
   window.__qaasPanelSend = (json) => {
     const command = JSON.parse(json) as Command;
@@ -446,9 +535,16 @@ export function start(): void {
       const matches = tree.nodes.filter((node) => [node.text, node.elementId, node.label].some((value) => value?.toLowerCase().includes(query))).map((node) => node.id);
       elements({ kind: 'search', page: 'page', url: 'https://helpdesk.example/helpdesk', data: { ...tree, matches } });
     }
-    if (command.type === 'pick') show({ ...sample, element: command.node === undefined ? undefined : { ...closeTicket, node: command.node, gone: !!command.frozen } });
+    if (command.type === 'pick') show({ ...current, element: command.node === undefined ? undefined : { ...closeTicket, node: command.node, gone: !!command.frozen } });
+    if (command.type === 'test') simulate(command.action, command.slow);
+    if (command.type === 'stopTest') {
+      window.clearTimeout(timer);
+      const steps = Object.fromEntries(order.map((id) => [id, current.test!.steps[id]?.state === 'passed' ? current.test!.steps[id] : { state: 'skipped' as const }]));
+      show({ ...current, status: 'recording', test: { ...current.test!, state: 'stopped', steps, ms: Date.now() - current.test!.started } });
+    }
+    if (command.type === 'clearTest') show({ ...current, test: undefined });
   };
-  show(sample);
+  show(current);
   // `?frozen` shows the menu as if F4 froze it.
   if (location.search.includes('frozen')) elements({ kind: 'frozen', page: 'page', at: '10:42:07', data: tree, described: menuItems });
 }

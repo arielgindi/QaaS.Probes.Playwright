@@ -77,6 +77,8 @@ QaaS.Playwright/                 The library (NuGet package QaaS.Playwright)
 QaaS.Playwright.Recorder/        The recorder (.NET tool qaas-playwright)
   Capture/                       Its own Chrome session, the capture script and its overlay
   Generation/                    From a recording to a flow class and its YAML
+  Panel/                         The panel beside the recorded window, and its page (Panel/ui)
+  TestRun/                       Testing the flow recorded so far: its build, and its run as the probe's
 QaaS.Playwright.Tests/           NUnit tests
   EndToEnd/                      The real probe and assertion against a headless Chrome and a small web app
   Recorder/                      The code the recorder writes, against a golden recording, and that it builds;

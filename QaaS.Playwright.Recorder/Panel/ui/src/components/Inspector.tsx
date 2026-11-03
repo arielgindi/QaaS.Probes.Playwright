@@ -1,19 +1,25 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { candidateKind, candidateStatus, cls, effectLabel, isUnusable, subjectOf, verbOf } from '../text';
-import type { Action, Candidate, PickedElement } from '../types';
+import { duration } from '../test';
+import type { Action, Candidate, PickedElement, TestStep } from '../types';
 import { Icon, type IconName } from './icons';
 import { PaneHeader } from './PaneHeader';
 
 interface Props {
   action?: Action;
   disabled: boolean;
+  /** How the action went in the last test run. */
+  test?: TestStep;
+  /** Whether "Run to here" can start. */
+  canRun: boolean;
   onChoose(action: Action, candidate: number | null): void;
   onHighlight(action: string | null, candidate?: number): void;
+  onRunTo(id: string): void;
 }
 
 /** The selected action: how its element is found, every other way to find it, and the values it records. */
-export function Inspector({ action, disabled, onChoose, onHighlight }: Props) {
+export function Inspector({ action, disabled, test, canRun, onChoose, onHighlight, onRunTo }: Props) {
   return (
     <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
       <PaneHeader title="Inspector">
@@ -21,6 +27,18 @@ export function Inspector({ action, disabled, onChoose, onHighlight }: Props) {
           <span class="font-mono text-[11px] text-faint">
             {action.lines.first === action.lines.last ? `line ${action.lines.first}` : `lines ${action.lines.first}–${action.lines.last}`}
           </span>
+        )}
+        {action?.lines && (
+          <button
+            type="button"
+            disabled={!canRun}
+            onClick={() => onRunTo(action.id)}
+            title="Run the flow up to this step, and this step too (Ctrl+Shift+Enter)"
+            class="-mr-1.5 inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Icon name="runTo" size={11} class="text-ok" />
+            Run to here
+          </button>
         )}
       </PaneHeader>
       {action ? (
@@ -30,6 +48,7 @@ export function Inspector({ action, disabled, onChoose, onHighlight }: Props) {
             {action.dialog && <InDialog title={action.dialog} />}
             {action.page !== 'page' && <span>in {action.page}</span>}
             {action.added && <Chip tone="accent">Added in the panel</Chip>}
+            {test && <TestChip step={test} />}
           </Heading>
           {action.checks.length > 0 && <Checks checks={action.checks} />}
           {action.candidates.length > 0 && (
@@ -316,6 +335,24 @@ function Heading({ kind, title, children }: { kind: string; title: string; child
       </div>
       {children && <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">{children}</div>}
     </div>
+  );
+}
+
+function TestChip({ step }: { step: TestStep }) {
+  const [tone, text] =
+    step.state === 'passed'
+      ? ['border-ok/30 bg-ok/10 text-ok', `Passed${step.ms !== undefined ? ` in ${duration(step.ms)}` : ''}`]
+      : step.state === 'failed'
+        ? ['border-bad/35 bg-bad/10 text-bad', 'Failed in the test']
+        : step.state === 'running'
+          ? ['border-accent/35 bg-accent/10 text-accent-fg', 'Running']
+          : ['border-line bg-canvas text-faint', 'Not run in the test'];
+  return (
+    <span class={cls('inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11.5px] font-medium', tone)}>
+      {step.state === 'passed' && <Icon name="tick" size={11} class="stroke-[2.6]" />}
+      {step.state === 'failed' && <Icon name="cross" size={11} class="stroke-[2.6]" />}
+      {text}
+    </span>
   );
 }
 

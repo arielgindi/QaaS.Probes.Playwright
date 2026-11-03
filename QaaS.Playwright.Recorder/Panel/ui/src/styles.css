@@ -49,6 +49,8 @@
   --rec: #f25858;
   --line-selected: #1a1c2c;
   --line-hovered: #15171c;
+  --line-failed: #1e1215;
+  --line-failed-strong: #34161b;
   --tk-plain: #d6dae0;
   --tk-kw: #c6a2ff;
   --tk-type: #5ec8c0;
@@ -85,6 +87,8 @@
   --rec: #e03b3b;
   --line-selected: #eceefd;
   --line-hovered: #f0f2f5;
+  --line-failed: #fdf1f2;
+  --line-failed-strong: #fadadd;
   --tk-plain: #1f2328;
   --tk-kw: #7a3fe0;
   --tk-type: #0d7a74;
@@ -246,6 +250,29 @@
 
 @utility animate-pulse-soft {
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  from {
+    left: -33%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+@utility animate-indeterminate {
+  animation: indeterminate 1.3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 140ms ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {

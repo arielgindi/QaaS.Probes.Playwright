@@ -56,6 +56,13 @@ internal sealed class BrowserSession : IAsyncDisposable
     }
 
     /// <summary>
+    /// Opens the run in <paramref name="browser"/>, a connection its caller made, e.g. the recorder's to its own Chrome,
+    /// rather than the process's shared one.
+    /// </summary>
+    public static Task<BrowserSession> OpenAsync(IBrowser browser, PlaywrightFlowConfig config, ILogger logger) =>
+        OpenInAsync(browser, config, logger);
+
+    /// <summary>
     /// Opens BaseUrl. An error page there fails the run, as flows that start on one verify nothing; a login page's 401
     /// or 403 only warns.
     /// </summary>

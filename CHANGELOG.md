@@ -20,6 +20,16 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 - Settings read better: a choice drops its field's `Id` (`MaintenanceType`), settings of one name are told apart by
   what they are for (`TicketToAssign`, `TicketToClose`), number fields are `int` or `decimal`, and a long record is
   grouped by step.
+- The recorder's panel tests the flow recorded so far: **Test** (`Ctrl+Enter` or `F5` in the panel) builds the code
+  exactly as it will be saved, with the .NET SDK and without restoring anything, and runs it as the probe does, in a
+  browser context and window of its own in the recorder's Chrome: from the page the recording started on, after the
+  recording's login flow, with the recorded values as its settings, the probe's timeouts, failure screenshot and
+  hidden secrets. Each step shows as it runs, passes with its time, or fails, opened on what it waited for, on which
+  page and line, the screenshot, and what to check by hand; the code marks each step's lines, the failed one in red,
+  and the console prints the result. **Run to here** (`Ctrl+Shift+Enter`) runs the flow up to the selected step,
+  **Stop** (`Esc`, `Shift+F5`) ends a run, and slow motion waits 500 ms before each action. A loop's line is followed
+  repeat by repeat, and a failure is told at its repeat. Nothing a test does is recorded: the recording pauses while it
+  runs.
 
 ## 1.3.0
 

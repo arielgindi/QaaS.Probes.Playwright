@@ -7,7 +7,7 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
 /// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, a helpdesk with
-/// a ticket table and a dialog to record in, and orders with a menu in a portal.
+/// a ticket table and a dialog to record in, orders with a menu in a portal, and a to-do list.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -87,6 +87,7 @@ public sealed class TestSite : IDisposable
             "/tickets" => $"""<p id="created">{WebUtility.HtmlEncode(CreateTicket(request.QueryString["name"]))}</p>""",
             "/helpdesk" => Helpdesk,
             "/orders" => Orders,
+            "/todos" => Todos,
             _ => "<h1>Home</h1>",
         };
         Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
@@ -139,6 +140,23 @@ public sealed class TestSite : IDisposable
             portal.querySelector('li').focus();
             portal.addEventListener('focusout', () => portal.remove());
           }
+        </script>
+        """;
+
+    // A list that takes two tasks, then no more: its field goes away. A page can raise the limit (window.limit).
+    private const string Todos = """
+        <h1>Tasks</h1>
+        <input id="new-task" aria-label="New task">
+        <ul id="tasks"></ul>
+        <script>
+          window.limit = 2;
+          const input = document.getElementById('new-task');
+          input.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || !input.value) return;
+            tasks.appendChild(document.createElement('li')).textContent = input.value;
+            input.value = '';
+            if (tasks.children.length >= window.limit) input.remove();
+          });
         </script>
         """;
 

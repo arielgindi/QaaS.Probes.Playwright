@@ -16,6 +16,8 @@ export interface PanelState {
   login?: string;
   /** The element picked in the Elements view, located as a recorded action's element is. */
   element?: PickedElement;
+  /** The flow's test run going on, or the last one. */
+  test?: TestRun;
   code: string;
   yaml: string;
   steps: Step[];
@@ -25,7 +27,66 @@ export interface PanelState {
   error?: string;
 }
 
-export type Status = 'recording' | 'paused' | 'login' | 'saving';
+export type Status = 'recording' | 'paused' | 'login' | 'testing' | 'saving';
+
+/** A test run of the flow as recorded so far (Panel/PanelView.cs, PanelTest). */
+export interface TestRun {
+  /** Changes with each run. */
+  run: number;
+  state: TestState;
+  /** How many actions the run goes through: all, or up to upTo. */
+  total: number;
+  /** The action "Run to here" runs to, including it. */
+  upTo?: string;
+  slowMotion?: boolean;
+  /** The login flow that runs first. */
+  login?: string;
+  /** When it started, in Unix milliseconds. */
+  started: number;
+  /** How long the browser's part took, once it ended. */
+  ms?: number;
+  /** The lines of the statement running; in a loop, of its body's statement, which every repeat runs. */
+  running?: Lines;
+  /** Each action's state, by its id. */
+  steps: Record<string, TestStep>;
+  failure?: TestFailure;
+  /** Why it could not run, e.g. no .NET SDK, and more about it. */
+  problem?: string;
+  problemDetail?: string;
+  warnings: string[];
+  /** The flow changed since: the results are of the code as it was then. */
+  stale?: boolean;
+}
+
+export type TestState = 'building' | 'login' | 'running' | 'passed' | 'failed' | 'stopped' | 'error';
+
+export interface TestStep {
+  state: 'running' | 'passed' | 'failed' | 'skipped';
+  ms?: number;
+  /** When it began, in Unix milliseconds, while it runs. */
+  since?: number;
+}
+
+export interface TestFailure {
+  /** The failure on one line, without Playwright's call log. */
+  message: string;
+  /** As the probe's report says it: with what it waited for, on which page. */
+  headline: string;
+  /** The action whose lines failed; none when the run failed before its first. */
+  action?: string;
+  /** The line of the code that failed, as it will be saved. */
+  line?: number;
+  waitingFor?: string;
+  url?: string;
+  /** The probe's failure screenshot, as a data: URL. */
+  screenshot?: string;
+  callLog?: string;
+  /** The login flow, when it is what failed. */
+  inLogin?: string;
+  /** What the recorder listed to check by hand in the action's lines. */
+  checks: string[];
+  hints: string[];
+}
 
 export interface Lines {
   first: number;
@@ -159,6 +220,9 @@ export type Command =
   | { type: 'rename'; name: string }
   | { type: 'save' }
   | { type: 'pause' }
+  | { type: 'test'; action?: string; slow: boolean }
+  | { type: 'stopTest' }
+  | { type: 'clearTest' }
   | { type: 'elements'; op: 'tree'; ids: number[]; on: boolean }
   | { type: 'elements'; op: 'search'; query: string; on: boolean }
   | { type: 'elements'; op: 'watch'; on: boolean }
