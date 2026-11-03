@@ -5,7 +5,8 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// only in the values typed or chosen, and in a locator only by a value its own repeat typed (the row of the item just
 /// added). Each such run becomes a step of its own that loops, over a list of the values each repeat typed (a list of
 /// records when a repeat typed several), or a number of times when the repeats typed none. Anything else that differs,
-/// another element or another action, leaves the actions as they are.
+/// another element or another action, leaves the actions as they are. A check the person chose after the last repeat
+/// follows the loop; one after any other ends it there.
 /// </summary>
 internal static class LoopFinder
 {
@@ -81,9 +82,14 @@ internal static class LoopFinder
             var template = actions.GetRange(start, length);
             if (!CanRepeat(template[^1])) break;
             var repeats = 1;
-            while (start + (repeats + 1) * length <= actions.Count
-                   && Same(template, actions.GetRange(start + repeats * length, length)))
+            while (start + (repeats + 1) * length <= actions.Count)
+            {
+                var next = actions.GetRange(start + repeats * length, length);
+                if (!Same(template, next)) break;
                 repeats++;
+                if (next[^1].Checks.Count > 0) break;
+            }
+
             if (repeats >= MinRepeats && (best is null || length * repeats > best.Value.Length * best.Value.Repeats))
                 best = (length, repeats);
         }
@@ -91,9 +97,9 @@ internal static class LoopFinder
         return best;
     }
 
-    private static bool CanRepeat(PlannedAction action) =>
-        Repeatable.Contains(action.Kind) && action.Locator is not null
-                                         && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind));
+    private static bool CanRepeat(PlannedAction action, bool mayCheck = false) =>
+        Repeatable.Contains(action.Kind) && action.Locator is not null && (mayCheck || action.Checks.Count == 0)
+        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind));
 
     private static bool Same(List<PlannedAction> template, List<PlannedAction> repeat)
     {
@@ -103,7 +109,7 @@ internal static class LoopFinder
         for (var index = 0; index < template.Count; index++)
         {
             var (first, other) = (template[index], repeat[index]);
-            var same = CanRepeat(other) && first.Kind == other.Kind && first.Source.Widget == other.Source.Widget
+            var same = CanRepeat(other, mayCheck: index == template.Count - 1) && first.Kind == other.Kind && first.Source.Widget == other.Source.Widget
                        && first.Dialog == other.Dialog && first.Source.Page == other.Source.Page
                        && first.Source.Key == other.Source.Key && first.Source.OnPage == other.Source.OnPage
                        && first.Source.HoverMenu == other.Source.HoverMenu && first.Has("tabSelected") == other.Has("tabSelected")

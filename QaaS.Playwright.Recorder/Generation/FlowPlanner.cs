@@ -8,7 +8,8 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// Turns a recording into a <see cref="FlowPlan"/>: drops what is only the way to an action (opening a Select, focusing a
 /// field), joins what belongs together (the text typed into an Autocomplete and the option then chosen), gives each
 /// recorded value a setting, splits the actions into steps where a dialog opens or closes or the page changes, folds
-/// what was done again and again into a loop, and ends a step where the page showed the result of an action.
+/// what was done again and again into a loop, and ends a step where the page showed the result of an action. A check
+/// the person chose goes with the action before it, and the person's edits of the settings apply last.
 /// </summary>
 internal static partial class FlowPlanner
 {
@@ -25,14 +26,19 @@ internal static partial class FlowPlanner
 
     public static FlowPlan Plan(Recording recording, string className)
     {
-        var plan = new FlowPlan { ClassName = className, StartUrl = recording.StartUrl, After = recording.After };
+        var plan = new FlowPlan
+        {
+            ClassName = className, StartUrl = recording.StartUrl, After = recording.After, AutoChecks = recording.AutoChecks,
+        };
         plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
-        var actions = Clean(recording.Actions.Select(Prepare).ToList());
+        var prepared = recording.Actions.Select(Prepare).ToList();
+        var actions = AttachChecks(prepared, Clean([.. prepared.Where(action => action.Kind != "expect")]));
         PlaceInDialogs(actions);
         AssignSettings(actions);
         SplitIntoSteps(actions, plan);
         LoopFinder.Fold(plan);
         SplitAtResults(plan);
+        ApplyEdits(plan);
         CollectSettings(plan);
         StepNamer.Name(plan);
         return plan;
@@ -90,6 +96,21 @@ internal static partial class FlowPlanner
         }
 
         return kept;
+    }
+
+    // A check goes with the action before it that the flow does; one before every action is a step's action itself.
+    private static List<PlannedAction> AttachChecks(List<PlannedAction> recorded, List<PlannedAction> kept)
+    {
+        var at = recorded.Select((action, index) => (action.Source.Id, index)).ToDictionary(pair => pair.Id, pair => pair.index);
+        var leading = new List<PlannedAction>();
+        foreach (var check in recorded.Where(action => action.Kind == "expect"))
+        {
+            if (kept.LastOrDefault(action => at[action.Source.Id] < at[check.Source.Id]) is { } before)
+                before.Checks.Add(check.Source);
+            else leading.Add(check);
+        }
+
+        return [.. leading, .. kept];
     }
 
     private static bool ChoiceFollows(List<PlannedAction> actions, int index, CapturedTarget? field)
@@ -317,6 +338,38 @@ internal static partial class FlowPlanner
         }
     }
 
+    // What the person changed about a setting in the panel: its name, its default, a run stamp, or a date from today. A
+    // setting of a loop takes only a default, as its name and the way it is typed are the list's.
+    private static void ApplyEdits(FlowPlan plan)
+    {
+        foreach (var step in plan.Steps)
+            foreach (var action in step.Actions)
+                foreach (var (role, setting) in action.Parts)
+                {
+                    if (action.Source.Edit?.Values?.GetValueOrDefault(role) is not { } edit) continue;
+                    if (edit is { DateFormat: { } format, Value: { } days } && WholeNumber().IsMatch(days) && step.Loop is null
+                        && setting.Type == "string")
+                    {
+                        (setting.DateFormat, setting.Type, setting.Name) = (format, "int", RelativeDate.Name(setting.Name));
+                        setting.Qualified = setting.Qualified is { } qualified ? RelativeDate.Name(qualified) : null;
+                    }
+
+                    if (edit.Value is { } value && Fits(value, setting.Type)) setting.Default = value;
+                    if (step.Loop is not null) continue;
+                    setting.Unique |= edit.Unique == true && setting is { Type: "string", Flag: null };
+                    if (CSharp.Pascal(edit.Name) is { } name) (setting.Name, setting.Named) = (name, true);
+                }
+    }
+
+    // A default the setting's type can hold, as the record and the YAML write it.
+    private static bool Fits(string value, string type) => type switch
+    {
+        "int" => WholeNumber().IsMatch(value),
+        "decimal" => WholeNumber().IsMatch(value) || DecimalNumber().IsMatch(value),
+        "string" => true,
+        _ => false,
+    };
+
     /// <summary>Each setting with the step that reads it first, in the order of the steps.</summary>
     public static IEnumerable<(Step Step, Setting Setting)> SettingsByStep(FlowPlan plan)
     {
@@ -342,7 +395,7 @@ internal static partial class FlowPlanner
         foreach (var list in plan.Settings.Where(setting => setting.ItemType is not null))
             list.ItemType = Unique(list.ItemType!, taken);
         var named = plan.Settings.GroupBy(setting => setting.Name, StringComparer.OrdinalIgnoreCase);
-        foreach (var group in named.Where(group => group.Count() > 1))
+        foreach (var group in named.Where(group => group.Count() > 1 && !group.Any(setting => setting.Named)))
         {
             var qualified = group.Select(setting => setting.Qualified).ToList();
             var tellApart = qualified.All(name => name is not null)
@@ -351,7 +404,8 @@ internal static partial class FlowPlanner
                 foreach (var setting in group) setting.Name = setting.Qualified!;
         }
 
-        foreach (var setting in plan.Settings) setting.Name = Unique(setting.Name, taken);
+        // A name the person gave keeps it.
+        foreach (var setting in plan.Settings.OrderByDescending(setting => setting.Named)) setting.Name = Unique(setting.Name, taken);
     }
 
     private static string Unique(string name, HashSet<string> taken)

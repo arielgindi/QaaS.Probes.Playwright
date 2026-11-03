@@ -10,6 +10,10 @@ internal sealed class FlowPlan
 
     /// <summary>The flow the recording started after, which a probe must run before it.</summary>
     public string? After { get; init; }
+
+    /// <summary>Whether to write auto checks, as the person turned them in the panel; null as the caller says.</summary>
+    public bool? AutoChecks { get; init; }
+
     public List<Step> Steps { get; } = [];
 
     /// <summary>The settings, in the order of the steps that read them.</summary>
@@ -36,6 +40,9 @@ internal sealed class PlannedAction
 
     public List<CapturedEffect> Effects { get; } = [];
 
+    /// <summary>The checks the person chose right after the action, which the flow makes after it.</summary>
+    public List<CapturedAction> Checks { get; } = [];
+
     /// <summary>What was typed into an Autocomplete before an option was chosen.</summary>
     public string? Search { get; set; }
 
@@ -48,26 +55,50 @@ internal sealed class PlannedAction
     /// <summary>The values the person typed, chose or checked for the action, in the order the flow uses them.</summary>
     public IEnumerable<Setting> Values => new[] { SearchValue, Value, OptionValue, ShownValue }.OfType<Setting>();
 
+    /// <summary>The settings the action reads, each with its part in it, as the person's edits name them.</summary>
+    public IEnumerable<(string Role, Setting Setting)> Parts =>
+        new[] { ("search", SearchValue), ("value", Value), ("option", OptionValue), ("shown", ShownValue), ("row", RowKey) }
+            .Where(part => part.Item2 is not null).Select(part => (part.Item1, part.Item2!));
+
     public bool Has(string effect) => Effects.Any(found => found.Kind == effect);
 }
 
 /// <summary>
 /// A property of the flow's settings record, with the value recorded as its default: a text, a flag or a number, or
-/// for a loop, the list of what each repeat typed.
+/// for a loop, the list of what each repeat typed. The person may give it another name or default, have the flow make
+/// it unique per run, or type a date as days from today.
 /// </summary>
 internal sealed class Setting(string name, string? text, bool? flag = null)
 {
     public string Name { get; set; } = name;
+
+    /// <summary>The value recorded, which text on the page that shows it is told by.</summary>
     public string? Text { get; } = text;
+
     public bool? Flag { get; } = flag;
+
+    /// <summary>The default the person gave it, else null for <see cref="Text"/>; for a relative date, the days.</summary>
+    public string? Default { get; set; }
+
+    /// <summary>The default as the flow's YAML and record hold it.</summary>
+    public string? Value => Default ?? Text;
+
+    /// <summary>The person named it: other settings give way to it.</summary>
+    public bool Named { get; set; }
+
+    /// <summary>The flow types it with its run's stamp appended (<c>Unique(...)</c>), so it never repeats.</summary>
+    public bool Unique { get; set; }
+
+    /// <summary>A date the flow types as <see cref="Value"/> days from the day it runs, in this format.</summary>
+    public string? DateFormat { get; set; }
 
     /// <summary>
     /// <c>string</c>, <c>bool</c>, <c>int</c> or <c>decimal</c>; for a list of values, an array of one of them.
     /// </summary>
-    public string Type { get; init; } = flag is null ? "string" : "bool";
+    public string Type { get; set; } = flag is null ? "string" : "bool";
 
     /// <summary>A name that tells it apart from another setting of the same name, e.g. <c>TicketToClose</c>.</summary>
-    public string? Qualified { get; init; }
+    public string? Qualified { get; set; }
 
     /// <summary>For a list: each repeat's values, one for a list of values, a record's fields for a list of records.</summary>
     public IReadOnlyList<IReadOnlyList<Setting>>? Items { get; init; }
