@@ -18,6 +18,8 @@ export interface PanelState {
   element?: PickedElement;
   /** The flow's test run going on, or the last one. */
   test?: TestRun;
+  /** The recording this one continues: a divider after its last action left, and a banner while it replays. */
+  continued?: { label: string; after?: string; banner?: string };
   code: string;
   yaml: string;
   steps: Step[];
