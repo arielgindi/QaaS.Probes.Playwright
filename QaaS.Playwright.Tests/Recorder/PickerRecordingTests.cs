@@ -84,7 +84,8 @@ public class PickerRecordingTests
             await person.ClickAsync(page.Locator("[name='carrier']"));
             await page.Keyboard.TypeAsync("Air Courier");
         }),
-        new("mui-autocomplete", "ChooseShippingAsync", "FillAsync(Configuration.ShippingSearch)", async (person, page) =>
+        // The letters typed to filter the list are part of the choice: the flow types the option's own text.
+        new("mui-autocomplete", "ChooseShippingAsync", "FillAsync(Configuration.Shipping)", async (person, page) =>
         {
             await person.ClickAsync(page.GetByRole(AriaRole.Combobox));
             await page.Keyboard.PressAsync("Control+A");

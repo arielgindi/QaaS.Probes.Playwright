@@ -223,6 +223,8 @@ internal static class CaptureScript
               else if (part.m === 'testid') locator = locator.getByTestId(part.value);
               else if (part.m === 'filter') locator = locator.filter({ hasText: part.hasText });
               else if (part.m === 'text') locator = locator.getByText(part.text, { exact: true });
+              else if (part.m === 'title') locator = locator.getByTitle(part.text, { exact: true });
+              else if (part.m === 'has') locator = locator.filter({ has: engine().getByText(part.text, { exact: true }) });
               else if (part.m === 'role') {
                 const options = {};
                 if (part.regex !== undefined) options.name = new RegExp(part.regex);
@@ -319,6 +321,21 @@ internal static class CaptureScript
           // that handles clicks (one with no more than one control in it), else the outermost one that looks clickable,
           // never above an item of a list of options: that item, when the list or what holds it handles the click; else
           // the row or cell, else what was hit.
+          // A click on a part of a widget hidden from assistive technology, as react-select's arrow is, is a click on the
+          // widget: its one control, the input of its box.
+          const fromDecoration = new WeakSet();
+          function widgetOfDecoration(hit) {
+            const decoration = closestUp(hit, '[aria-hidden=true]');
+            if (!decoration || decoration === document.body || controlsIn(decoration) > 0 || decoration.matches(DIALOGS)) return null;
+            for (let holder = upFrom(decoration), depth = 0; holder && depth < 4; holder = upFrom(holder), depth++) {
+              if (holder === document.body || holder.matches(DIALOGS)) return null;
+              const controls = [...holder.querySelectorAll(INTERACTIVE)].filter((control) => control.isConnected && !control.closest('[aria-hidden=true]'));
+              if (controls.length === 1) { fromDecoration.add(controls[0]); return controls[0]; }
+              if (controls.length > 1) return null;
+            }
+            return null;
+          }
+
           function retarget(hit) {
             const interactive = closestUp(hit, INTERACTIVE);
             const label = hit.closest('label');
@@ -327,6 +344,10 @@ internal static class CaptureScript
               if (control) return control;
             }
             if (interactive && !interactive.matches(CONTAINERS)) return interactive;
+            if (!interactive) {
+              const widget = widgetOfDecoration(hit);
+              if (widget) return widget;
+            }
             let handled = null;
             let clickable = null;
             let item = null;
@@ -495,7 +516,7 @@ internal static class CaptureScript
             for (const { text, index } of order) {
               const found = matches([{ m: 'role', role: 'row' }, { m: 'filter', hasText: text }]);
               if (found?.length === 1 && found[0] === row)
-                return { key: text, header: clean(headers[index]?.textContent ?? ''), element: row };
+                return { key: text, header: headers[index] ? shownText(headers[index]) : '', element: row };
             }
             return { key: null, header: null, element: row };
           }
@@ -567,6 +588,177 @@ internal static class CaptureScript
             return false;
           };
 
+          // ------------------------------------------------------------------------------- what a person reads beside it
+          // A class a library's author gave the element, which stays from build to build: not one a style library hashed
+          // (css-1x2y3z-control, sc-bdVaJa, jss12, makeStyles-root-3, Button_primary__3xYz1), nor a modifier its state
+          // turns on and off (oxd-select-text--focus, is-open).
+          const HASHED = /^(css|emotion|e|sc|styled|jsx|svelte|astro|tw)-[0-9a-zA-Z]{4,}(-.*)?$|^jss\d+$|^[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+-\d+$|^[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9-]+__[A-Za-z0-9_-]{5}$|^_[0-9a-zA-Z]{5,}$/;
+          const STATE_CLASS = /--|^(active|focus|focused|hover|selected|disabled|open|opened|show|shown|fade|in|collapsed|expanded|checked)$|^(is|has)-/i;
+          const libraryClass = (element) => [...(element.classList ?? [])].find((name) => name.length > 2 && !HASHED.test(name) &&
+            !STATE_CLASS.test(name) && !/[0-9]{3,}/.test(name));
+          // The element as CSS by what stays: its tag and a class of its library's, else its tag.
+          const libraryCss = (element) => {
+            const own = libraryClass(element);
+            return own ? `${element.tagName.toLowerCase()}.${CSS.escape(own)}` : element.tagName.toLowerCase();
+          };
+          const shownText = (element) => clean(element?.innerText ?? element?.textContent ?? '');
+
+          // What a person fills in, in a group: a field, a select's trigger, a group of checkboxes or radios as one.
+          const FILLABLE = 'input:not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]), ' +
+            'textarea, select, [role=combobox], [role=textbox], [role=switch], [contenteditable=true], [tabindex="0"]:not(button):not(a)';
+          function fieldsIn(group) {
+            let toggles = 0;
+            let others = 0;
+            for (const field of group.querySelectorAll(FILLABLE)) {
+              if (field.closest('[role=option], [role=listbox], [role=menu]') && !field.matches('[role=combobox]')) continue;
+              if (field.matches(TOGGLES)) toggles = 1;
+              else if (!field.parentElement?.closest(FILLABLE)) others++;
+            }
+            return toggles + others;
+          }
+          // Text a person reads as the label of what follows it: a label of no control, a legend, what is styled as one,
+          // or an element of text alone, short.
+          const LABEL_LIKE = 'label, legend, [class*=label i], [id*=label i], [class*=caption i]';
+          const isLabelText = (element) => {
+            const text = shownText(element);
+            if (!text || text.length > 50 || !hasLetters(text) || element.querySelector(FILLABLE) || element.matches(FILLABLE)) return false;
+            if (element.matches('label') && element.control) return false;
+            return element.matches(LABEL_LIKE) || [...element.children].every((child) => /^(SMALL|SPAN|B|STRONG|EM|I|SUP)$/.test(child.tagName));
+          };
+          // The label of the element's form group: the closest container holding the element as its one field, and one
+          // label of none other, before it. Null when the element has a label of its own, or shares the label with others.
+          // The widget a field is part of, which shows its value and prompt in it: the nearest around it that handles clicks
+          // or looks clickable, holding no other field, as react-select's control holds the value it shows.
+          function widgetAround(element) {
+            for (let node = element, depth = 0; node && depth < 4; node = upFrom(node), depth++) {
+              if (node === document.body || node.matches(DIALOGS) || fieldsIn(node) > 1) break;
+              if (node !== element && (hasClickHandler(node) || looksClickable(node))) return node;
+            }
+            return element;
+          }
+          const SHOWN_VALUE = /value|placeholder|selected|single|chip|tag|token|display/i;
+          function groupOf(element) {
+            if (!element || element === document.body) return null;
+            const own = new Set([...(element.labels ?? [])]);
+            const widget = widgetAround(element);
+            for (let group = upFrom(element), depth = 0; group && depth < 7; group = upFrom(group), depth++) {
+              if (group === document.body || group.matches(DIALOGS) || group.matches('form, table, [role=row], [role=table], [role=grid], tr')) break;
+              if (fieldsIn(group) > 1) break;
+              const labels = [...group.querySelectorAll(`${LABEL_LIKE}, div, p, span, h6, h5`)].filter((label) =>
+                !own.has(label) && !containsDeep(label, element) && !containsDeep(widget, label) && isLabelText(label) &&
+                !SHOWN_VALUE.test(label.getAttribute('class') ?? '') &&
+                !(label.matches('label') && label.control) && visible(label) &&
+                (label.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+                ![...label.children].some((child) => isLabelText(child) && shownText(child) === shownText(label)));
+              const outer = labels.filter((label) => !labels.some((other) => other !== label && containsDeep(other, label)));
+              if (outer.length === 1) return { label: shownText(outer[0]), group, labelElement: outer[0] };
+              if (outer.length > 1) break;
+            }
+            return null;
+          }
+          // What a select's prompt says, which aria-describedby points at: react-select's "Select State".
+          const describedBy = (element) => clean(idRefs(element, 'aria-describedby').map((ref) => ref.textContent).join(' ')) || null;
+
+          // The heading of the section the element is in: the nearest one before it in what holds both.
+          function sectionOf(element) {
+            for (let holder = upFrom(element), depth = 0; holder && depth < 12; holder = upFrom(holder), depth++) {
+              if (holder === document.body || holder.matches(DIALOGS)) return null;
+              const headings = [...holder.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')].filter((heading) =>
+                visible(heading) && !containsDeep(heading, element) &&
+                (heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) && shownText(heading).length <= 60 &&
+                hasLetters(shownText(heading)));
+              if (headings.length) return { heading: shownText(headings[headings.length - 1]), holder };
+            }
+            return null;
+          }
+
+          // The icon an element with no words is all of: a class of an icon font (bi-trash, fa-pen, mdi-delete), the text
+          // of a ligature font (material-icons "delete"), an SVG's data-icon or id (heart-svg). Its word, as the recorder
+          // names the element ("trash" is Delete), and the CSS that finds the element by it.
+          const ICON_CLASS = /^(bi|fa|fas|far|fab|fal|mdi|ti|ri|las|lar|glyphicon|icon|feather|ion|ph)-([a-z0-9-]+)$/;
+          const ICON_SUFFIX = /-(fill|filled|outline|outlined|alt|o|lg|sm|solid|regular|line|light|bold)$/;
+          function iconOf(element) {
+            if (hasLetters(shownText(element))) return null;
+            for (const icon of [element, ...element.querySelectorAll('i, svg, span, use, img')]) {
+              const iconClass = [...(icon.classList ?? [])].find((name) => ICON_CLASS.test(name) && !/^(fa|bi)-(fw|lg|xs|sm|\dx)$/.test(name));
+              if (iconClass) {
+                const word = iconClass.replace(ICON_CLASS, '$2').replace(ICON_SUFFIX, '');
+                const css = icon === element ? `${element.tagName.toLowerCase()}.${CSS.escape(iconClass)}`
+                  : `${element.tagName.toLowerCase()}:has(${icon.tagName.toLowerCase()}.${CSS.escape(iconClass)})`;
+                return { word, css };
+              }
+              if (icon.matches?.('.material-icons, .material-symbols-outlined, .material-icons-outlined') && /^[a-z_]+$/.test(icon.textContent.trim()))
+                return { word: icon.textContent.trim().replace(/_/g, '-'), css: null };
+              const named = icon.getAttribute?.('data-icon') || (icon.tagName === 'svg' && icon.id ? icon.id.replace(/[-_](svg|icon)$/i, '') : '');
+              if (named && /^[a-z][a-z-]*$/i.test(named)) return { word: named.toLowerCase(), css: null };
+            }
+            return null;
+          }
+
+          // A card or post among others like it: the outermost element of a class its library gave it that each card has, on
+          // the way from the card to the element, and the first short text of the card no other card has.
+          function cardOf(element) {
+            for (let item = element, depth = 0; item && depth < 9; item = upFrom(item), depth++) {
+              const parent = upFrom(item);
+              if (!parent || parent === document.body || item.matches(DIALOGS) || item.matches('tr, [role=row]')) return null;
+              const others = [...parent.children].filter((other) => other !== item && sameKind(other, item) && visible(other));
+              if (others.length < 1 || !hasLetters(item.textContent ?? '')) continue;
+              let holder = null;
+              for (let node = item; node && node !== element; node = [...node.children].find((child) => containsDeep(child, element))) {
+                const own = libraryClass(node);
+                if (own && others.every((other) => other.matches(`.${CSS.escape(own)}`) || other.querySelector(`.${CSS.escape(own)}`))) { holder = node; break; }
+              }
+              if (!holder) return null;
+              const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                const text = clean(node.textContent);
+                if (text.length < 3 || text.length > 60 || !hasLetters(text) || !node.parentElement || !visible(node.parentElement)) continue;
+                if (!others.some((other) => (other.textContent ?? '').includes(text))) return { item: holder, text };
+              }
+              return null;
+            }
+            return null;
+          }
+
+          // The candidates that find the element by what is around it: its form group's label, its section's heading, the
+          // card it is in, the nearest stable id around it, its icon, its title, its place in a table's header or a
+          // toolbar.
+          function nearbyCandidates(element, scope, role, name, found) {
+            const candidates = [];
+            const add = (kind, parts, extra) => { candidates.push(candidate(kind, scope, parts, element, extra)); };
+            const icon = iconOf(element);
+            // The element within what holds it: by its role and name, its icon, its class, its tag.
+            const inner = role && name ? [{ m: 'role', role, name, exact: true }]
+              : icon?.css ? [{ m: 'css', css: icon.css }]
+              : element.id && found(element.id) ? [{ m: 'css', css: `[id=${quote(element.id)}]` }]
+              : role ? [{ m: 'role', role }]
+              : [{ m: 'css', css: libraryCss(element) }];
+            const group = groupOf(element);
+            if (group) add('group', [{ m: 'css', css: libraryCss(group.group) }, { m: 'has', text: group.label }, ...inner], { text: group.label });
+            const section = sectionOf(element);
+            if (section && (role === 'button' || role === 'link') && name)
+              add('section', [{ m: 'css', css: libraryCss(section.holder) }, { m: 'has', text: section.heading }, ...inner], { text: section.heading });
+            const card = cardOf(element);
+            if (card && libraryClass(card.item))
+              add('item', [{ m: 'css', css: libraryCss(card.item) }, { m: 'filter', hasText: card.text }, ...inner], { text: card.text });
+            let ids = 0;
+            for (let holder = upFrom(element), depth = 0; holder && depth < 8 && ids < 2; holder = upFrom(holder), depth++) {
+              if (holder === document.body || holder.matches(DIALOGS)) break;
+              if (!holder.id || /^\d|[\s'"\\]/.test(holder.id)) continue;
+              ids++;
+              add('within', [{ m: 'css', css: `[id=${quote(holder.id)}]` }, ...inner], { value: holder.id });
+            }
+            if (icon?.css) add('icon', [{ m: 'css', css: icon.css }], { text: icon.word });
+            const title = element.getAttribute('title');
+            if (title && clean(title) && !hasLetters(shownText(element))) add('title', [{ m: 'title', text: clean(title) }], { text: clean(title) });
+            if (role && !name) {
+              const holder = closestUp(upFrom(element) ?? element, '[role=columnheader], [role=rowheader], th, [role=toolbar], [role=navigation], nav, [role=banner], header, [role=search], [role=menubar], [role=tablist]');
+              const holderRole = holder ? roleOf(holder) ?? { TH: 'columnheader', NAV: 'navigation', HEADER: 'banner' }[holder.tagName] : null;
+              if (holderRole) add('structure', [{ m: 'role', role: holderRole }, { m: 'role', role }], {});
+            }
+            return { candidates, group, section, icon };
+          }
+
           // Every way to find the element, each checked against the page as it is now. The recorder picks one.
           function describeTarget(element, dialog, dialogInfo, options = {}) {
             const scope = options.pageLevel ? [] : scopeOf(element, dialogInfo, dialog);
@@ -615,7 +807,10 @@ internal static class CaptureScript
             if (row?.key && role) {
               const name = clean(accessibleName(element));
               const rowParts = [{ m: 'role', role: 'row' }, { m: 'filter', hasText: row.key }];
-              const inner = row.element === element ? [] : name ? [{ m: 'role', role, name, exact: true }] : [{ m: 'role', role }];
+              // An icon button of no name by its icon: the row's trash, not its first button.
+              const rowIcon = !name ? iconOf(element) : null;
+              const inner = row.element === element ? [] : name ? [{ m: 'role', role, name, exact: true }]
+                : rowIcon?.css ? [{ m: 'css', css: rowIcon.css }] : [{ m: 'role', role }];
               candidates.push(candidate('row', scope, [...rowParts, ...inner], element, { text: name }));
             }
             if (role === 'option' && !candidates.some((found) => found.matches)) {
@@ -627,6 +822,10 @@ internal static class CaptureScript
                 candidates.push(candidate('role', scope, [{ m: 'role', role: 'listbox', name: listName, exact: true },
                   { m: 'role', role: 'option', name, exact: true }], element, { text: name }));
             }
+            const ownName = clean(accessibleName(element));
+            const nearby = nearbyCandidates(element, scope, role, ownName,
+              (id) => (matches([{ m: 'css', css: `[id=${quote(id)}]` }])?.length ?? 0) > 1);
+            candidates.push(...nearby.candidates);
             let labelText = null;
             if (!role || !NAME_FROM_CONTENT.has(role)) {
               const text = labelCandidate(element, scope);
@@ -642,6 +841,11 @@ internal static class CaptureScript
               label: listLabel(element, role) ||
                 clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref)).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
+              groupLabel: nearby.group?.label || null,
+              placeholder: element.getAttribute('placeholder') || describedBy(element),
+              section: nearby.section?.heading || null,
+              icon: nearby.icon?.word || null,
+              editable: isTextual(element) ? !element.readOnly && !element.disabled : undefined,
               interactive: options.interactive ??
                 (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,
@@ -715,15 +919,77 @@ internal static class CaptureScript
           // A date chosen in a MUI X picker is recorded as the date typed into its field: the calendar's clicks depend on
           // today's date, the field's value does not.
           let picker = null;
-          const fieldOfAdornment = (element) => element.closest('.MuiInputAdornment-root')
-            ?.closest('.MuiFormControl-root, .MuiTextField-root')?.querySelector('input:not([type=hidden])') ?? null;
-          function watchPicker(field) {
+          // A calendar: what holds a month of days, 28 of them at least, each a number of its own, under a month's name, a
+          // year, or a class that says so; the outermost such around what was clicked, short of the field it fills.
+          const DAY = /^\d{1,2}$/;
+          const MONTHS = /\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(tember)?|oct(ober)?|nov(ember)?|dec(ember)?|(19|20)\d\d)\b/i;
+          function isCalendar(element) {
+            let days = 0;
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node && days < 28; node = walker.nextNode())
+              if (DAY.test(node.textContent.trim()) && node.parentElement?.children.length === 0) days++;
+            return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''));
+          }
+          const holdsTextField = (element) => !!element.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea');
+          function calendarOf(hit) {
+            let calendar = null;
+            for (let node = hit, depth = 0; node && depth < 12; node = upFrom(node), depth++) {
+              if (node === document.body || holdsTextField(node)) break;
+              if (isCalendar(node)) calendar = node;
+              else if (calendar) break;
+            }
+            return calendar;
+          }
+          // The field a calendar fills: the one text field near it, else the one last focused.
+          function fieldOfCalendar(calendar) {
+            for (let holder = upFrom(calendar), depth = 0; holder && depth < 4; holder = upFrom(holder), depth++) {
+              const fields = [...holder.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio])')].filter((field) => !containsDeep(calendar, field));
+              if (fields.length === 1) return fields[0];
+              if (fields.length > 1) break;
+            }
+            return lastField?.isConnected ? lastField : null;
+          }
+          let lastField = null;
+          addEventListener('focusin', (event) => safe(() => { const field = deepTarget(event); if (field && isTextual(field)) lastField = field; }), true);
+          // A file chooser opened by what stands for it: a "Browse" beside the hidden file input of its group.
+          function fileInputNear(hit) {
+            for (let holder = hit, depth = 0; holder && depth < 4; holder = upFrom(holder), depth++) {
+              if (holder === document.body || holder.matches(FILLABLE) && !holder.matches('input[type=file]')) return null;
+              const inputs = holder.querySelectorAll('input[type=file]');
+              if (inputs.length === 1) return inputs[0];
+              if (inputs.length > 1) return null;
+            }
+            return null;
+          }
+          // The calendar icon of a date field, MUI's adornment or one beside the field in its group.
+          const fieldOfAdornment = (element) => {
+            const mui = element.closest('.MuiInputAdornment-root')
+              ?.closest('.MuiFormControl-root, .MuiTextField-root')?.querySelector('input:not([type=hidden])');
+            if (mui) return mui;
+            const said = `${element.getAttribute('class') ?? ''} ${element.getAttribute('aria-label') ?? ''} ${element.querySelector?.('i, svg, span')?.getAttribute('class') ?? ''}`;
+            if (!/calendar|date|picker/i.test(said)) return null;
+            for (let holder = upFrom(element), depth = 0; holder && depth < 3; holder = upFrom(holder), depth++) {
+              const fields = holder.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio])');
+              if (fields.length === 1) return fields[0];
+              if (fields.length > 1) return null;
+            }
+            return null;
+          };
+          const pickerOpen = (calendar) => calendar ? calendar.isConnected && visible(calendar)
+            : [...document.querySelectorAll(PICKER)].some(visible);
+          function calendarNear(field) {
+            for (let holder = upFrom(field), depth = 0; holder && depth < 4; holder = upFrom(holder), depth++)
+              for (const child of holder.querySelectorAll('div, table, section'))
+                if (!containsDeep(child, field) && visible(child) && isCalendar(child)) return child;
+            return null;
+          }
+          function watchPicker(field, calendar) {
             const description = describe(field);
             const before = valueOf(field);
             picker = { field, description, before, id: newId(), t: now() };
             const started = now();
             const poll = setInterval(() => safe(() => {
-              const open = [...document.querySelectorAll(PICKER)].some(visible);
+              const open = pickerOpen(calendar) || (!calendar && !!calendarNear(field));
               if (open && now() - started < 120000) return;
               clearInterval(poll);
               const state = picker;
@@ -753,17 +1019,32 @@ internal static class CaptureScript
             // Else the one trigger of a listbox that says it is open, as MUI's Select before it was a combobox.
             const open = [...new Set([...listbox.getRootNode().querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]'),
               ...document.querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]')])].filter((each) => !containsDeep(listbox, each));
-            return open.length === 1 ? open[0] : null;
+            if (open.length === 1) return open[0];
+            // Else the element clicked just before, when the list opened beside it, in what holds both, as OrangeHRM's
+            // select opens its list in its own wrapper: what tells which select the choice is of.
+            const clicked = lastClick?.element;
+            if (!clicked?.isConnected || containsDeep(listbox, clicked) || now() - lastClick.t > 60000) return null;
+            for (let holder = upFrom(clicked), depth = 0; holder && depth < 3; holder = upFrom(holder), depth++)
+              if (containsDeep(holder, listbox)) return clicked;
+            return null;
           };
 
           function draftFor(hit) {
             const picked = pickedFor(hit);
             const element = picked ?? retarget(hit);
             if (hit.closest(PICKER)) return { ignore: 'picker' };
+            // A day, a month or a year of a date picker's calendar: the flow types the date the field then shows.
+            const calendar = calendarOf(hit);
+            if (calendar) {
+              const field = fieldOfCalendar(calendar);
+              if (field && !picker) watchPicker(field, calendar);
+              return { ignore: 'picker' };
+            }
             const fileInput = element.matches('input[type=file]') ? element
-              : element.closest('label')?.control?.matches?.('input[type=file]') ? element.closest('label').control : null;
+              : element.closest('label')?.control?.matches?.('input[type=file]') ? element.closest('label').control
+              : fileInputNear(hit);
             if (fileInput) return { ignore: 'file chooser' };
-            if (isTextual(element) && !element.readOnly) return { ignore: 'focus', element };
+            if (isTextual(element) && !element.readOnly && !fromDecoration.has(element)) return { ignore: 'focus', element };
             const toggle = element.matches(TOGGLES) ? element : null;
             const option = closestUp(element, '[role=option]');
             if (option) {
@@ -787,7 +1068,7 @@ internal static class CaptureScript
             const equivalents = picked || widget ? [] : describeEquivalents(equivalentsOf(hit, element), info.target);
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
               ...(equivalents.length ? { equivalents } : {}),
-              adornmentField: element.tagName === 'BUTTON' ? fieldOfAdornment(element) : null,
+              adornmentField: !isTextual(element) ? fieldOfAdornment(element) : null,
               hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
           }
 
@@ -818,13 +1099,15 @@ internal static class CaptureScript
             }
             if (draft.kind === 'choose') {
               record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text, opener: owner ? openerOf(owner) : null });
-              if (owner) settleChoice(state.id, owner, listbox);
+              if (owner) settleChoice(state.id, owner, listbox, draft.option.text);
               return;
             }
             if (adornmentField) {
               // The picker's calendar opens a moment later; until then the click is held back.
               setTimeout(() => safe(() => {
                 if ([...document.querySelectorAll(PICKER)].some(visible)) { watchPicker(adornmentField); return; }
+                const calendar = calendarNear(adornmentField);
+                if (calendar) { watchPicker(adornmentField, calendar); return; }
                 emitClick(state, rest, element, via);
               }), 200);
               return;
@@ -832,24 +1115,61 @@ internal static class CaptureScript
             emitClick(state, rest, element, via);
           }
 
+          // Whether the page changed after a click, other than a field's focus or the pointer's hover: an element added or
+          // removed, a text or a state changed. A click on what is no control that changed nothing is noise.
+          const FLEETING = /focus|hover|active|ripple|pressed|touch|keyboard/i;
+          function watchChanges(id) {
+            if (!document.body) return;
+            const observer = new MutationObserver((mutations) => safe(() => {
+              const changed = mutations.some((mutation) => {
+                if (mutation.type === 'childList')
+                  return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node.nodeType === 1 || node.textContent.trim());
+                if (mutation.type === 'characterData') return !!mutation.target.textContent.trim();
+                if (['style', 'tabindex', 'aria-activedescendant'].includes(mutation.attributeName)) return false;
+                if (mutation.attributeName === 'class') {
+                  const before = new Set((mutation.oldValue ?? '').split(/\s+/).filter(Boolean));
+                  const after = new Set([...mutation.target.classList]);
+                  const turned = [...after].filter((name) => !before.has(name)).concat([...before].filter((name) => !after.has(name)));
+                  return turned.some((name) => !FLEETING.test(name));
+                }
+                return !/^data-(focus|hover)/.test(mutation.attributeName ?? '');
+              });
+              if (changed) { observer.disconnect(); effect('changed', {}, id); }
+            }));
+            observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true });
+            setTimeout(() => observer.disconnect(), 700);
+          }
+
           function emitClick(state, rest, element, via) {
-            const action = { ...rest, id: state.id, t: state.t, kind: 'click', via };
+            // The focus it left in a text field, the element itself or one in it: such a click may only have led to typing.
+            const focused = activeElement();
+            const focus = !!focused && isTextual(focused) && !focused.readOnly && (focused === element || containsDeep(element, focused));
+            const action = { ...rest, id: state.id, t: state.t, kind: 'click', via, watched: true, ...(focus ? { focus } : {}) };
             record(action);
+            watchChanges(state.id);
             lastClick = { element, t: state.t, record: action };
             if (rest.widget === 'tab') setTimeout(() => safe(() => {
               if (element.getAttribute('aria-selected') === 'true') effect('tabSelected', {}, state.id);
             }), 300);
           }
 
-          // The field shows the choice once its list has closed.
-          function settleChoice(id, owner, listbox) {
+          // The field shows the choice once its list has closed. A field of several choices shows each with a button that
+          // removes it ("Remove Maths"), or says so of its list, as a multi-select does.
+          function settleChoice(id, owner, listbox, chosen) {
             const started = now();
+            const multiple = listbox?.getAttribute('aria-multiselectable') === 'true' || owner.multiple === true;
             const poll = setInterval(() => safe(() => {
               const open = listbox?.isConnected && visible(listbox);
               if (open && now() - started < 1500) return;
               clearInterval(poll);
               const shown = owner.tagName === 'INPUT' || owner.tagName === 'SELECT' ? owner.value : owner.innerText || owner.textContent;
-              effect('settled', { value: normalizeValue(normalize(shown)), raw: shown, closed: !open }, id);
+              let root = owner;
+              for (let depth = 0; depth < 4 && upFrom(root) && upFrom(root) !== document.body && fieldsIn(upFrom(root)) <= 1; depth++) root = upFrom(root);
+              const removable = !!chosen && [...root.querySelectorAll('button, [role=button]')].some((button) => {
+                const said = clean(accessibleName(button));
+                return said.includes(chosen) && /remove|delete|clear|unselect|deselect/i.test(said);
+              });
+              effect('settled', { value: normalizeValue(normalize(shown)), raw: shown, closed: !open, multi: multiple || removable }, id);
             }), 50);
           }
 
@@ -872,6 +1192,8 @@ internal static class CaptureScript
             if (Math.hypot(event.clientX - state.x, event.clientY - state.y) > 8) {
               pending = null;
               state.done = true;
+              // A link or an image moved as it was clicked is the browser's own drag of it, which drops nowhere: nothing.
+              if (nativeDrag(state.draft.element)) return;
               const drop = deepTarget(event);
               const { element, adornmentField, owner, listbox, ...rest } = state.draft;
               record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
@@ -883,11 +1205,14 @@ internal static class CaptureScript
           }), { capture: true, passive: true });
 
           addEventListener('pointercancel', () => safe(() => { pending = null; }), { capture: true, passive: true });
+          const nativeDrag = (element) => !!element && !closestUp(element, '[draggable=true]') &&
+            (element.matches('a[href], img') || !!closestUp(element, 'a[href]'));
           addEventListener('dragstart', (event) => safe(() => {
             if (!event.isTrusted || !pending) return;
             const state = pending;
             pending = null;
             state.done = true;
+            if (nativeDrag(state.draft.element)) return;
             const { element, adornmentField, owner, listbox, ...rest } = state.draft;
             record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: null });
           }), true);

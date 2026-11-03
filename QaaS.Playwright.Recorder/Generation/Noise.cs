@@ -48,7 +48,10 @@ internal static partial class Noise
     public static bool OnlyFocuses(PlannedAction click, PlannedAction? next) =>
         click.Kind == "click" && !HasResult(click)
         && (click.Source.Focus == true || IsTextField(click.Source.Target))
-        && next is not { Kind: "choose", Source.Widget: "option" };
+        && next is not { Kind: "choose", Source.Widget: "option" }
+        // A list it opened, whose item the next click picks.
+        && !(next is { Kind: "click" or "dblclick" } && next.Key != click.Key
+             && (next.Source.Target is { Item: true } || next.Source.Target?.Role is "option" or "menuitem" or "listitem"));
 
     /// <summary>A text field a person types in, as the capture script described it.</summary>
     public static bool IsTextField(CapturedTarget? target) =>
