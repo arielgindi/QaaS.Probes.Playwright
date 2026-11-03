@@ -421,6 +421,8 @@ internal sealed partial class FlowWriter
             }
             case "fill":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
+                // A picker that keeps a date only once its OK commits it, as antd's, takes Enter as its OK.
+                if (source.Committed == true) _step.Add($"await {Locate(action, ref problem)}{Break}.PressAsync(\"Enter\");");
                 break;
             // A checkbox under the box drawn over it is ticked through that box, as the person clicked it.
             case "check" or "uncheck" when source.Widget == "radio":

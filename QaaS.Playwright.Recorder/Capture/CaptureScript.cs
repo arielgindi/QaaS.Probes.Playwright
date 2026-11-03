@@ -991,8 +991,13 @@ internal static class CaptureScript
             const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
             for (let node = walker.nextNode(); node && days < 28; node = walker.nextNode())
               if (DAY.test(node.textContent.trim()) && node.parentElement?.children.length === 0) days++;
-            return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''));
+            return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''))
+              // A calendar a library names so, in the view of the months of a year or of the years of a decade too, as
+              // Kendo's does: its "Navigate to parent view: 2026" names today's year.
+              || /calendar|datepicker|date-picker|picker-panel|picker-dropdown|picker-popup/i.test(element.getAttribute('class') ?? '');
           }
+          // The button that commits what a picker shows, as antd's OK: a date picked is kept only once it is pressed.
+          const COMMITS = /^(ok|apply|done|set|confirm|select)$/i;
           const holdsTextField = (element) => !!element.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea');
           function calendarOf(hit) {
             let calendar = null;
@@ -1061,7 +1066,8 @@ internal static class CaptureScript
               if (!state || valueOf(state.field) === state.before) return;
               remember(state.id);
               record({ ...state.description, id: state.id, t: state.t, kind: 'fill', final: true, widget: 'date',
-                value: normalizeValue(valueOf(state.field)), raw: valueOf(state.field), picked: true });
+                value: normalizeValue(valueOf(state.field)), raw: valueOf(state.field), picked: true,
+                ...(state.committed ? { committed: true } : {}) });
             }), 150);
           }
 
@@ -1120,6 +1126,8 @@ internal static class CaptureScript
             if (calendar) {
               const field = fieldOfCalendar(calendar);
               if (field && !picker) watchPicker(field, calendar);
+              const button = closestUp(hit, 'button, [role=button]');
+              if (picker && button && COMMITS.test(clean(button.innerText || button.textContent || ''))) picker.committed = true;
               return { ignore: 'picker' };
             }
             const fileInput = element.matches('input[type=file]') ? element

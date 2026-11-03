@@ -799,7 +799,10 @@ The element you meant, which is not always the one under the pointer:
 
 A click on a part of a widget hidden from assistive technology, as react-select's arrow is, records the widget's one
 control; one on the value a custom select shows records the select. A click in a date picker's calendar records
-nothing: the date the field then shows is recorded as typed into it. A click that opens a file chooser through what
+nothing, in its view of a month, of a year or of a decade alike, as its "Navigate to parent view: 2026" names today's
+year: the date the field then shows is recorded as typed into it, as MUI's, antd's and Kendo's pickers all take it.
+When the picker kept it only once you pressed its OK, as antd's does, the flow presses Enter in the field after typing
+it. A click that opens a file chooser through what
 stands for it ("Browse") records nothing; the file chosen is the upload.
 
 So a click on the title of a card, a tile or a carousel's slide records the card, and keeps it in the flow, though
