@@ -129,10 +129,13 @@ public class PickerRecordingTests
     {
         using var site = TestSite.Start();
         using var atOnce = new SemaphoreSlim(AtOnce);
+        // Recorded side by side, each in a browser of its own; tested one at a time, as the panel tests, since a test
+        // run takes its build out of caches the whole process shares when it ends.
+        using var oneTest = new SemaphoreSlim(1);
         var results = await Task.WhenAll(Pickers.Select(async picker =>
         {
             await atOnce.WaitAsync();
-            try { return await RecordAndTestAsync(site, picker); }
+            try { return await RecordAndTestAsync(site, picker, oneTest); }
             finally { atOnce.Release(); }
         }));
 
@@ -158,7 +161,8 @@ public class PickerRecordingTests
 
     // Records the picker's flow as a person would: opens the order with the id-only button, types the customer, opens
     // the choices, chooses, confirms and creates the order; then tests the flow as the panel does.
-    private static async Task<(Picker Picker, string Code, TestReport Report)> RecordAndTestAsync(TestSite site, Picker picker)
+    private static async Task<(Picker Picker, string Code, TestReport Report)> RecordAndTestAsync(TestSite site, Picker picker,
+        SemaphoreSlim oneTest)
     {
         var url = $"{site.Url}/pickers/{picker.Name}";
         var session = await RecordingSession.StartAsync(new RecordingOptions(url)
@@ -181,9 +185,17 @@ public class PickerRecordingTests
                 await Task.Delay(100);
 
             var code = FlowCodeGenerator.Generate(session.Build(), "NewOrder", "Flows").Code;
-            await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
-            var report = await tester.RunAsync(RecordRequest.Parse(["record", "new-order", url]), "Flows");
-            return (picker, code, report);
+            await oneTest.WaitAsync();
+            try
+            {
+                await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
+                var report = await tester.RunAsync(RecordRequest.Parse(["record", "new-order", url]), "Flows");
+                return (picker, code, report);
+            }
+            finally
+            {
+                oneTest.Release();
+            }
         }
         finally
         {
