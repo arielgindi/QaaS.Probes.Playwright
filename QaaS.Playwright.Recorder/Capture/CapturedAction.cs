@@ -100,6 +100,15 @@ internal sealed class CapturedAction
     /// <summary>The item was in a menu that opened without a click, as one that opens on hover.</summary>
     public bool? HoverMenu { get; set; }
 
+    /// <summary>For a click: it left the focus in a text field, the element itself or one in it.</summary>
+    public bool? Focus { get; set; }
+
+    /// <summary>
+    /// For a click: the page was watched for what changed after it, so an action without a <c>changed</c> effect changed
+    /// nothing. A recording of an older recorder has no such watch.
+    /// </summary>
+    public bool? Watched { get; set; }
+
     public List<CapturedEffect> Effects { get; set; } = [];
 
     /// <summary>Added in the panel rather than done in the app, so it caused nothing.</summary>
@@ -191,6 +200,25 @@ internal sealed class CapturedTarget
     public string? Text { get; set; }
 
     public string? Label { get; set; }
+
+    /// <summary>
+    /// The label a person reads beside the element, though nothing ties it to it: the label of its form group, of its row
+    /// or column, or the text its <c>aria-describedby</c> points at, such as a select's "Select State".
+    /// </summary>
+    public string? GroupLabel { get; set; }
+
+    /// <summary>The placeholder of a field, which its accessible name may come from.</summary>
+    public string? Placeholder { get; set; }
+
+    /// <summary>The heading of the section the element is in, when the page has more than one: "Personal Details".</summary>
+    public string? Section { get; set; }
+
+    /// <summary>For an element with no text, the word its icon says: <c>trash</c>, <c>pencil</c>, <c>plus</c>, <c>heart</c>.</summary>
+    public string? Icon { get; set; }
+
+    /// <summary>A field the person can type in: a text input that is not read-only, a text area, an editable element.</summary>
+    public bool? Editable { get; set; }
+
     public bool Interactive { get; set; }
 
     /// <summary>One of a list of like items, or in one: an option, a card among cards, a link of a menu.</summary>
@@ -322,7 +350,8 @@ internal sealed class CapturedEffect
 {
     /// <summary>
     /// <c>dialogOpened</c>, <c>dialogClosed</c>, <c>alert</c>, <c>tabSelected</c>, <c>settled</c> (a list closed and
-    /// its field shows the choice), <c>busy</c> (a busy indicator came up and went away: <see cref="Value"/> is
+    /// its field shows the choice), <c>changed</c> (the page added, removed or changed something after a click),
+    /// <c>busy</c> (a busy indicator came up and went away: <see cref="Value"/> is
     /// <c>progressbar</c> or <c>ariaBusy</c>), <c>urlChanged</c>, <c>popup</c> or <c>jsDialog</c>.
     /// </summary>
     public string Kind { get; set; } = "";
@@ -343,4 +372,7 @@ internal sealed class CapturedEffect
     public string? Raw { get; set; }
     public string? Url { get; set; }
     public string? Page { get; set; }
+
+    /// <summary>For <c>settled</c>: the field holds several choices, as a multi-select does, each one removable.</summary>
+    public bool? Multi { get; set; }
 }

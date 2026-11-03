@@ -1,88 +1,64 @@
 namespace QaaS.Playwright.Recorder.Generation;
 
 /// <summary>
-/// Finds what the person did three times or more in a row: the same kinds of actions on the same elements, differing
-/// only in the values typed or chosen, and in a locator only by a value its own repeat typed (the row of the item just
-/// added). Each such run becomes a step of its own that loops, over a list of the values each repeat typed (a list of
-/// records when a repeat typed several), or a number of times when the repeats typed none. Anything else that differs,
-/// another element or another action, leaves the actions as they are. A check the person chose after the last repeat
-/// follows the loop; one after any other ends it there.
+/// Finds what the person did again and again in a row: the same kinds of actions on the same elements, differing only in
+/// the values typed or chosen, the row acted on (by its key) or the checkbox of a group ticked (by its label), and in a
+/// locator only by those. A round may go through a dialog it opens and closes, as ticking a row, its trash button, and
+/// "Yes, Delete" in the dialog that asks do. Three rounds or more make a loop; two do for the choices of a multi-select.
+/// Each loop becomes a step of its own, over a list of what each round typed, chose or acted on (a list of records when
+/// a round has several), or a number of times when a round holds none, but only when each round did something the page
+/// showed: clicking a button again that did nothing is no loop. Anything else that differs, another element or another
+/// action, leaves the actions as they are. A check the person chose after the last round follows the loop; one after any
+/// other ends it there.
 /// </summary>
 internal static class LoopFinder
 {
     private const int MinRepeats = 3;
 
+    // The choices of a multi-select are a list however few.
+    private const int MinChoices = 2;
+
     // A value is looked for in a locator when it has this many characters: "2" is part of too many.
     private const int MinValueInLocator = 3;
 
     private static readonly HashSet<string> Repeatable = ["click", "dblclick", "fill", "check", "uncheck", "choose", "press"];
-    private static readonly HashSet<string> Unrepeatable = ["dialogOpened", "dialogClosed", "urlChanged", "popup", "jsDialog"];
+    private static readonly HashSet<string> Unrepeatable = ["urlChanged", "popup", "jsDialog"];
 
     // What a button that adds an item of a list starts with: "Add line" adds a Line.
     private static readonly string[] AddingVerbs = ["Add", "Create", "New", "Insert", "Append", "Save", "Submit", "Enter"];
 
-    public static void Fold(FlowPlan plan)
+    /// <summary>The loops among the actions: where each starts, its round's length, and how many rounds.</summary>
+    public static List<(int Start, int Length, Loop Loop)> Find(List<PlannedAction> actions)
     {
-        var steps = plan.Steps.SelectMany(Split).ToList();
-        plan.Steps.Clear();
-        plan.Steps.AddRange(steps);
+        var loops = new List<(int, int, Loop)>();
+        for (var start = 0; start < actions.Count;)
+        {
+            if (Longest(actions, start) is { } found)
+            {
+                loops.Add((start, found.Length, Loop(actions, start, found.Length, found.Repeats)));
+                start += found.Length * found.Repeats;
+            }
+            else
+                start++;
+        }
+
+        return loops;
     }
 
     /// <summary>The action's row is the one of a value its own repeat typed, so the loop finds it by that value.</summary>
     public static bool RowFromValue(PlannedAction action, IEnumerable<PlannedAction> repeat) =>
         action.RowKey?.Text is { } key && repeat.SelectMany(other => other.Values).Any(value => value.Text == key);
 
-    private static IEnumerable<Step> Split(Step step)
-    {
-        var actions = step.Actions;
-        var loops = new List<(int Start, int Length, int Repeats)>();
-        for (var start = 0; start < actions.Count;)
-        {
-            if (Longest(actions, start) is { } loop)
-            {
-                loops.Add((start, loop.Length, loop.Repeats));
-                start += loop.Length * loop.Repeats;
-            }
-            else
-                start++;
-        }
-
-        if (loops.Count == 0)
-        {
-            yield return step;
-            yield break;
-        }
-
-        var at = 0;
-        foreach (var (start, length, repeats) in loops)
-        {
-            if (start > at) yield return Part(step, at, start, ended: false);
-            var looped = Part(step, start, start + length * repeats, ended: false);
-            looped.Loop = Loop(actions, start, length, repeats);
-            yield return looped;
-            at = start + length * repeats;
-        }
-
-        if (at < actions.Count) yield return Part(step, at, actions.Count, step.Ended);
-    }
-
-    private static Step Part(Step step, int from, int to, bool ended)
-    {
-        var part = new Step { Page = step.Page, Dialog = step.Dialog, Ended = ended };
-        part.Actions.AddRange(step.Actions.GetRange(from, to - from));
-        return part;
-    }
-
     // The run of repeats from start that covers the most actions; of two that cover as many, the one of fewer actions.
     private static (int Length, int Repeats)? Longest(List<PlannedAction> actions, int start)
     {
         (int Length, int Repeats)? best = null;
-        for (var length = 1; start + length * MinRepeats <= actions.Count; length++)
+        for (var length = 1; start + length * MinChoices <= actions.Count; length++)
         {
             var template = actions.GetRange(start, length);
-            if (!CanRepeat(template[^1])) break;
+            if (!CanRepeat(template[^1], mayCheck: true) || !Balanced(template)) continue;
             var repeats = 1;
-            while (start + (repeats + 1) * length <= actions.Count)
+            while (start + (repeats + 1) * length <= actions.Count && template[^1].Checks.Count == 0)
             {
                 var next = actions.GetRange(start + repeats * length, length);
                 if (!Same(template, next)) break;
@@ -90,18 +66,43 @@ internal static class LoopFinder
                 if (next[^1].Checks.Count > 0) break;
             }
 
-            if (repeats >= MinRepeats && (best is null || length * repeats > best.Value.Length * best.Value.Repeats))
-                best = (length, repeats);
+            var rounds = actions.GetRange(start, length * repeats).Chunk(length).ToList();
+            var least = length == 1 && rounds.All(round => Noise.IsMulti(round[0], actions)) ? MinChoices : MinRepeats;
+            if (repeats < least || !HasEvidence(rounds)) continue;
+            if (best is null || length * repeats > best.Value.Length * best.Value.Repeats) best = (length, repeats);
         }
 
         return best;
     }
 
+    // A round that holds no value repeats only what each round showed for itself: a row added, a message, a wait. A click
+    // repeated that changed nothing is the person trying again, which a loop would only do again.
+    private static bool HasEvidence(List<PlannedAction[]> rounds) =>
+        rounds[0].Any(action => LoopValues(action, rounds[0]).Any())
+        || rounds.All(round => round.Any(action => action.Effects.Count > 0));
+
     private static bool CanRepeat(PlannedAction action, bool mayCheck = false) =>
         Repeatable.Contains(action.Kind) && action.Locator is not null && (mayCheck || action.Checks.Count == 0)
         && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind));
 
-    private static bool Same(List<PlannedAction> template, List<PlannedAction> repeat)
+    // A round that opens a dialog closes it again, so the next round starts where it started.
+    private static bool Balanced(List<PlannedAction> template)
+    {
+        var open = new List<string?>();
+        foreach (var effect in template.SelectMany(action => action.Effects))
+        {
+            if (effect.Kind == "dialogOpened") open.Add(effect.Dialog?.Title);
+            else if (effect.Kind == "dialogClosed" && !open.Remove(effect.Dialog?.Title)) return false;
+        }
+
+        return open.Count == 0 && template.All(action => action.Dialog == template[0].Dialog
+                                                         || template.Any(opener => Opens(opener, action.Dialog)));
+    }
+
+    private static bool Opens(PlannedAction action, string? dialog) =>
+        action.Effects.Any(effect => effect.Kind == "dialogOpened" && effect.Dialog?.Title == dialog);
+
+    private static bool Same(List<PlannedAction> template, IReadOnlyList<PlannedAction> repeat)
     {
         var templateValues = ValuesOf(template);
         var repeatValues = ValuesOf(repeat);
@@ -113,7 +114,9 @@ internal static class LoopFinder
                        && first.Dialog == other.Dialog && first.Source.Page == other.Source.Page
                        && first.Source.Key == other.Source.Key && first.Source.OnPage == other.Source.OnPage
                        && first.Source.HoverMenu == other.Source.HoverMenu && first.Has("tabSelected") == other.Has("tabSelected")
-                       && first.Values.Select(Shape).SequenceEqual(other.Values.Select(Shape))
+                       && first.Has("dialogOpened") == other.Has("dialogOpened") && first.Has("dialogClosed") == other.Has("dialogClosed")
+                       && LoopValues(first, template).Select(value => Shape(first, value))
+                           .SequenceEqual(LoopValues(other, repeat).Select(value => Shape(other, value)))
                        && Templated(first, templateValues) == Templated(other, repeatValues);
             if (!same) return false;
         }
@@ -121,9 +124,28 @@ internal static class LoopFinder
         return true;
     }
 
-    private static (string Name, string Kind) Shape(Setting value) => (value.Name, value.IsNumber ? "number" : value.Type);
+    // A checkbox of a group is told by its group, as the flag of each has its own label's name.
+    private static (string Name, string Kind) Shape(PlannedAction action, Setting value) =>
+        value.Flag is not null && action.Member is { } member ? (member.Name + "Ticked", "bool")
+        : (value.Name, value.IsNumber ? "number" : value.Type);
 
-    private static List<Setting> ValuesOf(IEnumerable<PlannedAction> actions) => [.. actions.SelectMany(action => action.Values)];
+    /// <summary>
+    /// What a round's action holds that may change from round to round: the values it typed or chose, the key of the row
+    /// it acts on unless a value the round typed is that key, and a checkbox's label in its group.
+    /// </summary>
+    public static IEnumerable<Setting> LoopValues(PlannedAction action, IEnumerable<PlannedAction> round)
+    {
+        foreach (var value in action.Values) yield return value;
+        if (action.RowKey is { } row && !RowFromValue(action, round)) yield return row;
+        if (action.Member is { } member) yield return member;
+    }
+
+    /// <summary>What a round holds that may change from round to round, each setting once, as two actions on one row read one key.</summary>
+    public static List<Setting> ValuesOf(IEnumerable<PlannedAction> actions)
+    {
+        var round = actions.ToList();
+        return [.. round.SelectMany(action => LoopValues(action, round)).Distinct()];
+    }
 
     // The locator with each of the repeat's values in it marked by its place among them, so that two repeats compare equal
     // when their locators differ only by their own values. Only where the flow can put the loop's value back: a role's
@@ -136,7 +158,8 @@ internal static class LoopFinder
         {
             var marked = values.Select((value, index) => (value.Text, Index: index))
                 .Where(value => value.Text is { Length: >= MinValueInLocator }
-                                || (value.Text is { Length: > 0 } && value.Text == own))
+                                || (value.Text is { Length: > 0 } && (value.Text == own || value.Text == action.Member?.Text
+                                                                      || value.Text == action.RowKey?.Text)))
                 .OrderByDescending(value => value.Text!.Length);
             foreach (var (value, index) in marked) text = text.Replace(value!, $"\u0001{index}\u0001", StringComparison.Ordinal);
             return text;
@@ -156,8 +179,23 @@ internal static class LoopFinder
     private static Loop Loop(List<PlannedAction> actions, int start, int length, int repeats)
     {
         var template = actions.GetRange(start, length);
-        var items = Enumerable.Range(0, repeats).Select(repeat => ValuesOf(actions.GetRange(start + repeat * length, length)))
-            .ToList();
+        var rounds = Enumerable.Range(0, repeats).Select(repeat => actions.GetRange(start + repeat * length, length)).ToList();
+        var items = rounds.Select(ValuesOf).ToList();
+
+        // A flag every round set alike is no value of the list: the flow ticks or unticks, as each round did.
+        var constant = Enumerable.Range(0, items[0].Count)
+            .Where(index => items[0][index].Flag is not null && items.All(item => item[index].Flag == items[0][index].Flag))
+            .ToHashSet();
+        foreach (var round in rounds)
+        {
+            var values = ValuesOf(round);
+            var alike = constant.Select(index => values[index]).ToHashSet();
+            foreach (var action in round.Where(action => action.Value is { } flag && alike.Contains(flag))) action.Value = null;
+        }
+
+        items = [.. items.Select(item => item.Where((_, index) => !constant.Contains(index)).ToList())];
+        var holds = items.SelectMany(item => item).ToHashSet();
+
         if (items[0].Count == 0)
             return new Loop
             {
@@ -172,8 +210,9 @@ internal static class LoopFinder
         if (fields.Count == 1)
             return new Loop
             {
-                Length = length, Repeats = repeats,
-                List = new Setting(Plural(fields[0].Name), null) { Type = fields[0].Type + "[]", Items = items, Fields = fields },
+                Length = length, Repeats = repeats, Holds = holds,
+                List = new Setting(ListName(template, items[0][0]), null)
+                    { Type = fields[0].Type + "[]", Items = items, Fields = fields },
             };
 
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -191,10 +230,37 @@ internal static class LoopFinder
         if (names.Contains(itemType)) itemType += "Item";
         return new Loop
         {
-            Length = length, Repeats = repeats,
+            Length = length, Repeats = repeats, Holds = holds,
             List = new Setting(Plural(itemType), null) { ItemType = itemType, Items = items, Fields = fields },
         };
     }
+
+    // The list of one value: the plural of its name; of rows acted on, the rows' key and what the round does to them,
+    // as "UsernamesToDelete".
+    private static string ListName(List<PlannedAction> round, Setting value)
+    {
+        var plural = Plural(value.Name);
+        if (!round.Any(action => action.RowKey == value)) return plural;
+        var verb = Verb(round);
+        return verb is null ? plural : $"{plural}To{verb}";
+    }
+
+    /// <summary>
+    /// What a round does, by its button: the first word of a click on its row ("Delete" for a row's trash), else of the
+    /// last click's last word when it is a verb ("Yes, Delete"); else what it does to a checkbox.
+    /// </summary>
+    public static string? Verb(IReadOnlyList<PlannedAction> round)
+    {
+        foreach (var click in round.Where(action => action is { Kind: "click" or "dblclick", RowKey: not null }))
+            if (CSharp.Pascal(StepNamer.Label(click, without: click.RowKey?.Text)) is { } label && StepNamer.IsVerb(FirstWord(label)))
+                return FirstWord(label);
+        if (round.LastOrDefault(action => action.Kind == "click") is { } last && StepNamer.Label(last) is { } said
+            && CSharp.Pascal(said.Split(' ', ',').LastOrDefault(word => word.Length > 0)) is { } lastWord && StepNamer.IsVerb(lastWord))
+            return lastWord;
+        return round.Any(action => action.Kind == "uncheck") ? "Uncheck" : round.Any(action => action.Kind == "check") ? "Check" : null;
+    }
+
+    private static string FirstWord(string pascal) => StepNamer.Words(pascal).FirstOrDefault() ?? pascal;
 
     // What the repeat adds, by the button that ends it: "Add line" adds a Line.
     private static string ItemName(PlannedAction last)
@@ -219,13 +285,34 @@ internal static class LoopFinder
         return null;
     }
 
-    /// <summary>The English plural of a PascalCase name's last word: Line gives Lines, Category Categories.</summary>
+    /// <summary>
+    /// The English plural of a PascalCase name's last word: Line gives Lines, Category Categories; a name that already
+    /// is one stays: Subjects, Hobbies.
+    /// </summary>
     public static string Plural(string name)
     {
+        if (IsPlural(name)) return name;
         if (name.EndsWith('y') && name.Length > 1 && !"aeiou".Contains(name[^2])) return name[..^1] + "ies";
         return name.EndsWith('s') || name.EndsWith('x') || name.EndsWith('z') || name.EndsWith("ch", StringComparison.Ordinal)
                || name.EndsWith("sh", StringComparison.Ordinal)
             ? name + "es"
             : name + "s";
     }
+
+    /// <summary>The singular of a PascalCase plural: Hobbies gives Hobby, Subjects Subject, Boxes Box.</summary>
+    public static string Singular(string name)
+    {
+        if (!IsPlural(name)) return name;
+        if (name.EndsWith("ies", StringComparison.Ordinal)) return name[..^3] + "y";
+        return name.EndsWith("ches", StringComparison.Ordinal) || name.EndsWith("shes", StringComparison.Ordinal)
+               || name.EndsWith("xes", StringComparison.Ordinal) || name.EndsWith("sses", StringComparison.Ordinal)
+            ? name[..^2]
+            : name[..^1];
+    }
+
+    // A last word ending in an s that is no part of the word itself: Subjects, Hobbies; not Status, Address, Analysis.
+    private static bool IsPlural(string name) =>
+        name.Length > 3 && name.EndsWith('s') && !name.EndsWith("ss", StringComparison.Ordinal)
+        && !name.EndsWith("us", StringComparison.Ordinal) && !name.EndsWith("is", StringComparison.Ordinal)
+        && !name.EndsWith("os", StringComparison.Ordinal);
 }

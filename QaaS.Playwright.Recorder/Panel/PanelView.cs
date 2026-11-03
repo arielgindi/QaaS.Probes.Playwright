@@ -477,23 +477,8 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return [.. ids.Skip(Math.Max(from, 0))];
     }
 
-    // Each action of the flow, what only led to it since the action before it (opening a Select, typing into an
-    // Autocomplete), and the checks after it.
-    private static Dictionary<string, IReadOnlyList<string>> SourcesOf(Recording recording, List<PlannedAction> planned)
-    {
-        var ids = recording.Actions.Select(action => action.Id).ToList();
-        var sources = new Dictionary<string, IReadOnlyList<string>>();
-        for (var index = 0; index < planned.Count; index++)
-        {
-            var action = planned[index];
-            var at = ids.IndexOf(action.Source.Id);
-            var from = index > 0 ? ids.IndexOf(planned[index - 1].Source.Id) + 1 : 0;
-            var led = at > from ? recording.Actions.Skip(from).Take(at - from).Where(other => other.Kind != "expect") : [];
-            sources.TryAdd(action.Source.Id, [.. led.Select(other => other.Id), action.Source.Id, .. action.Checks.Select(check => check.Id)]);
-        }
-
-        return sources;
-    }
+    private static Dictionary<string, IReadOnlyList<string>> SourcesOf(Recording recording, List<PlannedAction> planned) =>
+        FlowPlanner.Sources(recording, planned);
 
     // The last action the flow does, and every recorded action after the one before it: what only led to it (opening
     // a Select, typing into an Autocomplete) goes with it. A check chosen last goes alone.

@@ -24,8 +24,6 @@ internal static partial class FlowPlanner
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
 
-    private const string MuiSelectId = "mui-component-select-";
-
     public static FlowPlan Plan(Recording recording, string className)
     {
         var plan = new FlowPlan
@@ -37,12 +35,12 @@ internal static partial class FlowPlanner
         var actions = AttachChecks(prepared, Clean([.. prepared.Where(action => action.Kind != "expect")]));
         PlaceInDialogs(actions);
         AssignSettings(actions);
-        SplitIntoSteps(actions, plan);
-        LoopFinder.Fold(plan);
+        SplitIntoSteps(actions, plan, LoopFinder.Find(actions));
         SplitAtResults(plan);
         ApplyEdits(plan);
         CollectSettings(plan);
         StepNamer.Name(plan);
+        plan.Suggestions.AddRange(Noise.Suggest([.. plan.Steps.SelectMany(step => step.Actions)]));
         return plan;
     }
 
@@ -50,7 +48,7 @@ internal static partial class FlowPlanner
     {
         var element = source.Element;
         var planned = new PlannedAction { Source = source };
-        planned.Locator = LocatorPolicy.Choose(element, byName: source.Widget == "radio");
+        planned.Locator = LocatorPolicy.Choose(element, byName: source.Widget == "radio" || LocatorPolicy.IsNumberedToggle(element));
         planned.Key = planned.Locator switch
         {
             null => $"{source.Kind}:{element?.Tag}:{element?.Text}",
@@ -61,7 +59,9 @@ internal static partial class FlowPlanner
         return planned;
     }
 
-    // What a person does on the way to an action is not a step of its own.
+    // What a person does on the way to an action is not a step of its own: opening a select, a click that only put the
+    // focus in a field, a click on no control that changed nothing, a drag that dropped nowhere, the click that opened
+    // the list of the choice next, and the text typed into an autocomplete to filter the list it then chose from.
     private static List<PlannedAction> Clean(List<PlannedAction> actions)
     {
         var kept = new List<PlannedAction>();
@@ -69,6 +69,7 @@ internal static partial class FlowPlanner
         {
             var action = actions[index];
             var last = kept.LastOrDefault();
+            var next = index + 1 < actions.Count ? actions[index + 1] : null;
             var widget = action.Source.Widget;
             var noEffect = action.Effects.Count == 0;
             switch (action.Kind)
@@ -81,19 +82,27 @@ internal static partial class FlowPlanner
                 // choice the flow makes without opening it.
                 case "click" or "dblclick" when action.Source.Target is not { Interactive: true } && noEffect:
                 case "click" when action.Source.Target?.Tag == "select" && noEffect:
+                case "click" or "dblclick" when Noise.DidNothing(action):
+                case "click" when Noise.OnlyFocuses(action, next):
+                case "drag" when Noise.DroppedNowhere(action):
                 case "press" when action.Source.Key == "Escape" && noEffect:
                     continue;
-                // The click that opened the list of the choice next, which the flow makes as it writes the choice.
-                case "choose" when last is { Kind: "click" } && last.Source.Id == action.Source.Opener
+                // The click that opened the list of the choice next, which the flow makes as it writes the choice: by the
+                // capture script's word, or a click on the field itself.
+                case "choose" when last is { Kind: "click" } && (last.Source.Id == action.Source.Opener || last.Key == action.Key
+                                                                   || OpensItsField(last, action))
                                    && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)):
                     kept.RemoveAt(kept.Count - 1);
+                    if (kept.LastOrDefault() is { Kind: "fill" } typed && typed.Key == action.Key && widget == "autocomplete")
+                        TakeSearch(action, typed, kept);
                     break;
+                // What was typed to filter the list is part of the choice, never a value of its own.
                 case "choose" when widget == "autocomplete" && last is { Kind: "fill" } && last.Key == action.Key:
-                    action.Search = last.Source.Value;
-                    action.Effects.InsertRange(0, last.Effects);
-                    kept.RemoveAt(kept.Count - 1);
+                    TakeSearch(action, last, kept);
                     break;
-                case "fill" when last is { Kind: "fill" } && last.Key == action.Key && last.Effects.Count == 0:
+                // Typing on in a field: the value it ends with is the one typed.
+                case "fill" when last is { Kind: "fill" } && last.Key == action.Key && last.Effects.Count == 0
+                                 && (action.Source.Value ?? "").StartsWith(last.Source.Value ?? "", StringComparison.Ordinal):
                 case "check" or "uncheck" when last is { Kind: "check" or "uncheck" } && last.Key == action.Key
                                                && last.Effects.Count == 0:
                 case "dblclick" when last is { Kind: "click" } && last.Key == action.Key:
@@ -105,6 +114,20 @@ internal static partial class FlowPlanner
         }
 
         return kept;
+    }
+
+    // A click on what is no control just before a choice of a field, which only opened its list: the widget's arrow, or
+    // what holds it. The flow opens the list by the field as it writes the choice. A list with no field of its own is
+    // opened by that click, which stays.
+    private static bool OpensItsField(PlannedAction click, PlannedAction choice) =>
+        choice.Source is { Widget: "select" or "autocomplete", Field: not null } && click.Effects.Count == 0
+        && !Noise.IsControl(click.Source.Target);
+
+    private static void TakeSearch(PlannedAction choice, PlannedAction typed, List<PlannedAction> kept)
+    {
+        choice.Search = typed.Source.Value;
+        choice.Effects.InsertRange(0, typed.Effects);
+        kept.Remove(typed);
     }
 
     // A check goes with the action before it that the flow does; one before every action is a step's action itself.
@@ -207,6 +230,7 @@ internal static partial class FlowPlanner
                     break;
                 case "check" or "uncheck":
                     action.Value = new Setting(name, null, action.Kind == "check") { Qualified = qualified };
+                    if (Names.Group(field) is { } group) action.Member = new Setting(group, field!.Text);
                     break;
                 case "choose":
                     AssignChoice(action, ChoiceName(name), qualified is null ? null : ChoiceName(qualified));
@@ -255,7 +279,7 @@ internal static partial class FlowPlanner
         if (source.Widget == "autocomplete")
         {
             var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
-            if (action.Search is not null) action.SearchValue = Add("Search", action.Search);
+            // What was typed to filter the list is no setting: the flow types the option's own text.
             action.Value = Add("", shown);
             if (shown != option) action.OptionValue = Add("Option", option);
             return;
@@ -270,29 +294,47 @@ internal static partial class FlowPlanner
         action.Locator is { Kind: "role" } role && action.Source.Target?.Row?.Key is { Length: >= 2 } key
         && role.Parts.LastOrDefault()?.Name?.Contains(key, StringComparison.Ordinal) == true;
 
-    // The field's path, as the form names it: a Select's hidden input, the name, a stable id or test id; else its label.
-    internal static string SettingName(CapturedTarget? field)
+    /// <summary>
+    /// Each action of the flow, by its id, with what only led to it since the action before it (opening a Select, typing
+    /// into an Autocomplete, a click that only put the focus in its field) and the checks after it: what leaving it out
+    /// leaves out.
+    /// </summary>
+    public static Dictionary<string, IReadOnlyList<string>> Sources(Recording recording, IReadOnlyList<PlannedAction> planned)
     {
-        if (field is null) return "Value";
-        var select = field.Candidates.FirstOrDefault(candidate => candidate.Kind == "select")?.Value;
-        var groupMember = field.Role == "checkbox" && field.Candidates.Any(candidate => candidate is { Kind: "name", Count: > 1 });
-        // MUI names a Select's box after its field: mui-component-select-shipping.
-        var id = field.Id is { } own && own.StartsWith(MuiSelectId, StringComparison.Ordinal) && own.Length > MuiSelectId.Length
-            ? own[MuiSelectId.Length..]
-            : field.Id;
-        var path = new[] { select, field.Name, id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
-        var name = CSharp.Pascal(path) ?? (CSharp.IsAsciiText(field.Label) ? CSharp.Pascal(field.Label) : null)
-                   ?? (CSharp.IsAsciiText(field.Text) ? CSharp.Pascal(field.Text) : null) ?? "Value";
-        if (groupMember && path == field.Name)
-            name += CSharp.Pascal(field.Value) ?? CSharp.Pascal(field.Text) ?? "";
-        return name;
+        var ids = recording.Actions.Select(action => action.Id).ToList();
+        var sources = new Dictionary<string, IReadOnlyList<string>>();
+        for (var index = 0; index < planned.Count; index++)
+        {
+            var action = planned[index];
+            var at = ids.IndexOf(action.Source.Id);
+            var from = index > 0 ? ids.IndexOf(planned[index - 1].Source.Id) + 1 : 0;
+            var led = at > from ? recording.Actions.Skip(from).Take(at - from).Where(other => other.Kind != "expect") : [];
+            sources.TryAdd(action.Source.Id, [.. led.Select(other => other.Id), action.Source.Id, .. action.Checks.Select(check => check.Id)]);
+        }
+
+        return sources;
     }
 
-    private static void SplitIntoSteps(List<PlannedAction> actions, FlowPlan plan)
+    /// <summary>The setting of a field's value, as <see cref="Names.Setting"/> names it.</summary>
+    internal static string SettingName(CapturedTarget? field) => Names.Setting(field);
+
+    private static void SplitIntoSteps(List<PlannedAction> actions, FlowPlan plan, List<(int Start, int Length, Loop Loop)> loops)
     {
         Step? current = null;
-        foreach (var action in actions)
+        for (var index = 0; index < actions.Count; index++)
         {
+            var action = actions[index];
+            if (loops.FirstOrDefault(found => found.Start == index) is { Loop: { } loop })
+            {
+                if (current is not null) plan.Steps.Add(current);
+                current = null;
+                var looped = new Step { Page = action.Source.Page, Dialog = action.Dialog, Loop = loop };
+                looped.Actions.AddRange(actions.GetRange(index, loop.Length * loop.Repeats));
+                plan.Steps.Add(looped);
+                index += loop.Length * loop.Repeats - 1;
+                continue;
+            }
+
             var page = action.Kind == "newTab" ? current?.Page ?? "page" : action.Source.Page;
             var dialog = action.Kind == "newTab" ? current?.Dialog : action.Dialog;
             if (current is not null && (current.Ended || current.Page != page || current.Dialog != dialog))
@@ -395,7 +437,8 @@ internal static partial class FlowPlanner
             var repeat = step.Actions.Take(step.Loop?.Length ?? 0).ToList();
             var read = step.Loop is { } loop
                 ? new[] { loop.List, loop.Count }.Concat(repeat
-                    .Where(action => !LoopFinder.RowFromValue(action, repeat)).Select(action => action.RowKey))
+                    .Where(action => !LoopFinder.RowFromValue(action, repeat) && action.RowKey is not null && !loop.Holds.Contains(action.RowKey))
+                    .Select(action => action.RowKey))
                 : step.Actions.SelectMany(action => action.Values.Append(action.RowKey));
             foreach (var setting in read.OfType<Setting>())
                 if (seen.Add(setting)) yield return (step, setting);

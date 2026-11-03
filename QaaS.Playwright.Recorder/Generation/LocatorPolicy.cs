@@ -44,6 +44,13 @@ internal static partial class LocatorPolicy
     }
 
     /// <summary>
+    /// A checkbox or switch whose id only numbers it among others (<c>hobbies-checkbox-3</c>): found by its label, as a
+    /// person reads it, which a loop over the group's choices can also find each by.
+    /// </summary>
+    public static bool IsNumberedToggle(CapturedTarget? target) =>
+        target is { Role: "checkbox" or "switch", Text.Length: > 0, Id: { } id } && NumberedId().IsMatch(id);
+
+    /// <summary>
     /// The element to locate a click by: <paramref name="target"/>, unless only its label's text or Playwright's own
     /// locator finds it, or nothing finds it alone, and one of <paramref name="equivalents"/>, which the same click hits,
     /// has a stable id or test id that finds it alone, else is the one control in it (the input in a select's box) found
@@ -239,6 +246,9 @@ internal static partial class LocatorPolicy
 
     private static IEnumerable<string> IdsIn(string css) =>
         IdSelector().Matches(css.Replace("\\", "")).Select(match => match.Groups["id"].Value);
+
+    [GeneratedRegex(@"[-_]\d+$")]
+    private static partial Regex NumberedId();
 
     [GeneratedRegex(@"\.Nth\(|\.First\b|\.Last\b|nth-child|nth-of-type|>> nth=")]
     private static partial Regex Position();

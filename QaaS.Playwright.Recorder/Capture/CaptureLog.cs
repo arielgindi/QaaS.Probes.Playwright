@@ -686,6 +686,9 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         public CapturedScroll? Scrolled { get; set; }
         public CapturedTarget? To { get; set; }
         public bool? HoverMenu { get; set; }
+        public bool? Focus { get; set; }
+        public bool? Watched { get; set; }
+        public bool? Multi { get; set; }
         public string? ActionId { get; set; }
         public long? SinceAction { get; set; }
         public string? Text { get; set; }
@@ -701,14 +704,14 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
                 Id = Id!, T = T, Kind = Kind ?? "", Page = page, Widget = Widget, Value = Value, Raw = Raw, Final = Final,
                 Picked = Picked, Checked = Checked, Key = Key, OnPage = OnPage, Files = Files, Url = Url, Dialog = Dialog,
                 OpenDialogs = OpenDialogs, Target = target, Field = Field, Option = Option, Opener = Opener, Scrolled = Scrolled, To = To, HoverMenu = HoverMenu,
-                Check = Check, Group = Group, Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
+                Focus = Focus, Watched = Watched, Check = Check, Group = Group, Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
             };
         }
 
         public CapturedEffect ToEffect() => new()
         {
             Kind = Kind ?? "", ActionId = ActionId, SinceAction = SinceAction, T = T, Dialog = Dialog, Text = Text,
-            AlertCount = AlertCount, Value = Value, Raw = Raw, Url = Url,
+            AlertCount = AlertCount, Value = Value, Raw = Raw, Url = Url, Multi = Multi,
         };
     }
 }
