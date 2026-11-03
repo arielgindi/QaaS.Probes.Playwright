@@ -518,6 +518,10 @@ internal static class CaptureScript
             }
             return null;
           }
+          // The element, or one in it so deep, holds several items like each other.
+          const listIn = (element, depth) => depth > 0 && [...element.children].some((child) =>
+            holdsSeveral(element, child) || listIn(child, depth - 1));
+
           // A class a person gave it, not one a framework generated.
           const ownClass = (element) => [...element.classList].find((name) => name.length > 2 &&
             !/^(css|jss|sc|emotion|styled|tw)-|^_|[0-9]{3,}|[A-Za-z]+_[A-Za-z]+__/i.test(name) && !/[a-z][0-9][a-z]/i.test(name));
@@ -525,6 +529,8 @@ internal static class CaptureScript
           // The element by its label, an element of exactly that text in it, which a click reaches the element through. Copies
           // of it hidden from assistive technology, as a carousel's clones, are left out by the item it is in.
           function labelCandidate(element, scope) {
+            // Not a list's or a form's: its first words are one item's or one field's.
+            if (controlsIn(element) > 1 || listIn(element, 3)) return null;
             const label = labelOf(element);
             if (!label) return null;
             const parts = [{ m: 'text', text: label.text }];
@@ -942,6 +948,9 @@ internal static class CaptureScript
             .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
             .locator { font-size: 12px; font-weight: 600; color: #fff; }
             .pick, .problem { color: #fbbf24; }
+            .pick { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; color: #a1a1aa; }
+            .pick .on { color: #fbbf24; font-weight: 600; }
+            .pick .keys { margin-left: 8px; color: #71717a; }
             .reasons, .note { color: #a1a1aa; }
             .state { position: fixed; display: none; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box;
               align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; pointer-events: none;
@@ -1122,10 +1131,10 @@ internal static class CaptureScript
             Object.assign(label.style, { left: `${Math.max(4, left)}px`, top: `${Math.max(4, top)}px` });
           }
 
-          function fillLabel(answer, picked) {
+          function fillLabel(answer, state) {
             const parts = overlayView();
             const line = (part, text) => { part.textContent = text || ''; part.style.display = text ? 'block' : 'none'; };
-            line(parts.pick, picked && `picked: ${tagOf(picked)}  (Alt+${range(0x2191)} ${range(0x2193)})`);
+            crumbs(parts.pick, state);
             line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
             line(parts.problem, answer.problem);
             line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
@@ -1134,6 +1143,37 @@ internal static class CaptureScript
 
           const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
+          // As a person reads an element in a breadcrumb: its tag, then its id or its first class without the hash a
+          // framework put in it (css-1x2y3z-card gives card).
+          const crumbOf = (element) => {
+            const tag = element.tagName.toLowerCase();
+            if (element.id) return `${tag}#${element.id}`;
+            const name = [...element.classList].map((each) => each.replace(/^(css|sc|jss)-[a-z0-9]+-?/i, '').replace(/__[A-Za-z0-9-]{4,}$/, ''))
+              .find((each) => each.length > 1);
+            return name ? `${tag}.${name}` : tag;
+          };
+
+          // The elements Alt+Up and Alt+Down step through, as a breadcrumb from the outermost: the one picked marked, the
+          // keys after it. Shown once the person picked, also back at the element a click records by itself.
+          function crumbs(part, state) {
+            part.replaceChildren();
+            if (!state?.chain) { part.style.display = 'none'; return; }
+            part.style.display = 'block';
+            const from = Math.max(0, state.index - 2);
+            const to = Math.min(state.chain.length, state.index + 4);
+            const shown = state.chain.slice(from, to).reverse();
+            if (to < state.chain.length) part.append(`${range(0x2026)} ${range(0x203a)} `);
+            shown.forEach((element, at) => {
+              if (at > 0) part.append(` ${range(0x203a)} `);
+              const crumb = part.appendChild(document.createElement('span'));
+              crumb.textContent = crumbOf(element);
+              if (element === state.chain[state.index]) crumb.className = 'on';
+            });
+            if (from > 0) part.append(` ${range(0x203a)} ${range(0x2026)}`);
+            const keys = part.appendChild(document.createElement('span'));
+            keys.className = 'keys';
+            keys.textContent = `Alt+${range(0x2191)} ${range(0x2193)}`;
+          }
           const hoverOver = (hit) => {
             const element = checking ? checkTarget(hit) : retarget(hit);
             return { hit, element, picked: null, shown: checking ? element : closestUp(element, '[role=option]') ?? element,
@@ -1144,18 +1184,34 @@ internal static class CaptureScript
           const pickedFor = (hit) => (overlayOn && hover?.hit === hit && hover.picked) || null;
 
           // Steps the pick through the elements from the one under the pointer up to the body: up by Alt+Up, down by Alt+Down.
+          // The elements from the one under the pointer out, through shadow roots, up to its dialog, or below the root of the
+          // app or of a portal: never the page's own containers. Those that take no room (a slot) are passed over.
+          function chainOf(state) {
+            const chain = [];
+            for (let node = containsDeep(state.element, state.hit) ? state.hit : state.element;
+                 node && node !== document.body && node !== document.documentElement; node = upFrom(node)) {
+              if (node !== state.element && upFrom(node) === document.body) break;
+              if (node === state.element || node.getClientRects().length > 0) chain.push(node);
+              if (node.matches(DIALOGS)) break;
+            }
+            return chain;
+          }
+
           function pick(step) {
             const state = hover;
             if (!state) return;
             if (!state.chain) {
-              state.chain = [];
-              for (let node = state.element.contains(state.hit) ? state.hit : state.element;
-                   node && node !== document.body && node !== document.documentElement; node = node.parentElement)
-                state.chain.push(node);
+              state.chain = chainOf(state);
               state.index = state.chain.indexOf(state.element);
             }
             const index = Math.min(Math.max(state.index + step, 0), state.chain.length - 1);
-            if (index === state.index || index < 0) return;
+            if (index < 0) return;
+            if (index === state.index) {
+              // At either end: the breadcrumb shows it.
+              if (state.answer) fillLabel(state.answer, state);
+              drawOverlay();
+              return;
+            }
             state.index = index;
             state.picked = state.chain[index] === state.element ? null : state.chain[index];
             state.shown = state.picked ?? closestUp(state.element, '[role=option]') ?? state.element;
@@ -1194,7 +1250,7 @@ internal static class CaptureScript
             if (hover === state && state.shown === shown && reply) {
               state.answer = JSON.parse(reply);
               state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
-              fillLabel(state.answer, picked);
+              fillLabel(state.answer, state);
               if (chooser?.element === shown && state.answer.locator) chooser.what.textContent = state.answer.locator;
               drawOverlay();
             }
@@ -1207,6 +1263,15 @@ internal static class CaptureScript
             if (hit === hover?.hit) {
               // The page may have changed under a pointer at rest.
               if (now() - hover.at > 1500) scheduleExplain();
+              return;
+            }
+            // Within the element picked, the pick holds, on the path to where the pointer is now.
+            if (hover?.picked && hit && containsDeep(hover.picked, hit) && !checking) {
+              const picked = hover.picked;
+              hover.hit = hit;
+              hover.chain = chainOf(hover);
+              if (!hover.chain.includes(picked)) hover.chain = [hit, ...hover.chain.filter((node) => node !== hit)];
+              hover.index = hover.chain.indexOf(picked);
               return;
             }
             hover = hit && hit !== document.body && hit !== document.documentElement && !hit.matches('iframe, frame')
