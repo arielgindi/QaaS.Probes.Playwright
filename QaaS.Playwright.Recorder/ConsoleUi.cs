@@ -1,20 +1,43 @@
+using System.Reflection;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Recorder;
 
-/// <summary>Everything the recorder prints and asks.</summary>
+/// <summary>
+/// Everything the recorder prints and asks. Each kind of line has a method of its own: a step and what it caused, info,
+/// success, a warning, an error, a phase, the recording's state. They all draw a glyph, a tone and a message with
+/// <see cref="Status"/>, so a new kind is one more short method. <see cref="Terminal"/> tells colours, glyphs and width.
+/// </summary>
 internal static class ConsoleUi
 {
+    private const string Margin = "  ";
+
+    // A step's line: "  12 • click    Save order                     button "Save order"".
+    private const int NumberWidth = 3;
+    private const int VerbWidth = 8;
+    private const int SubjectWidth = 30;
+    private const int LeastLocator = 16;
+    private static readonly int StepIndent = Margin.Length + NumberWidth + 3;
+
     private static readonly Lock Gate = new();
+    private static readonly Dictionary<string, int> StepOfAction = [];
+    private static int _lastStep;
+
+    public static string Version =>
+        typeof(ConsoleUi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            .Split('+')[0] ?? "unknown";
+
+    private static Terminal Out => Terminal.Out;
+
+    // ── The header and the help ────────────────────────────────────────────────────────────────────────────
 
     public static void Header()
     {
-        Console.WriteLine();
-        WithColor(ConsoleColor.Magenta, () => Console.WriteLine(
-            "  +-----------------------------------+\n" +
-            "  |   QaaS Playwright Recorder        |\n" +
-            "  +-----------------------------------+\n"));
+        var t = Out;
+        t.WriteLine();
+        var badge = t.Color ? t.Paint(" QaaS ", Tone.Badge) + " " : "QaaS ";
+        t.WriteLine(Margin + badge + t.Paint("Playwright Recorder", Tone.Bold) + t.Paint($"  v{Version}", Tone.Dim));
     }
 
     public static void Usage() => Console.WriteLine("""
@@ -30,131 +53,398 @@ internal static class ConsoleUi
 
         """);
 
+    // ── The questions ───────────────────────────────────────────────────────────────────────────────────────────
+
     public static string Ask(string prompt, string defaultValue)
     {
-        WithColor(ConsoleColor.White, () => Console.Write($"  {prompt}"));
-        if (defaultValue.Length > 0) WithColor(ConsoleColor.DarkGray, () => Console.Write($" [{defaultValue}]"));
-        Console.Write(": ");
+        var t = Out;
+        var hint = defaultValue.Length > 0 ? t.Paint($" ({defaultValue})", Tone.Dim) : "";
+        t.Writer.Write(Margin + t.Paint("?", Tone.Accent) + " " + t.Paint(prompt, Tone.Bold) + hint
+                       + t.Paint($" {t.Glyph("›", ">")} ", Tone.Dim) + t.Start(Tone.Accent));
         var answer = Console.ReadLine()?.Trim() ?? "";
+        t.Writer.Write(t.Stop);
         return answer.Length > 0 ? answer : defaultValue;
     }
 
+    // ── While recording ─────────────────────────────────────────────────────────────────────────────────────────
+
     public static void Recording(RecordRequest request)
     {
-        Separator();
-        Info($"Flow:    {request.ClassName}");
-        Info($"URL:     {request.Url}");
-        Info($"Save to: {Path.GetFullPath(Path.Combine(request.OutputDir, $"{request.ClassName}.cs"))}\n");
-        Info(">>> Browser is opening — do your thing, then CLOSE the browser (or press Enter here) when done.");
-        Info("    The box under the pointer shows what a click records. F9 hides or shows it;");
-        Info("    Alt+↑ picks the element around it and Alt+↓ goes back, for the next click to record.\n");
+        var t = Out;
+        var flowPath = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
+        lock (Gate)
+        {
+            t.WriteLine();
+            Field(t, "URL", [new Span(request.Url, Shrink: Shrink.Middle, Untrusted: true)]);
+            Field(t, "Flow", [new Span(request.ClassName, Tone.Bold, Untrusted: true),
+                new Span($" {t.Glyph("→", "->")} ", Tone.Dim), new Span(Relative(flowPath), Shrink: Shrink.Middle, Untrusted: true)]);
+            Keys(t, [("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("Enter", "or close Chrome to finish")]);
+            t.WriteLine();
+            RecordingState(t, "Recording", "Work through the site in Chrome; each action shows here.");
+            t.WriteLine();
+            StepOfAction.Clear();
+            _lastStep = 0;
+        }
     }
 
     /// <summary>Completes when the person presses Enter; never, when nobody can type here.</summary>
     public static Task EnterPressedAsync() =>
         Console.IsInputRedirected ? new TaskCompletionSource().Task : Task.Run(() => Console.ReadLine());
 
-    /// <summary>Shows an action as it is captured, and what the page did after it.</summary>
+    /// <summary>Shows an action as it is captured, with what to check in it, and what the page did after it.</summary>
     public static void Captured(object news)
     {
-        var line = news switch
-        {
-            CapturedAction action => Describe(action),
-            CapturedEffect effect => Describe(effect),
-            _ => null,
-        };
-        if (line is null) return;
+        var t = Out;
         lock (Gate)
         {
-            if (news is CapturedAction) WithColor(ConsoleColor.Green, () => Console.Write("  ✓ "));
-            else Console.Write("      ");
-            Console.WriteLine(line);
+            switch (news)
+            {
+                case CapturedAction action:
+                    var number = StepOfAction.TryGetValue(action.Id, out var known) ? known : StepOfAction.Count + 1;
+                    if (StepLine(t, number, action) is not { } line) return;
+                    StepOfAction[action.Id] = _lastStep = number;
+                    t.WriteLine(line);
+                    foreach (var check in ChecksOf(action))
+                        Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+                    break;
+                case CapturedEffect effect when EffectLine(t, effect) is { } effectLine:
+                    t.WriteLine(effectLine);
+                    break;
+            }
         }
     }
+
+    /// <summary>A stage of the work that takes a moment, such as "Logging in" or "Saving".</summary>
+    public static void Phase(string text) => Status(Out, Margin, Out.Glyph("›", ">"), Tone.Accent, $"{text}{Out.Ellipsis}", Tone.Dim);
+
+    public static void Paused() =>
+        Status(Out, Margin, Out.Glyph("║", "="), Tone.Warning, "Paused. What you do now is not recorded.");
+
+    public static void Resumed() => RecordingState(Out, "Recording", "resumed.");
+
+    // ── One line of each kind ───────────────────────────────────────────────────────────────────────────────────
+
+    public static void Info(string message) => Status(Out, Margin, " ", Tone.Plain, message);
+
+    public static void Success(string message) =>
+        Status(Out, Margin, Out.Glyph("✓", "√", "+"), Tone.Success, message);
+
+    public static void Warning(string message) =>
+        Status(Out, Margin, Out.Glyph("▲", "!"), Tone.Warning, message, Tone.Warning);
+
+    public static void Error(string message)
+    {
+        var t = Terminal.Error;
+        t.WriteLine();
+        Status(t, Margin, t.Glyph("×", "x"), Tone.Error, message);
+        t.WriteLine();
+    }
+
+    // ── The summary ─────────────────────────────────────────────────────────────────────────────────────────────
 
     public static void Saved(RecordRequest request, SavedFlow saved, GeneratedFlow flow)
     {
-        Separator();
-        WithColor(ConsoleColor.Green, () => Info($"SAVED {saved.CodePath}"));
-        Info($"      {saved.YamlPath} (the values it recorded)");
-        if (saved.RecordingPath is { } raw) Info($"      {raw} (the raw recording, with every locator tried)");
-        if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
-            Info("(the existing flow was kept — merge the new recording into it by hand)");
-
-        if (flow.Checks.Count > 0)
+        var t = Out;
+        lock (Gate)
         {
-            Console.WriteLine();
-            WithColor(ConsoleColor.Yellow, () => Info("Check by hand:"));
-            foreach (var check in flow.Checks)
-                WithColor(ConsoleColor.Yellow, () => Info(check.Line is { } line ? $"  line {line}: {check.Message}" : $"  {check.Message}"));
+            var settings = flow.Yaml.Split('\n').Count(line => line.StartsWith("    ", StringComparison.Ordinal));
+            var counts = new[]
+                {
+                    Count(flow.ActionLines.Count, "action"), Count(flow.StepLines.Count, "step"),
+                    Count(settings, "setting"),
+                    flow.Checks.Count > 0 ? $"{flow.Checks.Count} to check by hand" : "nothing to check by hand",
+                };
+
+            t.WriteLine();
+            Rule(t);
+            t.WriteLine();
+            Headline(t, t.Paint(t.Glyph("✓", "√", "+"), Tone.Success) + " " + t.Paint("Saved", Tone.Bold) + " "
+                        + t.Paint(Terminal.Clean(request.ClassName), Tone.Accent), string.Join($" {t.Dot} ", counts), together: true);
+            t.WriteLine();
+
+            var files = new List<(string Path, string What)>
+            {
+                (saved.CodePath, saved.CodePath.EndsWith(".cs", StringComparison.Ordinal) ? "the flow" : "the new recording"),
+                (saved.YamlPath, "its settings"),
+            };
+            if (saved.RecordingPath is { } raw) files.Add((raw, "the raw recording"));
+            var shown = files.Select(file => (Path: Terminal.Clean(Relative(file.Path)), file.What)).ToList();
+            var pathWidth = shown.Max(file => Terminal.WidthOf(file.Path));
+            foreach (var (path, what) in shown)
+                t.WriteLine(t.Line([
+                    new Span(Margin + Margin), new Span(path, Shrink: Shrink.Middle, Untrusted: true),
+                    new Span(new string(' ', pathWidth - Terminal.WidthOf(path) + 3)), new Span(what, Tone.Dim, Shrink.End),
+                ]));
+            if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
+            {
+                t.WriteLine();
+                Warning($"{request.ClassName}.cs was kept as it is: merge the new recording into it by hand.");
+            }
+
+            if (flow.Checks.Count > 0) ChecksSection(t, saved.CodePath, flow.Checks);
+            NextSection(t, request, flow);
+        }
+    }
+
+    private static void ChecksSection(Terminal t, string codePath, IReadOnlyList<CheckByHand> checks)
+    {
+        Section(t, "Check by hand", (t.Glyph("▲", "!"), Tone.Warning));
+        var file = Relative(codePath);
+        var places = checks.Select(check => check.Line is { } line ? $"{file}:{line}" : file).ToList();
+        var placeWidth = places.Max(place => Terminal.WidthOf(Terminal.Clean(place)));
+        var indent = Margin.Length * 2 + placeWidth + 2;
+        for (var index = 0; index < checks.Count; index++)
+        {
+            var lines = Terminal.Wrap(Terminal.Clean(checks[index].Message), Math.Max(30, t.Width - 1 - indent)).ToList();
+            var place = Terminal.Clean(places[index]);
+            t.WriteLine(Margin + Margin + t.Paint(place, Tone.Warning)
+                        + new string(' ', placeWidth - Terminal.WidthOf(place) + 2) + lines[0]);
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', indent) + more);
+        }
+    }
+
+    private static void NextSection(Terminal t, RecordRequest request, GeneratedFlow flow)
+    {
+        Section(t, "Next");
+        var values = flow.Yaml.Split('\n').Where(line => line.Length > 0 && !line.StartsWith('#')).Select(line => "    " + line);
+        var yaml = (string[])
+        [
+            "Sessions:",
+            "  - Name: MySession",
+            "    Probes:",
+            $"      - Name: {request.ClassName}",
+            "        Probe: PlaywrightFlowProbe",
+            "        ProbeConfiguration:",
+            $"          BaseUrl: '{request.Url.Replace("'", "''")}'",
+            $"          Flows: [{request.ClassName}]",
+            .. values.Select(line => "      " + line),
+        ];
+        t.WriteLine(Margin + Margin + t.Paint("1", Tone.Accent) + "  Add the probe to your " + t.Paint("test.qaas.yaml", Tone.Bold));
+        t.WriteLine();
+        foreach (var line in yaml) t.WriteLine(new string(' ', 7) + Yaml(t, line));
+        t.WriteLine();
+        t.WriteLine(Margin + Margin + t.Paint("2", Tone.Accent) + "  Run it");
+        t.WriteLine();
+        t.WriteLine(new string(' ', 7) + t.Paint("$ ", Tone.Dim) + "dotnet run -- run test.qaas.yaml");
+        t.WriteLine();
+    }
+
+    // ── A step and what it caused ───────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The line of a step: its number, glyph and verb, the element's name and value, and its locator, dim.</summary>
+    internal static string? StepLine(Terminal t, int number, CapturedAction action)
+    {
+        if (action is { Kind: "click", Widget: "select-open" or "autocomplete-button" }) return null;
+
+        var element = action.Element;
+        var locator = element is null ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(element, byName: action.Widget == "radio"));
+        var name = Terminal.Clean(element?.Text) is { Length: > 0 } text ? text
+            : Terminal.Clean(element?.Label) is { Length: > 0 } label ? label
+            : null;
+        if (name is null)
+        {
+            // An element without a name is known by its locator.
+            name = locator ?? element?.Tag ?? "";
+            locator = null;
         }
 
-        Console.WriteLine();
-        Info("Next steps:\n");
-        Info("1. Add to your test.qaas.yaml:");
-        var values = string.Join('\n', flow.Yaml.Split('\n').Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(line => "          " + line));
-        Hint($"""
-            Sessions:
-              - Name: MySession
-                Probes:
-                  - Name: {request.ClassName}
-                    Probe: PlaywrightFlowProbe
-                    ProbeConfiguration:
-                      BaseUrl: '{request.Url.Replace("'", "''")}'
-                      Flows: [{request.ClassName}]
-            {values}
-            """);
-        Console.WriteLine();
-        Info("2. Run it:");
-        Hint("dotnet run -- run test.qaas.yaml");
-        Console.WriteLine();
-    }
-
-    public static void Info(string message) => Console.WriteLine($"  {message}");
-
-    public static void Warning(string message) => WithColor(ConsoleColor.Yellow, () => Console.WriteLine($"\n  {message}\n"));
-
-    public static void Error(string message) => WithColor(ConsoleColor.Red, () => Console.WriteLine($"\n  {message}\n"));
-
-    private static string? Describe(CapturedAction action)
-    {
-        var target = action.Kind == "choose" ? action.Field ?? action.Target : action.Target;
-        var where = LocatorPolicy.Describe(LocatorPolicy.Choose(target, byName: action.Widget == "radio")) ?? target?.Text ?? "";
-        return action.Kind switch
+        var (glyph, verb) = Verb(t, action);
+        var arrow = t.Glyph("→", "->");
+        var value = Value(t, action);
+        List<Span> subject = action.Kind switch
         {
-            "click" when action.Widget is "select-open" or "autocomplete-button" => null,
-            "fill" => $"fill {where} = {action.Value}",
-            "choose" => $"choose {where} → {action.Value}",
-            "press" => $"press {action.Key}{(action.OnPage == true ? "" : $" in {where}")}",
-            "upload" => $"upload {where} ← {string.Join(", ", action.Files ?? [])}",
-            _ => $"{action.Kind} {where}",
+            "navigate" or "newTab" => [Untrusted(action.Url ?? "", Tone.Bold, Shrink.Middle, order: 2)],
+            "fill" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span(" = ", Tone.Dim), value],
+            "choose" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {arrow} ", Tone.Dim), value],
+            "upload" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {t.Glyph("←", "<-")} ", Tone.Dim), value],
+            "drag" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {arrow} ", Tone.Dim),
+                Untrusted(Terminal.Clean(action.To?.Text) is { Length: > 0 } to ? to : "?", order: 2)],
+            "press" when action.OnPage == true || element is null => [new Span(action.Key ?? "", Tone.Bold)],
+            "press" => [new Span(action.Key ?? "", Tone.Bold), new Span(" in ", Tone.Dim), Untrusted(name, order: 0, min: 24)],
+            _ => [Untrusted(name, Tone.Bold, order: 0, min: 24)],
         };
+        if (action.Kind is "navigate" or "newTab" || action is { Kind: "press", OnPage: true }) locator = null;
+
+        List<Span> spans =
+        [
+            new(Margin), new(number.ToString().PadLeft(NumberWidth), Tone.Dim), new(" "), new(glyph, Tone.Accent),
+            new(" "), new(verb.PadRight(VerbWidth)),
+            .. subject,
+        ];
+        // A narrow terminal shows the locator only in the panel and the overlay.
+        if (locator is not null && t.Width - 1 - StepIndent - VerbWidth >= 40)
+        {
+            var used = spans.Sum(span => Terminal.WidthOf(span.Untrusted ? Terminal.Clean(span.Text) : span.Text));
+            var subjectWidth = used - StepIndent - VerbWidth;
+            // Locators start in one column while they have room there, which a narrow terminal moves left.
+            var column = Math.Min(SubjectWidth, (t.Width - 1 - StepIndent - VerbWidth) * 11 / 20);
+            var aligned = Math.Max(2, column - subjectWidth);
+            var room = t.Width - 1 - used - aligned;
+            spans.Add(new Span(new string(' ', room >= Math.Min(LeastLocator, Terminal.WidthOf(Terminal.Clean(locator))) ? aligned : 2)));
+            spans.Add(Untrusted(locator, Tone.Dim, order: 1, min: 12));
+        }
+
+        return t.Line(spans);
     }
 
-    private static string? Describe(CapturedEffect effect) => effect.Kind switch
+    /// <summary>What a person should look at in the step's code, as "Check by hand" will list it when saving.</summary>
+    internal static IEnumerable<string> ChecksOf(CapturedAction action)
     {
-        "dialogOpened" => $"↳ dialog opened: {effect.Dialog?.Title}",
-        "dialogClosed" => $"↳ dialog closed: {effect.Dialog?.Title}",
-        "alert" => $"↳ alert: {effect.Text}",
-        "tabSelected" => "↳ tab selected",
-        _ => null,
+        // As the flow writes them: a key pressed on the page, or with no element, goes to the keyboard.
+        var located = action.Kind is not ("navigate" or "newTab")
+                      && !(action.Kind == "press" && (action.OnPage == true || action.Element is null));
+        if (located && LocatorPolicy.Problem(LocatorPolicy.Choose(action.Element, byName: action.Widget == "radio")) is { } problem)
+            yield return problem;
+        if (action.HoverMenu == true) yield return "the menu opened on hover: add HoverAsync() on what opens it";
+        if (action.Kind == "upload") yield return "the flow needs each file's full path: return it in FileToUpload";
+        if (action.Kind == "drag") yield return "drag and drop: check where it drops";
+    }
+
+    private static string? EffectLine(Terminal t, CapturedEffect effect)
+    {
+        var (what, detail) = effect.Kind switch
+        {
+            "dialogOpened" => ("opened dialog", effect.Dialog?.Title),
+            "dialogClosed" => ("closed dialog", effect.Dialog?.Title),
+            "alert" => ("alert", effect.Text),
+            "tabSelected" => ("selected the tab", null),
+            "urlChanged" => ("went to", effect.Url),
+            "popup" => ("opened a pop-up", effect.Url),
+            "jsDialog" => ("browser dialog", effect.Text),
+            _ => ((string?)null, (string?)null),
+        };
+        if (what is null) return null;
+
+        // Said with its step when another step was shown since.
+        var step = effect.ActionId is not null && StepOfAction.TryGetValue(effect.ActionId, out var number) ? number : 0;
+        if (step > 0 && step != _lastStep) what = $"step {step} {what}";
+        return t.Line([
+            new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim), new Span(what, Tone.Dim),
+            .. Terminal.Clean(detail) is { Length: > 0 } shown
+                ? (Span[])[new Span("  "), Untrusted(shown, shrink: effect.Kind == "urlChanged" ? Shrink.Middle : Shrink.End)]
+                : [],
+        ]);
+    }
+
+    private static (string Glyph, string Verb) Verb(Terminal t, CapturedAction action) => action.Kind switch
+    {
+        "click" => (t.Glyph("•", "*"), "click"),
+        "dblclick" => (t.Glyph("•", "*"), "dblclick"),
+        "fill" => (t.Glyph("≡", "="), "fill"),
+        "choose" => (t.Glyph("▼", "v"), "choose"),
+        "check" => (t.Glyph("■", "x"), "check"),
+        "uncheck" => (t.Glyph("□", "o"), "uncheck"),
+        "press" => (t.Glyph("◘", "#"), "press"),
+        "upload" => (t.Glyph("↑", "^"), "upload"),
+        "drag" => (t.Glyph("↔", "~"), "drag"),
+        "navigate" => (t.Glyph("→", ">"), "go to"),
+        "newTab" => (t.Glyph("+", "+"), "new tab"),
+        var other => (t.Glyph("•", "*"), other),
     };
 
-    private static void Hint(string lines)
+    // A password is never shown, as someone may be watching the screen.
+    private static Span Value(Terminal t, CapturedAction action)
     {
-        var indented = string.Join('\n', lines.Split('\n').Select(line => $"     {line}"));
-        WithColor(ConsoleColor.DarkGray, () => Console.WriteLine(indented));
+        if (action.Kind == "fill" && action.Element?.Type == "password") return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
+        var value = action.Kind == "upload" ? string.Join(", ", action.Files ?? []) : action.Value ?? "";
+        return value.Length == 0 ? new Span("\"\"", Tone.Dim) : Untrusted(value, Tone.Accent, Shrink.Middle, order: 2, min: 8);
     }
 
-    private static void Separator() =>
-        WithColor(ConsoleColor.DarkGray, () => Console.WriteLine("  ---------------------------------------"));
+    private static Span Untrusted(string text, Tone tone = Tone.Plain, Shrink shrink = Shrink.End, int order = 1, int min = 6) =>
+        new(text, tone, shrink, order, min, Untrusted: true);
 
-    private static void WithColor(ConsoleColor color, Action write)
+    // ── Drawing ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A glyph and a message, wrapped to the terminal's width under the message's start. Each line of a message with
+    /// several is wrapped on its own.
+    /// </summary>
+    private static void Status(Terminal t, string indent, string glyph, Tone glyphTone, string message, Tone tone = Tone.Plain)
     {
-        var previous = Console.ForegroundColor;
-        Console.ForegroundColor = color;
-        try { write(); }
-        finally { Console.ForegroundColor = previous; }
+        var start = indent.Length + Terminal.WidthOf(glyph) + 1;
+        var width = Math.Max(20, t.Width - 1 - start);
+        var lines = message.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0)
+            .SelectMany(line => Terminal.Wrap(line, width)).DefaultIfEmpty("").ToList();
+        lock (Gate)
+        {
+            t.WriteLine(indent + t.Paint(glyph, glyphTone) + " " + t.Paint(lines[0], tone));
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', start) + t.Paint(more, tone));
+        }
+    }
+
+    private static void RecordingState(Terminal t, string state, string detail) =>
+        Headline(t, t.Paint(t.Glyph("●", "*"), Tone.Error) + " " + t.Paint(state, Tone.Bold), detail);
+
+    // A bold first line with dim details after it, wrapped under the details' start when they do not fit; details
+    // kept together go on the next line instead.
+    private static void Headline(Terminal t, string headline, string details, bool together = false)
+    {
+        var start = Margin.Length + Terminal.WidthOf(headline) + 2;
+        var oneLine = start + Terminal.WidthOf(details) <= t.Width - 1;
+        if (!oneLine && (together || t.Width - 1 - start < 30))
+        {
+            t.WriteLine(Margin + headline);
+            start = Margin.Length + 2;
+            foreach (var line in Terminal.Wrap(details, t.Width - 1 - start)) t.WriteLine(new string(' ', start) + t.Paint(line, Tone.Dim));
+            return;
+        }
+
+        var lines = Terminal.Wrap(details, t.Width - 1 - start).ToList();
+        t.WriteLine(Margin + headline + "  " + t.Paint(lines[0], Tone.Dim));
+        foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', start) + t.Paint(more, Tone.Dim));
+    }
+
+    private static void Field(Terminal t, string label, IEnumerable<Span> value) =>
+        t.WriteLine(t.Line([new Span(Margin), new Span(label.PadRight(6), Tone.Dim), .. value]));
+
+    // The keys on one line, or on more under each other when the terminal is narrow.
+    private static void Keys(Terminal t, IReadOnlyList<(string Key, string Does)> keys)
+    {
+        var separator = $"  {t.Dot}  ";
+        var line = Margin + t.Paint("Keys".PadRight(6), Tone.Dim);
+        var width = Margin.Length + 6;
+        foreach (var (key, does) in keys)
+        {
+            var item = Terminal.WidthOf(key) + 1 + Terminal.WidthOf(does);
+            var first = width == Margin.Length + 6;
+            if (!first && width + separator.Length + item > t.Width - 1)
+            {
+                t.WriteLine(line);
+                (line, width, first) = (new string(' ', Margin.Length + 6), Margin.Length + 6, true);
+            }
+
+            line += (first ? "" : t.Paint(separator, Tone.Dim)) + t.Paint(key, Tone.Accent) + " " + does;
+            width += (first ? 0 : separator.Length) + item;
+        }
+
+        t.WriteLine(line);
+    }
+
+    private static void Section(Terminal t, string title, (string Text, Tone Tone)? glyph = null)
+    {
+        t.WriteLine();
+        t.WriteLine(Margin + (glyph is var (text, tone) ? t.Paint(text, tone) + " " : "") + t.Paint(title, Tone.Bold));
+    }
+
+    private static void Rule(Terminal t) =>
+        t.WriteLine(Margin + t.Paint(new string(t.Glyph("─", "-")[0], Math.Min(t.Width - 1, 80) - Margin.Length * 2), Tone.Dim));
+
+    // A line of YAML with its key coloured.
+    private static string Yaml(Terminal t, string line)
+    {
+        var colon = line.IndexOf(':');
+        if (colon < 0) return line;
+        var lead = line.Length - line.TrimStart(' ', '-').Length;
+        return line[..lead] + t.Paint(line[lead..colon], Tone.Accent) + line[colon..];
+    }
+
+    private static string Count(int count, string what) => $"{count} {what}{(count == 1 ? "" : "s")}";
+
+    // Paths as the person would type them from here; absolute when elsewhere.
+    private static string Relative(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var relative = Path.GetRelativePath(Environment.CurrentDirectory, full);
+        return relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative) ? full : relative;
     }
 }
