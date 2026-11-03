@@ -1,4 +1,5 @@
-export type TokenKind = 'plain' | 'kw' | 'type' | 'fn' | 'prop' | 'str' | 'num' | 'com' | 'punc' | 'key';
+// `doc` is the text of a /// comment, `doctag` its XML tags, `docref` what a tag refers to (cref="NewTicketConfig").
+export type TokenKind = 'plain' | 'kw' | 'type' | 'fn' | 'prop' | 'str' | 'num' | 'com' | 'doc' | 'doctag' | 'docref' | 'punc' | 'key';
 
 export interface Token {
   kind: TokenKind;
