@@ -1162,11 +1162,15 @@ internal static class CaptureScript
             chooser = { element, kinds, index, box };
             renderChooser();
             const rect = element?.getBoundingClientRect() ?? { left: innerWidth / 2 - 174, right: innerWidth / 2 + 174, top: 0, bottom: 44 };
+            // Below the element, else above it, else beside it, where it covers none of it.
             const size = box.getBoundingClientRect();
-            const below = rect.bottom + 8;
-            const top = below + size.height <= innerHeight - 8 ? below : rect.top - size.height - 8 >= 8 ? rect.top - size.height - 8
-              : Math.max(8, innerHeight - size.height - 8);
-            Object.assign(box.style, { left: `${Math.min(Math.max(8, rect.left), innerWidth - size.width - 8)}px`, top: `${top}px` });
+            const fit = (top, left) => ({ top: Math.min(Math.max(8, top), innerHeight - size.height - 8),
+              left: Math.min(Math.max(8, left), innerWidth - size.width - 8) });
+            const place = rect.bottom + 8 + size.height <= innerHeight - 8 ? fit(rect.bottom + 8, rect.left)
+              : rect.top - size.height - 8 >= 8 ? fit(rect.top - size.height - 8, rect.left)
+              : rect.right + 12 + size.width <= innerWidth - 8 ? fit(rect.top, rect.right + 12)
+              : fit(rect.top, rect.left - size.width - 12);
+            Object.assign(box.style, { left: `${place.left}px`, top: `${place.top}px` });
             drawOverlay();
           }
 
