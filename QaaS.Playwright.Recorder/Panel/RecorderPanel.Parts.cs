@@ -126,8 +126,9 @@ internal sealed partial class RecorderPanel
     private void RerecordFromFailure()
     {
         if (_part is not { Phase: "failed", FailedAt: { } failed } part || _shown is not { } shown) return;
-        var number = shown.View.Steps.SelectMany(step => step.Actions).TakeWhile(action => action.Id != failed).Count() + 1;
-        if (shown.PartFrom(failed, part.Part, $"step {number} on") is not { } from) return;
+        var order = shown.View.Steps.SelectMany(step => step.Actions).Select(action => action.Id).ToList();
+        var (first, last) = (order.IndexOf(failed) + 1, order.IndexOf(part.Part.Last) + 1);
+        if (shown.PartFrom(failed, part.Part, last > first ? $"steps {first} to {last}" : $"step {first}") is not { } from) return;
         _part.After = false;
         Record(from);
     }

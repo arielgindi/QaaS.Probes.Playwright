@@ -265,11 +265,12 @@ function Tried({ tried, rerecord, canAdd, onHover, onAdd }: { tried: Action[]; r
   const where = rerecord?.phase === 'recording' ? 'where the part records' : 'at the end of the flow';
   return (
     <section aria-label="Tried" class="mx-1 mt-4 rounded-lg border border-info/25 bg-info/[0.04] p-1.5">
-      <div class="flex items-center gap-1.5 px-1.5 pt-0.5 pb-1.5 text-[11px] font-medium text-info">
+      <div class="flex items-center gap-1.5 px-1.5 pt-0.5 text-[11px] font-medium text-info">
         <Icon name="flask" size={12} />
         Tried, not recorded
-        <span class="ml-auto font-normal text-faint">Add to flow puts one {where}</span>
+        {tried.length > 0 && <span class="ml-auto font-normal tabular-nums text-faint">{tried.length}</span>}
       </div>
+      <p class="px-1.5 pb-1.5 text-[11px] text-faint">Add to flow puts one {where}.</p>
       {tried.length === 0 ? (
         <p class="px-1.5 pb-1 text-[12px] leading-snug text-muted">Click, type or choose in the app: each action shows here as the recorder would write it.</p>
       ) : (
@@ -331,8 +332,7 @@ function TriedCard({ action, canAdd, onHover, onAdd }: { action: Action; canAdd:
                 {others.map((candidate) => {
                   const status = candidateStatus(candidate);
                   return (
-                    <li key={candidate.index} class="flex min-w-0 items-baseline gap-1.5 text-[11px]">
-                      <span class="w-[92px] shrink-0 truncate text-faint">{candidateKind(candidate)}</span>
+                    <li key={candidate.index} title={`${candidateKind(candidate)}: ${candidate.code}`} class="flex min-w-0 items-baseline gap-1.5 text-[11px]">
                       <code dir="ltr" class="min-w-0 flex-1 truncate font-mono text-[10.5px] text-muted">{candidate.label}</code>
                       <span class={cls('shrink-0 tabular-nums', status.ok ? 'text-ok/90' : 'text-faint')}>
                         {status.ok ? '✓' : '✗'} {status.text}

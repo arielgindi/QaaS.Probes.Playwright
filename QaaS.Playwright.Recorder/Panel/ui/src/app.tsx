@@ -41,10 +41,12 @@ export function App() {
     return byLine;
   }, [actions]);
   const saving = state.status === 'saving';
-  const last = actions.at(-1)?.id ?? null;
+  // The newest action: the last of the flow, or the last recorded in the part being recorded again.
+  const fresh = state.rerecord?.phase === 'recording' ? state.rerecord.fresh : [];
+  const last = fresh.at(-1) ?? actions.at(-1)?.id ?? null;
   const test = state.test;
   const testing = isGoing(test);
-  const canTest = actions.length > 0 && !saving && !testing && state.status !== 'login';
+  const canTest = actions.length > 0 && !saving && !testing && state.status !== 'login' && state.status !== 'testing';
   const part = state.rerecord;
   // A step is recorded again from the flow's start: not while anything runs, nor while another part is.
   const canRerecord = canTest && (!part || part.phase === 'done');
