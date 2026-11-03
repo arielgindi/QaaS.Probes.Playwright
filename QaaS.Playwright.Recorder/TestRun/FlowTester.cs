@@ -31,8 +31,9 @@ internal sealed record TestOptions
 /// in a window over the recorded one, with the page the recording started on as BaseUrl, the recording's login flow
 /// first when it has one, and the recorded values as the flow's settings, through the probe's own BrowserSession and
 /// FlowRunner, which set its pages up, time it out, hide its secrets and shoot its failure. The recording is paused
-/// meanwhile. Each action is told as it begins, passes or fails, and a run can stop after an action ("Run to here"), or
-/// be stopped. One run at a time. The context is opened by the recording's own connection to Chrome: another one would
+/// meanwhile. Each phase before the first action, the build, the window, BaseUrl, the login, is told as it begins, and
+/// how long each phase took once the run ended. Each action is told as it begins, passes or fails, and a run can stop
+/// after an action ("Run to here"), or be stopped. One run at a time. The context is opened by the recording's own connection to Chrome: another one would
 /// reset the emulation of every page it attaches to, the recorded one's among them, e.g. its colour scheme. A replay
 /// runs the flow so far in the recorded window itself instead, for a recording that continues another to go on there,
 /// or runs it from the start there, up to a part the person records again.
@@ -86,6 +87,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     public Task<TestReport> ReplayFromStartAsync(RecordRequest request, string namespaceName, string? upTo) =>
         Start(request, namespaceName, upTo, false, null, replay: true, fromStart: true);
 
+    /// <summary>
+    /// Has the compiler ready for the first test, in the background, by compiling the flow as recorded so far once
+    /// (<see cref="FlowBuild.WarmUp"/>).
+    /// </summary>
+    public Task WarmUp(RecordRequest request) =>
+        FlowBuild.WarmUp(() => FlowCodeGenerator.Generate(session.Build(), request.ClassName, "Flows", request.AutoChecks));
+
     private Task<TestReport> Start(RecordRequest request, string namespaceName, string? upTo, bool slowMotion, IPage? front,
         bool replay, bool fromStart)
     {
@@ -137,22 +145,25 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         // In the order the flow does them, as the panel lists them; a loop's repeat by repeat.
         var order = plan.Steps.SelectMany(step => step.Actions).Select(action => action.Source.Id)
             .Where(flow.ActionLines.ContainsKey).Distinct().ToList();
+        var started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var report = new TestReport(Interlocked.Increment(ref _runs), request.ClassName, flow.Code, order)
         {
             UpTo = upTo is not null && order.Contains(upTo) ? upTo : null, SlowMotion = slowMotion,
-            Login = replay && !fromStart ? null : request.Login?.Flow, Started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Replay = replay, FromStart = fromStart,
+            Login = replay && !fromStart ? null : request.Login?.Flow, Started = started, Since = started, Replay = replay,
+            FromStart = fromStart,
         };
         if (order.Count == 0)
             return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Record a step first: there is nothing to test yet." });
         if (!replay && !session.BeginTest())
             return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Wait for the login flow: the flow can be tested once the recording starts." });
 
+        var times = new PhaseTimes();
+        times.Begin(TestPhase.Building);
         Publish(report);
         ConsoleUi.Testing(report);
         try
         {
-            report = await TestAsync(report, flow, request, front, stop);
+            report = await TestAsync(report, flow, request, front, times, stop);
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
@@ -163,13 +174,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
             if (!replay) session.EndTest();
         }
 
-        report = Publish(report with { Phase = TestPhase.Done });
+        report = Publish(report with { Phase = TestPhase.Done, Times = times.End() });
         ConsoleUi.Tested(report, recording);
         return report;
     }
 
     private async Task<TestReport> TestAsync(TestReport report, GeneratedFlow flow, RecordRequest request, IPage? front,
-        CancellationToken stop)
+        PhaseTimes times, CancellationToken stop)
     {
         BuiltFlow? built;
         IConfiguration flowConfiguration;
@@ -212,6 +223,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         // A replay goes on in the recorded window, after the login the recording ran, or from how the recording started,
         // and is stopped between statements.
         var replay = report.Replay;
+        if (!replay || report.FromStart) report = Enter(report, TestPhase.Opening, times);
         if (report.FromStart) await session.ResetToStartAsync();
         await using var run = replay
             ? await BrowserSession.OnPageAsync(session.Page, config, log)
@@ -222,30 +234,35 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
 
         var steps = new Steps(report.Actions, flow.Statements, report.Total - 1);
         report = await RunFlowsAsync(report, flow, built, replay && !report.FromStart ? null : request.Login, flowConfiguration,
-            secrets, log, config, run, steps, stop);
+            secrets, log, config, run, steps, times, stop);
         return report with { Steps = steps.Snapshot(), Ms = timer.ElapsedMilliseconds, Warnings = log.Warnings };
     }
 
     // BaseUrl, the login flow and the flow, as the probe runs them; whatever ends the run, the state of each action.
     private async Task<TestReport> RunFlowsAsync(TestReport report, GeneratedFlow flow, BuiltFlow? built, LoginFlow? login,
         IConfiguration flowConfiguration, Secrets secrets, ILogger log, PlaywrightFlowConfig config, BrowserSession run,
-        Steps steps, CancellationToken stop)
+        Steps steps, PhaseTimes times, CancellationToken stop)
     {
         var context = new Context { Logger = NullLogger.Instance };
         string? inLogin = null;
         try
         {
-            if (!report.Replay || report.FromStart) await run.OpenBaseUrlAsync(config.BaseUrl);
+            if (!report.Replay || report.FromStart)
+            {
+                report = Enter(report, TestPhase.StartPage, times);
+                await run.OpenBaseUrlAsync(config.BaseUrl);
+            }
+
             if (login is not null)
             {
-                report = Publish(report with { Phase = TestPhase.LoggingIn });
+                report = Enter(report, TestPhase.LoggingIn, times);
                 inLogin = login.Flow;
                 FlowAssemblyContext.Load(login.Assembly);
                 await new FlowRunner(context, null, null, config, flowConfiguration, secrets, log).RunAsync([login.Flow], run);
                 inLogin = null;
             }
 
-            report = Publish(report with { Phase = TestPhase.Running });
+            report = Enter(report, TestPhase.Running, times);
             if (built is not null) await RunBuiltAsync(report, built, context, flowConfiguration, secrets, log, config, run, steps, stop);
             steps.Ended(failed: null);
             return report with { Outcome = TestOutcome.Passed };
@@ -362,6 +379,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build().GetSection(PlaywrightFlowConfig.FlowConfigurationKey);
     }
 
+    // The run goes on to its next phase, which the panel shows with its time, and the console once it ended.
+    private TestReport Enter(TestReport report, TestPhase phase, PhaseTimes times)
+    {
+        times.Begin(phase);
+        return Publish(report with { Phase = phase, Since = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
+    }
+
     private TestReport Publish(TestReport report)
     {
         lock (_gate) _report = report;
@@ -391,6 +415,39 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         {
             // The panel closed.
         }
+    }
+
+    /// <summary>How long each phase of one run took, on the run's own flow of control.</summary>
+    private sealed class PhaseTimes
+    {
+        private readonly List<PhaseTime> _ended = [];
+        private readonly Stopwatch _clock = new();
+        private TestPhase? _phase;
+
+        /// <summary>The phase before ends, and <paramref name="phase"/> begins.</summary>
+        public void Begin(TestPhase phase)
+        {
+            End();
+            _phase = phase;
+            _clock.Restart();
+        }
+
+        /// <summary>The phase going on ends; each phase's time, in the order they ran.</summary>
+        public IReadOnlyList<PhaseTime> End()
+        {
+            if (_phase is { } phase) _ended.Add(new PhaseTime(NameOf(phase), _clock.ElapsedMilliseconds));
+            _phase = null;
+            return [.. _ended];
+        }
+
+        private static string NameOf(TestPhase phase) => phase switch
+        {
+            TestPhase.Building => "build",
+            TestPhase.Opening => "window",
+            TestPhase.StartPage => "start page",
+            TestPhase.LoggingIn => "login",
+            _ => "run",
+        };
     }
 
     /// <summary>What a statement beginning means for the run.</summary>

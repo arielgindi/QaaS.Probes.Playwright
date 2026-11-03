@@ -1,13 +1,21 @@
 namespace QaaS.Playwright.Recorder.TestRun;
 
-/// <summary>Where a test run is: building the flow, logging in, running it, or done.</summary>
+/// <summary>
+/// Where a test run is: building the flow, opening its window, opening BaseUrl in it, logging in, running the flow, or
+/// done.
+/// </summary>
 internal enum TestPhase
 {
     Building,
+    Opening,
+    StartPage,
     LoggingIn,
     Running,
     Done,
 }
+
+/// <summary>How long a phase of a test run took, in milliseconds, by its name in the console: build, window, start page, login or run.</summary>
+internal sealed record PhaseTime(string Phase, long Ms);
 
 /// <summary>How a test run ended.</summary>
 internal enum TestOutcome
@@ -108,6 +116,12 @@ internal sealed record TestReport(int Run, string Flow, string Code, IReadOnlyLi
 
     /// <summary>When it started, in Unix milliseconds.</summary>
     public long Started { get; init; }
+
+    /// <summary>When its <see cref="Phase"/> began, in Unix milliseconds.</summary>
+    public long Since { get; init; }
+
+    /// <summary>How long each phase took, in the order they ran, once it ended.</summary>
+    public IReadOnlyList<PhaseTime> Times { get; init; } = [];
 
     /// <summary>How long the browser's part took, from opening BaseUrl to the end; null before it ended.</summary>
     public long? Ms { get; init; }

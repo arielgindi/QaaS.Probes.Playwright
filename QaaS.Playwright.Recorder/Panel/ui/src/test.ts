@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Action, TestRun } from './types';
 
-/** Whether the run is going on: building the flow, logging in, or running it. */
+/** Whether the run is going on: getting ready for its first step, or running it. */
 export function isGoing(test?: TestRun): boolean {
-  return !!test && (test.state === 'building' || test.state === 'login' || test.state === 'running');
+  return !!test && (isPreparing(test) || test.state === 'running');
+}
+
+/** Whether the run is getting ready for its first step: building the flow, opening its window or page, logging in. */
+export function isPreparing(test?: TestRun): boolean {
+  return !!test && (test.state === 'building' || test.state === 'window' || test.state === 'start' || test.state === 'login');
 }
 
 /** A duration as a person reads it: 840 ms, 2.4 s, 31 s, 1 min 5 s. */

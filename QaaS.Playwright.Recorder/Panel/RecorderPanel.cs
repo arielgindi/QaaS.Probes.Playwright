@@ -102,6 +102,8 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
             panel._worker = Task.Run(panel.RunAsync);
+            // In the background, so the first test compiles as fast as the next.
+            _ = panel._tester.WarmUp(request);
             return panel;
         }
         catch

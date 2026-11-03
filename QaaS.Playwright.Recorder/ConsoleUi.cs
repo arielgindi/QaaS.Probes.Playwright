@@ -917,6 +917,11 @@ internal static class ConsoleUi
                         $"Could not {(report.Replay ? "replay" : "test")} {report.Flow}: {report.Problem}");
                     break;
             }
+
+            // Where the time went, so a slow build, window or page shows: "build 0.2 s · window 0.6 s · run 4.3 s".
+            if (report.Times.Count > 0)
+                Status(t, Margin, " ", Tone.Plain,
+                    string.Join($" {t.Glyph("·", "-")} ", report.Times.Select(time => $"{time.Phase} {time.Ms / 1000.0:0.0} s")), Tone.Dim);
         }
     }
 
