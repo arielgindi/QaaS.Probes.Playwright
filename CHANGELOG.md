@@ -19,6 +19,14 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 - `--login-assembly` with the test project's own DLL finds a login flow of a package it references, and a YAML of no
   `FlowConfiguration` (`{}`) gives a flow of no settings its defaults instead of being refused.
 
+## 2.0.1
+
+- Fixed: the recorder stopped with a NullReferenceException writing a flow whose first step is in a dialog no recorded
+  step opened, such as one open when the recording started, or after deleting the click that opened it; and then at
+  every start, offering that recording.
+- A recording the recorder cannot write no longer stops it: it is still offered when the recorder starts, and saving it
+  says why and keeps it.
+
 ## 2.0.0
 
 - Checks you choose: `F6` in the recorded page, or **Check** in the panel, turns on check mode, where a click picks an

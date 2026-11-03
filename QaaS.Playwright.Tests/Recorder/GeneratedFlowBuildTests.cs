@@ -99,6 +99,13 @@ public class GeneratedFlowBuildTests
         yield return ("TypedAddressThenDialog", Recording(typed,
             Action("click", Element("button", "New", Role("button", "New")), effects: Opened("New"))), false);
 
+        // A dialog already open when the recording starts, or whose opening click was deleted: the flow's first step is
+        // in a dialog no step opened, so RunAsync finds it.
+        yield return ("DialogOpenAtStart", Recording(
+            Action("fill", Element("textbox", "Name", Css("name", "[name='name']", "name", dialog: "Welcome")), "Dana", dialog: "Welcome"),
+            Action("click", Element("button", "Start", Role("button", "Start", dialog: "Welcome")), dialog: "Welcome",
+                effects: Closed("Welcome"))), false);
+
         var otherSite = Action("navigate", null);
         otherSite.Url = "https://other.test/";
         yield return ("TypedAddressOnAnotherSite", Recording(otherSite), false);
