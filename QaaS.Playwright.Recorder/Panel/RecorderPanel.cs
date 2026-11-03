@@ -103,6 +103,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
+            session.PaletteAsked += () => panel._commands.Writer.TryWrite(new PanelCommand("palette", null, null, null));
             session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
             panel._worker = Task.Run(panel.RunAsync);
             // In the background, so the first test compiles as fast as the next.
@@ -222,6 +223,11 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 break;
             case "choose" when command.Action is { } action:
                 _session.Log.Choose(action, command.Candidate);
+                break;
+            case "palette":
+                // Ctrl+K in the app: the panel in front, its commands open.
+                await _page.BringToFrontAsync();
+                await _page.EvaluateAsync("() => window.__qaasPanelPalette?.()");
                 break;
             case "undo" when _shown is { } shown:
                 _session.Log.Undo(shown.Undo);

@@ -177,6 +177,11 @@ export function App() {
     setOverlay('palette');
     if (!seenPalette) setSeenPalette('1');
   };
+  // Ctrl+K pressed in the recorded app opens the commands here too.
+  useEffect(() => {
+    window.__qaasPanelPalette = openPalette;
+    return () => { delete window.__qaasPanelPalette; };
+  });
 
   // Every command, for the palette: what it is called, its key, and why it cannot run now.
   const recordingOrPaused = state.status === 'recording' || state.status === 'paused';

@@ -303,8 +303,8 @@ A tab that opened while paused is opened the same way. When the app is on the sa
 Beside the recorded window, the recorder opens its panel: the flow exactly as it will be saved, written as you work.
 
 - **The top bar**: the flow's name, what the middle shows, and the commands: **Pause**, **Check** and **Try**, each
-  coloured while it is on, **Undo**, **Test** with slow motion beside it, and **Save**; then every command (`Ctrl+K`),
-  the keys (`?`) and the theme. A narrow panel keeps their icons, each named by its tooltip.
+  coloured while it is on, **Undo**, **Test** with slow motion beside it, and **Save**; then every command (`Ctrl+K`,
+  in the panel or in the app, where Chrome's own search would take it otherwise), the keys (`?`) and the theme. A narrow panel keeps their icons, each named by its tooltip.
 - **The status strip**, under it: the one place that says what the recorder is doing and how to leave it, in the
   mode's colour, with the button and the key that end it: `Recording`, `Paused` (**Resume**, `F8`), `Logging in`
   (**Log in by hand**), `Testing` with the step that runs (**Stop**, `Esc`), `Trying` (**Stop trying**, `F7`), `Check`

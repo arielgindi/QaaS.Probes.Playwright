@@ -2274,6 +2274,12 @@ internal static class CaptureScript
               if (!event.repeat) checking ? stopChecking() : startChecking();
               return;
             }
+            // Ctrl+K opens the panel's commands, as in the panel, not Chrome's search; never in a field the person types in.
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK' && !isTextual(activeElement() ?? document.body)) {
+              handled();
+              if (!event.repeat) control({ type: 'palette' });
+              return;
+            }
             if (!checking) return;
             if (event.key === 'Escape') {
               handled();

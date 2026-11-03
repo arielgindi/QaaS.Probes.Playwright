@@ -176,6 +176,9 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>Raised, on Playwright's thread, when the person pressed F2 in the app while recording a part again.</summary>
     public event Action? PartDone;
 
+    /// <summary>Raised, on Playwright's thread, when the person pressed Ctrl+K in the app, for the panel's commands.</summary>
+    public event Action? PaletteAsked;
+
     /// <summary>
     /// Opens Chrome on the URL with the capture script installed. <paramref name="onNews"/> receives each action and
     /// effect as it is captured, and each <see cref="RecordingState"/> the recording goes to, on Playwright's thread.
@@ -773,6 +776,9 @@ internal sealed class RecordingSession : IAsyncDisposable
                 break;
             case "done" when RerecordingPart is not null:
                 PartDone?.Invoke();
+                break;
+            case "palette":
+                PaletteAsked?.Invoke();
                 break;
         }
     }

@@ -96,7 +96,7 @@ internal static class ConsoleUi
             ("F2", "While a part is recorded again: done"),
             ("Esc", "While your login flow runs: stops it, to log in by hand"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
-            ("Ctrl+K", "In the panel: every command, with its key"),
+            ("Ctrl+K", "In the panel or the app: every command, with its key"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
         Rows(t, "USAGE", usage, ColumnFor(usage), Tone.Plain);

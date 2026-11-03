@@ -8,6 +8,8 @@ declare global {
     __qaasPanelShow?: (json: string) => boolean;
     __qaasPanelElements?: (json: string) => boolean;
     __qaasPanelSend?: (json: string) => void;
+    /** Opens the commands, as Ctrl+K pressed in the recorded app asks. */
+    __qaasPanelPalette?: () => void;
   }
 }
 
