@@ -33,8 +33,9 @@ and the two talk through two functions on the window (`src/bridge.ts`):
 - `window.__qaasPanelSend(json)`: the recorder exposes it for the panel's commands: `ready`, `choose`, `highlight`,
   `unhighlight`, `undo`, `rename`, `save`, `pause`, `loginByHand` (stops the login flow, to log in by hand), for the
   Elements view `elements`, `pick`, `choosePicked`, `useForStep`, `addClick` and `addFill`, for testing the flow
-  `test`, `stopTest` and `clearTest`, and for checks and edits `checkMode`, `autoChecks`, `dropCheck`, `delete`,
-  `renameStep` and `editValue`.
+  `test`, `stopTest` and `clearTest`, for checks and edits `checkMode`, `autoChecks`, `dropCheck`, `delete`,
+  `renameStep` and `editValue`, for recording a part again `rerecord`, `rerecordDone`, `rerecordCancel`, `rerecordFrom`
+  and `rerecordDismiss`, and for trying `try` and `addTried`.
 
 ## Rules
 

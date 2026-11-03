@@ -861,8 +861,7 @@ internal static class ConsoleUi
             if (kept) Success($"{part} is in the flow as you did it now. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
             else Info($"Kept {part} as it was.");
             if (paused)
-                Status(Out, Margin, Out.Glyph("║", "="), Tone.Warning,
-                    "Paused: the app is where that part left it, not at the end of the flow. Resume (F8) records at the end from here.");
+                Info("The app is where that part left it, not at the end of the flow: Resume (F8) records at the end from there.");
         }
     }
 

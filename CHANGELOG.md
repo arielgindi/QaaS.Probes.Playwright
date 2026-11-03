@@ -4,6 +4,16 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- **Re-record** a step or an action in the panel, or **Record after this**: the recorded window goes back to the start
+  of the flow and replays it up to there, as **Test** runs it, nothing recorded meanwhile; then what you do goes in
+  place of the part, or after it, and the steps after it stay. `F2` (**Done**) keeps it, and `Esc` in the panel keeps
+  it as it was; Undo brings the old part back. A replay that does not get there says where, as a test does, and offers
+  to record again from the step that failed. A loop is recorded again whole. It works while recording and with
+  `--continue`, and is kept in the recording.
+- **Try**, `F7` in the app or **Try** in the panel: nothing is recorded, as when paused, but each action shows in the
+  panel as a dimmed card of what the recorder would write: its locator and why the others lost, every locator with what
+  it found, the auto checks after it, and the setting a value would be. **Add to flow** adds one where the next action
+  goes. `F7` no longer turns on Chrome's caret browsing in the recorded window.
 - The recorder finds your tests' login flow by itself, so `--login LoginFlow --login-assembly <dll>` is no longer
   needed: in your test project (the nearest `.csproj`), the flow its YAML runs in `SetupFlows` most, else one named like
   a login, in the project's build or a DLL beside it, as a shared package's flow is, with its values from the
