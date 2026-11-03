@@ -556,10 +556,12 @@ internal static class ConsoleUi
         var other => other,
     };
 
-    // A password is never shown, as someone may be watching the screen.
+    // A password or another secret is never shown, as someone may be watching the screen.
     private static Span Value(Terminal t, CapturedAction action)
     {
-        if (action.Kind == "fill" && action.Element?.Type == "password") return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
+        if (action.Kind == "fill" && (action.Element?.Type == "password"
+                                      || QaaS.Playwright.Configuration.Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element))))
+            return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
         var value = action.Kind == "upload" ? string.Join(", ", action.Files ?? []) : action.Value ?? "";
         return value.Length == 0 ? new Span("\"\"", Tone.Dim) : Untrusted(value, Tone.Accent, Shrink.Middle, order: 2, min: 8);
     }
@@ -1005,4 +1007,19 @@ internal static class ConsoleUi
     /// <summary>After <see cref="Saved"/>, for a flow recorded after a login flow.</summary>
     public static void RunAfter(string loginFlow) =>
         Info($"It was recorded after {loginFlow}: run that first, with SetupFlows: [{loginFlow}] and its settings.");
+
+    /// <summary>
+    /// Where to set the flow's secrets, once: neither its YAML nor its code holds them, and the YAML reads each from an
+    /// environment variable.
+    /// </summary>
+    public static void Secrets(GeneratedFlow flow, string yamlPath)
+    {
+        if (flow.Secrets.Count == 0) return;
+        var names = string.Join(", ", flow.Secrets.Select(setting => setting.Name));
+        var variables = string.Join(", ", flow.Secrets.Select(setting => FlowYaml.EnvironmentName(setting.Name)));
+        var are = flow.Secrets.Count == 1 ? "is a secret" : "are secrets";
+        Info($"{names} {are}: no file of the flow holds {(flow.Secrets.Count == 1 ? "it" : "them")}. " +
+             $"{Path.GetFileName(yamlPath)} reads {variables} from the environment ({FlowYaml.Placeholder(flow.Secrets[0])}): " +
+             "set it before the run, or the secret store your tests use.");
+    }
 }

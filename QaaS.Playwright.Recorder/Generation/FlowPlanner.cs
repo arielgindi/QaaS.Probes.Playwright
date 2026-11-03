@@ -199,6 +199,7 @@ internal static partial class FlowPlanner
             {
                 case "fill":
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
+                    action.Value.Secret = field?.Type == "password";
                     break;
                 case "check" or "uncheck" when source.Widget == "radio":
                     action.Value = new Setting(name, action.Locator?.Kind == "nameValue" ? field?.Value : field?.Text)
@@ -421,6 +422,10 @@ internal static partial class FlowPlanner
 
         // A name the person gave keeps it.
         foreach (var setting in plan.Settings.OrderByDescending(setting => setting.Named)) setting.Name = Unique(setting.Name, taken);
+
+        // What a setting's name says is a secret is one, as a probe hides it; text only, as a flag or a number is none.
+        foreach (var setting in plan.Settings.Where(setting => setting is { Type: "string", Items: null }))
+            setting.Secret |= Configuration.Secrets.IsSecretKey(setting.Name);
     }
 
     private static string Unique(string name, HashSet<string> taken)

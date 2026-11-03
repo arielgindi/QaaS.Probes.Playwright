@@ -173,7 +173,8 @@ internal static class FlowRecorder
         if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
         await autosave.SavedAsync(recording, request, saved, flow.Code);
         ConsoleUi.Saved(request, saved, flow);
-        if (Autosave.Unkept(recording, request.ClassName) is [_, ..] unkept)
+        ConsoleUi.Secrets(flow, saved.YamlPath);
+        if (Autosave.Unkept(recording, request.ClassName).Except(flow.Secrets.Select(setting => setting.Name)).ToList() is [_, ..] unkept)
             ConsoleUi.Warning($"The recorder keeps no password in its copy of a recording: set {string.Join(", ", unkept)} " +
                               $"in {Path.GetFileName(saved.YamlPath)}.");
         if (request.Login is { } after) ConsoleUi.RunAfter(after.Flow);

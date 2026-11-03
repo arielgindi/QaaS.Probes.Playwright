@@ -93,6 +93,12 @@ internal sealed class Setting(string name, string? text, bool? flag = null)
     public string? DateFormat { get; set; }
 
     /// <summary>
+    /// A password or another secret: the flow's record has no default for it, and its YAML reads it from the environment
+    /// (<c>${PASSWORD}</c>); only a test run in the panel is given the value recorded.
+    /// </summary>
+    public bool Secret { get; set; }
+
+    /// <summary>
     /// <c>string</c>, <c>bool</c>, <c>int</c> or <c>decimal</c>; for a list of values, an array of one of them.
     /// </summary>
     public string Type { get; set; } = flag is null ? "string" : "bool";

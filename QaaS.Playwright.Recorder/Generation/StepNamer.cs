@@ -357,8 +357,10 @@ internal static partial class StepNamer
         items.Count <= 1 ? string.Concat(items) : string.Join(", ", items[..^1]) + $" {last.Trim()} " + items[^1];
 
     /// <summary>A setting's name as words: EstimateHours gives "estimate hours".</summary>
-    public static string Human(string name) =>
-        string.Join(' ', WordOf().Matches(name).Select(word => word.Value.ToLowerInvariant()));
+    public static string Human(string name) => string.Join(' ', Words(name).Select(word => word.ToLowerInvariant()));
+
+    /// <summary>The words of a PascalCase name: EstimateHours gives Estimate and Hours.</summary>
+    public static IEnumerable<string> Words(string name) => WordOf().Matches(name).Select(word => word.Value);
 
     /// <summary>The address as the flow checks it: its path, with a record's id in it as [id], as any id matches there.</summary>
     public static string? Route(string? url)

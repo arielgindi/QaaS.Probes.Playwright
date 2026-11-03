@@ -27,9 +27,18 @@ internal sealed record Expectation(string Key, string Text, bool Auto)
     public bool Dropped { get; init; }
 }
 
-/// <summary>The flow's source, its settings as YAML, and what to check by hand.</summary>
+/// <summary>
+/// The flow's source, its settings as YAML, and what to check by hand. The YAML holds no secret: each is the placeholder
+/// of an environment variable (<c>${PASSWORD}</c>).
+/// </summary>
 internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks)
 {
+    /// <summary>The settings as YAML with the secrets recorded, which only a test run in the panel reads.</summary>
+    public string Values { get; init; } = Yaml;
+
+    /// <summary>The settings that hold a secret, which the YAML reads from the environment.</summary>
+    public IReadOnlyList<Setting> Secrets { get; init; } = [];
+
     /// <summary>
     /// The lines written for each recorded action, by the action's id. An action a loop repeats has the lines of the
     /// loop's body that do it, as every repeat of it has.
@@ -1152,6 +1161,8 @@ internal sealed partial class FlowWriter
         foreach (var missing in _plan.NotRecorded) checks.Add(new CheckByHand(null, missing));
         return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
         {
+            Values = FlowYaml.Write(className, _plan.Settings, secrets: true),
+            Secrets = [.. _plan.Settings.Where(setting => setting.Secret)],
             ActionLines = actionLines, StepLines = stepLines, Statements = statements,
             Expects = _expects.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<Expectation>)pair.Value),
         };
@@ -1225,6 +1236,14 @@ internal sealed partial class FlowWriter
     private static IEnumerable<string> Property(Setting setting)
     {
         var declaration = $"    public {setting.CSharpType} {setting.Name} {{ get; init; }} =";
+        // A secret has no default in the code: each case gives it, as its YAML reads it from the environment.
+        if (setting.Secret)
+        {
+            yield return $"    /// <summary>A secret: no default here; the YAML reads it from {FlowYaml.Placeholder(setting)}.</summary>";
+            yield return $"{declaration} \"\";";
+            yield break;
+        }
+
         if (setting.Items is not { } items)
         {
             yield return $"{declaration} {Default(setting, setting.Type)};";

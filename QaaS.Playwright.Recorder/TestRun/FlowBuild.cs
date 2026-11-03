@@ -144,11 +144,14 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
             });
     }
 
-    /// <summary>Writes the flow's settings, its recorded values, for the run to read as the probe reads its YAML.</summary>
+    /// <summary>
+    /// Writes the flow's settings, its recorded values with its secrets, for the run to read as the probe reads its YAML,
+    /// in the build's folder, which only the person can read.
+    /// </summary>
     public async Task<string> WriteSettingsAsync(GeneratedFlow flow, CancellationToken cancel)
     {
         var path = Path.Combine(await PrepareAsync(cancel), "Flow.flow.yaml");
-        await File.WriteAllTextAsync(path, flow.Yaml, cancel);
+        await File.WriteAllTextAsync(path, flow.Values, cancel);
         return path;
     }
 
