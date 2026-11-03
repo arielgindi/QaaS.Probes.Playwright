@@ -998,7 +998,8 @@ internal static class CaptureScript
             return days >= 28 && (MONTHS.test(element.textContent ?? '') || /calendar|date|picker|month/i.test(element.getAttribute('class') ?? ''))
               // A calendar a library names so, in the view of the months of a year or of the years of a decade too, as
               // Kendo's does: its "Navigate to parent view: 2026" names today's year.
-              || /calendar|datepicker|date-picker|picker-panel|picker-dropdown|picker-popup/i.test(element.getAttribute('class') ?? '');
+              || /calendar|datepicker|date-picker|picker-panel|picker-dropdown|picker-popup/i.test(element.getAttribute('class') ?? '')
+                && element.querySelectorAll('td, [role=gridcell], button, a, li').length >= 10;
           }
           // The button that commits what a picker shows, as antd's OK: a date picked is kept only once it is pressed.
           const COMMITS = /^(ok|apply|done|set|confirm|select)$/i;
