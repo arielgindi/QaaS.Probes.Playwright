@@ -1,0 +1,453 @@
+{
+  "startUrl": "http://127.0.0.1:5775/todos",
+  "actions": [
+    {
+      "id": "f6ueex-1",
+      "t": 1793706204751,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Buy milk",
+      "raw": "Buy milk",
+      "final": true,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-2",
+      "t": 1793706205161,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-3",
+      "t": 1793706205568,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Pay the electricity bill",
+      "raw": "Pay the electricity bill",
+      "final": true,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-4",
+      "t": 1793706205976,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-5",
+      "t": 1793706206380,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Book a dentist appointment",
+      "raw": "Book a dentist appointment",
+      "final": true,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-6",
+      "t": 1793706206786,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-7",
+      "t": 1793706207191,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Return library books",
+      "raw": "Return library books",
+      "final": true,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-8",
+      "t": 1793706207596,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "http://127.0.0.1:5775/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    }
+  ]
+}

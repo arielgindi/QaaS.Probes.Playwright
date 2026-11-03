@@ -31,6 +31,37 @@ public class GoldenFlowTests
         });
     }
 
+    [Test]
+    public void Repeats_ThatDifferInMoreThanTheirValues_OrAreTooFew_StayAsRecorded()
+    {
+        // The to-do list's recording, typing a task and pressing Enter four times, each changed in another way.
+        Recording Todos(Func<List<CapturedAction>, IEnumerable<CapturedAction>> change)
+        {
+            var recording = Recording.FromJson(File.ReadAllText(Path.Combine(Folder(), "AddTodos.recording.json")));
+            return recording with { Actions = [.. change([.. recording.Actions])] };
+        }
+
+        var otherField = Todos(actions =>
+        {
+            actions[4].Target = Captured.Element("textbox", "Notes", Captured.Css("id", "[id='notes']", "notes"));
+            return actions;
+        });
+        var extraAction = Todos(actions => actions.Take(4)
+            .Append(Captured.Action("click", Captured.Element("button", "Clear", Captured.Role("button", "Clear"))))
+            .Concat(actions.Skip(4)));
+        var twoRepeats = Todos(actions => actions.Take(4));
+
+        Assert.Multiple(() =>
+        {
+            foreach (var (why, recording) in new[]
+                         { ("another field", otherField), ("an extra action", extraAction), ("two repeats", twoRepeats) })
+            {
+                var code = FlowCodeGenerator.Generate(recording, "AddTodos", "Flows").Code;
+                Assert.That(code, Does.Not.Contain("foreach").And.Contain("Configuration.NewTask2"), why);
+            }
+        });
+    }
+
     private static void Compare(string actual, string file)
     {
         var path = Path.Combine(Folder(), file);

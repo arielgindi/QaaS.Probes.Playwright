@@ -1,0 +1,39 @@
+using Microsoft.Playwright;
+using QaaS.Playwright;
+
+namespace Flows;
+
+/// <summary>
+/// Recorded on http://127.0.0.1:5775/todos. Run it in a PlaywrightFlowProbe with <c>Flows: [AddTodos]</c>; each case
+/// sets its values under <c>FlowConfiguration:AddTodos</c>.
+/// </summary>
+public sealed class AddTodos : BasePlaywrightFlow<AddTodosConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await EnterNewTasksAsync(page);
+    }
+
+    /// <summary>For each of the new tasks, fills in the new task, then presses Enter.</summary>
+    private async Task EnterNewTasksAsync(IPage page)
+    {
+        var newTask = page.Locator("[id='new-task']");
+        foreach (var task in Configuration.NewTasks)
+        {
+            await newTask.FillAsync(task);
+            await newTask.PressAsync("Enter");
+        }
+    }
+}
+
+/// <summary>The values <see cref="AddTodos"/> recorded; each case can set its own.</summary>
+public sealed record AddTodosConfig
+{
+    public string[] NewTasks { get; init; } =
+    [
+        "Buy milk",
+        "Pay the electricity bill",
+        "Book a dentist appointment",
+        "Return library books",
+    ];
+}

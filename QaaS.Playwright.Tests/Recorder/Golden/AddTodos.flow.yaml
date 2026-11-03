@@ -1,0 +1,9 @@
+# The values recorded in AddTodos. Put this block under the ProbeConfiguration of the probe
+# that runs the flow, and change the values for each case.
+FlowConfiguration:
+  AddTodos:
+    NewTasks:
+      - 'Buy milk'
+      - 'Pay the electricity bill'
+      - 'Book a dentist appointment'
+      - 'Return library books'
