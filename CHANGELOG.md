@@ -2,6 +2,85 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.0.2
+
+- **What three more real sites showed, recorded as a messy person does.** react-admin's demo (React and MUI), Ant
+  Design Pro (React and antd) and the Kendo UI for jQuery demos gave flows that could not replay, or did the opposite
+  of what was done. Now:
+  - **A password is never typed from another setting.** react-admin's demo logs in as `demo` with the password `demo`;
+    the flow typed the user name as the password, with no setting for it. A password, or what a secret's field holds,
+    is never read from an earlier setting of the same value, nor read into another.
+  - **A switch or a checkbox of ARIA is told as the page shows it once the app rendered the click**, not before: antd's
+    and Kendo's switches turned on were recorded as turned off, so a flow did the opposite.
+  - **Browser dialogs are accepted by one handler a page has once** (`page.Dialog -= AcceptBrowserDialog;` then `+=`),
+    however often a confirm shows: two deletes no longer add two handlers that accept the same dialog twice.
+  - **A row is found by its key**: a reference of letters and digits (`50SKLO`), a number in a column of ids, or a name;
+    never a price, a date, a time, a count or a status, which a load or the flow itself changes. A grid's headers are
+    found in their own table, as Kendo's are, and a row is never found by all it says.
+  - **A name that holds a price, a date or a time** is found by the words before it, when they find the element alone:
+    a poster's link by its title and size, never by its `US$15.57`. A name an icon's label starts, as antd's
+    "plus New", or "loading Next" while it spins, or that a flag's label doubles ("EnglishEnglish"), is found with it or
+    without it; a person's link without their avatar's initial ("L Leonie Abernathy"). A title no person wrote
+    (`[object Object]`) never finds anything.
+  - **An autocomplete types what the person typed**: the letters typed to find an option are its search, a setting of
+    their own (`CustomerSearch: 'Hipol'` beside `Customer: 'Hipolito Bergnaum'`), as react-admin's search finds nobody
+    by the whole name. A combobox that completes what is typed in place is recorded with the letters typed, never the
+    completion. This changes 2.0.1, which typed the option's whole text.
+  - **Generated ids are never used**: a GUID or a run of hex anywhere in an id, one CSS escapes
+    (`\36 d9a47e9-…_k-dialog-content`), one a library numbers by instance (`rc-tabs-0-tab-rule`). A click on no control
+    that only such an id finds is left out, and listed to check by hand.
+  - **A drag drops on what was under the pointer before the drop**, a scheduler's slot, never on the item dragged nor
+    the hint a library moves with the pointer; a click on a table's cell is the cell, not its row. A drag onto what it
+    dragged is no drag.
+  - **A menu that opened on hover is hovered open** (`HoverAsync()` on what the pointer rested on) before its item is
+    clicked. **A date picked in a picker that keeps it only once its OK is pressed**, as antd's, is typed and committed
+    with Enter; a calendar is one in its month's, year's and decade's views too, so Kendo's "Navigate to parent view:
+    2026" is never a step.
+  - **An option of no role**, as antd's virtual list draws them, is a choice of the one open combobox, a setting found
+    by its text among the options that show (`page.Locator("div.ant-select-item:visible").GetByText(Configuration.Status,
+    new() { Exact = true })`).
+  - A value typed before is read into a later locator only where it is a word of its own: "TradeCode 99" is never
+    `$"{Configuration.Name}9"`.
+  - A select or a combobox opened and closed with Escape is left out, both; one opened and filtered in its list's own
+    field (Kendo's) is chosen in the list they left open, never opened again, so it no longer closes. Values filled in
+    stay one step with the click after them only when it sends them. A multi-select has no setting of what it shows
+    with the record's other choices; a date input's setting says the format it takes. A click on a header's cell is the
+    cell, never the whole header row, and a click on a row of data is the row by its key (`OpenTicketAsync`).
+- **`--continue` never loses a flow.** Kept recording without the steps that did not replay, it saves the flow
+  continued beside the flow, as `<Name>.recorded.txt`, says so, and leaves the flow and its recording as they were. A
+  flow that logs in itself, its first actions typing a password, is replayed, tested and recorded again signed out, as
+  it was recorded, never from the recorder's saved login, which skipped its login page.
+- **The recorder never ends unsaid.** An error nothing caught, Chrome or its driver going away, or a signal from
+  outside (SIGTERM, SIGHUP, SIGQUIT) writes the recording as it is, prints that it was stopped and that the recording
+  is kept, and writes what happened, with its stack, to `~/.qaas/recorder-error.log`. A recording recovered keeps its
+  raw recording beside the flow when it was recorded with `--keep-recording`.
+- **Recording a part again**: cancelled, or after its replay failed, the app goes back to the page it was on and the
+  recording to recording or paused, as it was, never silently paused; a part kept in the middle of the flow says it
+  leaves the recording paused, and why.
+- **Names**: a switch or a checkbox of no label after its list's or tree's item (`FixedHeader`, `FebruaryPdf`), never a
+  page's container (`#root`, `#demo-runner`); a field of a step form without the step's index (`ReceiverAccount`); a
+  name of a letter (`q`) after its label (`Search`); a choice of no name after its section (`Hobby`); a dialog without
+  the Close button its title bar holds ("New Event"), cut before its first number; a dialog another button opened
+  before after what its own button does (`AddAsync`, never `OpenEditAgainAsync`); "Sign in" as `SignInAsync`; a lone
+  verb with a section of one or two words only; a page of an app routed by the fragment after its route. The namespace
+  is the nearest project's that references QaaS.Playwright, never a project's of something else above a scratch folder.
+- **Suggestions** for what was done and undone before anything used it: a checkbox or switch ticked and unticked, a
+  toggle clicked twice, a menu's choice made back (English, Français, English). A checkbox ticked again and again is
+  the state it ends in, radios of one group the last picked; a column's header clicked twice is never suggested away.
+  No address is gone to after a try right before a menu's item that goes elsewhere.
+- **Checks**: no message that only says the page is busy ("Loading..."); a message without the words of a button it
+  holds ("Customer updated", never "Customer updated UNDO"); no address the page matched already before the action; an
+  element found by the text it is checked to have is checked to show; a check you chose reads the settings where it
+  looks as in what it expects; a row's cells are taken as its filter matches them, those that change left out at first.
+- **One step numbering**: the console numbers each action as the flow, the panel, a test and the summary do, and shows
+  a click on no control only once the flow keeps it. "Enter may send the form" is said in a form only.
+- **The panel and the app**: `Ctrl+K` in the recorded app opens the panel's commands, as Chrome's search took it; a
+  test's failure at a step the flow has no more is cleared; an element picked in the Elements view on a page the app
+  left is forgotten; the hover card steps aside once an element is clicked, as what the click opens shows there; the
+  pill of a test or a replay is at the bottom of the page, off its header.
+- A line sent to a console whose input is a pipe or a FIFO finishes the recording, as Enter does; the input's end
+  finishes nothing.
+
 ## 2.0.1
 
 - **A flow a tester keeps, from a messy recording of a real site.** Recorded on demoqa's practice form and OrangeHRM's
