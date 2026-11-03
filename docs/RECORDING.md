@@ -41,7 +41,8 @@ The verbs are the panel's: a checkbox is ticked (`tick`, `untick`) and a radio p
 its word in a column, as the panel's status strip says it: `● Recording`, `║ Paused`, `◇ Trying`, `● Re-recording`,
 `› Testing`, then `✓ Passed` or `× Failed`.
 
-A step to [check by hand](#what-to-check-by-hand) gets an amber `▲` line under it, saying why. Passwords show as
+A step to [check by hand](#what-to-check-by-hand) gets an amber `▲` line under it, saying why; Enter pressed in a
+form's field gets a dim line saying it may send the form, as a Submit does. Passwords and other secrets show as
 `••••••••`. Long names and locators are cut to the console's width, and right-to-left names keep their place in the
 line. The console is coloured when it is a terminal; `NO_COLOR` turns colours off and `FORCE_COLOR` on (e.g. for a CI
 log), and a console that cannot show the glyphs gets ASCII ones.
@@ -410,6 +411,26 @@ turn, newest first, and a step recorded after it before it.
           DateTime.Today.AddDays(Configuration.DueInDays).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
   ```
 
+### Suggestions
+
+What a person does on the way that the flow likely needs not, the recorder suggests leaving out, on the cards of the
+actions it is about, as it suggests a date relative to today: what it saw, and one button that applies it. Undo brings
+it back. It never leaves these out by itself, as what looks like noise may be what the app needs:
+
+| Suggested | When | Applying it |
+|---|---|---|
+| **Leave it out** | A value typed or chosen again in the same field later, before anything used it: no submit, no new address, no dialog or message, no check of yours. Enter pressed in it that did nothing counts as nothing. | Leaves out the first, with the Enter after it and the click that opened its list |
+| **Leave the repeats out** | The same click again right after, and nothing showed after it: a button that seemed to do nothing, clicked again. | Keeps the first click |
+| **Leave both out** | A choice of a multi-select taken back by its "Remove …" button before anything used it. | Leaves out the choice and the removal: the list is the choices that stayed |
+| **Leave these out** | In a recording of an older recorder, which did not watch what a click changed: clicks on what is no control that showed nothing. | Leaves them all out |
+
+The console lists the suggestions left when you save. What the recorder leaves out by itself, without asking, is only
+what cannot matter: a click that only put the focus in a field the next action types into or that you left, the click
+that opened the list of the choice next (an arrow hidden from assistive technology included), a click on no control or
+item after which nothing at all changed on the page, the clicks of a date picker's calendar or of a file chooser you
+closed, a link dragged a few pixels as you clicked it, and the letters typed to filter a list, which are part of the
+choice: the flow types the option's own text to find it (`FillAsync(subject)`).
+
 ### Testing the flow
 
 **Test** in the panel's top bar, `Ctrl+Enter` or `F5` there, runs the flow recorded so far and shows, step by step,
@@ -655,15 +676,35 @@ FlowConfiguration:
   (`AssignTicketAsync` for the "Assign" button of a ticket's row, `OpenOrdersAsync` for a link "Orders"), else after the
   dialog or the page, else after the button's id or test id. A step that only chooses, maybe confirmed by a button
   such as "Confirm", "OK" or "Done", is named after the choice: `ChooseShippingAsync` after the setting of a select or a
-  list's option, `ChooseExpressAsync` after the label of a card or an item clicked. A dialog is named after its title,
+  list's option, `ChooseStateAndCityAsync` for two, `ChooseExpressAsync` after the label of a card or an item clicked.
+  A step ends where the section of the page its actions are in changes, by its heading, and is named after it
+  (`FillPersonalDetailsAsync`, `FillCustomFieldsAsync`); a lone verb says what of by its section (an "Add" in
+  Attachments is `AddAttachmentAsync`); the page's name leaves out a record's id and what names it (`empNumber/7`) and
+  a verb a route starts with (`viewPersonalDetails` is `PersonalDetails`). A name taken is the step done again
+  (`OpenMyInfoAgainAsync`), numbered only the third time; a second form step of a page is named after what it fills in
+  (`FillGenderAndEmailAsync`). Each summary says what a person would: "Fills in the gender, email, first name, last name
+  and mobile number, pressing Enter after the email." A dialog is named after its title,
   or the heading it shows, else after the button that opened it, each dialog after its own. The click that only opened
   a select's list is left out: the flow opens it as it chooses.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
   value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
-  (`employee.firstName` gives `EmployeeFirstName`), else its id, test id or English label, for an option of a list
-  without a field the list's label, else the dialog's title; a choice drops the `Id` its
-  field's name ends with, as it holds the option's text (`maintenanceTypeId` gives `MaintenanceType`). Two settings of
+  (`employee.firstName` gives `EmployeeFirstName`), else its own stable id (by its label when that says the same in
+  fewer words: `userEmail` and "Email" give `Email`; `subjectsInput` gives `Subjects`), test id, the stable id of the
+  widget it is part of (react-select's input in `#state` gives `State`), its label, the label beside it in its form
+  group, row or column though nothing ties it to it (`User Role`, `Blood Type`), what its prompt says (`Select State`),
+  for an option of a list without a field the list's label, else the dialog's title; never a placeholder's example of a
+  value (`name@example.com`), nor the value a select shows. A checkbox whose id only numbers it is named after its label
+  (`hobbies-checkbox-3` is `Music`), a row's checkbox after its row (`UsernameSelected`), the header's `SelectAll`. A
+  choice drops the `Id` its field's name ends with, as it holds the option's text (`maintenanceTypeId` gives
+  `MaintenanceType`). The same words typed again into another field, as a user's name searched for after it was given,
+  read the first one's setting. One file uploaded is a setting of its path, named after its field's label
+  (`AttachmentFile: 'report.pdf'`): set it per case, as the browser told only the file's name.
+- **Secrets.** A password, or a setting whose name says it is a secret (password, secret, token, API key, pwd), is in no
+  file of the flow: its YAML reads it from an environment variable named after it (`Password: '${PASSWORD}'`), its
+  record has no default (`= ""`), and the console never shows it and says once where to set it. Only the panel's
+  **Test** is given the value you typed. A value typed in a login is no part of a later locator: a user name "Admin" is no
+  menu's link "Admin". Two settings of
   one name are told apart by what they are for (`TicketToAssign`, `TicketToClose`), else by a number. A checkbox is a
   `bool`, a number field an `int` or a `decimal`; the rest are text. A record of more than five settings is grouped by
   the step that reads them. Text on the page that shows a recorded value, like a row's key, a message or a check,
@@ -709,6 +750,18 @@ or choose changing, becomes a step that loops over a list setting with the value
 - In the loop, a check stays only when it reads the item, such as a message naming it; a message every repeat showed
   alike is checked once after the loop. The recorder adds no other check after a loop: it did not see where the values
   went, and a check of the last value's text would fail on a page that still shows it from an earlier run.
+- A round may act on a row of a table found by its key, which the loop then goes over: ticking a row, its trash and
+  "Yes, Delete" in the dialog that asks, five times, is `foreach (var username in Configuration.UsernamesToDelete)`, the
+  dialog found once before the loop and checked as each round opens and closes it. A round acts on one row: the
+  recorder takes the rounds from the first action on each row.
+- Checkboxes of one group ticked one after the other (under one label, or of one name, or ids numbered alike) are a
+  list of their labels: `foreach (var hobby in Configuration.Hobbies)` ticks each by its label. A tick every round did
+  alike is no value of the list: the loop ticks (`CheckAsync()`) or unticks.
+- The choices of a multi-select (one whose choices each show with a button that removes it) are a list from two:
+  `Subjects: ['Maths', 'Arts']`.
+- A repeat that types nothing is a loop only when each round did something the page showed: a row added, a message, a
+  change. Clicking a Close that closes nothing four times is no loop, and the repeats are [suggested](#suggestions) to
+  leave out.
 - Repeats that differ in anything else, another element or an action more, stay as recorded, each value a setting of
   its own; so do two repeats.
 
@@ -728,6 +781,11 @@ The element you meant, which is not always the one under the pointer:
 4. Never a wrapper of several options, such as a grid of cards or a carousel's track: the click is on the option in
    it, also when only the list handles the clicks on its items.
 5. Else the row or cell, else the element under the pointer.
+
+A click on a part of a widget hidden from assistive technology, as react-select's arrow is, records the widget's one
+control; one on the value a custom select shows records the select. A click in a date picker's calendar records
+nothing: the date the field then shows is recorded as typed into it. A click that opens a file chooser through what
+stands for it ("Browse") records nothing; the file chosen is the upload.
 
 So a click on the title of a card, a tile or a carousel's slide records the card, and keeps it in the flow, though
 nothing else tells it is clickable. When only its label's text or Playwright's own locator would find that element, or
@@ -749,12 +807,29 @@ For each element the recorder takes the first of these that finds it, and only i
 4. Its role and exact name, without direction marks and a required field's ` *`. A tab whose name counts something
    (`Open (3)`) by the start of its name. A field that opens a list by its label, without the value it shows
    (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it.
-5. In a table: the row by its key cell's text, then the element in it.
-6. An element without a role, such as a card, a tile or an option of a hand-made list, by its label: the element of
-   exactly its first words in it, which a click there reaches it through, a badge or a price after them left out
-   (`GetByText("Express", new() { Exact = true })`). When copies of it hidden from assistive technology have it too, as a
-   carousel's clones do, within the item that is not hidden (`.slick-slide:not([aria-hidden='true'])`).
-7. Last, Playwright's own locator, listed under "Check by hand".
+5. In a table: the row by its key cell's text, then the element in it; an icon button there by its icon
+   (`row.Locator("button:has(i.bi-trash)")`). A column's name is its header's own text, not a sort menu hidden in it.
+6. In its form group, by the group's label, though nothing ties the label to the field:
+   `page.Locator("div.oxd-input-group").Filter(new() { Has = page.GetByText("User Role", new() { Exact = true }) }).Locator("div.oxd-select-text")`.
+   A field named only by a placeholder's example of a value (`yyyy-dd-mm`), or by a prompt when it has a group, is
+   found by its group.
+7. A button or link that others share the name of, in its section, by the section's heading: the "Save" of
+   "Personal Details", the "Add" of "Attachments".
+8. An icon button with no words by its title (`GetByTitle("Help")`), else by its icon's class (`bi-*`, `fa-*`, `mdi-*`,
+   a ligature font's word).
+9. In a card among cards (a post of a feed) by the first words no other card has, then the element in it; an id every
+   card repeats is no id but the element's in its card (`Filter(new() { HasText = "Joao Santos" }).Locator("[id='heart-svg']")`).
+10. Within the nearest stable id around it, by its role: react-select's input of the select `#state` is
+    `Locator("[id='state']").GetByRole(AriaRole.Combobox)`, never `#react-select-3-input`.
+11. An element without a role, such as a card, a tile or an option of a hand-made list, by its label: the element of
+    exactly its first words in it, which a click there reaches it through, a badge or a price after them left out
+    (`GetByText("Express", new() { Exact = true })`). When copies of it hidden from assistive technology have it too, as
+    a carousel's clones do, within the item that is not hidden (`.slick-slide:not([aria-hidden='true'])`).
+12. A control of no name by its place: the checkbox of a table's header (`GetByRole(AriaRole.Columnheader).GetByRole(AriaRole.Checkbox)`).
+13. Last, Playwright's own locator, listed under "Check by hand". It is never used while another finds the element when
+    it picks by a class a style library hashed (`css-1x2y3z-control`, `sc-…`, `jss12`, `makeStyles-root-3`), a
+    position, an empty name, the glued text of a wrapper (`"Employee Full NameEmployee"`), a number alone, or a row's
+    whole name.
 
 An element in a dialog is located inside it (`dialog.GetByRole(...)`). A dialog that has no name, as a hand-made
 modal often has, takes the heading it shows as its title, and is found by it:
@@ -800,8 +875,9 @@ When it saves a flow, the recorder lists the lines to look at, with their number
 
 - **A locator that did not find the element alone**, or Playwright's own locator when it relies on position, a style
   class or a generated id.
-- **Uploads.** The browser tells only the name of a file you upload. The flow asks its `FileToUpload` method for each
-  file, which throws until you make it return the file's full path, e.g. from a setting.
+- **Uploads.** The browser tells only the name of a file you upload. One file is a setting of its path, whose default
+  is that name: set the full path per case. For several files the flow asks its `FileToUpload` method for each, which
+  throws until you make it return the file's full path.
 - **Browser dialogs** (alert, confirm): the flow accepts them. Dismiss where you dismissed. One that showed before
   your first action on a page is listed without a line: the flow cannot answer it.
 - **Menus that opened on hover**: add `HoverAsync()` on what opens them.
@@ -811,11 +887,13 @@ When it saves a flow, the recorder lists the lines to look at, with their number
 - **Drag and drop**: check where it drops. A drag the recorder could not follow is saved as a hover.
 - **Pop-ups and tabs you opened yourself**: check what the flow does in them.
 - **An address the app was on when you resumed a pause**: the flow goes there by the address; see [Pausing](#pausing).
+- **A dialog that closed with no action the recorder saw** (a key it does not record, a click beside it): the flow
+  presses Escape after the action that opened it, so the next step is not behind it; check that this closes it.
 
 When an element is located badly, hover it while recording: the overlay tells why each locator before the chosen one
 lost. To share the details, record with `--keep-recording`: the raw recording is saved beside the flow as
 `LoginFlow.recording.json` (`LoginFlow.recorded.recording.json` for a re-recording), with every locator tried for
-each element and what it found. Like the flow's YAML, it holds the values you typed.
+each element and what it found. It holds the values you typed, a password too, which the flow's YAML does not.
 
 Not recorded at all: what you do inside an iframe. Picking a date from a calendar is recorded as typing the date the
 field then shows. Only Enter and Escape are recorded as key presses; typing is recorded as the field's value.

@@ -32,6 +32,8 @@ interface Props {
   onDelete(id: string): void;
   onRenameStep(action: string, name: string): void;
   onDropCheck(action: string, key: string, drop: boolean): void;
+  /** Applies a suggestion of the recorder's: leaves out what it says. */
+  onApplySuggestion(key: string): void;
   onAutoChecks(on: boolean): void;
   /** A part of the flow recorded again, or recorded after, and how it goes. */
   rerecord?: Rerecord;
@@ -167,6 +169,7 @@ export function Timeline(props: Props) {
                       onEnlarge={onEnlarge}
                       onDelete={props.onDelete}
                       onDropCheck={props.onDropCheck}
+                      onApplySuggestion={props.onApplySuggestion}
                     />,
                     asking && !asking.step && asking.action === action.id && (
                       <li key="asking">
@@ -370,7 +373,7 @@ function TriedCard({ action, canAdd, where, onHover, onAdd }: { action: Action; 
   );
 }
 
-interface CardProps extends Pick<Props, 'file' | 'canRun' | 'canEdit' | 'canRerecord' | 'onSelect' | 'onHover' | 'onRunTo' | 'onEnlarge' | 'onDelete' | 'onDropCheck'> {
+interface CardProps extends Pick<Props, 'file' | 'canRun' | 'canEdit' | 'canRerecord' | 'onSelect' | 'onHover' | 'onRunTo' | 'onEnlarge' | 'onDelete' | 'onDropCheck' | 'onApplySuggestion'> {
   action: Action;
   selected: boolean;
   test?: TestStep;
@@ -390,7 +393,7 @@ const checkedBy: Record<string, (key: string) => boolean> = {
   tabSelected: (key) => key === 'selected',
 };
 
-function Card({ action, selected, test, failure, file, now, canRun, canEdit, canRerecord, fresh, onRerecord, onSelect, onHover, onRunTo, onEnlarge, onDelete, onDropCheck }: CardProps) {
+function Card({ action, selected, test, failure, file, now, canRun, canEdit, canRerecord, fresh, onRerecord, onSelect, onHover, onRunTo, onEnlarge, onDelete, onDropCheck, onApplySuggestion }: CardProps) {
   const detail = detailOf(action);
   const state = test?.state;
   const expects = action.expects ?? [];
@@ -454,6 +457,21 @@ function Card({ action, selected, test, failure, file, now, canRun, canEdit, can
           ))}
         </span>
       </button>
+      {(action.suggestions ?? []).map((suggestion) => (
+        <div key={suggestion.key} data-suggestion={suggestion.key} class="mx-1.5 mb-1.5 ml-[38px] flex items-start gap-2 rounded-md border border-dashed border-accent/35 bg-accent/[0.06] px-2 py-1.5 text-meta text-muted">
+          <Icon name="wand" size={13} class="mt-0.5 shrink-0 text-accent-fg" />
+          <span class="min-w-0 flex-1">{suggestion.text}</span>
+          <button
+            type="button"
+            disabled={!canEdit}
+            onClick={() => onApplySuggestion(suggestion.key)}
+            title="Leaves it out of the flow; Undo brings it back"
+            class="shrink-0 rounded-md bg-accent/12 px-2 py-0.5 font-medium text-accent-fg transition hover:bg-accent/20 disabled:opacity-50"
+          >
+            {suggestion.apply}
+          </button>
+        </div>
+      ))}
       {expects.length > 0 && (
         <ul aria-label="Checks" class="space-y-px pr-1.5 pb-1.5 pl-[38px]">
           {expects.map((expect) => (

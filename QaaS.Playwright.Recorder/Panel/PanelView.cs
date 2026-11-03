@@ -171,7 +171,13 @@ internal sealed record PanelAction(string Id, string Kind)
 
     /// <summary>For an action tried that the flow would leave out: why.</summary>
     public string? Omitted { get; init; }
+
+    /// <summary>What the recorder suggests leaving out of the flow around the action, one click each.</summary>
+    public IReadOnlyList<PanelSuggestion> Suggestions { get; init; } = [];
 }
+
+/// <summary>A suggestion, as the panel shows it on the cards of the actions it is about: what it says, and its button.</summary>
+internal sealed record PanelSuggestion(string Key, string Text, string Apply);
 
 /// <summary>An element picked in the Elements view, located as a recorded action's element is.</summary>
 internal sealed record PanelElement(int Node, string Page)
@@ -379,6 +385,9 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Sources { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>What the recorder suggests leaving out, each with every recorded action applying it leaves out.</summary>
+    public IReadOnlyList<(Suggestion Suggestion, IReadOnlyList<string> Drop)> Suggestions { get; init; } = [];
+
     /// <summary>Plans and writes the recording as the recorder saves it, and describes it for the panel.</summary>
     /// <param name="recording">The recording so far.</param>
     /// <param name="request">The flow's name and folder.</param>
@@ -392,7 +401,11 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         var plan = FlowPlanner.Plan(recording, request.ClassName);
         var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
-            [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null))])).ToList();
+            [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null) with
+            {
+                Suggestions = [.. plan.Suggestions.Where(suggestion => suggestion.On.Contains(action.Source.Id))
+                    .Select(suggestion => new PanelSuggestion(suggestion.Key, suggestion.Text, suggestion.Apply))],
+            })])).ToList();
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
         var view = new PanelView(request.ClassName, target, status, flow.Code, flow.Yaml, steps, flow.Checks, error)
         {
@@ -406,6 +419,9 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         {
             Undo = fresh is { Count: > 0 } ? FreshUndo(recording, planned, fresh, sources) : UndoOf(recording, planned),
             Sources = sources, Recording = recording, Steps = plan.Steps,
+            // Applying one leaves out what only led to its actions too, as deleting them does.
+            Suggestions = [.. plan.Suggestions.Select(suggestion => (suggestion,
+                (IReadOnlyList<string>)[.. suggestion.Drop.SelectMany(id => sources.GetValueOrDefault(id) ?? [id]).Distinct()]))],
         };
     }
 
@@ -477,23 +493,8 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return [.. ids.Skip(Math.Max(from, 0))];
     }
 
-    // Each action of the flow, what only led to it since the action before it (opening a Select, typing into an
-    // Autocomplete), and the checks after it.
-    private static Dictionary<string, IReadOnlyList<string>> SourcesOf(Recording recording, List<PlannedAction> planned)
-    {
-        var ids = recording.Actions.Select(action => action.Id).ToList();
-        var sources = new Dictionary<string, IReadOnlyList<string>>();
-        for (var index = 0; index < planned.Count; index++)
-        {
-            var action = planned[index];
-            var at = ids.IndexOf(action.Source.Id);
-            var from = index > 0 ? ids.IndexOf(planned[index - 1].Source.Id) + 1 : 0;
-            var led = at > from ? recording.Actions.Skip(from).Take(at - from).Where(other => other.Kind != "expect") : [];
-            sources.TryAdd(action.Source.Id, [.. led.Select(other => other.Id), action.Source.Id, .. action.Checks.Select(check => check.Id)]);
-        }
-
-        return sources;
-    }
+    private static Dictionary<string, IReadOnlyList<string>> SourcesOf(Recording recording, List<PlannedAction> planned) =>
+        FlowPlanner.Sources(recording, planned);
 
     // The last action the flow does, and every recorded action after the one before it: what only led to it (opening
     // a Select, typing into an Autocomplete) goes with it. A check chosen last goes alone.
@@ -517,7 +518,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return new PanelAction(source.Id, source.Kind)
         {
             Widget = source.Widget,
-            Element = element is null ? null : element.Text ?? element.Label ?? element.Name ?? element.Id ?? element.Tag,
+            Element = element is null ? null : Names.Human(element) ?? element.Name ?? element.Id ?? element.Tag,
             Value = ValueOf(source),
             Locator = LocatorPolicy.Describe(action.Locator),
             Page = source.Page,
@@ -580,7 +581,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return new PanelAction(action.Id, action.Kind)
         {
             Widget = action.Widget, Page = action.Page, Value = ValueOf(action),
-            Element = element is null ? null : element.Text ?? element.Label ?? element.Name ?? element.Id ?? element.Tag,
+            Element = element is null ? null : Names.Human(element) ?? element.Name ?? element.Id ?? element.Tag,
             Locator = LocatorPolicy.Describe(chosen), Candidates = CandidatesOf(candidates), Picked = IndexOf(candidates, chosen),
             Auto = IndexOf(candidates, chosen), Effects = [.. action.Effects.Select(EffectOf).OfType<PanelEffect>().Distinct()],
         };

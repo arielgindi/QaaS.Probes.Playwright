@@ -21,6 +21,9 @@ internal sealed class FlowPlan
 
     /// <summary>What could not be recorded at all, for the person to do by hand.</summary>
     public List<string> NotRecorded { get; } = [];
+
+    /// <summary>What the recorder suggests leaving out, which the person applies with a click (<see cref="Noise"/>).</summary>
+    public List<Suggestion> Suggestions { get; } = [];
 }
 
 /// <summary>An action the flow does, with the locator chosen for its element and the settings it reads.</summary>
@@ -40,6 +43,9 @@ internal sealed class PlannedAction
 
     public List<CapturedEffect> Effects { get; } = [];
 
+    /// <summary>A dialog the action opened that closed later with no action seen, which the flow closes after it.</summary>
+    public List<CapturedEffect> Unseen { get; } = [];
+
     /// <summary>The checks the person chose right after the action, which the flow makes after it.</summary>
     public List<CapturedAction> Checks { get; } = [];
 
@@ -47,6 +53,13 @@ internal sealed class PlannedAction
     public string? Search { get; set; }
 
     public Setting? Value { get; set; }
+
+    /// <summary>
+    /// For a checkbox of a group of them (Sports, Reading, Music under "Hobbies"): its label as a value of the group, which
+    /// a loop over the group's choices reads; outside a loop the checkbox is a flag of its own.
+    /// </summary>
+    public Setting? Member { get; set; }
+
     public Setting? SearchValue { get; set; }
     public Setting? OptionValue { get; set; }
     public Setting? ShownValue { get; set; }
@@ -91,6 +104,12 @@ internal sealed class Setting(string name, string? text, bool? flag = null)
 
     /// <summary>A date the flow types as <see cref="Value"/> days from the day it runs, in this format.</summary>
     public string? DateFormat { get; set; }
+
+    /// <summary>
+    /// A password or another secret: the flow's record has no default for it, and its YAML reads it from the environment
+    /// (<c>${PASSWORD}</c>); only a test run in the panel is given the value recorded.
+    /// </summary>
+    public bool Secret { get; set; }
 
     /// <summary>
     /// <c>string</c>, <c>bool</c>, <c>int</c> or <c>decimal</c>; for a list of values, an array of one of them.
@@ -154,4 +173,7 @@ internal sealed class Loop
 
     /// <summary>The number of repeats, as an <c>int</c> setting, for repeats that hold no value.</summary>
     public Setting? Count { get; init; }
+
+    /// <summary>The settings of each repeat that the list holds: what each typed or chose, the row it acted on.</summary>
+    public HashSet<Setting> Holds { get; init; } = [];
 }

@@ -7,12 +7,19 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// <summary>
 /// Picks the locator of an element from the ones the capture script checked, and writes it as C#. In order, the first
 /// that found the element alone wins: its Formik path (<c>[name='x']</c>), its own stable id, a MUI Select's field by
-/// the path of its hidden input, the test id, its role and exact name, its row, for an element without a role (a card,
-/// an option of a hand-made list) the element of its label's text in it, and last Playwright's own generator.
+/// the path of its hidden input, the test id, its role and exact name, its row, the form group its label names, the
+/// section its heading names, its title, its icon, the card its words tell apart, the nearest stable id around it, for
+/// an element without a role (a card, an option of a hand-made list) the element of its label's text in it, the place it
+/// has in what holds it (the checkbox of a table's header), and last Playwright's own generator. Never a class a
+/// CSS-in-JS library hashed, a position, an empty name, a text glued from several elements, or a row's whole name.
 /// </summary>
 internal static partial class LocatorPolicy
 {
-    private static readonly string[] Order = ["name", "id", "select", "testid", "role", "roleInGroup", "row", "text", "generator"];
+    private static readonly string[] Order =
+    [
+        "name", "id", "select", "testid", "role", "roleInGroup", "row", "group", "section", "title", "icon", "item", "within",
+        "text", "structure", "generator",
+    ];
 
     // A choice among radios is written with the option's name, so the name can come from the flow's settings.
     private static readonly string[] ByName = ["role", "roleInGroup", "nameValue"];
@@ -24,16 +31,30 @@ internal static partial class LocatorPolicy
     public static CapturedCandidate? Choose(CapturedTarget? target, bool byName = false)
     {
         if (target is null) return null;
+        byName |= IsNumberedToggle(target);
         if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
-        var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)).ToList();
+        // A field named only by its placeholder, a prompt (Type for hints...) or an example of a value (yyyy-dd-mm), is
+        // found by its group's label when it has one, and never by an example.
+        var grouped = target.Candidates.Any(candidate => candidate is { Kind: "group", Matches: true } && IsUsable(candidate));
+        var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)
+                                                          && !(candidate.Kind == "role" && candidate.Text is { } said
+                                                               && said == target.Placeholder && (grouped || Names.IsExample(said)))).ToList();
         foreach (var kind in byName ? [.. ByName, .. Order] : Order)
             if (usable.FirstOrDefault(candidate => candidate.Kind == kind) is { } found)
                 return found;
 
-        // Nothing found the element alone: the closest miss, which the flow's reader must fix.
-        return target.Candidates.Where(IsUsable).OrderBy(candidate => candidate.Count <= 0 ? int.MaxValue : candidate.Count)
-            .FirstOrDefault();
+        // Nothing good found the element alone: Playwright's own, which finds it, with what is wrong with it to check by
+        // hand; else the closest miss, which the flow's reader must fix.
+        return target.Candidates.FirstOrDefault(candidate => candidate is { Kind: "generator", Matches: true } && !string.IsNullOrWhiteSpace(candidate.Csharp))
+               ?? target.Candidates.Where(IsUsable).OrderBy(candidate => candidate.Count <= 0 ? int.MaxValue : candidate.Count).FirstOrDefault();
     }
+
+    /// <summary>
+    /// A checkbox or switch whose id only numbers it among others (<c>hobbies-checkbox-3</c>): found by its label, as a
+    /// person reads it, which a loop over the group's choices can also find each by.
+    /// </summary>
+    public static bool IsNumberedToggle(CapturedTarget? target) =>
+        target is { Role: "checkbox" or "switch", Text.Length: > 0, Id: { } id } && NumberedId().IsMatch(id);
 
     /// <summary>
     /// The element to locate a click by: <paramref name="target"/>, unless only its label's text or Playwright's own
@@ -59,6 +80,7 @@ internal static partial class LocatorPolicy
     public static IReadOnlyList<string> WhyNot(CapturedTarget target, CapturedCandidate? chosen, bool byName = false)
     {
         var reasons = new List<string>();
+        byName |= IsNumberedToggle(target);
         foreach (var kind in (byName ? [.. ByName, .. Order] : Order).Distinct())
         {
             if (chosen is { Matches: true } && chosen.Kind == kind) break;
@@ -83,6 +105,8 @@ internal static partial class LocatorPolicy
             "testid" => $"test id \"{part.Value}\"",
             "text" => $"text \"{part.Text}\"",
             "filter" => $"\"{part.HasText}\"",
+            "has" => $"has \"{part.Text}\"",
+            "title" => $"title \"{part.Text}\"",
             _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
         });
         return string.Join(" » ", parts);
@@ -99,8 +123,15 @@ internal static partial class LocatorPolicy
         if (candidate.Kind != "generator") return null;
         var code = candidate.Csharp ?? "";
         if (Position().IsMatch(code)) return "Playwright's locator picks the element by its position";
+        if (EmptyName().IsMatch(code)) return "Playwright's locator matches an empty name, which many elements have";
+        if (CssStrings(code).Any(HasHashedClass)) return "Playwright's locator picks the element by a class a style library generated";
         if (CssStrings(code).Any(HasClass)) return "Playwright's locator picks the element by a style class";
         if (CssStrings(code).SelectMany(IdsIn).Any(UnstableId.IsUnstable)) return "Playwright's locator uses a generated id";
+        if (Texts(code).Any(Glued)) return "Playwright's locator finds a wrapper by the text of everything in it";
+        if (Texts(code).Any(text => !text.Any(char.IsLetter))) return "Playwright's locator finds the element by a number alone";
+        if (WholeRowName().IsMatch(code)) return "Playwright's locator finds the row by all it says, not by its key";
+        if (code.Any(character => character is >= '\uE000' and <= '\uF8FF'))
+            return "Playwright's locator names the element with the character of an icon font";
         return null;
     }
 
@@ -123,18 +154,23 @@ internal static partial class LocatorPolicy
     public static string? AriaRoleName(string? role) =>
         role is not null && Enum.TryParse<AriaRole>(role, ignoreCase: true, out var value) ? value.ToString() : null;
 
-    // A dialog found by its heading is the first part of a locator, so its root is a page.
+    // A dialog found by its heading is the first part of a locator, so its root is a page; so is a group found by its label.
     private static string RenderPart(LocatorPart part, string? name, string root, string breakBefore) => part.M switch
     {
         "css" => $"Locator({name ?? CSharp.Literal(part.Css ?? "")})",
         "testid" => $"GetByTestId({CSharp.Literal(part.Value ?? "")})",
         "text" => $"GetByText({name ?? CSharp.Literal(part.Text ?? "")}, new() {{ Exact = true }})",
+        "title" => $"GetByTitle({name ?? CSharp.Literal(part.Text ?? "")}, new() {{ Exact = true }})",
         "filter" => $"Filter(new() {{ HasText = {name ?? CSharp.Literal(part.HasText ?? "")} }})",
+        "has" => $"Filter(new() {{ Has = {PageOf(root)}.GetByText({name ?? CSharp.Literal(part.Text ?? "")}, new() {{ Exact = true }}) }})",
         "role" when part.Heading is { } heading =>
             $"GetByRole(AriaRole.{AriaRoleName(part.Role)}){breakBefore}.Filter(new() {{ Has = {root}.GetByText({name ?? CSharp.Literal(heading)}, new() {{ Exact = true }}) }})",
         "role" => RenderRole(part, name),
         _ => throw new InvalidOperationException($"Unknown locator part '{part.M}'."),
     };
+
+    // A locator inside Has is found from the page, as a page or a dialog's page has: dialog.Page, page.
+    private static string PageOf(string root) => root is "dialog" or "opened" ? root + ".Page" : root.EndsWith("Dialog", StringComparison.Ordinal) ? root + ".Page" : root;
 
     private static string RenderRole(LocatorPart part, string? name)
     {
@@ -150,13 +186,30 @@ internal static partial class LocatorPolicy
 
     private static bool IsUsable(CapturedCandidate candidate) => candidate.Kind switch
     {
-        "name" or "nameValue" or "id" or "select" or "testid" => !UnstableId.IsUnstable(candidate.Value),
-        "role" or "roleInGroup" or "row" =>
-            candidate.Parts.All(part => part.M != "role" || AriaRoleName(part.Role) is not null),
-        "text" => candidate.Parts.Any(part => part is { M: "text", Text.Length: > 0 }),
-        "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp),
+        "name" or "nameValue" or "id" or "select" or "testid" or "within" => !UnstableId.IsUnstable(candidate.Value) && CssIsStable(candidate),
+        "role" or "roleInGroup" or "row" or "group" or "section" or "item" or "icon" or "title" or "structure" =>
+            candidate.Parts.All(part => part.M != "role" || AriaRoleName(part.Role) is not null) && CssIsStable(candidate)
+            && candidate.Parts.All(part => part is not ({ M: "has" or "title", Text: null or "" } or { M: "filter", HasText: "" })),
+        "text" => candidate.Parts.Any(part => part is { M: "text", Text.Length: > 0 }) && CssIsStable(candidate),
+        "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp) && Problem(candidate) is null,
         _ => false,
     };
+
+    // A class that a CSS-in-JS library hashed changes with each build, and so does the chain it is in.
+    private static bool CssIsStable(CapturedCandidate candidate) =>
+        candidate.Parts.All(part => part.M != "css" || part.Css is not { } css || !HasHashedClass(css));
+
+    /// <summary>Whether a CSS selector names a class a style library generated: <c>.css-1x2y3z-control</c>, <c>.sc-bdVaJa</c>.</summary>
+    public static bool HasHashedClass(string css) =>
+        ClassName().Matches(AttributeValue().Replace(css, "[]")).Any(match => StyleClass.IsHashed(match.Groups["class"].Value));
+
+    // The texts the generator finds by: GetByText("..."), HasText = "...", a regex's.
+    private static IEnumerable<string> Texts(string code) =>
+        GeneratedText().Matches(code).Select(match => Regex.Unescape(match.Groups["text"].Value).Trim('^', '$'));
+
+    // Words of several elements run together: "Employee Full NameEmployee", "Blood TypeB-", "202519701971".
+    private static bool Glued(string text) =>
+        GluedWords().IsMatch(text) || GluedNumbers().IsMatch(text);
 
     // A kind the capture script did not try: one the element has nothing for.
     private static string? Missing(string kind, CapturedTarget target) => kind switch
@@ -201,8 +254,29 @@ internal static partial class LocatorPolicy
     private static IEnumerable<string> IdsIn(string css) =>
         IdSelector().Matches(css.Replace("\\", "")).Select(match => match.Groups["id"].Value);
 
+    [GeneratedRegex(@"[-_]\d+$")]
+    private static partial Regex NumberedId();
+
     [GeneratedRegex(@"\.Nth\(|\.First\b|\.Last\b|nth-child|nth-of-type|>> nth=")]
     private static partial Regex Position();
+
+    [GeneratedRegex(@"Name = ""[\s\uE000-\uF8FF]*""|GetBy(Label|Text|Title|Placeholder|AltText)\(""[\s\uE000-\uF8FF]*""")]
+    private static partial Regex EmptyName();
+
+    [GeneratedRegex("""GetByRole\(AriaRole\.Row, new\(\) \{ Name = """)]
+    private static partial Regex WholeRowName();
+
+    [GeneratedRegex(@"(?:GetByText\(|HasText = |HasTextRegex = new Regex\()""(?<text>(?:[^""\\]|\\.)*)""")]
+    private static partial Regex GeneratedText();
+
+    [GeneratedRegex(@"\p{Ll}\p{Lu}\p{Ll}")]
+    private static partial Regex GluedWords();
+
+    [GeneratedRegex(@"\d{4}\d{4}\d{4}")]
+    private static partial Regex GluedNumbers();
+
+    [GeneratedRegex(@"\.(?<class>-?[_a-zA-Z][\w-]*)")]
+    private static partial Regex ClassName();
 
     [GeneratedRegex("""Locator\("(?<css>(?:[^"\\]|\\.)*)"\)""")]
     private static partial Regex CssLiteral();

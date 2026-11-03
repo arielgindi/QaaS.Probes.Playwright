@@ -27,9 +27,21 @@ internal sealed record Expectation(string Key, string Text, bool Auto)
     public bool Dropped { get; init; }
 }
 
-/// <summary>The flow's source, its settings as YAML, and what to check by hand.</summary>
+/// <summary>
+/// The flow's source, its settings as YAML, and what to check by hand. The YAML holds no secret: each is the placeholder
+/// of an environment variable (<c>${PASSWORD}</c>).
+/// </summary>
 internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks)
 {
+    /// <summary>The settings as YAML with the secrets recorded, which only a test run in the panel reads.</summary>
+    public string Values { get; init; } = Yaml;
+
+    /// <summary>The settings that hold a secret, which the YAML reads from the environment.</summary>
+    public IReadOnlyList<Setting> Secrets { get; init; } = [];
+
+    /// <summary>What the recorder suggested leaving out, which the person did not apply in the panel.</summary>
+    public IReadOnlyList<Suggestion> Suggestions { get; init; } = [];
+
     /// <summary>
     /// The lines written for each recorded action, by the action's id. An action a loop repeats has the lines of the
     /// loop's body that do it, as every repeat of it has.
@@ -72,6 +84,11 @@ internal sealed partial class FlowWriter
     /// <summary>What ends the line of a check the person chose.</summary>
     public const string ChosenCheck = " // check";
     private const string SlowTimeout = "new() { Timeout = 30_000 }";
+
+    // A click through what covers a checkbox: the box a library draws over it, inside its label.
+    private const string ForceOptions = "new() { Force = true }";
+
+    private static bool Covered(CapturedAction source) => source.Target?.Covered == true;
 
     private const string FileToUploadMethod = """
             // The recorder saw only the names of the files you uploaded: return each one's full path.
@@ -156,6 +173,9 @@ internal sealed partial class FlowWriter
 
         /// <summary>The C# of each value a loop's item holds, e.g. <c>line.Quantity</c>, by the first repeat's setting.</summary>
         public Dictionary<Setting, string> LoopValues { get; } = [];
+
+        /// <summary>The local of each dialog a loop's round opens, by its title.</summary>
+        public Dictionary<string, string> LoopDialogs { get; } = [];
 
         public IReadOnlyList<string> Actions { get; set; } = [];
 
@@ -258,9 +278,9 @@ internal sealed partial class FlowWriter
         string header;
         if (loop.List is { } list)
         {
-            var item = list.ItemType is { } type ? CSharp.Camel(type) : LoopVariable(list.Fields![0].Name);
+            var item = list.ItemType is { } type ? CSharp.Camel(type) : LoopVariable(LoopFinder.Singular(list.Fields![0].Name));
             item = Unique(item, _step.Locals);
-            var values = template.SelectMany(action => action.Values).ToList();
+            var values = LoopFinder.ValuesOf(template);
             for (var index = 0; index < values.Count; index++)
                 _step.LoopValues[values[index]] = list.ItemType is null ? item : $"{item}.{list.Fields![index].Name}";
             foreach (var action in template.Where(action => LoopFinder.RowFromValue(action, template)))
@@ -271,6 +291,16 @@ internal sealed partial class FlowWriter
         {
             var counter = Unique("i", _step.Locals);
             header = $"for (var {counter} = 0; {counter} < {FromSettings(loop.Count!)}; {counter}++)";
+        }
+
+        // A dialog each round opens is found once, before the loop, and what is done in it from there.
+        foreach (var opened in template.SelectMany(action => action.Effects).Where(effect => effect.Kind == "dialogOpened")
+                     .Select(effect => effect.Dialog).OfType<CapturedDialog>().DistinctBy(dialog => dialog.Title))
+        {
+            var (locator, check) = DialogLocator(_step.Scope.Page, opened);
+            var variable = Unique(CSharp.Camel(CSharp.Pascal(opened.Title) is { } subject && CSharp.IsAsciiText(opened.Title) ? subject + "Dialog" : "dialog"), _step.Locals);
+            _step.BeforeLoop.Add(new Line($"var {variable} = {locator};", check) { Actions = [template[0].Source.Id] });
+            _step.LoopDialogs[opened.Title] = variable;
         }
 
         var bodyStart = _step.Lines.Count;
@@ -310,7 +340,7 @@ internal sealed partial class FlowWriter
         var lastRepeat = repeats[^1];
         if (loop.List is { } typed)
         {
-            var values = lastRepeat.SelectMany(action => action.Values).ToList();
+            var values = LoopFinder.ValuesOf(lastRepeat);
             for (var index = 0; index < values.Count; index++)
                 _step.LoopValues[values[index]] = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
         }
@@ -373,24 +403,36 @@ internal sealed partial class FlowWriter
             case "fill":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
                 break;
+            // A checkbox under the box drawn over it is ticked through that box, as the person clicked it.
             case "check" or "uncheck" when source.Widget == "radio":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.CheckAsync();", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.CheckAsync({(Covered(source) ? ForceOptions : "")});", problem);
+                break;
+            // In a loop whose every round ticked it alike, or a checkbox of a group the loop goes over, as each round did.
+            case "check" or "uncheck" when action.Value is not { Flag: not null }:
+                _step.Add($"await {Locate(action, ref problem)}{Break}.{(action.Kind == "check" ? "CheckAsync" : "UncheckAsync")}({(Covered(source) ? ForceOptions : "")});", problem);
                 break;
             case "check" or "uncheck":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.SetCheckedAsync({Setting(action.Value)});", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.SetCheckedAsync({Setting(action.Value)}{(Covered(source) ? ", " + ForceOptions : "")});", problem);
                 break;
             case "choose":
                 WriteChoice(action, problem);
                 break;
             case "press":
                 if (source.OnPage == true || action.Locator is null)
-                    _step.Add($"await {scope.Page}.Keyboard.PressAsync({CSharp.Literal(source.Key ?? "Enter")});");
+                    _step.Add($"await {scope.Page}.Keyboard.PressAsync({CSharp.Literal(source.Key ?? "Enter")});",
+                        source.Guessed
+                            ? "the dialog closed with no action the recorder saw (a key, a click beside it): the flow presses Escape; check that it closes it"
+                            : null);
                 else
                 {
                     var locator = Locate(action, ref problem);
                     _step.Add($"await {locator}{Break}.PressAsync({CSharp.Literal(source.Key ?? "Enter")});", problem);
                 }
 
+                break;
+            case "upload" when action.Value is { } file:
+                _step.Add($"await {Locate(action, ref problem)}{Break}.SetInputFilesAsync({Setting(file)});",
+                    Join(problem, $"upload: the recorder saw only the file's name; set {file.Name} to its full path in each case"));
                 break;
             case "upload":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.SetInputFilesAsync({Files(source.Files ?? [])});",
@@ -439,11 +481,13 @@ internal sealed partial class FlowWriter
     private void Saw(PlannedAction action)
     {
         if (_step.Depth > 0) return;
+        // What a login typed, a user name, names no record a later locator finds: a menu "Admin" is no user "Admin".
+        var login = _plan.Steps.FirstOrDefault(step => step.Actions.Contains(action))?.Actions.Any(other => other.Value?.Secret == true) == true;
         foreach (var setting in action.Values.Append(action.RowKey).OfType<Setting>().Where(_settings.Contains))
         {
             if (!_seen.Contains(setting)) _seen.Add(setting);
             var typed = setting == action.SearchValue || (action.Kind == "fill" && setting == action.Value);
-            if (typed && !_typed.Contains(setting)) _typed.Add(setting);
+            if (typed && !login && !_typed.Contains(setting)) _typed.Add(setting);
         }
     }
 
@@ -463,8 +507,9 @@ internal sealed partial class FlowWriter
         switch (source.Widget)
         {
             case "select" or "autocomplete":
-                _step.Add(source.Widget == "autocomplete" && action.SearchValue is not null
-                    ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue)});"
+                // What the person typed to filter the list, the flow types as the option's own text, which finds it.
+                _step.Add(source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null)
+                    ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});"
                     : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
                 ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
@@ -514,10 +559,17 @@ internal sealed partial class FlowWriter
         var repeats = _step.Repeats;
         var closed = action.Effects.Where(effect => effect.Kind == "dialogClosed").DistinctBy(effect => effect.Dialog?.Title)
             .ToList();
+        // A dialog a loop's round opened shows, as each round's did.
+        foreach (var showed in action.Effects.Where(effect => effect.Kind == "dialogOpened" && _step.Depth > 0))
+            if (showed.Dialog?.Title is { } showedTitle && _step.LoopDialogs.TryGetValue(showedTitle, out var shown))
+                AddCheck("opened", "dialog shows", $"await Expect({shown}){Break}.ToBeVisibleAsync();");
+
         foreach (var dialog in closed.Where(_ => _autoChecks))
         {
             var own = dialog.Dialog?.Title == scope.Dialog && scope.Dialog is not null;
-            var locator = own ? "dialog" : DialogLocator(scope.Page, dialog.Dialog).Locator;
+            var locator = own ? "dialog"
+                : dialog.Dialog?.Title is { } closedTitle && _step.LoopDialogs.TryGetValue(closedTitle, out var looped) ? looped
+                : DialogLocator(scope.Page, dialog.Dialog).Locator;
             var said = own || dialog.Dialog?.Title is not { Length: > 0 } title ? "dialog closes" : $"“{title}” closes";
             AddCheck($"closed:{dialog.Dialog?.Title}", said, $"await Expect({locator}){Break}.ToBeHiddenAsync({SlowTimeout});");
         }
@@ -879,6 +931,7 @@ internal sealed partial class FlowWriter
         var parts = candidate.Parts;
         if (parts is not [{ M: "role", Role: "dialog" }, ..] || source.Dialog?.Title is not { } title) return (PageOf(source), parts);
         if (scope.Dialog is not null && title == scope.Dialog) return (scope.Root, parts[1..]);
+        if (_step.LoopDialogs.TryGetValue(title, out var looped)) return (looped, parts[1..]);
         return _step.Opened is { } opened && opened.Title == title ? (opened.Variable, parts[1..]) : (PageOf(source), parts);
     }
 
@@ -898,6 +951,7 @@ internal sealed partial class FlowWriter
         if (part.M != "role" || part.Name is null) return null;
         if (action.Source.Widget == "radio" && action.Value is { } choice && part.Role == "radio" && part.Name == choice.Text)
             return Setting(choice);
+        if (action.Member is { } member && _step.LoopValues.ContainsKey(member) && part.Name == member.Text) return Setting(member);
         if (action.RowKey is { Text: { } key } rowKey && part == action.Locator!.Parts[^1] && part.Name.Contains(key, StringComparison.Ordinal))
         {
             var at = part.Name.IndexOf(key, StringComparison.Ordinal);
@@ -1152,6 +1206,8 @@ internal sealed partial class FlowWriter
         foreach (var missing in _plan.NotRecorded) checks.Add(new CheckByHand(null, missing));
         return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
         {
+            Values = FlowYaml.Write(className, _plan.Settings, secrets: true),
+            Secrets = [.. _plan.Settings.Where(setting => setting.Secret)], Suggestions = _plan.Suggestions,
             ActionLines = actionLines, StepLines = stepLines, Statements = statements,
             Expects = _expects.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<Expectation>)pair.Value),
         };
@@ -1225,6 +1281,14 @@ internal sealed partial class FlowWriter
     private static IEnumerable<string> Property(Setting setting)
     {
         var declaration = $"    public {setting.CSharpType} {setting.Name} {{ get; init; }} =";
+        // A secret has no default in the code: each case gives it, as its YAML reads it from the environment.
+        if (setting.Secret)
+        {
+            yield return $"    /// <summary>A secret: no default here; the YAML reads it from {FlowYaml.Placeholder(setting)}.</summary>";
+            yield return $"{declaration} \"\";";
+            yield break;
+        }
+
         if (setting.Items is not { } items)
         {
             yield return $"{declaration} {Default(setting, setting.Type)};";

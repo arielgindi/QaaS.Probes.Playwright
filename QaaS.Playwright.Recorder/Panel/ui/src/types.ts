@@ -179,6 +179,15 @@ export interface Action {
   note?: string;
   /** For an action tried that the flow would leave out: why. */
   omitted?: string;
+  /** What the recorder suggests leaving out around it, each applied with one click. */
+  suggestions?: Suggestion[];
+}
+
+/** A suggestion of the recorder's: what it saw, and the words of the button that applies it. */
+export interface Suggestion {
+  key: string;
+  text: string;
+  apply: string;
 }
 
 /** A check after an action: an auto check by its key, or one the person chose, by its id. */
@@ -349,6 +358,7 @@ export type Command =
   | { type: 'unhighlight' }
   | { type: 'undo' }
   | { type: 'delete'; action: string }
+  | { type: 'applySuggestion'; key: string }
   | { type: 'renameStep'; action: string; name: string }
   | { type: 'editValue'; action: string; role: string; name?: string; value?: string; reset?: boolean; unique?: boolean; relative?: boolean }
   | { type: 'dropCheck'; action: string; key: string; drop: boolean }

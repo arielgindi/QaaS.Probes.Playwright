@@ -285,6 +285,10 @@ internal static class ConsoleUi
                     t.WriteLine(line);
                     foreach (var check in ChecksOf(action))
                         Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+                    // Kept as done; but a person may not know what Enter does there.
+                    if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { } field && Noise.IsTextField(field))
+                        t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
+                            new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
                     break;
                 case CapturedEffect effect when EffectLine(t, effect) is { } effectLine:
                     t.WriteLine(effectLine);
@@ -365,6 +369,7 @@ internal static class ConsoleUi
             }
 
             if (flow.Checks.Count > 0) ChecksSection(t, saved.CodePath, flow.Checks);
+            if (flow.Suggestions.Count > 0) SuggestionsSection(t, flow.Suggestions);
             NextSection(t, request, flow);
         }
     }
@@ -382,6 +387,20 @@ internal static class ConsoleUi
             var place = Terminal.Clean(places[index]);
             t.WriteLine(Margin + Margin + t.Paint(place, Tone.Warning)
                         + new string(' ', placeWidth - Terminal.WidthOf(place) + 2) + lines[0]);
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', indent) + more);
+        }
+    }
+
+    // What the recorder suggested and the person left in: each in a line, to do by hand in the flow, or in the panel of
+    // a recording continued.
+    private static void SuggestionsSection(Terminal t, IReadOnlyList<Suggestion> suggestions)
+    {
+        Section(t, "Suggested", (t.Glyph("◇", "*"), Tone.Accent));
+        var indent = Margin.Length * 2 + 2;
+        foreach (var suggestion in suggestions)
+        {
+            var lines = Terminal.Wrap(Terminal.Clean($"{suggestion.Text} ({suggestion.Apply.ToLowerInvariant()})"), Math.Max(30, t.Width - 1 - indent)).ToList();
+            t.WriteLine(Margin + Margin + t.Paint(t.Glyph("◇", "*"), Tone.Accent) + " " + lines[0]);
             foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', indent) + more);
         }
     }
@@ -423,9 +442,8 @@ internal static class ConsoleUi
 
         var element = action.Element;
         var locator = element is null ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(element, byName: action.Widget == "radio"));
-        var name = Terminal.Clean(element?.Text) is { Length: > 0 } text ? text
-            : Terminal.Clean(element?.Label) is { Length: > 0 } label ? label
-            : null;
+        // As a person names it: its label, or the one beside it, never a placeholder's example of a value.
+        var name = Terminal.Clean(Names.Human(element)) is { Length: > 0 } text ? text : null;
         if (name is null)
         {
             // An element without a name is known by its locator.
@@ -488,7 +506,9 @@ internal static class ConsoleUi
         if (located && LocatorPolicy.Problem(LocatorPolicy.Choose(found, byName: action.Widget == "radio")) is { } problem)
             yield return problem;
         if (action.HoverMenu == true) yield return "the menu opened on hover: add HoverAsync() on what opens it";
-        if (action.Kind == "upload") yield return "the flow needs each file's full path: return it in FileToUpload";
+        if (action.Kind == "upload")
+            yield return action.Files is [_] ? "the flow needs the file's full path: set it in the YAML"
+                : "the flow needs each file's full path: return it in FileToUpload";
         if (action.Kind == "drag") yield return "drag and drop: check where it drops";
     }
 
@@ -556,10 +576,12 @@ internal static class ConsoleUi
         var other => other,
     };
 
-    // A password is never shown, as someone may be watching the screen.
+    // A password or another secret is never shown, as someone may be watching the screen.
     private static Span Value(Terminal t, CapturedAction action)
     {
-        if (action.Kind == "fill" && action.Element?.Type == "password") return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
+        if (action.Kind == "fill" && (action.Element?.Type == "password"
+                                      || QaaS.Playwright.Configuration.Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element))))
+            return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
         var value = action.Kind == "upload" ? string.Join(", ", action.Files ?? []) : action.Value ?? "";
         return value.Length == 0 ? new Span("\"\"", Tone.Dim) : Untrusted(value, Tone.Accent, Shrink.Middle, order: 2, min: 8);
     }
@@ -1005,4 +1027,19 @@ internal static class ConsoleUi
     /// <summary>After <see cref="Saved"/>, for a flow recorded after a login flow.</summary>
     public static void RunAfter(string loginFlow) =>
         Info($"It was recorded after {loginFlow}: run that first, with SetupFlows: [{loginFlow}] and its settings.");
+
+    /// <summary>
+    /// Where to set the flow's secrets, once: neither its YAML nor its code holds them, and the YAML reads each from an
+    /// environment variable.
+    /// </summary>
+    public static void Secrets(GeneratedFlow flow, string yamlPath)
+    {
+        if (flow.Secrets.Count == 0) return;
+        var names = string.Join(", ", flow.Secrets.Select(setting => setting.Name));
+        var variables = string.Join(", ", flow.Secrets.Select(setting => FlowYaml.EnvironmentName(setting.Name)));
+        var are = flow.Secrets.Count == 1 ? "is a secret" : "are secrets";
+        Info($"{names} {are}: no file of the flow holds {(flow.Secrets.Count == 1 ? "it" : "them")}. " +
+             $"{Path.GetFileName(yamlPath)} reads {variables} from the environment ({FlowYaml.Placeholder(flow.Secrets[0])}): " +
+             "set it before the run, or the secret store your tests use.");
+    }
 }

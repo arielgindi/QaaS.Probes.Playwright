@@ -173,7 +173,8 @@ internal static class FlowRecorder
         if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
         await autosave.SavedAsync(recording, request, saved, flow.Code);
         ConsoleUi.Saved(request, saved, flow);
-        if (Autosave.Unkept(recording, request.ClassName) is [_, ..] unkept)
+        ConsoleUi.Secrets(flow, saved.YamlPath);
+        if (Autosave.Unkept(recording, request.ClassName).Except(flow.Secrets.Select(setting => setting.Name)).ToList() is [_, ..] unkept)
             ConsoleUi.Warning($"The recorder keeps no password in its copy of a recording: set {string.Join(", ", unkept)} " +
                               $"in {Path.GetFileName(saved.YamlPath)}.");
         if (request.Login is { } after) ConsoleUi.RunAfter(after.Flow);
@@ -297,13 +298,14 @@ internal static class FlowRecorder
         return end?.Why;
     }
 
-    // The raw recording, beside the flow and named after it, for a person to share when an element was located badly.
+    // The raw recording, beside the flow and named after it, for a person to share when an element was located badly:
+    // without its secrets, as it may well be shared.
     private static async Task<string?> KeepAsync(SavedFlow saved, Recording recording)
     {
         var path = Path.ChangeExtension(saved.CodePath, ".recording.json");
         try
         {
-            await File.WriteAllTextAsync(path, recording.ToJson());
+            await File.WriteAllTextAsync(path, Autosave.WithoutSecrets(recording).ToJson());
             return path;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)

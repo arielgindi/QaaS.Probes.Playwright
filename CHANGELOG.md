@@ -4,6 +4,39 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## 2.0.1
 
+- **A flow a tester keeps, from a messy recording of a real site.** Recorded on demoqa's practice form and OrangeHRM's
+  demo, as people click around, the flow came out with hashed classes, positions and empty names, settings named
+  `Value2` or after the value a select showed, the letters typed to filter a list as settings, a loop of clicks that did
+  nothing, and one step of thirty statements. Now:
+  - **Locators** never use a class a style library hashed (`css-1x2y3z-control`, `sc-…`, `jss12`), a position, an empty
+    name, a wrapper's glued text or a row's whole name. A field is found by its form group's label
+    (`Locator("div.oxd-input-group").Filter(new() { Has = page.GetByText("User Role", …) })`), a repeated button by its
+    section's heading, a widget by the stable id around it (`Locator("[id='state']").GetByRole(AriaRole.Combobox)`), an
+    icon button by its title or its icon (`button:has(i.bi-trash)`), a post by its words, a checkbox numbered by id by
+    its label, a header's checkbox by its place. A click on a widget's arrow hidden from assistive technology, or on the
+    value a select shows, is a click on the widget.
+  - **Names** come from what a person reads: the label beside a field in its row or group, the select's prompt
+    (`Select State`), the wrapper's id, a checkbox's label; never a placeholder's example (`name@example.com`). Icon
+    buttons are named after their icon ("Delete", "Like"), a row's checkbox after its row, steps after the page's section
+    (`FillPersonalDetailsAsync`, `AddAttachmentAsync`), a step done again `…AgainAsync` before any number.
+  - **Noise** is left out: a click that only put the focus in a field, the click that opened a choice's list, a click on
+    no control that changed nothing (the recorder now watches what each click changes), a calendar's and a file
+    chooser's clicks (the date is typed as the field then shows it), a link dragged a few pixels. The letters typed to
+    filter a list are part of the choice: the flow types the option's own text, and no setting holds them.
+  - **Suggestions**, one click each in the panel, never a silent drop: a value typed or chosen again before anything
+    used it, a click repeated that showed nothing, a multi-select's choice removed again, clicks on no control in an
+    older recording. The console lists those left when saving.
+  - **Loops** need what each round showed: four clicks on a Close that does nothing are one click. A round may go
+    through a dialog (tick the row, its trash, "Yes, Delete") and over rows by their key (`UsernamesToDelete`), a
+    multi-select's choices are a list from two (`Subjects`), and a checkbox group's ticks a list of labels (`Hobbies`).
+  - **Steps** end where the section changes, and their summaries read as a person writes them ("Fills in the gender,
+    email, first name, last name and mobile number, pressing Enter after the email.").
+  - A dialog that closed with no action seen is closed by Escape, listed to check by hand. A checkbox under the box a
+    library draws over it is ticked through that box (`Force = true`). One file uploaded is a setting of its path.
+- **A password is in no file of the flow, nor in the console.** The YAML reads it from an environment variable
+  (`Password: '${PASSWORD}'`), the record has no default for it, the console says once where to set it, and only the
+  panel's Test is given the value you typed. A user name typed to log in is no part of a later locator.
+- The console says that Enter in a form's field may send the form.
 - Fixed: the recorder stopped with a NullReferenceException writing a flow whose first step is in a dialog no recorded
   step opened, such as one open when the recording started, or after deleting the click that opened it; and then at
   every start, offering that recording.
@@ -97,6 +130,7 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   `› Testing`, `✓ Passed`, `× Failed`), with the panel's words: a checkbox is ticked and a radio picked, as `check` is a
   check of what the page shows. A click that only opens a select is no longer printed, so the numbers are the panel's
   step numbers; a part's replay no longer prints what the page did again; a check of an element's own text says it once.
+- The raw recording `--keep-recording` keeps beside the flow leaves out passwords and secrets, as autosave does.
 
 ## 2.0.0
 

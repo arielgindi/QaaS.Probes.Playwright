@@ -163,6 +163,13 @@ const sample: PanelState = {
           },
           "effects": [],
           "checks": [],
+          "suggestions": [
+            {
+              "key": "replaced:a3",
+              "text": "Title is filled again later (“Printer jammed”) before anything used “Printer on floor 3 is jammed”: the flow needs only the last.",
+              "apply": "Leave it out"
+            }
+          ],
           "settings": [
             {
               "name": "Title",

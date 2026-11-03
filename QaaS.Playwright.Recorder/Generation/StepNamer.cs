@@ -76,25 +76,35 @@ internal static partial class StepNamer
                 name = "Check" + (step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog) : PageSubject(last.Source.Url) ?? "Page");
             else
             {
+                // The section the step works in, by its heading, says more than the page: Personal Details.
                 var subject = step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog)
-                    : PageSubject(last.Source.Url) ?? plan.ClassName;
+                    : SectionOf(step) ?? PageSubject(last.Source.Url) ?? plan.ClassName;
                 name = Choice(step) is { } chosen ? "Choose" + chosen
+                    : Toggles(step) is { } toggled ? toggled
                     : verb is not null && (step.Ended || !hasValues) ? verb
                     : last.Kind == "navigate" ? "Open" + (PageSubject(last.Source.Url) ?? "Page")
+                    : last is { Kind: "press", Source.Key: "Escape" } && last.Has("dialogClosed") ? "Close" + subject
                     : hasValues ? "Fill" + subject
                     : last.Has("dialogClosed") ? "Submit" + subject
                     : "Use" + subject;
+                // A second form step of the same section or page is named after what it fills in.
+                if (hasValues && name == "Fill" + subject && used.Contains(name + "Async") && Fields(step) is { } fields) name = "Fill" + fields;
             }
 
-            // A name the person gave is theirs; another step's own name gives way to it.
+            // A name the person gave is theirs; another step's own name gives way to it. A name taken is the step done
+            // again, numbered only from the third time.
             var own = GivenName(step);
             if (own is not null) name = own[..^"Async".Length];
             var unique = name + "Async";
-            for (var copy = 2; (own is null && given.Contains(unique)) || !used.Add(unique); copy++) unique = $"{name}{copy}Async";
+            for (var copy = 2; (own is null && given.Contains(unique)) || !used.Add(unique); copy++)
+                unique = copy == 2 ? $"{name}AgainAsync" : $"{name}{copy}Async";
             step.Name = unique;
             step.Summary = Summary(step, plan);
         }
     }
+
+    /// <summary>Whether the word says what a button does: Delete, Save, Add.</summary>
+    public static bool IsVerb(string word) => Verbs.Contains(word);
 
     /// <summary>
     /// The method name the person gave the step, kept by its first action that has one, e.g. <c>SaveTicketAsync</c>:
@@ -114,7 +124,11 @@ internal static partial class StepNamer
     /// </summary>
     public static string? Label(PlannedAction action, string? without = null)
     {
-        var text = action.Source.Target?.Text;
+        // An icon button by what its icon says (a trash is "Delete"), a close button's cross by its word.
+        var own = action.Source.Target?.Text;
+        var text = own is { Length: > 0 } && CloseGlyph().IsMatch(own) ? "Close"
+            : !string.IsNullOrWhiteSpace(own) ? own
+            : Names.IconName(action.Source.Target?.Icon);
         if (string.IsNullOrWhiteSpace(text)) return null;
         if (without is { Length: > 0 }) text = text.Replace(without, " ", StringComparison.Ordinal);
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -135,6 +149,10 @@ internal static partial class StepNamer
         var verb = label is { Length: <= 40 } && CSharp.IsAsciiText(label) && !label.Any(char.IsDigit) ? CSharp.Pascal(label)
             : Stem(target);
         if (verb is null) return null;
+        // A lone verb says what of by its section: "Add" in Attachments adds an attachment.
+        if (Verbs.Contains(verb) && CSharp.IsAsciiText(target?.Section) && CSharp.Pascal(target!.Section) is { } section
+            && !verb.Equals(section, StringComparison.Ordinal))
+            verb += LoopFinder.Singular(section);
         if (target?.Role is "link" or "tab" && !Verbs.Contains(FirstWord(verb))) verb = "Open" + verb;
         if (action.RowKey is not null && CSharp.Pascal(target?.Row?.Header) is { } header
                                       && !verb.Contains(header, StringComparison.Ordinal))
@@ -142,8 +160,31 @@ internal static partial class StepNamer
         return verb;
     }
 
+    // A step that only ticks or turns on: by its setting when that says what it does (SelectAll), else CheckTerms,
+    // TurnOnNotifications.
+    private static string? Toggles(Step step)
+    {
+        if (step.Actions is not [{ Kind: "check" or "uncheck", Value.Name: { } setting } only] || only.Source.Widget == "radio") return null;
+        if (IsVerb(FirstWord(setting))) return setting;
+        return (only.Source.Widget == "switch" ? only.Kind == "check" ? "TurnOn" : "TurnOff" : only.Kind == "check" ? "Check" : "Uncheck") + setting;
+    }
+
+    // The section all of a step's actions are in, by its heading.
+    private static string? SectionOf(Step step) =>
+        step.Actions.Select(action => action.Source.Element?.Section).Distinct().ToList() is [{ } section] && CSharp.IsAsciiText(section)
+            ? CSharp.Pascal(section)
+            : null;
+
+    // What a form step fills in, by its first two settings: GenderAndEmail.
+    private static string? Fields(Step step)
+    {
+        var names = step.Actions.Select(action => action.Value?.Name).OfType<string>().Distinct().Take(2).ToList();
+        return names.Count == 0 ? null : string.Join("And", names);
+    }
+
     // What a step chooses, when choosing is all it does, maybe confirmed by a click on "Confirm", "OK" and the like: the
-    // setting of its last choice (Shipping), else the label of the option or card it clicked last (Express).
+    // setting of its last choice (Shipping), or of its two (StateAndCity), else the label of the option or card it
+    // clicked last (Express).
     private static string? Choice(Step step)
     {
         var actions = step.Actions.ToList();
@@ -151,7 +192,12 @@ internal static partial class StepNamer
         if (confirmed) actions.RemoveAt(actions.Count - 1);
         if (actions.Count == 0 || actions.Any(action => action.Kind is not ("choose" or "click"))) return null;
         var last = actions[^1];
-        if (last.Kind == "choose") return last.Value?.Name;
+        // A setting numbered to tell it from another of its field is the same field: City2 is the city chosen again.
+        static string? Field(PlannedAction choice) => choice.Value?.Name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9') is { Length: > 0 } name ? name : choice.Value?.Name;
+        if (actions.Where(action => action.Kind == "choose").Select(Field).Distinct().ToList() is [{ } one, { } two]
+            && actions.All(action => action.Kind == "choose"))
+            return $"{one}And{two}";
+        if (last.Kind == "choose") return Field(last);
         // An item of a list without a role of its own; a link or menu item of one when a click confirms it.
         var item = last.Source.Target is { Item: true, Role: null or "option" or "listitem" }
                    || (confirmed && last.Source.Target is { Item: true, Role: "link" or "menuitem" });
@@ -163,19 +209,39 @@ internal static partial class StepNamer
         return label.Length is > 0 and <= 40 && CSharp.IsAsciiText(label) ? CSharp.Pascal(label) : "Option";
     }
 
+    // A loop by what each round does to its list: CheckHobbiesAsync, ChooseSubjectsAsync, DeleteUsernamesAsync,
+    // AddLinesAsync; one of no list by its button: AddEmptyLinesAsync.
     private static string LoopName(Step step, Loop loop)
     {
-        var last = step.Actions[loop.Length - 1];
+        var round = step.Actions.Take(loop.Length).ToList();
+        var last = round[^1];
         var label = last.Kind is "click" or "dblclick" && Label(last) is { } text && CSharp.IsAsciiText(text)
                     && !text.Any(char.IsDigit)
             ? CSharp.Pascal(text)
             : null;
         if (loop.List is not { } list)
             return label is null ? "Repeat" : LoopFinder.Plural(label);
-        if (label is null) return (last.Kind == "press" ? "Enter" : "Fill") + list.Name;
-        var verb = FirstWord(label);
-        return label.Length > verb.Length ? verb + LoopFinder.Plural(label[verb.Length..]) : label + list.Name;
+        var items = ListSubject(list.Name);
+        if (round.Any(action => action.RowKey is not null && loop.Holds.Contains(action.RowKey)) && LoopFinder.Verb(round) is { } verb)
+            return verb + items;
+        if (round.All(action => action.Kind is "check" or "uncheck" or "choose" or "fill" or "press"))
+            return (round[0].Kind switch
+            {
+                "check" when round[0].Source.Widget == "radio" => "Pick",
+                "check" => "Check",
+                "uncheck" => "Uncheck",
+                "choose" => "Choose",
+                _ when last.Kind == "press" => "Enter",
+                _ => "Fill",
+            }) + items;
+        if (label is null) return "Fill" + items;
+        var first = FirstWord(label);
+        return label.Length > first.Length ? first + LoopFinder.Plural(label[first.Length..]) : label + items;
     }
+
+    // A list's name without what is done to it: UsernamesToDelete gives Usernames.
+    private static string ListSubject(string list) =>
+        list.IndexOf("To", StringComparison.Ordinal) is var at and > 0 && at + 2 < list.Length && char.IsUpper(list[at + 2]) ? list[..at] : list;
 
     private static string FirstWord(string pascal) => FirstWordOf().Match(pascal).Value;
 
@@ -210,14 +276,24 @@ internal static partial class StepNamer
         return stem;
     }
 
-    // The page's last path segment that is no record's id: "/vehicles/VH-1001/notes" gives Notes.
+    // The page's last path segment that is no record's id, nor the name of one ("empNumber/7"), without a verb a route
+    // starts with: "/vehicles/VH-1001/notes" gives Notes, "/pim/viewPersonalDetails/empNumber/7" PersonalDetails.
     private static string? PageSubject(string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
-        var segment = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .LastOrDefault(part => !part.Any(char.IsDigit) && CSharp.IsAsciiText(part));
-        return CSharp.Pascal(segment);
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        bool IsId(string part) => part.Any(char.IsDigit) || (part.Length > 12 && UnstableId.IsGuidLike(part));
+        var segment = segments.Select((part, index) => (part, index))
+            .LastOrDefault(found => !IsId(found.part) && CSharp.IsAsciiText(found.part) && !found.part.Contains('.')
+                                    && !(found.index + 1 < segments.Length && IsId(segments[found.index + 1]) && KeyName().IsMatch(found.part))).part;
+        if (CSharp.Pascal(segment) is not { } pascal) return null;
+        var words = Words(pascal).ToList();
+        return words.Count > 1 && RouteVerbs.Contains(words[0]) ? string.Concat(words.Skip(1)) : pascal;
     }
+
+    // What a route's last segment starts with that says what the page does with what it names: viewPersonalDetails.
+    private static readonly HashSet<string> RouteVerbs = new(StringComparer.OrdinalIgnoreCase)
+        { "View", "Show", "Edit", "Get", "List", "Manage", "Display", "Index", "Save", "Update" };
 
     // ── What a step does ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -243,7 +319,14 @@ internal static partial class StepNamer
             if (last.Kind == "newTab")
                 return Address(last.Source.Url) is { } address ? $"Opens a new tab at {address}." : "Opens a new tab.";
             if (step.Loop is { List: { } list } loop)
-                return Sentence($"for each of the {Human(list.Name)}, {Join(Phrases(step.Actions.Take(loop.Length)))}");
+            {
+                var round = step.Actions.Take(loop.Length).ToList();
+                var items = Human(list.Name);
+                return round is [{ Kind: "check" or "uncheck" or "choose" or "fill" } only]
+                    ? Sentence($"{VerbOf(only)} each of the {items}")
+                    : Sentence($"for each of the {items}, {Join(Phrases(round))}");
+            }
+
             if (step.Loop is { Count: { } count } repeated)
                 return Sentence($"{Join(Phrases(step.Actions.Take(repeated.Length)))} {count.Name} times");
             var said = Join(Phrases(step.Actions));
@@ -251,11 +334,24 @@ internal static partial class StepNamer
             return Sentence(said + (outcome ? Outcome(last) : ""));
         }
 
+        private static string VerbOf(PlannedAction action) => action.Kind switch
+        {
+            "check" when action.Source.Widget == "switch" => "turns on",
+            "uncheck" when action.Source.Widget == "switch" => "turns off",
+            "check" when action.Source.Widget == "radio" => "picks",
+            "check" => "ticks",
+            "uncheck" => "unticks",
+            "choose" => "chooses",
+            _ => "fills in",
+        };
+
         // What the actions do, values filled in one after the other said at once: "fills in the title and priority",
-        // or "checks "Urgent"" when they are checkboxes only.
+        // or "ticks "Urgent"" when they are checkboxes only. Enter pressed in a field just filled in is said with them:
+        // "fills in the name and email, pressing Enter after the email".
         private IEnumerable<string> Phrases(IEnumerable<PlannedAction> actions)
         {
             var filled = new List<PlannedAction>();
+            var pressed = new List<PlannedAction>();
             var checking = false;
             foreach (var action in actions)
             {
@@ -268,8 +364,17 @@ internal static partial class StepNamer
                     continue;
                 }
 
-                if (filled.Count > 0) yield return Fills(filled);
+                // Only among several fields: of one, "then presses Enter" says it.
+                if (action.Kind == "press" && filled.LastOrDefault() is { } field && field.Key == action.Key
+                    && actions.Count(other => other.Value is not null) > 1)
+                {
+                    pressed.Add(action);
+                    continue;
+                }
+
+                if (filled.Count > 0) yield return Fills(filled, pressed);
                 filled.Clear();
+                pressed.Clear();
                 yield return action.Kind switch
                 {
                     "click" or "dblclick" => Clicks(action),
@@ -277,33 +382,45 @@ internal static partial class StepNamer
                     "navigate" => $"goes to {Address(action.Source.Url) ?? "an address"}",
                     "drag" => "drags and drops",
                     "expect" => "checks what the page shows",
+                    "check" or "uncheck" => $"{VerbOf(action)} {Quote(Names.Human(action.Source.Target)) ?? (action.RowKey is null ? "the checkbox" : "its row")}",
                     _ => action.Kind,
                 };
             }
 
-            if (filled.Count > 0) yield return Fills(filled);
+            if (filled.Count > 0) yield return Fills(filled, pressed);
         }
 
-        private string Fills(List<PlannedAction> filled)
+        private string Fills(List<PlannedAction> filled, List<PlannedAction> pressed)
         {
             if (filled.Select(action => action.Kind).Distinct().ToList() is [var kind and ("check" or "uncheck")]
                 && filled.All(action => action.Source.Widget != "radio"))
             {
-                var boxes = filled.Select(action => Quote(action.Source.Target?.Text) ?? Human(action.Value!.Name)).Distinct();
-                return $"{kind}s {Join([.. boxes], " and ")}";
+                var boxes = filled.Select(action => Quote(Names.Human(action.Source.Target)) ?? Human(action.Value!.Name)).Distinct();
+                var switches = filled.All(action => action.Source.Widget == "switch");
+                return $"{(switches ? kind == "check" ? "turns on" : "turns off" : kind == "check" ? "ticks" : "unticks")} {Join([.. boxes], " and ")}";
             }
 
+            if (filled.All(action => action.Kind == "choose"))
+                return $"chooses the {Join([.. filled.Select(FieldOf).Distinct()], " and ")}";
+
             // A date typed relative to today is the date still.
-            var fields = filled.Select(action => action.Kind == "upload" ? "file"
-                    : Human(action.Value!.DateFormat is null ? action.Value.Name : RelativeDate.Member(action.Value.Name)))
+            var fields = filled.Select(FieldOf).Distinct().ToList();
+            var presses = pressed.Select(press => (press.Source.Key ?? "Enter", FieldOf(filled.Last(field => field.Key == press.Key))))
                 .Distinct().ToList();
-            return $"fills in the {Join(fields, " and ")}";
+            var after = presses.Count == 0 ? ""
+                : ", pressing " + Join([.. presses.GroupBy(press => press.Item1)
+                    .Select(group => $"{group.Key} after the {Join([.. group.Select(press => press.Item2)], " and ")}")], " and ");
+            return $"fills in the {Join(fields, " and ")}{after}";
         }
+
+        // A setting numbered to tell it from another of its field says the field: City2 is the city.
+        private static string FieldOf(PlannedAction action) => action is { Kind: "upload", Value: null } ? "file"
+            : Human((action.Value!.DateFormat is null ? action.Value.Name : RelativeDate.Member(action.Value.Name)).TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'));
 
         private string Clicks(PlannedAction action)
         {
             var target = action.Source.Target;
-            var label = Quote(target?.Text ?? target?.Label);
+            var label = Quote(Names.Human(target));
             if (label is null) return $"clicks the {target?.Role ?? "element"}";
             var inRow = !Short && action.RowKey is { Text: { } key }
                                && target?.Text?.Contains(key, StringComparison.Ordinal) == false
@@ -357,8 +474,10 @@ internal static partial class StepNamer
         items.Count <= 1 ? string.Concat(items) : string.Join(", ", items[..^1]) + $" {last.Trim()} " + items[^1];
 
     /// <summary>A setting's name as words: EstimateHours gives "estimate hours".</summary>
-    public static string Human(string name) =>
-        string.Join(' ', WordOf().Matches(name).Select(word => word.Value.ToLowerInvariant()));
+    public static string Human(string name) => string.Join(' ', Words(name).Select(word => word.ToLowerInvariant()));
+
+    /// <summary>The words of a PascalCase name: EstimateHours gives Estimate and Hours.</summary>
+    public static IEnumerable<string> Words(string name) => WordOf().Matches(name).Select(word => word.Value);
 
     /// <summary>The address as the flow checks it: its path, with a record's id in it as [id], as any id matches there.</summary>
     public static string? Route(string? url)
@@ -373,6 +492,13 @@ internal static partial class StepNamer
 
     [GeneratedRegex("^[A-Z][a-z0-9]*")]
     private static partial Regex FirstWordOf();
+
+    [GeneratedRegex(@"^\s*[×✕✖✗xX]\s*$")]
+    private static partial Regex CloseGlyph();
+
+    // The name of a record's id in a route: empNumber, userId, id.
+    [GeneratedRegex("(?i)(id|number|no|num|key|code)$")]
+    private static partial Regex KeyName();
 
     [GeneratedRegex("[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+")]
     private static partial Regex WordOf();

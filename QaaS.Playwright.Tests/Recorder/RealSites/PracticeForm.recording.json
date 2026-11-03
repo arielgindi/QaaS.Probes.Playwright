@@ -1,0 +1,2483 @@
+{
+  "startUrl": "https://demoqa.com/automation-practice-form",
+  "actions": [
+    {
+      "id": "6s6zso-1",
+      "t": 1793726793458,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "1234",
+      "raw": "1234",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "userNumber",
+        "text": "Mobile Number",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='userNumber']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "userNumber"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Mobile Number",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Mobile Number"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Mobile Number\" })",
+            "selector": "internal:role=textbox[name=\"Mobile Number\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-2",
+      "t": 1793726794130,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "userNumber",
+        "text": "Mobile Number",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='userNumber']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "userNumber"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Mobile Number",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Mobile Number"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Mobile Number\" })",
+            "selector": "internal:role=textbox[name=\"Mobile Number\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-3",
+      "t": 1793726803454,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".css-1xc3v61-indicatorContainer\").First",
+            "selector": ".css-1xc3v61-indicatorContainer >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-4",
+      "t": 1793726804768,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Haryana",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-3-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-3-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-3-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 2
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-3-input\")",
+            "selector": "#react-select-3-input"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-3-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-3-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-3-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 2
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-3-input\")",
+            "selector": "#react-select-3-input"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-3-option-2",
+        "text": "Haryana",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-3-option-2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-3-option-2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Haryana",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Haryana"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Haryana\" })",
+            "selector": "internal:role=option[name=\"Haryana\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-4",
+          "sinceAction": 150,
+          "t": 1793726804918,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-5",
+      "t": 1793726950415,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".css-1xc3v61-indicatorContainer\")",
+            "selector": ".css-1xc3v61-indicatorContainer"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-6",
+      "t": 1793726951368,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Karnal",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-4-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-4-input\")",
+            "selector": "#react-select-4-input"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-4-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-4-input\")",
+            "selector": "#react-select-4-input"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-4-option-0",
+        "text": "Karnal",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-option-0']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-option-0"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Karnal",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Karnal"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Karnal\" })",
+            "selector": "internal:role=option[name=\"Karnal\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-6",
+          "sinceAction": 145,
+          "t": 1793726951513,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-7",
+      "t": 1793726965738,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "hobbies-checkbox-3",
+        "value": "3",
+        "text": "Music",
+        "label": "Music",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='hobbies-checkbox-3']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "hobbies-checkbox-3"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Music",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Music"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Music\" })",
+            "selector": "internal:role=checkbox[name=\"Music\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-8",
+      "t": 1793726966468,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "hobbies-checkbox-2",
+        "value": "2",
+        "text": "Reading",
+        "label": "Reading",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='hobbies-checkbox-2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "hobbies-checkbox-2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Reading",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Reading"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Reading\" })",
+            "selector": "internal:role=checkbox[name=\"Reading\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-9",
+      "t": 1793726967903,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "hobbies-checkbox-1",
+        "value": "1",
+        "text": "Sports",
+        "label": "Sports",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='hobbies-checkbox-1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "hobbies-checkbox-1"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Sports",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sports"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Sports\" })",
+            "selector": "internal:role=checkbox[name=\"Sports\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-10",
+      "t": 1793726976108,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "div",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"#subjectsContainer div\").First",
+              "selector": "#subjectsContainer div >> nth=0"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-11",
+      "t": 1793727002268,
+      "kind": "check",
+      "page": "page",
+      "widget": "radio",
+      "checked": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "radio",
+        "type": "radio",
+        "id": "gender-radio-1",
+        "name": "gender",
+        "value": "Male",
+        "text": "Male",
+        "label": "Male",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='gender']"
+              }
+            ],
+            "count": 3,
+            "value": "gender"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='gender'][value='Male']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "gender"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='gender-radio-1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "gender-radio-1"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "radio",
+                "name": "Male",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Male"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"Male\", Exact = true })",
+            "selector": "internal:role=radio[name=\"Male\"s]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-12",
+      "t": 1793727004124,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "blabla@gmail.com",
+      "raw": "blabla@gmail.com",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "userEmail",
+        "text": "name@example.com",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='userEmail']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "userEmail"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "name@example.com",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "name@example.com"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"name@example.com\" })",
+            "selector": "internal:role=textbox[name=\"name@example.com\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-13",
+      "t": 1793727012677,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "userEmail",
+        "text": "name@example.com",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='userEmail']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "userEmail"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "name@example.com",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "name@example.com"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"name@example.com\" })",
+            "selector": "internal:role=textbox[name=\"name@example.com\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-14",
+      "t": 1793727015360,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "hello",
+      "raw": "hello",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "firstName",
+        "text": "First Name",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='firstName']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "firstName"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "First Name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "First Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"First Name\" })",
+            "selector": "internal:role=textbox[name=\"First Name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-15",
+      "t": 1793727018563,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "helkasmlck",
+      "raw": "helkasmlck",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "lastName",
+        "text": "Last Name",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='lastName']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "lastName"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last Name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Last Name\" })",
+            "selector": "internal:role=textbox[name=\"Last Name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-16",
+      "t": 1793727023125,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "1234543523",
+      "raw": "1234543523",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "userNumber",
+        "text": "Mobile Number",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='userNumber']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "userNumber"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Mobile Number",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Mobile Number"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Mobile Number\" })",
+            "selector": "internal:role=textbox[name=\"Mobile Number\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-17",
+      "t": 1793727027227,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "div",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"#subjectsContainer div\").First",
+              "selector": "#subjectsContainer div >> nth=0"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-18",
+      "t": 1793727027658,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "1231 ",
+      "raw": "1231 ",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-19",
+      "t": 1793727029578,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "div",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"#subjectsContainer div\").First",
+              "selector": "#subjectsContainer div >> nth=0"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-20",
+      "t": 1793727030394,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "s",
+      "raw": "s",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-21",
+      "t": 1793727032717,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Maths",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-2-option-1",
+        "text": "Maths",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-2-option-1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-2-option-1"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Maths",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Maths"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Maths\" })",
+            "selector": "internal:role=option[name=\"Maths\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-21",
+          "sinceAction": 120,
+          "t": 1793727032837,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-22",
+      "t": 1793727033263,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "id": "subjectsWrapper",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsWrapper']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsWrapper"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Subjectsoption Maths,\")",
+            "selector": "internal:text=\"Subjectsoption Maths,\"i"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "div",
+          "id": "subjectsContainer",
+          "text": "",
+          "interactive": true,
+          "item": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='subjectsContainer']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "subjectsContainer"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByText(\"option Maths, selected.Maths\")",
+              "selector": "internal:text=\"option Maths, selected.Maths\"i"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-23",
+      "t": 1793727034503,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "p",
+      "raw": "p",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-24",
+      "t": 1793727037439,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Physics",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-2-option-0",
+        "text": "Physics",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-2-option-0']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-2-option-0"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Physics",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Physics"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Physics\" })",
+            "selector": "internal:role=option[name=\"Physics\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-24",
+          "sinceAction": 132,
+          "t": 1793727037571,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-25",
+      "t": 1793727038959,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "a",
+      "raw": "a",
+      "final": true,
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "6s6zso-26",
+      "t": 1793727047347,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Arts",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "subjectsInput",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='subjectsInput']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "subjectsInput"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#subjectsInput\")",
+            "selector": "#subjectsInput"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-2-option-2",
+        "text": "Arts",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-2-option-2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-2-option-2"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Arts",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Arts"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Arts\" })",
+            "selector": "internal:role=option[name=\"Arts\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-26",
+          "sinceAction": 616,
+          "t": 1793727047963,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-27",
+      "t": 1793727052854,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "button",
+        "text": "Remove Physics",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Remove Physics",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Remove Physics"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Remove Physics\" })",
+            "selector": "internal:role=button[name=\"Remove Physics\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-28",
+      "t": 1793727059904,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#city > .css-13cymwt-control > .css-1wy0on6 > .css-1xc3v61-indicatorContainer\")",
+            "selector": "#city > .css-13cymwt-control > .css-1wy0on6 > .css-1xc3v61-indicatorContainer"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-29",
+      "t": 1793727060727,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Panipat",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-4-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-4-input\")",
+            "selector": "#react-select-4-input"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "react-select-4-input",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-input']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-input"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 3
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-select-4-input\")",
+            "selector": "#react-select-4-input"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "id": "react-select-4-option-1",
+        "text": "Panipat",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-select-4-option-1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-select-4-option-1"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Panipat",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Panipat"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Panipat\" })",
+            "selector": "internal:role=option[name=\"Panipat\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "settled",
+          "actionId": "6s6zso-29",
+          "sinceAction": 140,
+          "t": 1793727060867,
+          "value": "",
+          "raw": ""
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-30",
+      "t": 1793727065916,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "id": "submit",
+        "text": "Submit",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='submit']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "submit"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Submit",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Submit"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Submit\" })",
+            "selector": "internal:role=button[name=\"Submit\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "6s6zso-30",
+          "sinceAction": 173,
+          "t": 1793727066089,
+          "dialog": {
+            "title": "Thanks for submitting the form",
+            "raw": "Thanks for submitting the form",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "6s6zso-31",
+      "t": 1793727068170,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "dialog": {
+        "title": "Thanks for submitting the form",
+        "raw": "Thanks for submitting the form",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Thanks for submitting the form"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "id": "closeLargeModal",
+        "text": "Close",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "css",
+                "css": "[id='closeLargeModal']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "closeLargeModal"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Close",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Close"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Close\" })",
+            "selector": "internal:role=button[name=\"Close\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-32",
+      "t": 1793727069392,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "dialog": {
+        "title": "Thanks for submitting the form",
+        "raw": "Thanks for submitting the form",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Thanks for submitting the form"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "id": "closeLargeModal",
+        "text": "Close",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "css",
+                "css": "[id='closeLargeModal']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "closeLargeModal"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Close",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Close"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Close\" })",
+            "selector": "internal:role=button[name=\"Close\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-33",
+      "t": 1793727070175,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "dialog": {
+        "title": "Thanks for submitting the form",
+        "raw": "Thanks for submitting the form",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Thanks for submitting the form"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "id": "closeLargeModal",
+        "text": "Close",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "css",
+                "css": "[id='closeLargeModal']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "closeLargeModal"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Close",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Close"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Close\" })",
+            "selector": "internal:role=button[name=\"Close\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "6s6zso-34",
+      "t": 1793727077696,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demoqa.com/automation-practice-form",
+      "dialog": {
+        "title": "Thanks for submitting the form",
+        "raw": "Thanks for submitting the form",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Thanks for submitting the form"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "id": "closeLargeModal",
+        "text": "Close",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "css",
+                "css": "[id='closeLargeModal']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "closeLargeModal"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Thanks for submitting the form"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Close",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Close"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Close\" })",
+            "selector": "internal:role=button[name=\"Close\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    }
+  ]
+}

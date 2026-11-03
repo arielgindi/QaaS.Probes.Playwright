@@ -62,6 +62,11 @@ public class RecordingSessionTests
               <div class="slick-slide" style="cursor: pointer"><div><div id="card-tickets"><h3>Tickets</h3></div></div></div>
             </div>
             <div id="tile-reports" style="cursor: pointer; width: 200px"><span>Reports</span> <span>2 new</span></div>
+            <p id="opened"></p>
+            <script>
+              // What each card opens, as an app's one listener does; a click that changes nothing is no step.
+              document.addEventListener('click', (event) => { opened.textContent = event.target.textContent; });
+            </script>
             """, news => { if (news is CapturedAction) Interlocked.Increment(ref actions); });
         var page = session.Page;
 
