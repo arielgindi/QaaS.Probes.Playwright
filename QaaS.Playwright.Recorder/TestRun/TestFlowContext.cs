@@ -47,17 +47,17 @@ internal sealed class TestFlowContext : AssemblyLoadContext
     }
 
     /// <summary>
-    /// Calls <paramref name="reached"/> with each action's number as it begins, and the action waits for what it returns;
-    /// null no longer calls anything.
+    /// Calls <paramref name="reached"/> with the number of each statement written for an action as it begins, and the
+    /// statement waits for what it returns; null no longer calls anything.
     /// </summary>
-    public void OnAction(Func<int, Task>? reached) =>
+    public void OnStatement(Func<int, Task>? reached) =>
         Assembly.GetType(FlowBuild.ProbeType)?.GetField("Reached", BindingFlags.Public | BindingFlags.Static)?.SetValue(null, reached);
 
     /// <summary>Unloads the build, once nothing of it is used any more.</summary>
     public void Release()
     {
         if (_assembly is not { } assembly) return;
-        OnAction(null);
+        OnStatement(null);
         ForgetCachedTypes(assembly);
         _assembly = null;
         Unload();

@@ -103,6 +103,9 @@ internal sealed record TestReport(int Run, string Flow, string Code, IReadOnlyLi
     /// <summary>How long the browser's part took, from opening BaseUrl to the end; null before it ended.</summary>
     public long? Ms { get; init; }
 
+    /// <summary>The lines of the statement running; in a loop, of its body's statement, which every repeat runs.</summary>
+    public Generation.LineSpan? Running { get; init; }
+
     /// <summary>Each action's state, by its id; an action the run has not reached yet has none.</summary>
     public IReadOnlyDictionary<string, StepResult> Steps { get; init; } = new Dictionary<string, StepResult>();
 

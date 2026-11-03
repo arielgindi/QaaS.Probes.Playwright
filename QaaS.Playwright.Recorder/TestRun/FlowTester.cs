@@ -109,8 +109,11 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         IPage? front, CancellationToken stop)
     {
         var recording = session.Build();
-        var flow = FlowCodeGenerator.Generate(recording, request.ClassName, namespaceName);
-        var order = flow.ActionLines.OrderBy(pair => pair.Value.First).Select(pair => pair.Key).ToList();
+        var plan = FlowPlanner.Plan(recording, request.ClassName);
+        var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
+        // In the order the flow does them, as the panel lists them; a loop's repeat by repeat.
+        var order = plan.Steps.SelectMany(step => step.Actions).Select(action => action.Source.Id)
+            .Where(flow.ActionLines.ContainsKey).Distinct().ToList();
         var report = new TestReport(Interlocked.Increment(ref _runs), request.ClassName, flow.Code, order)
         {
             UpTo = upTo is not null && order.Contains(upTo) ? upTo : null, SlowMotion = slowMotion,
@@ -149,7 +152,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         string? login;
         try
         {
-            built = await _build.BuildAsync(flow, report.Actions, stop);
+            built = await _build.BuildAsync(flow, stop);
             flowConfiguration = await SettingsAsync(flow, request, stop);
             login = await _build.CopyLoginAsync(session.Options.LoadStorageStatePath, stop);
         }
@@ -186,7 +189,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         await PanelWindow.PlaceOverAsync(session.Page, run.Page);
         if (front is not null) await BringToFrontAsync(front);
 
-        var steps = new Steps(report.Actions, report.Total - 1);
+        var steps = new Steps(report.Actions, flow.Statements, report.Total - 1);
         report = await RunFlowsAsync(report, flow, built, request.Login, flowConfiguration, secrets, log, config, run, steps, stop);
         return report with { Steps = steps.Snapshot(), Ms = timer.ElapsedMilliseconds, Warnings = log.Warnings };
     }
@@ -241,12 +244,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         var loaded = TestFlowContext.Load(built);
         try
         {
-            loaded.OnAction(async number =>
+            loaded.OnStatement(async statement =>
             {
                 // Before the action after the one to run to, or once stopped: the flow ends there.
-                if (stop.IsCancellationRequested || !steps.Begin(number)) throw new FlowStoppedException();
-                Publish(report with { Steps = steps.Snapshot() });
-                if (report.SlowMotion) await Task.Delay(_options.SlowMotionMs, stop);
+                var reached = stop.IsCancellationRequested ? Reached.Beyond : steps.At(statement);
+                if (reached == Reached.Beyond) throw new FlowStoppedException();
+                Publish(report with { Steps = steps.Snapshot(), Running = steps.Statement });
+                if (reached == Reached.Next && report.SlowMotion) await Task.Delay(_options.SlowMotionMs, stop);
             });
             var className = report.Flow;
             await new FlowRunner(context, null, null, config, flowConfiguration, secrets, log, _ => loaded.Create(className))
@@ -259,21 +263,23 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         }
     }
 
-    // What failed, where, and why: the failure as the probe recorded it, its line in the code as saved, mapped to its
-    // action by the writer's line map, and what that action listed to check by hand.
+    // What failed, where, and why: the failure as the probe recorded it; the action running then, as the statements
+    // told it, a loop's repeat among them; the line of its stack frame in the code as saved, else of the statement
+    // running; and what the writer listed to check by hand in the action's lines.
     private static TestFailure Describe(Exception failure, Context context, GeneratedFlow flow, BuiltFlow built, Steps steps,
         Secrets secrets, string? inLogin, LoginFlow? login)
     {
         var outcome = PlaywrightFlowResults.Read(context, null).LastOrDefault(recorded => !recorded.Passed);
         var message = outcome?.FailureMessage ?? secrets.Scrub(FlowRunner.Describe(failure));
-        var line = inLogin is null ? LineOf(failure, built.Source) : null;
-        var action = line is { } at ? flow.ActionLines.FirstOrDefault(pair => pair.Value.First <= at && at <= pair.Value.Last).Key : null;
-        action ??= inLogin is null ? steps.Current : null;
+        var action = inLogin is null ? steps.Current : null;
+        var line = action is null ? null : LineOf(failure, built.Source) ?? steps.Statement?.First;
         var span = action is null ? null : flow.ActionLines[action];
-        var lineText = line is { } number ? flow.Code.Split('\n')[number - 1] : "";
+        var statement = flow.Statements.FirstOrDefault(statement => statement.Lines.First <= line && line <= statement.Lines.Last);
+        var opening = flow.Statements.FirstOrDefault(statement => statement.Actions.Contains(action));
 
         List<string> hints = [];
-        if (span is not null && line > span.First && lineText.Contains("Expect(", StringComparison.Ordinal))
+        if (statement is not null && statement != opening
+            && flow.Code.Split('\n')[statement.Lines.First - 1].Contains("Expect(", StringComparison.Ordinal))
             hints.Add("The action itself ran; then the page did not do what it did when you recorded it.");
         if (message.Contains("strict mode violation", StringComparison.Ordinal))
             hints.Add("Its locator finds more than one element now: choose another one for this step in the inspector.");
@@ -284,7 +290,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         return new TestFailure(FlowReport.Summarize(message))
         {
             Headline = outcome is not null ? FlowReport.Describe(outcome) : FlowReport.Summarize(message),
-            Action = action, Line = line ?? span?.First, WaitingFor = WaitedFor(message), Url = outcome?.FailureUrl,
+            Action = action, Line = line, WaitingFor = WaitedFor(message), Url = outcome?.FailureUrl,
             Screenshot = outcome?.FailureScreenshot is { } png ? $"data:image/png;base64,{Convert.ToBase64String(png)}" : null,
             CallLog = FlowReport.CallLog(message), InLogin = inLogin,
             Checks = span is null ? [] : [.. flow.Checks.Where(check => check.Line >= span.First && check.Line <= span.Last)
@@ -355,33 +361,61 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         }
     }
 
-    /// <summary>The state of each action in one run, and the one running, safe to call from the flow's thread.</summary>
-    private sealed class Steps(IReadOnlyList<string> order, int last)
+    /// <summary>What a statement beginning means for the run.</summary>
+    private enum Reached
+    {
+        /// <summary>The action running goes on.</summary>
+        Same,
+
+        /// <summary>Another action begins.</summary>
+        Next,
+
+        /// <summary>The action is past the one the run goes to: the run ends before it.</summary>
+        Beyond,
+    }
+
+    /// <summary>
+    /// The state of each action in one run, and the one running, as the statements tell it, safe to call from the flow's
+    /// thread. A statement does its actions in order: in a loop's body, the first time the first repeat's, then the
+    /// second's, and so on.
+    /// </summary>
+    private sealed class Steps(IReadOnlyList<string> order, IReadOnlyList<ActionStatement> statements, int last)
     {
         private readonly Lock _gate = new();
         private readonly Dictionary<string, StepResult> _states = [];
         private readonly Stopwatch _clock = new();
-        private int _current = -1;
+        private readonly int[] _begun = new int[statements.Count];
+        private string? _current;
+        private LineSpan? _statement;
 
         /// <summary>The action running, or the last that ran.</summary>
         public string? Current
         {
-            get { lock (_gate) return Running; }
+            get { lock (_gate) return _current; }
         }
 
-        private string? Running => _current >= 0 ? order[_current] : null;
+        /// <summary>The lines of the statement running.</summary>
+        public LineSpan? Statement
+        {
+            get { lock (_gate) return _statement; }
+        }
 
-        /// <summary>The action numbered <paramref name="number"/> begins, and the one before passed; false past the last.</summary>
-        public bool Begin(int number)
+        /// <summary>The statement numbered <paramref name="statement"/> begins.</summary>
+        public Reached At(int statement)
         {
             lock (_gate)
             {
-                if (number > last) return false;
+                var actions = statements[statement].Actions;
+                var action = actions[Math.Min(_begun[statement]++, actions.Count - 1)];
+                _statement = statements[statement].Lines;
+                if (action == _current) return Reached.Same;
+                var index = order.TakeWhile(other => other != action).Count();
+                if (index > last) return Reached.Beyond;
                 PassCurrent();
-                _current = number;
-                _states[order[number]] = new StepResult(StepState.Running, Since: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                _current = action;
+                _states[action] = new StepResult(StepState.Running, Since: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 _clock.Restart();
-                return true;
+                return Reached.Next;
             }
         }
 
@@ -394,8 +428,8 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
             lock (_gate)
             {
                 if (failed is not null)
-                    _states[failed] = new StepResult(StepState.Failed, Ms: Running == failed ? _clock.ElapsedMilliseconds : null);
-                else if (stopped && Running is { } running && _states[running].State == StepState.Running)
+                    _states[failed] = new StepResult(StepState.Failed, Ms: _current == failed ? _clock.ElapsedMilliseconds : null);
+                else if (stopped && _current is { } running && _states[running].State == StepState.Running)
                     _states.Remove(running);
                 else
                     PassCurrent();
@@ -411,8 +445,8 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
 
         private void PassCurrent()
         {
-            if (_current >= 0 && _states[order[_current]].State == StepState.Running)
-                _states[order[_current]] = new StepResult(StepState.Passed, Ms: _clock.ElapsedMilliseconds);
+            if (_current is { } running && _states[running].State == StepState.Running)
+                _states[running] = new StepResult(StepState.Passed, Ms: _clock.ElapsedMilliseconds);
         }
     }
 

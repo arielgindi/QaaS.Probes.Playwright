@@ -125,6 +125,9 @@ internal sealed record PanelTest(int Run, string State, int Total)
     /// <summary>How long the browser's part took, once it ended.</summary>
     public long? Ms { get; init; }
 
+    /// <summary>The lines of the statement running; in a loop, of its body's statement, which every repeat runs.</summary>
+    public LineSpan? Running { get; init; }
+
     /// <summary>Each action's state, by its id.</summary>
     public IReadOnlyDictionary<string, PanelTestStep> Steps { get; init; } = new Dictionary<string, PanelTestStep>();
 
@@ -144,6 +147,7 @@ internal sealed record PanelTest(int Run, string State, int Total)
     public static PanelTest Of(TestReport report, string code) => new(report.Run, StateOf(report), report.Total)
     {
         UpTo = report.UpTo, SlowMotion = report.SlowMotion, Login = report.Login, Started = report.Started, Ms = report.Ms,
+        Running = report.Outcome is null ? report.Running : null,
         Steps = report.Steps.ToDictionary(pair => pair.Key, pair => new PanelTestStep(pair.Value.State switch
         {
             StepState.Running => "running",
