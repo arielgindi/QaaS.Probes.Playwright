@@ -101,6 +101,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
+            session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
             panel._worker = Task.Run(panel.RunAsync);
             // In the background, so the first test compiles as fast as the next.
             _ = panel._tester.WarmUp(request);
@@ -160,7 +161,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 while (_commands.Reader.TryRead(out var command)) commands.Add(command);
                 foreach (var command in commands.Where(command => command.Type is not ("highlight" or "unhighlight")))
                 {
-                    if (command.Type is "elements" or "pick") await ElementsAsync(command);
+                    if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
                     else if (IsPartCommand(command)) await PartAsync(command);
                     else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
                     else Carry(command);
@@ -168,7 +169,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
                 // A highlight replaces the one before, so only the last matters.
                 if (commands.LastOrDefault(command => command.Type is "highlight" or "unhighlight") is { } highlight)
-                    await HighlightAsync(highlight);
+                    await HighlightAsync(await MarkAsync(highlight));
                 await ShowElementsChangesAsync();
 
                 var version = _session.Log.Version;
@@ -283,8 +284,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             case "useForStep" when command.Action is { } action && _picked is { } picked:
                 _session.Log.Retarget(action, picked.Description);
                 break;
-            case "addClick" or "addFill" when _picked is { } picked:
-                _session.Log.Insert(NewAction(command, picked), command.Action);
+            // Where the next action goes: last, or in the part being recorded again.
+            case "addClick" or "addFill" or "addCheck" when _picked is { } picked:
+                _session.Log.Insert(NewAction(command, picked), afterId: null);
                 break;
         }
     }
@@ -331,19 +333,23 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         return action.Element is { Length: > 0 } element ? $"the {action.Kind} on “{element}”" : $"the {action.Kind}";
     }
 
-    // A click or a fill on the picked element, as the capture script would have recorded it.
+    // A click, a fill or a check of the picked element, as the capture script would have recorded it.
     private static CapturedAction NewAction(PanelCommand command, Picked picked)
     {
         var description = JsonSerializer.Deserialize<ElementDescription>(
             JsonSerializer.Serialize(picked.Description, Recording.Json), Recording.Json)!;
         var fill = command.Type == "addFill";
-        return new CapturedAction
+        var action = new CapturedAction
         {
             Id = $"added-{Guid.NewGuid():N}", Kind = fill ? "fill" : "click", Page = picked.Page,
             Target = description.Target, Dialog = description.Dialog, OpenDialogs = description.OpenDialogs,
             Widget = fill ? description.Target?.Tag == "textarea" ? "textarea" : "text" : null,
             Value = fill ? command.Value ?? "" : null, Raw = fill ? command.Value ?? "" : null, Final = fill ? true : null,
         };
+        if (command.Type != "addCheck") return action;
+        var check = ChecksOf(picked).FirstOrDefault(each => each.Kind == command.Check) ?? ChecksOf(picked)[0];
+        (action.Kind, action.Check, action.Value, action.Group, action.Url) = ("expect", check.Kind, check.Value, check.Group, picked.Url);
+        return action;
     }
 
     // The Elements view: the page's elements live, a level at a time, or as frozen with F4, and the one picked.
@@ -355,23 +361,40 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             return;
         }
 
+        if (command.Type == "inspected")
+        {
+            if (command is { Name: { } alias, Query: { } json }) await ShowInspectedAsync(alias, json);
+            return;
+        }
+
         switch (command.Op)
         {
             case "tree" or "search":
                 _watching = command.On ?? _watching;
                 var alias = _elementsPage = _session.CurrentPage();
                 if (_session.PageNamed(alias) is not { } page) return;
+                var compact = command.Compact == true;
                 var answer = command.Op == "search"
-                    ? await PageElements.CallAsync(page, new { op = "search", query = command.Query ?? "" })
-                    : await PageElements.CallAsync(page, new { op = "tree", ids = command.Ids ?? [] });
+                    ? await PageElements.CallAsync(page, new { op = "search", query = command.Query ?? "", compact })
+                    : await PageElements.CallAsync(page, new { op = "tree", ids = command.Ids ?? [], compact, fresh = command.Fresh == true, reveal = command.Node });
                 if (_watching) await PageElements.CallAsync(page, new { op = "watch", on = true });
                 _watchedUrl = page.Url;
-                await ShowElementsAsync(command.Op, alias, answer, page.Url);
+                await ShowElementsAsync(command.Op, alias, answer, page.Url, command.Seq);
                 break;
             case "watch":
                 _watching = command.On == true;
                 if (_session.PageNamed(_session.CurrentPage()) is { } watched)
                     await PageElements.CallAsync(watched, new { op = "watch", on = _watching });
+                if (!_watching) await MarkMatchesAsync(command);
+                break;
+            case "inspect":
+                await InspectAsync(command.On == true);
+                break;
+            case "mark":
+                await MarkMatchesAsync(command);
+                break;
+            case "preview":
+                PreviewFor(command);
                 break;
             case "frozen" when _session.Frozen is { } frozen:
                 await ShowFrozenAsync(frozen);
@@ -389,15 +412,25 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
         var frozen = command.Frozen == true ? _session.Frozen : null;
         var alias = frozen?.Page ?? _elementsPage;
-        var answer = _session.PageNamed(alias) is { } page
-            ? await PageElements.CallAsync(page, new { op = "describe", id = node })
+        (_elementStep, _elementCheck) = (command.Action, null);
+        // The selected step's element, which the picked one may be around or inside, as when a click was recorded there.
+        var near = command.Action is { } step && _shown?.Actions.GetValueOrDefault(step)?.Locator is { } locator
+            ? JsonSerializer.Serialize(locator.Parts, Recording.Json)
             : null;
+        var page = _session.PageNamed(alias);
+        var answer = page is not null ? await PageElements.CallAsync(page, new { op = "describe", id = node, near }) : null;
         var live = answer is null ? null : JsonSerializer.Deserialize<LiveElement>(answer, Recording.Json);
         // A frozen element no longer on the page keeps the locators found when it was frozen.
         var description = live?.Description ?? frozen?.DescriptionOf(node);
-        _picked = description is null ? null : new Picked(alias, node, description, Gone: live is null, live?.Fillable == true);
-        _error = description is null ? "That element is not on the page now, and was not one a click acts on when frozen." : null;
+        _picked = description is null ? null : new Picked(alias, node, description, Gone: live is null, live?.Fillable == true)
+        {
+            Checks = live?.Checks, Check = live?.Check ?? 0, Related = live?.Related == true, Url = page?.Url,
+        };
+        _error = live?.Framed == true ? "That element is in a frame: the flow cannot act inside a frame yet."
+            : description is null ? "That element is not on the page now, and was not one a click acts on when frozen." : null;
         _refresh = true;
+        // Picked in the app: the keys go on in the panel.
+        if (command.Focus == true && _picked is not null) await _page.BringToFrontAsync();
     }
 
     // What changed in the page, or a new freeze: the panel asks again for what it shows.
@@ -423,10 +456,10 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         await _page.EvaluateAsync<bool>(ElementsFunction, message.ToJsonString());
     }
 
-    private async Task ShowElementsAsync(string kind, string page, string? data, string url)
+    private async Task ShowElementsAsync(string kind, string page, string? data, string url, int? seq)
     {
         if (data is null) return;
-        var message = new JsonObject { ["kind"] = kind, ["page"] = page, ["url"] = url, ["data"] = JsonNode.Parse(data) };
+        var message = new JsonObject { ["kind"] = kind, ["page"] = page, ["url"] = url, ["data"] = JsonNode.Parse(data), ["seq"] = seq };
         await _page.EvaluateAsync<bool>(ElementsFunction, message.ToJsonString());
     }
 
@@ -444,9 +477,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 {
                     Notice = _session.Notice,
                     LoginProgress = _session.LoginProgress is { } login ? new PanelLoginProgress(login.Text, login.Last, login.Slow) : null,
-                    Element = _picked is { } picked
-                        ? PanelSnapshot.Element(picked.Node, picked.Page, picked.Description, picked.Gone, picked.Fillable)
-                        : null,
+                    Element = _picked is { } picked ? PickedView(picked, _shown) : null,
                     Test = _tester.Report is { } test ? PanelTest.Of(test, _shown.View.Code) : null,
                     Checking = _session.Checking,
                     Undo = _session.Log.NextUndo(_shown.Undo.Count > 0),
@@ -484,8 +515,8 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         _ => "recording",
     };
 
-    // Shows in the recorded page the element of an action, what one of its candidates finds, or an element of the
-    // Elements view, or a candidate of the one picked there; null hides it.
+    // Shows in the recorded page the element of an action, what one of its candidates finds, or a candidate of the
+    // element picked in the Elements view; null hides it. The Elements view's own elements are marked by MarkAsync.
     private async Task HighlightAsync(PanelCommand? command)
     {
         var action = command is { Type: "highlight", Action: { } id }
@@ -493,13 +524,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             : null;
         var candidate = command?.Candidate is { } index ? action?.Source.Element?.Candidates.ElementAtOrDefault(index) : action?.Locator;
         var page = action is null ? null : _session.PageNamed(action.Source.Page);
-        string? selector = null;
-        if (command is { Type: "highlight", Action: null, Node: { } node })
-        {
-            page = _session.PageNamed(command.Frozen == true ? _session.Frozen?.Page ?? "page" : _elementsPage);
-            selector = page is null ? null : await PageElements.CallAsync(page, new { op = "selector", id = node });
-        }
-        else if (command is { Type: "highlight", Action: null, Candidate: { } pickedIndex } && _picked is { } picked)
+        if (command is { Type: "highlight", Action: null, Candidate: { } pickedIndex } && _picked is { } picked)
         {
             page = _session.PageNamed(picked.Page);
             candidate = picked.Description.Target?.Candidates.ElementAtOrDefault(pickedIndex);
@@ -510,8 +535,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             if (_highlighted is { IsClosed: false } previous && previous != page) await previous.Locator(Nothing).HighlightAsync();
             _highlighted = page;
             if (page is not null)
-                await ((selector is not null ? page.Locator(selector) : candidate is null ? null : Locate(page, candidate))
-                       ?? page.Locator(Nothing)).HighlightAsync();
+                await ((candidate is null ? null : Locate(page, candidate)) ?? page.Locator(Nothing)).HighlightAsync();
         }
         catch (Exception failure) when (failure is PlaywrightException or ArgumentException)
         {
@@ -571,6 +595,26 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         /// <summary>The text an added fill types.</summary>
         public string? Value { get; init; }
 
+        /// <summary>For an added check: what it expects, e.g. <c>text</c> or <c>visible</c>.</summary>
+        public string? Check { get; init; }
+
+        /// <summary>For the Elements view: without the wrappers a person does not act on ("interactive only").</summary>
+        public bool? Compact { get; init; }
+
+        /// <summary>For the Elements view: the tree read afresh, with the dialogs and menus open on the page now.</summary>
+        public bool? Fresh { get; init; }
+
+        /// <summary>For the Elements view: the search's matches to mark in the app, and the current one.</summary>
+        public int[]? Matches { get; init; }
+
+        public int? Current { get; init; }
+
+        /// <summary>For a pick made in the app: the panel comes to the front, for the keys to go on there.</summary>
+        public bool? Focus { get; init; }
+
+        /// <summary>For the Elements view: which of its requests the answer is to, as the view tells them apart.</summary>
+        public int? Seq { get; init; }
+
         /// <summary>The element is one of the frozen ones.</summary>
         public bool? Frozen { get; init; }
 
@@ -609,12 +653,28 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     }
 
     /// <summary>The element picked in the Elements view: where it is, and how to locate it.</summary>
-    private sealed record Picked(string Page, int Node, ElementDescription Description, bool Gone, bool Fillable);
+    private sealed record Picked(string Page, int Node, ElementDescription Description, bool Gone, bool Fillable)
+    {
+        /// <summary>The checks that fit it, as the page found them, the likeliest at <see cref="Check"/>.</summary>
+        public List<PickedCheck>? Checks { get; init; }
+
+        public int Check { get; init; }
+
+        /// <summary>It is around, inside or in the same row as the selected step's element.</summary>
+        public bool Related { get; init; }
+
+        /// <summary>The page's address when it was picked.</summary>
+        public string? Url { get; init; }
+    }
 
     /// <summary>The capture script's answer about an element on the page now.</summary>
     private sealed class LiveElement
     {
         public ElementDescription? Description { get; set; }
         public bool Fillable { get; set; }
+        public bool Framed { get; set; }
+        public bool Related { get; set; }
+        public List<PickedCheck>? Checks { get; set; }
+        public int Check { get; set; }
     }
 }

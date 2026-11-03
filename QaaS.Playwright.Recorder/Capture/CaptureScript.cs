@@ -6,10 +6,10 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// with Playwright's own engine (its console API, which a driver in debug mode "console" installs), the dialog it is
 /// in, the value a field settled on, and what the page did a moment later. Through <c>__qaasControl</c> it learns
 /// whether to record (F8 pauses), and hands over the page's elements frozen (F4); <c>window.__qaasRecorder</c> answers
-/// the recorder's panel about the page's elements. In check mode (F6) a click picks an element to check instead, and
-/// a chooser in the overlay reports the check the person chose as an action of its own. While the person tries things
-/// (F7) it reports their actions as when recording, for the recorder to tell them apart; while they record a part
-/// again, F2 tells the recorder it is done.
+/// the recorder's panel about the page's elements, and in inspect mode (Ctrl+Shift+C) a click picks one for it instead.
+/// In check mode (F6) a click picks an element to check instead, and a chooser in the overlay reports the check the
+/// person chose as an action of its own. While the person tries things (F7) it reports their actions as when recording,
+/// for the recorder to tell them apart; while they record a part again, F2 tells the recorder it is done.
 /// </summary>
 internal static class CaptureScript
 {
@@ -60,7 +60,9 @@ internal static class CaptureScript
           // In check mode a click picks what to check: nothing the person does is an action, while what the page does
           // still belongs to the action before.
           let checking = false;
-          const recording = () => (state === 'recording' || state === 'trying') && !checking;
+          // In inspect mode (Ctrl+Shift+C) a click picks an element for the panel's Elements view, and is not an action.
+          let inspecting = false;
+          const recording = () => (state === 'recording' || state === 'trying') && !checking && !inspecting;
           // The recorder's bindings are called without waiting for an answer, which it gives through
           // window.__qaasRecorder: another driver attached to the browser answers each call it does not know with an error.
           const call = (binding, message) => safe(() => {
@@ -1471,18 +1473,34 @@ internal static class CaptureScript
 
           // ------------------------------------------------------------------------------------------------ elements
           // The page's elements for the panel's Elements view, as a tree the panel loads a level at a time: each element by
-          // an id of its own, with what tells it apart (tag, id, classes, role, test id, name, its own text). The recorder
-          // locates an element the panel picks with describe(), as it locates a recorded action's. F4 freezes the tree, with
-          // how to locate each element a click may act on, for a menu that closes as soon as the focus leaves the app.
+          // an id of its own, with what tells it apart (tag, id, classes, role, test id, accessible name, own text, or the
+          // start of the text it holds). "Interactive only" leaves out what a person does not act on, what is inside it
+          // shown in its place: a chain of wrappers is then a mark on what it held. The recorder locates an element the
+          // panel picks with describe(), as it locates a recorded action's. F4 freezes the tree, with how to locate each
+          // element a click may act on, for a menu that closes as soon as the focus leaves the app. In inspect mode
+          // (Ctrl+Shift+C, here or in the panel) the tree follows the pointer, and a click picks the element under it for
+          // the panel instead of reaching the page. The panel's pointer on an element marks it here, as its search marks
+          // each match. A same-origin frame's elements are shown inside its iframe.
           const SKIPPED = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'LINK', 'META', 'QAAS-RECORDER-OVERLAY']);
           const TRANSIENT = '[role=menu], [role=listbox], [role=tree], [role=dialog], [role=alertdialog], [role=tooltip], ' +
             '[popover], [aria-modal=true]';
+          // What holds the elements a flow acts on, which "interactive only" shows too.
+          const SCOPES = 'table, form, nav, dialog, iframe, frame, [role=dialog], [role=alertdialog], [role=menu], ' +
+            '[role=menubar], [role=listbox], [role=table], [role=grid], [role=treegrid], [role=tablist], [role=tree], ' +
+            '[role=radiogroup], [role=toolbar], [role=navigation], [aria-modal=true], [popover]';
+          const ITEMS = 'tr, [role=row], li, [role=option], [role=menuitem], [role=listitem], [role=treeitem]';
           const MAX_FROZEN = 15000;
+          const MAX_MATCHES = 500;
+          const MAX_LIFTED = 2000;
           const DESCRIBE_BUDGET_MS = 1500;
+          // Accessible names are worked out while there is time, so a long table still comes at once.
+          const NAME_BUDGET_MS = 250;
           const nodeIds = new WeakMap();
           const nodesById = new Map();
           let lastNode = 0;
           let frozen = new Map();
+          let compact = false;
+          let namesUntil = 0;
           const nodeId = (node) => {
             let id = nodeIds.get(node);
             if (!id) {
@@ -1493,77 +1511,158 @@ internal static class CaptureScript
             return id;
           };
           const nodeById = (id) => nodesById.get(id)?.deref() ?? null;
-          // An element's children, its open shadow root first; a shadow root's children.
-          const childrenOf = (node) => [
-            ...(node.nodeType === 1 && node.shadowRoot ? [node.shadowRoot] : []),
-            ...[...node.children].filter((child) => !SKIPPED.has(child.tagName)),
-          ];
-          const parentOf = (node) => node.nodeType === 11 ? node.host
-            : node.parentNode?.nodeType === 11 ? node.parentNode : node.parentElement;
+          // A same-origin frame's body; none for another origin's, which the page cannot read.
+          const frameBody = (node) => node.nodeType === 1 && (node.tagName === 'IFRAME' || node.tagName === 'FRAME')
+            ? safe(() => node.contentDocument?.body ?? null, null) : null;
+          const inFrame = (node) => (node.ownerDocument ?? document) !== document;
+          // An element's children, its open shadow root first, or a frame's body; a shadow root's children.
+          const childrenOf = (node) => {
+            const body = frameBody(node);
+            if (body) return [body];
+            return [
+              ...(node.nodeType === 1 && node.shadowRoot ? [node.shadowRoot] : []),
+              ...[...node.children].filter((child) => !SKIPPED.has(child.tagName)),
+            ];
+          };
+          const parentOf = (node) => {
+            if (node.nodeType === 11) return node.host;
+            if (node !== document.body && node === node.ownerDocument?.body) return node.ownerDocument.defaultView?.frameElement ?? null;
+            return node.parentNode?.nodeType === 11 ? node.parentNode : node.parentElement;
+          };
           const ownText = (element) => normalize([...element.childNodes].filter((child) => child.nodeType === 3)
             .map((child) => child.textContent).join(' ')).replace(BIDI, '');
-          function summary(node) {
-            const parent = node === document.body ? null : parentOf(node);
-            const common = { id: nodeId(node), parent: parent ? nodeId(parent) : undefined, count: childrenOf(node).length };
+          // The start of the text an element holds, to tell apart wrappers that have none of their own.
+          function glimpseOf(element) {
+            const texts = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            let text = '';
+            for (let node = texts.nextNode(); node && text.length < 120; node = texts.nextNode())
+              if (!SKIPPED.has(node.parentElement?.tagName)) text += ` ${node.textContent}`;
+            return normalize(text).replace(BIDI, '').slice(0, 80) || undefined;
+          }
+          // What "interactive only" shows: what a person acts on, and what holds it.
+          const actedOn = (node) => node.nodeType !== 1 || node === document.body || node === node.ownerDocument?.body || safe(() =>
+            node.matches(INTERACTIVE) || node.matches(SCOPES) || isTextual(node) || looksClickable(node), false);
+          // An element's children as the tree shows them, each with the number of wrappers "interactive only" left out
+          // between them.
+          function childList(node, limit = MAX_LIFTED) {
+            if (!compact) return childrenOf(node).map((child) => [child, 0]);
+            const found = [];
+            let visits = 0;
+            const walk = (from, via) => {
+              for (const child of childrenOf(from)) {
+                if (found.length >= limit || ++visits > 20000) return;
+                if (actedOn(child)) found.push([child, via]);
+                else walk(child, via + 1);
+              }
+            };
+            walk(node, 0);
+            return found;
+          }
+          // The element the tree shows for one it may leave out: itself, else the nearest around it that it shows.
+          const shownFor = (node) => {
+            if (!compact) return node;
+            for (let up = node; up; up = parentOf(up)) if (actedOn(up)) return up;
+            return document.body;
+          };
+          const shownParent = (node) => {
+            if (node === document.body) return null;
+            const parent = parentOf(node);
+            return parent && compact ? shownFor(parent) : parent;
+          };
+          // The elements around it as the tree shows them, the body first.
+          function pathOf(node) {
+            const path = [];
+            for (let up = shownParent(node); up && path.length < 400; up = shownParent(up)) path.unshift(up);
+            return path;
+          }
+          function summary(node, parent = shownParent(node), via = 0) {
+            const common = { id: nodeId(node), parent: parent ? nodeId(parent) : undefined,
+              count: compact ? childList(node, 1).length : childrenOf(node).length, via: via || undefined };
             if (node.nodeType === 11) return { ...common, tag: '#shadow-root' };
             const attribute = (name) => node.getAttribute(name) || undefined;
             const text = ownText(node);
+            const shownText = text ? text.slice(0, 120) : undefined;
+            const role = attribute('role');
+            const implicit = role ? undefined : roleOf(node) ?? undefined;
+            const named = (role || implicit) && now() < namesUntil ? clean(accessibleName(node)).slice(0, 100) : '';
             return {
               ...common, tag: node.tagName.toLowerCase(), elementId: node.id || undefined, classes: attribute('class'),
-              role: attribute('role'), testId: attribute(TEST_ID), name: attribute('name'), type: attribute('type'),
-              label: attribute('aria-label') ?? attribute('placeholder'), text: text ? text.slice(0, 120) : undefined,
+              role, implicit, testId: attribute(TEST_ID), name: attribute('name'), type: attribute('type'),
+              label: attribute('aria-label') ?? attribute('placeholder'), accName: named && named !== shownText ? named : undefined,
+              text: shownText, glimpse: !text && !named && node.firstElementChild ? glimpseOf(node) : undefined,
               hidden: !visible(node) || undefined, fillable: isTextual(node) || undefined,
+              acts: (node !== document.body && actedOn(node)) || undefined, framed: inFrame(node) || undefined,
             };
           }
+          // The page sends a parent's children once until the page changes, while the panel follows it.
+          let sent = new WeakMap();
+          let epoch = 0;
           // The nodes, with each parent's children, for the panel to merge into its tree.
-          function tree(parents) {
+          function tree(parents, { once = false } = {}) {
+            namesUntil = now() + NAME_BUDGET_MS;
             const nodes = new Map();
             const children = {};
             for (const parent of parents) {
-              nodes.set(parent, summary(parent));
-              const list = childrenOf(parent);
-              children[nodeId(parent)] = list.map(nodeId);
-              for (const child of list) nodes.set(child, summary(child));
+              if (!nodes.has(parent)) nodes.set(parent, summary(parent));
+              if (once && sent.get(parent) === epoch) continue;
+              const list = childList(parent);
+              children[nodeId(parent)] = list.map(([child]) => nodeId(child));
+              for (const [child, via] of list) nodes.set(child, summary(child, parent, via));
+              sent.set(parent, epoch);
             }
-            return { root: nodeId(document.body), nodes: [...nodes.values()], children };
+            return { root: nodeId(document.body), nodes: [...nodes.values()], children, compact: compact || undefined };
           }
-          // The elements below the body, in document order, open shadow roots included.
+          // The elements below the body, in document order, open shadow roots and same-origin frames included.
           function* everyElement(from) {
             for (const child of childrenOf(from)) {
               if (child.nodeType === 1) yield child;
               yield* everyElement(child);
             }
           }
-          // By CSS selector, or by text in its id, test id, name, label or own text.
+          // By CSS or Playwright selector (role=button, text=Save), or by text in its id, test id, name, label or own text.
           function search(query) {
             const text = normalize(query).toLowerCase();
-            if (!text) return { ...tree([document.body]), matches: [] };
-            const bySelector = new Set(safe(() => [...document.querySelectorAll(query)], []));
+            if (!text) return { ...tree([document.body]), matches: [], total: 0 };
+            const selected = safe(() => engine()?.$$(query) ?? null, null) ?? safe(() => [...document.querySelectorAll(query)], []);
+            const bySelector = new Set(selected);
             const found = [];
             for (const element of everyElement(document.body)) {
               const values = [element.id, element.getAttribute(TEST_ID), element.getAttribute('name'),
                 element.getAttribute('aria-label'), element.getAttribute('placeholder'), ownText(element)];
               if (bySelector.has(element) || values.some((value) => value && value.toLowerCase().includes(text))) found.push(element);
-              if (found.length >= 200) break;
             }
+            // In "interactive only", the element shown for each.
+            const shown = [...new Set(found.map(shownFor))].filter((element) => element !== document.body);
+            const kept = shown.slice(0, MAX_MATCHES);
             // Every element on the way to each match, with its children, for the panel to open the tree to it.
-            const ancestors = new Set();
-            for (const element of found)
-              for (let node = parentOf(element); node && node !== document.body && !ancestors.has(node); node = parentOf(node))
-                ancestors.add(node);
-            return { ...tree([document.body, ...ancestors]), matches: found.map(nodeId) };
+            const parents = new Set([document.body]);
+            for (const element of kept) for (const up of pathOf(element)) parents.add(up);
+            return { ...tree([...parents]), matches: kept.map(nodeId), total: shown.length };
           }
-          // How a click on the element would locate it, while it is on the page.
-          function describeNode(id) {
+          // How a click on the element would locate it, while it is on the page; whether it is near the element of the
+          // step <near> locates, as when a click was recorded on what is around it or inside it; and the checks that fit it.
+          function describeNode(id, near) {
             const element = nodeById(id) ?? frozen.get(id);
             if (!element?.isConnected || element.nodeType !== 1) return null;
-            return { description: describe(element, { interactive: true }), fillable: isTextual(element), visible: visible(element) };
+            if (inFrame(element)) return { framed: true };
+            const item = (node) => node.closest(ITEMS);
+            const related = !!near && (safe(() => matches(near), null) ?? []).some((other) => other === element ||
+              other.contains(element) || element.contains(other) || (!!item(other) && item(other) === item(element)));
+            const { kinds, index } = safe(() => kindsFor(element), { kinds: [], index: 0 });
+            const checks = kinds.filter((kind) => kind.kind !== 'url' && kind.kind !== 'row')
+              .map(({ kind, name, value, group }) => ({ kind, name, value, group }));
+            return { description: describe(element, { interactive: true }), fillable: isTextual(element), visible: visible(element),
+              related, checks, check: Math.max(0, checks.findIndex((check) => check.kind === kinds[index]?.kind)) };
           }
           function freeze() {
             const started = now();
             const kept = new Map();
             const nodes = [];
             const children = {};
+            // A frozen tree is the whole page, as the panel shows it with or without wrappers.
+            const wasCompact = compact;
+            compact = false;
+            namesUntil = now() + NAME_BUDGET_MS * 2;
             const walk = (node) => {
               if (nodes.length >= MAX_FROZEN) return;
               const id = nodeId(node);
@@ -1573,13 +1672,13 @@ internal static class CaptureScript
               children[id] = list.map(nodeId);
               for (const child of list) walk(child);
             };
-            walk(document.body);
+            try { walk(document.body); } finally { compact = wasCompact; }
             frozen = kept;
             // What a click may act on and shows, in a menu, a list or a dialog first, then the latest in the page, where a
             // portal puts them; as many as there is time for.
             const actsOn = (node) => (node.matches(INTERACTIVE) || node.matches(TOGGLES) || looksClickable(node)) && retarget(node) === node;
             const targets = [...kept.values()]
-              .filter((node) => node.nodeType === 1 && node !== document.body && visible(node) && safe(() => actsOn(node), false))
+              .filter((node) => node.nodeType === 1 && node !== document.body && !inFrame(node) && visible(node) && safe(() => actsOn(node), false))
               .reverse()
               .map((node) => ({ node, transient: !!node.closest(TRANSIENT) }))
               .sort((a, b) => Number(b.transient) - Number(a.transient));
@@ -1593,37 +1692,303 @@ internal static class CaptureScript
               tree: { root: nodeId(document.body), nodes, children, truncated: nodes.length >= MAX_FROZEN || undefined } });
             showPill('Elements frozen', 'pick them in the panel', true);
           }
-          // The panel follows the page as it changes, once it settles.
+
+          // The panel follows the page as it changes, once it settles; it hears of a dialog, a menu or a list that opened.
           let watcher = null;
+          let watching = false;
           let changedTimer = 0;
-          function watch(on) {
-            watcher?.disconnect();
-            watcher = null;
-            if (!on || !document.body) return;
-            watcher = new MutationObserver(() => {
+          let openedSince = [];
+          const noteOpened = (node) => {
+            if (node?.nodeType !== 1 || openedSince.length > 20) return;
+            const found = node.matches(TRANSIENT) ? [node] : [...node.querySelectorAll(TRANSIENT)].slice(0, 4);
+            openedSince.push(...found.map((element) => new WeakRef(element)));
+          };
+          function observe() {
+            if (watcher || !document.body) return;
+            watcher = new MutationObserver((records) => safe(() => {
+              epoch++;
+              for (const record of records) {
+                if (record.type === 'childList') record.addedNodes.forEach(noteOpened);
+                else noteOpened(record.target);
+              }
+              if (!watching) return;
               clearTimeout(changedTimer);
               changedTimer = setTimeout(() => control({ type: 'changed' }), 600);
-            });
+            }));
             watcher.observe(document.body, { childList: true, subtree: true, attributes: true,
-              attributeFilter: ['id', 'class', 'role', 'hidden', 'aria-hidden', 'aria-label', 'name', TEST_ID] });
+              attributeFilter: ['id', 'class', 'role', 'hidden', 'open', 'aria-hidden', 'aria-label', 'aria-expanded', 'name', TEST_ID] });
           }
-          const selectorOf = (id) => {
-            const node = nodeById(id);
-            return node?.isConnected && node.nodeType === 1 ? safe(() => engine()?.selector(node) ?? null, null) : null;
+          function watch(on) {
+            watching = on;
+            if (on || inspecting) observe();
+            else { watcher?.disconnect(); watcher = null; }
+          }
+          // What opened since the panel last asked, still on the page and showing; asked afresh, what shows now.
+          function takeOpened(fresh) {
+            const elements = fresh ? [...document.querySelectorAll(TRANSIENT)] : openedSince.map((ref) => ref.deref());
+            openedSince = [];
+            return [...new Set(elements)].filter((element) => element?.isConnected && visible(element) &&
+              !element.parentElement?.closest(TRANSIENT)).slice(0, 4);
+          }
+          const openedLabel = (element) => {
+            const name = clean(accessibleName(element)).slice(0, 60);
+            const role = element.getAttribute('role') || roleOf(element) || element.tagName.toLowerCase();
+            return name ? `${role} “${name}”` : role;
           };
+
+          // ------------------------------------------------------------------------------------------- marks, inspect
+          // The panel's pointer on an element boxes it here, named as the tree names it, and scrolls it into view; its
+          // search boxes each match, the current one stronger. Drawn in the overlay's closed shadow root.
+          const MARKS_CSS = `
+            .mark, .hit, .tip { position: fixed; display: none; box-sizing: border-box; pointer-events: none; }
+            .mark { border: 2px solid #5157e6; border-radius: 2px; background: rgba(81, 87, 230, .16);
+              box-shadow: 0 0 0 1px rgba(255, 255, 255, .9); }
+            .hit { border: 1.5px solid rgba(217, 119, 6, .9); border-radius: 2px; background: rgba(245, 158, 11, .14); }
+            .hit.current { border-width: 2px; border-color: #d97706; background: rgba(245, 158, 11, .26); }
+            .tip { max-width: min(520px, calc(100vw - 8px)); padding: 4px 8px; border-radius: 4px; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; background: rgba(24, 24, 27, .95); color: #a1a1aa; direction: ltr;
+              font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+              box-shadow: 0 2px 6px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .25); }
+            .tip b { color: #c4b5fd; font-weight: 600; }
+            .tip i { color: #93c5fd; font-style: normal; }
+            .tip span { color: #e4e4e7; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; unicode-bidi: isolate; }
+            .bar.inspect b::before { background: #5157e6; box-shadow: 0 0 0 3px rgba(81, 87, 230, .22); }`;
+          let marked = { hover: null, matches: [], current: null };
+          let marks = null;
+          let markFrame = 0;
+          function marksView() {
+            const { root } = overlayView();
+            if (marks?.root === root) return marks;
+            const sheet = new CSSStyleSheet();
+            sheet.replaceSync(MARKS_CSS);
+            root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+            const part = (name) => {
+              const element = root.appendChild(document.createElement('div'));
+              element.className = name;
+              element.setAttribute('aria-hidden', 'true');
+              return element;
+            };
+            marks = { root, hits: [], box: part('mark'), tip: part('tip') };
+            return marks;
+          }
+          const markable = (node) => node?.nodeType === 11 ? node.host : node?.nodeType === 1 && node.isConnected ? node : null;
+          // Its box on the top page, through the frames it is in.
+          function boxOf(element) {
+            const rect = element.getBoundingClientRect();
+            let [left, top] = [rect.left, rect.top];
+            for (let frame = element.ownerDocument.defaultView?.frameElement; frame; frame = frame.ownerDocument.defaultView?.frameElement) {
+              const outer = frame.getBoundingClientRect();
+              left += outer.left + frame.clientLeft;
+              top += outer.top + frame.clientTop;
+            }
+            return { left, top, width: rect.width, height: rect.height };
+          }
+          const place = (element, box) => Object.assign(element.style, { display: 'block', left: `${box.left}px`, top: `${box.top}px`,
+            width: `${box.width}px`, height: `${box.height}px` });
+          function nameTip(tip, element, box) {
+            const id = element.id ? `#${element.id}` : '';
+            const first = typeof element.className === 'string' ? element.className.trim().split(/\s+/)[0] : '';
+            const role = element.getAttribute('role') || roleOf(element);
+            const name = role ? clean(accessibleName(element)).slice(0, 60) : '';
+            tip.replaceChildren();
+            tip.appendChild(document.createElement('b')).textContent = element.tagName.toLowerCase();
+            if (id) tip.appendChild(document.createElement('i')).textContent = id;
+            else if (first) tip.append(`.${first}`);
+            tip.append(`  ${Math.round(box.width)} × ${Math.round(box.height)}`);
+            if (role) tip.append(`  ${role}`);
+            if (name) tip.appendChild(document.createElement('span')).textContent = ` “${name}”`;
+          }
+          function drawMarks() {
+            markFrame = 0;
+            const { hover, matches: hits, current } = marked;
+            if (!hover?.isConnected && !hits.length) {
+              if (marks) for (const element of [marks.box, marks.tip, ...marks.hits]) element.style.display = 'none';
+              return;
+            }
+            const view = marksView();
+            hits.forEach((element, index) => {
+              const hit = view.hits[index] ?? (view.hits[index] = view.root.insertBefore(document.createElement('div'), view.box));
+              hit.className = `hit${element === current ? ' current' : ''}`;
+              if (element.isConnected) place(hit, boxOf(element)); else hit.style.display = 'none';
+            });
+            for (const hit of view.hits.slice(hits.length)) hit.style.display = 'none';
+            if (hover?.isConnected) {
+              const box = boxOf(hover);
+              place(view.box, box);
+              nameTip(view.tip, hover, box);
+              view.tip.style.display = 'block';
+              const size = view.tip.getBoundingClientRect();
+              const top = box.top - size.height - 4 >= 0 ? box.top - size.height - 4 : Math.min(box.top + box.height + 4, innerHeight - size.height - 4);
+              Object.assign(view.tip.style, { left: `${Math.max(4, Math.min(box.left, innerWidth - size.width - 4))}px`, top: `${Math.max(4, top)}px` });
+            } else {
+              view.box.style.display = 'none';
+              view.tip.style.display = 'none';
+            }
+            // It follows the element as the page scrolls or moves it.
+            markFrame = requestAnimationFrame(() => safe(drawMarks));
+          }
+          // Scrolls the element into view when it is out of it, the frame it is in first.
+          function reveal(element) {
+            const box = boxOf(element);
+            if (box.top >= 0 && box.left >= 0 && box.top + Math.min(box.height, innerHeight) <= innerHeight && box.left < innerWidth) return;
+            const frame = element.ownerDocument.defaultView?.frameElement;
+            if (frame) safe(() => frame.scrollIntoView({ block: 'center', inline: 'nearest' }));
+            safe(() => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+          }
+          function setMarks(command) {
+            if ('hover' in command) {
+              marked.hover = markable(nodeById(command.hover));
+              if (marked.hover && command.scroll) reveal(marked.hover);
+            }
+            if ('matches' in command) marked.matches = (command.matches ?? []).map(nodeById).map(markable).filter(Boolean).slice(0, 300);
+            if ('current' in command) {
+              const was = marked.current;
+              marked.current = markable(nodeById(command.current));
+              // Going to the next match shows it.
+              if (marked.current && marked.current !== was) reveal(marked.current);
+            }
+            if (!markFrame) drawMarks();
+          }
+
+          // Inspect mode: the box follows the pointer, and the panel's tree with it; a click picks the element there, and
+          // nothing reaches the page but the pointer's moves. Esc, or Ctrl+Shift+C again, leaves it, as a pick does.
+          const INSPECT_BLOCKED = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu'];
+          let inspected = null;
+          let inspectTimer = 0;
+          let unhookFrames = [];
+          function startInspecting() {
+            if (inspecting) return;
+            if (state === 'login' || state === 'testing') { showPill('Not now', 'the recording is busy', true); return; }
+            stopChecking();
+            flushTyping();
+            inspecting = true;
+            hover = null;
+            hideOverlay();
+            observe();
+            sent = new WeakMap();
+            const { bar } = overlayView();
+            bar.replaceChildren();
+            bar.appendChild(document.createElement('b')).textContent = 'Inspect';
+            const hint = bar.appendChild(document.createElement('span'));
+            hint.className = 'hint';
+            hint.textContent = 'Point at an element; a click picks it in the panel';
+            bar.appendChild(document.createElement('kbd')).textContent = 'Esc';
+            bar.classList.add('shown', 'inspect');
+            clearTimeout(pillTimer);
+            view.state.className = 'state';
+            hookFrames();
+            control({ type: 'inspect', on: true });
+          }
+          function stopInspecting() {
+            if (!inspecting) return;
+            inspecting = false;
+            clearTimeout(inspectTimer);
+            inspectTimer = 0;
+            inspected = null;
+            marked.hover = null;
+            if (!markFrame) drawMarks();
+            for (const unhook of unhookFrames) safe(unhook);
+            unhookFrames = [];
+            view?.bar.classList.remove('inspect');
+            if (!checking) {
+              view?.bar.classList.remove('shown');
+              showState();
+            }
+            if (!watching) { watcher?.disconnect(); watcher = null; }
+            control({ type: 'inspect', on: false });
+          }
+          function inspectAt(hit) {
+            if (!inspecting || hit?.nodeType !== 1 || hit === document.documentElement || hit === view?.host) return;
+            if (state === 'login' || state === 'testing') { stopInspecting(); return; }
+            const element = shownFor(hit);
+            if (element === inspected) return;
+            inspected = element;
+            marked.hover = element === document.body ? null : element;
+            if (!markFrame) drawMarks();
+            if (!inspectTimer) inspectTimer = setTimeout(() => safe(() => { inspectTimer = 0; reportInspected(false); }), 90);
+          }
+          function reportInspected(picked) {
+            const element = inspected;
+            if (!element?.isConnected) return;
+            control({ type: 'inspect', on: true, node: nodeId(element), picked: picked || undefined,
+              tree: tree([...pathOf(element), element], { once: true }) });
+          }
+          function blockForInspect(event) {
+            if (!inspecting || checking || !event.isTrusted || event.composedPath()[0] === view?.host) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (event.type !== 'click' || event.button !== 0) return;
+            inspectAt(deepTarget(event));
+            clearTimeout(inspectTimer);
+            inspectTimer = 0;
+            reportInspected(true);
+            stopInspecting();
+          }
+          function inspectKeys(event) {
+            if (!event.isTrusted) return;
+            // F6 went to check mode.
+            if (inspecting && checking) stopInspecting();
+            const handled = () => { event.preventDefault(); event.stopImmediatePropagation(); };
+            // Chrome would open its developer tools.
+            if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === 'KeyC') {
+              handled();
+              if (!event.repeat) inspecting ? stopInspecting() : startInspecting();
+            } else if (inspecting && event.key === 'Escape') {
+              handled();
+              stopInspecting();
+            }
+          }
+          const inspectMove = (event) => safe(() => { if (inspecting && event.isTrusted) inspectAt(deepTarget(event)); });
+          addEventListener('pointermove', inspectMove, { capture: true, passive: true });
+          for (const type of INSPECT_BLOCKED) addEventListener(type, (event) => safe(() => blockForInspect(event)), { capture: true });
+          addEventListener('keydown', (event) => safe(() => inspectKeys(event)), { capture: true });
+          // A same-origin frame has no capture script of its own: the pointer is followed into it while inspecting.
+          function hookFrames() {
+            for (const frame of document.querySelectorAll('iframe, frame')) {
+              const frameWindow = safe(() => frame.contentDocument ? frame.contentWindow : null, null);
+              if (!frameWindow) continue;
+              const block = (event) => safe(() => blockForInspect(event));
+              const keys = (event) => safe(() => inspectKeys(event));
+              frameWindow.addEventListener('pointermove', inspectMove, { capture: true, passive: true });
+              frameWindow.addEventListener('keydown', keys, { capture: true });
+              for (const type of INSPECT_BLOCKED) frameWindow.addEventListener(type, block, { capture: true });
+              unhookFrames.push(() => {
+                frameWindow.removeEventListener('pointermove', inspectMove, { capture: true });
+                frameWindow.removeEventListener('keydown', keys, { capture: true });
+                for (const type of INSPECT_BLOCKED) frameWindow.removeEventListener(type, block, { capture: true });
+              });
+            }
+          }
+
           // The recorder's calls, each answered as JSON. Not enumerable, and not writable by the page.
           Object.defineProperty(window, '__qaasRecorder', { value: (command) => safe(() => {
             switch (command?.op) {
               case 'state': applyState(command.state, command.part); return null;
               case 'flush': flushTyping(); return null;
               case 'explained': explained(command.seq, command.label); return null;
-              case 'tree': return JSON.stringify(tree([document.body,
-                ...(command.ids ?? []).map(nodeById).filter((node) => node?.isConnected && node !== document.body)]));
-              case 'search': return JSON.stringify(search(command.query ?? ''));
-              case 'describe': return JSON.stringify(describeNode(command.id));
-              case 'selector': return selectorOf(command.id);
+              case 'tree': {
+                compact = !!command.compact;
+                sent = new WeakMap();
+                const shown = takeOpened(!!command.fresh);
+                const ids = (command.ids ?? []).map(nodeById).filter((node) => node?.isConnected && node !== document.body);
+                // The element the panel has selected, as this mode shows it, with the way to it.
+                const target = nodeById(command.reveal);
+                const revealed = target?.isConnected ? shownFor(target) : null;
+                return JSON.stringify({ ...tree([document.body, ...ids, ...shown.flatMap(pathOf), ...(revealed ? pathOf(revealed) : [])]),
+                  opened: shown.map((element) => ({ id: nodeId(element), label: openedLabel(element) })),
+                  revealed: revealed && revealed !== document.body ? nodeId(revealed) : undefined });
+              }
+              case 'search':
+                compact = !!command.compact;
+                sent = new WeakMap();
+                return JSON.stringify(search(command.query ?? ''));
+              case 'describe': return JSON.stringify(describeNode(command.id, command.near ? JSON.parse(command.near) : null));
               case 'watch': watch(!!command.on); return null;
-              case 'check': command.on ? startChecking() : stopChecking(); return null;
+              case 'mark': setMarks(command); return null;
+              case 'inspect': command.on ? startInspecting() : stopInspecting(); return null;
+              case 'check':
+                if (command.on) { stopInspecting(); startChecking(); } else stopChecking();
+                return null;
               case 'login':
                 [loginText, loginHint, loginEscape] = [command.text ?? '', command.hint ?? '', !!command.esc];
                 if (state === 'login') showState();

@@ -26,7 +26,14 @@ export function App() {
   const [slow, toggleSlow] = useSlowMotion();
   const [enlarged, setEnlarged] = useState<{ src: string; caption: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [elements, elementActions] = useElements(view === 'elements');
+  // Inspect mode in the app shows the Elements view; a click there picks its element, and the keys go on here.
+  const [elements, elementActions] = useElements(view === 'elements', ({ picked, on }) => {
+    if (picked !== undefined) pick(picked, false, true);
+    else if (on) setView('elements');
+  });
+  const [checkKind, setCheckKind] = useState<string | undefined>(undefined);
+  const primary = useRef<(() => void) | null>(null);
+  const pickTimer = useRef(0);
 
   useEffect(() => {
     const stop = subscribe(setState);
@@ -128,14 +135,31 @@ export function App() {
     if (part && part.phase !== 'done') send({ type: 'rerecordCancel' });
   };
   const choose = (action: Action, candidate: number | null) => send({ type: 'choose', action: action.id, candidate });
-  const pick = (node: number) => send({ type: 'pick', node, frozen: elements.source === 'frozen' });
+  // The element picked in the Elements view, with the step selected, which "Use for" changes; the keys moving through
+  // the tree pick once they rest.
+  const pick = (node: number, soon = false, focus = false) => {
+    window.clearTimeout(pickTimer.current);
+    const frozen = elements.source === 'frozen';
+    const go = () => send({ type: 'pick', node, frozen, action: selected ?? undefined, focus });
+    if (soon) pickTimer.current = window.setTimeout(go, 140);
+    else go();
+  };
+  const pickedNode = state.element?.node;
+  useEffect(() => setCheckKind(undefined), [pickedNode]);
+  useEffect(() => {
+    if (view === 'elements' && pickedNode !== undefined) send({ type: 'elements', op: 'preview', action: selected ?? undefined, check: checkKind });
+  }, [selected, checkKind]);
+  const inspect = () => {
+    setView('elements');
+    elementActions.inspect();
+  };
 
   // Keys: ↑ and ↓ move through the steps, Delete deletes the selected one, Ctrl+Z undoes the last change, Ctrl+S saves,
   // F8 pauses or resumes, F6 checks something in the app, F7 tries things there; Ctrl+Enter or F5 tests the flow,
   // Ctrl+Shift+Enter runs it to the selected step, Esc or Shift+F5 stops the test. While a part is recorded again, F2 is
   // done with it, and Esc keeps it as it was.
-  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part });
-  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part };
+  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect });
+  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part, inspect };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = keys.current;
@@ -149,6 +173,12 @@ export function App() {
       if (event.key === 'F8' && !event.repeat) {
         event.preventDefault();
         current.pause();
+        return;
+      }
+      // Ctrl+Shift+C picks an element in the app, as in a browser's developer tools, which it would open.
+      if (command && event.shiftKey && event.code === 'KeyC') {
+        event.preventDefault();
+        if (!event.repeat) current.inspect();
         return;
       }
       // F7 would turn on caret browsing.
@@ -300,7 +330,7 @@ export function App() {
           onAddTried={(action) => send({ type: 'addTried', action })}
         />
         {view === 'elements' ? (
-          <ElementsView model={elements} actions={elementActions} picked={state.element?.node} onPick={pick} />
+          <ElementsView model={elements} actions={elementActions} picked={state.element?.node} onPick={pick} onPrimary={() => primary.current?.()} />
         ) : (
           <CodeView
             view={view}
@@ -320,13 +350,18 @@ export function App() {
           <ElementInspector
             element={state.element}
             step={selectedAction}
-            last={selected === last}
+            where={part?.phase === 'recording' ? `${part.after ? 'after' : 'into'} ${part.part}` : 'at the end'}
             disabled={saving}
+            undo={state.undo}
+            primary={primary}
             onChoose={(candidate) => send({ type: 'choosePicked', candidate })}
             onHighlight={(candidate) => highlight(candidate === null ? null : { candidate })}
             onUse={(action) => send({ type: 'useForStep', action: action.id })}
-            onAddClick={(after) => send({ type: 'addClick', action: after })}
-            onAddFill={(value, after) => send({ type: 'addFill', action: after, value })}
+            onAdd={(kind, value) =>
+              send(kind === 'click' ? { type: 'addClick' } : kind === 'fill' ? { type: 'addFill', value } : { type: 'addCheck', check: value })
+            }
+            onCheckKind={setCheckKind}
+            onUndo={undo}
           />
         ) : (
           <Inspector

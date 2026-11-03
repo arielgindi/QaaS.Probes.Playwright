@@ -509,7 +509,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     }
 
     // A copy of the description, so the action's own changes (the person's choice of locator) stay its own.
-    private static void Retarget(CapturedAction action, ElementDescription element)
+    internal static void Retarget(CapturedAction action, ElementDescription element)
     {
         var copy = Copy(element);
         if (action.Kind == "choose" && action.Field is not null) action.Field = copy.Target;
