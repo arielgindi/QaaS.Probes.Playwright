@@ -206,6 +206,28 @@ export interface PickedElement {
   /** Not on the page now, e.g. an item of a menu that closed: its locators were found when frozen. */
   gone?: boolean;
   fillable?: boolean;
+  /** The lines each step on it would write, before it is made. */
+  previews?: Preview[];
+  /** The checks that fit it, the likeliest at `check`. */
+  checks?: CheckKind[];
+  check?: number;
+  /** What Enter makes of it. */
+  primary?: 'use' | 'click' | 'fill';
+}
+
+/** The lines a step on the picked element would write: the selected step acting on it, or a step added. */
+export interface Preview {
+  kind: 'use' | 'click' | 'fill' | 'check';
+  code: string;
+  /** For `use`: the step's lines as they are now. */
+  was?: string;
+}
+
+/** A check that fits the picked element, e.g. `text` “Saved”. */
+export interface CheckKind {
+  kind: string;
+  name: string;
+  value?: string;
 }
 
 /** An element of the recorded page, as the Elements view lists it. */
@@ -224,10 +246,28 @@ export interface DomNode {
   label?: string;
   /** Its own text, not its children's; may be right-to-left. */
   text?: string;
-  /** How many children it has. */
+  /** The role it has without saying so, e.g. row for a tr. */
+  implicit?: string;
+  /** Its accessible name, when it is not its own text. */
+  accName?: string;
+  /** For an element with no text of its own, the start of the text inside it. */
+  glimpse?: string;
+  /** How many children it has; in "interactive only", how many it shows. */
   count: number;
+  /** In "interactive only": how many wrappers around it were left out. */
+  via?: number;
   hidden?: boolean;
   fillable?: boolean;
+  /** "Interactive only" shows it: a person acts on it, or it holds what they act on. */
+  acts?: boolean;
+  /** In a frame, which the flow cannot act inside yet. */
+  framed?: boolean;
+}
+
+/** A dialog, menu or list that opened on the page. */
+export interface Opened {
+  id: number;
+  label: string;
 }
 
 /** Nodes, and the children of those whose children came with them. */
@@ -236,13 +276,22 @@ export interface DomPatch {
   nodes: DomNode[];
   children: Record<string, number[]>;
   matches?: number[];
+  /** How many a search found, of which `matches` are the first. */
+  total?: number;
   truncated?: boolean;
+  /** Without the wrappers a person does not act on. */
+  compact?: boolean;
+  /** Dialogs, menus or lists that opened since the tree was last read. */
+  opened?: Opened[];
+  /** The element selected, as the mode shows it: itself, or what holds it. */
+  revealed?: number;
 }
 
 /** What the recorder sends the Elements view. */
 export type ElementsMessage =
-  | { kind: 'tree' | 'search'; page: string; url: string; data: DomPatch }
+  | { kind: 'tree' | 'search'; page: string; url: string; data: DomPatch; seq?: number }
   | { kind: 'frozen'; page: string; at: string; data: DomPatch; described: number[] }
+  | { kind: 'inspect'; page: string; on: boolean; node?: number; picked?: boolean; data?: DomPatch }
   | { kind: 'changed' };
 
 export interface Effect {
@@ -319,12 +368,16 @@ export type Command =
   | { type: 'test'; action?: string; slow: boolean }
   | { type: 'stopTest' }
   | { type: 'clearTest' }
-  | { type: 'elements'; op: 'tree'; ids: number[]; on: boolean }
-  | { type: 'elements'; op: 'search'; query: string; on: boolean }
+  | { type: 'elements'; op: 'tree'; ids: number[]; on: boolean; compact: boolean; fresh?: boolean; node?: number; seq: number }
+  | { type: 'elements'; op: 'search'; query: string; on: boolean; compact: boolean }
   | { type: 'elements'; op: 'watch'; on: boolean }
   | { type: 'elements'; op: 'frozen' }
-  | { type: 'pick'; node?: number; frozen?: boolean }
+  | { type: 'elements'; op: 'inspect'; on: boolean }
+  | { type: 'elements'; op: 'mark'; matches: number[]; current?: number }
+  | { type: 'elements'; op: 'preview'; action?: string; check?: string }
+  | { type: 'pick'; node?: number; frozen?: boolean; action?: string; focus?: boolean }
   | { type: 'choosePicked'; candidate: number | null }
   | { type: 'useForStep'; action: string }
-  | { type: 'addClick'; action?: string }
-  | { type: 'addFill'; action?: string; value: string };
+  | { type: 'addClick' }
+  | { type: 'addFill'; value: string }
+  | { type: 'addCheck'; check: string };
