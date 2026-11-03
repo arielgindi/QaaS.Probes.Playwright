@@ -7,8 +7,9 @@
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>qaas-playwright</ToolCommandName>
-    <!-- The tool runs on the desktops people record on, so it carries Playwright's driver for each. -->
-    <PlaywrightPlatform>win-x64;linux-x64;osx-x64;osx-arm64</PlaywrightPlatform>
+    <!-- The tool runs on the desktops people record on, so it carries Playwright's driver for each, unless
+         PlaywrightPlatform is set already, e.g. to win-x64 in a Directory.Packages.Local.props. -->
+    <PlaywrightPlatform Condition="'$(PlaywrightPlatform)' == ''">win-x64;linux-x64;osx-x64;osx-arm64</PlaywrightPlatform>
     <!-- The tool's types are internal or its entry point; NU5111: Playwright's own driver scripts, never run by NuGet. -->
     <NoWarn>$(NoWarn);CS1591;NU5111</NoWarn>
   </PropertyGroup>

@@ -2,7 +2,7 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.0.0
 
 - Checks you choose: `F6` in the recorded page, or **Check** in the panel, turns on check mode, where a click picks an
   element instead of reaching the app, and a chooser beside it offers the checks that fit, the likeliest chosen: its
@@ -29,7 +29,6 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   then comes after them. When a step fails, keep recording from there or stop. Saving regenerates the flow and replaces
   it, unless it was changed by hand since. Asked for a name that is there already, the recorder offers to continue that
   flow, overwrite it, or take another name.
-
 - The recorder writes cleaner flows. Each step method has a one-line summary of what it does, and is named after what
   was clicked (`AssignTicketAsync` for a row's "Assign" button); a step ends where the page answered a click with a
   message or a busy indicator, and a search or a login of one or two values stays one step with its click. A locator
@@ -56,6 +55,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   **Stop** (`Esc`, `Shift+F5`) ends a run, and slow motion waits 500 ms before each action. A loop's line is followed
   repeat by repeat, and a failure is told at its repeat. Nothing a test does is recorded: the recording pauses while it
   runs.
+- `PlaywrightPlatform` set in a `Directory.Packages.Local.props`, e.g. `win-x64`, packs the recorder with Playwright's
+  driver for those platforms only.
 
 ## 1.3.0
 

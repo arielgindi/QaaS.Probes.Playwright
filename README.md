@@ -37,7 +37,7 @@ one failed, with a screenshot.
 2. **Reference the library** from the test project:
 
    ```xml
-   <PackageReference Include="QaaS.Playwright" Version="1.3.0" />
+   <PackageReference Include="QaaS.Playwright" Version="2.0.0" />
    ```
 
    Also add `<WarningsAsErrors>CS4014</WarningsAsErrors>`: a flow that forgets to `await` a Playwright call then
@@ -124,3 +124,6 @@ pinned in `Directory.Packages.props`, a `Directory.Packages.Local.props` beside 
   </ItemGroup>
 </Project>
 ```
+
+A `<PlaywrightPlatform>win-x64</PlaywrightPlatform>` in a `PropertyGroup` there packs the recorder for Windows only
+(about 50 MB instead of 155 MB).
