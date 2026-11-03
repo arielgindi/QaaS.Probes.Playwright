@@ -720,9 +720,9 @@ internal sealed partial class FlowWriter
         });
     }
 
-    // The element a check is of, every item it is one of, or its row by the cells chosen. A name or text in the locator
-    // reads the values read before from their settings; with a record's number in it, which changes from run to run, a
-    // name is found by the words around the number, and a cell that is only a number is left out.
+    // The element a check is of, every item it is one of, or its row by the cells chosen, as the recorder found it
+    // alone. A name or text in it reads the values typed before from their settings. Of a row's cells, one that is only a
+    // record's number, which changes from run to run, is left out, and the words around one are kept.
     private string Located(CapturedAction check, CapturedTarget? target, ref string? problem)
     {
         var candidate = LocatorPolicy.Choose(target);
@@ -734,16 +734,9 @@ internal sealed partial class FlowWriter
         foreach (var part in candidate.Parts)
         {
             var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : null;
-            var (code, partial) = text is null ? (null, false) : Expected(text);
-            if (code is null)
-            {
-                if (text is null || part.M != "filter") parts.Add(part);
-                continue;
-            }
-
-            var kept = partial && part.M == "role" ? new LocatorPart { M = "role", Role = part.Role, Name = text } : part;
-            codes[kept] = code;
-            parts.Add(kept);
+            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Linked(text);
+            if (code is not null) codes[part] = code;
+            if (code is not null || check.Check != "row" || part.M != "filter") parts.Add(part);
         }
 
         return Render(new CapturedCandidate { Kind = candidate.Kind, Parts = parts }, check, part => codes.GetValueOrDefault(part));

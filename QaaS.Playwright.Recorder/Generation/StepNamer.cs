@@ -215,8 +215,12 @@ internal static partial class StepNamer
         private IEnumerable<string> Phrases(IEnumerable<PlannedAction> actions)
         {
             var filled = new List<PlannedAction>();
+            var checking = false;
             foreach (var action in actions)
             {
+                // Checks one after the other are said once.
+                if (action.Kind == "expect" && checking) continue;
+                checking = action.Kind == "expect";
                 if (action.Value is not null || action.Kind == "upload")
                 {
                     filled.Add(action);

@@ -126,7 +126,7 @@ internal sealed partial class FlowBuild : IDisposable
     /// <summary>
     /// The flow's code with <c>await Probe.At(n);</c> before each of its <see cref="GeneratedFlow.Statements"/>, on its
     /// first line. A statement that declares nothing goes in braces with it, so a loop's one statement stays all its
-    /// body; the closing brace ends its last line, before the mark of an auto check.
+    /// body; the closing brace ends its last line, before the mark of a check.
     /// </summary>
     internal static string Instrument(GeneratedFlow flow)
     {
@@ -140,9 +140,8 @@ internal sealed partial class FlowBuild : IDisposable
             lines[first] = $"{line[..indent]}{(declares ? "" : "{ ")}{ProbeCall}({number}); {line[indent..]}";
             if (declares) continue;
             var end = lines[last];
-            lines[last] = end.EndsWith(FlowWriter.AutoCheck, StringComparison.Ordinal)
-                ? $"{end[..^FlowWriter.AutoCheck.Length]} }}{FlowWriter.AutoCheck}"
-                : $"{end} }}";
+            var mark = new[] { FlowWriter.AutoCheck, FlowWriter.ChosenCheck }.FirstOrDefault(mark => end.EndsWith(mark, StringComparison.Ordinal));
+            lines[last] = mark is null ? $"{end} }}" : $"{end[..^mark.Length]} }}{mark}";
         }
 
         return string.Join('\n', lines);
