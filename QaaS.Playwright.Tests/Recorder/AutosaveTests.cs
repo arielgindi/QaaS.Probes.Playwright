@@ -36,7 +36,13 @@ public class AutosaveTests
         var recording = Captured.Recording(
             Captured.Action("fill", Captured.Element("textbox", "User", Captured.Css("name", "[name='user']", "user")), "ada"),
             Captured.Action("fill", password, "hunter2"),
-            Captured.Action("fill", token, "tok-4711"));
+            Captured.Action("fill", token, "tok-4711"),
+            Captured.Action("expect", Captured.Element("heading", "Welcome", Captured.Role("heading", "Welcome"))));
+        // The person's edits and checks are kept with it, but not a default they gave a secret.
+        recording.Actions[0].Edit = new ActionEdit { Step = "SignInAsync", Values = new() { ["value"] = new ValueEdit { Unique = true } } };
+        recording.Actions[2].Edit = new ActionEdit { Values = new() { ["value"] = new ValueEdit { Value = "tok-9999" } } };
+        recording.Actions[3].Check = "visible";
+        recording = recording with { AutoChecks = false };
         // Two projects, each with a Login flow.
         var shop = new RecordRequest("Login", recording.StartUrl, Path.Combine(_folder, "shop", "Flows"));
         var crm = shop with { OutputDir = Path.Combine(_folder, "crm", "Flows") };
@@ -62,7 +68,8 @@ public class AutosaveTests
             Assert.That(written, Has.Count.EqualTo(2), "the shop's saved, the CRM's not yet");
             foreach (var file in written)
             {
-                Assert.That(File.ReadAllText(file), Does.Contain("ada").And.Not.Contain("hunter2").And.Not.Contain("tok-4711"), file);
+                Assert.That(File.ReadAllText(file), Does.Contain("ada").And.Not.Contain("hunter2").And.Not.Contain("tok-4711")
+                    .And.Not.Contain("tok-9999"), file);
                 if (!OperatingSystem.IsWindows())
                     Assert.That(File.GetUnixFileMode(file), Is.EqualTo(UnixFileMode.UserRead | UnixFileMode.UserWrite), file);
             }
@@ -77,6 +84,9 @@ public class AutosaveTests
             Assert.That(unknown, Is.EqualTo(new[] { "Password", "ApiToken" }));
             Assert.That(unknownWithItsValues, Is.EqualTo(new[] { "ApiToken" }), "the flow's own values give the password");
             Assert.That(kept.Recording.Actions[1].Value, Is.EqualTo("hunter2"));
+            Assert.That((kept.Recording.Actions[0].Edit?.Step, kept.Recording.Actions[0].Edit?.Values?["value"].Unique,
+                    kept.Recording.Actions[3].Check, kept.Recording.AutoChecks),
+                Is.EqualTo(("SignInAsync", (bool?)true, "visible", (bool?)false)), "the person's edits and checks are kept");
         });
     }
 
