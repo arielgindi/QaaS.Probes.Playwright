@@ -170,7 +170,13 @@ internal sealed class CaptureLog(bool paused = false)
     /// </summary>
     public void Retarget(string actionId, ElementDescription element)
     {
-        lock (_gate) _retargeted[actionId] = element;
+        lock (_gate)
+        {
+            _retargeted[actionId] = Copy(element);
+            // A choice among the other element's locators means nothing for this one's.
+            _chosen.Remove(actionId);
+        }
+
         Changed();
     }
 

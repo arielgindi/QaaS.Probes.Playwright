@@ -483,7 +483,7 @@ internal sealed class RecordingSession : IAsyncDisposable
         /// <summary>For F4: the page's elements, as the panel shows them.</summary>
         public JsonElement? Tree { get; set; }
 
-        /// <summary>For F4: what the capture script found to locate each element a click may target, by node id.</summary>
-        public Dictionary<int, ElementDescription>? Described { get; set; }
+        /// <summary>For F4: what the capture script found to locate each element a click may act on.</summary>
+        public List<DescribedElement>? Described { get; set; }
     }
 }

@@ -17,6 +17,15 @@ internal sealed record PanelView(
     /// <summary>The flow's file is there already: Save keeps it, and saves the recording beside it.</summary>
     public bool Kept { get; init; }
 
+    /// <summary>Why the recording is paused when the person did not pause it, e.g. the login flow failed.</summary>
+    public string? Notice { get; init; }
+
+    /// <summary>The login flow the recording runs after, by its class name.</summary>
+    public string? Login { get; init; }
+
+    /// <summary>The element the person picked in the Elements view, with every way to locate it.</summary>
+    public PanelElement? Element { get; init; }
+
     /// <summary>The page reads it as JSON: camelCase, text of every script kept readable, nothing missing written.</summary>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -63,6 +72,33 @@ internal sealed record PanelAction(string Id, string Kind)
 
     /// <summary>The candidate the policy would use.</summary>
     public int? Auto { get; init; }
+
+    /// <summary>Added in the panel's Elements view rather than done in the app.</summary>
+    public bool Added { get; init; }
+}
+
+/// <summary>An element picked in the Elements view, located as a recorded action's element is.</summary>
+internal sealed record PanelElement(int Node, string Page)
+{
+    /// <summary>What the element is called on the page, and its tag.</summary>
+    public string? Name { get; init; }
+
+    public string Tag { get; init; } = "";
+
+    /// <summary>The locator the flow would use for it, as a person reads it.</summary>
+    public string? Locator { get; init; }
+
+    public string? Dialog { get; init; }
+    public IReadOnlyList<PanelCandidate> Candidates { get; init; } = [];
+    public int? Chosen { get; init; }
+    public int? Picked { get; init; }
+    public int? Auto { get; init; }
+
+    /// <summary>It is not on the page now, e.g. an item of a menu that closed: its locators were found when frozen.</summary>
+    public bool Gone { get; init; }
+
+    /// <summary>A text field, which a fill can type into.</summary>
+    public bool Fillable { get; init; }
 }
 
 /// <summary>What an action did to the page: a dialog opened, the address changed, an alert showed.</summary>
@@ -90,15 +126,22 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     public IReadOnlyList<string> Undo { get; init; } = [];
 
     /// <summary>Plans and writes the recording as the recorder saves it, and describes it for the panel.</summary>
-    public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, bool saving, string? error)
+    /// <param name="recording">The recording so far.</param>
+    /// <param name="request">The flow's name and folder.</param>
+    /// <param name="namespaceName">The flow's namespace.</param>
+    /// <param name="status"><c>recording</c>, <c>paused</c>, <c>login</c> or <c>saving</c>.</param>
+    /// <param name="error">Why the last command did not work.</param>
+    public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, string status, string? error)
     {
         var plan = FlowPlanner.Plan(recording, request.ClassName);
         var flow = FlowWriter.Write(plan, namespaceName);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
             [.. step.Actions.Select(action => Describe(action, flow))])).ToList();
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
-        var view = new PanelView(request.ClassName, target, saving ? "saving" : "recording", flow.Code, flow.Yaml, steps,
-            flow.Checks, error) { Kept = File.Exists(target) };
+        var view = new PanelView(request.ClassName, target, status, flow.Code, flow.Yaml, steps, flow.Checks, error)
+        {
+            Kept = File.Exists(target), Login = recording.After,
+        };
 
         var planned = plan.Steps.SelectMany(step => step.Actions).ToList();
         return new PanelSnapshot(view, planned.DistinctBy(action => action.Source.Id).ToDictionary(action => action.Source.Id))
@@ -139,18 +182,49 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
                 .Select(check => check.Message)],
             Settings = [.. new[] { action.SearchValue, action.Value, action.OptionValue, action.ShownValue, action.RowKey }
                 .OfType<Setting>().Distinct().Select(setting => new PanelSetting(setting.Name, FlowYaml.Scalar(setting)))],
-            Candidates = [.. candidates.Select((candidate, index) => new PanelCandidate(index, candidate.Kind,
-                LocatorPolicy.Describe(candidate) ?? candidate.Kind, Code(candidate), candidate.Count)
-            {
-                Rejection = LocatorPolicy.WhyLost(candidate),
-                Usable = LocatorPolicy.CanUse(candidate),
-                Problem = candidate.Kind == "generator" ? LocatorPolicy.Problem(candidate) : null,
-            })],
+            Candidates = CandidatesOf(candidates),
             Chosen = element?.Chosen,
             Picked = IndexOf(candidates, action.Locator),
             Auto = IndexOf(candidates, auto),
+            Added = source.Added,
         };
     }
+
+    /// <summary>
+    /// An element picked in the Elements view, as a click on it would locate it: by the person's choice among its
+    /// locators, else by the policy's.
+    /// </summary>
+    public static PanelElement Element(int node, string page, ElementDescription description, bool gone, bool fillable)
+    {
+        var target = description.Target ?? new CapturedTarget();
+        var candidates = target.Candidates;
+        var picked = LocatorPolicy.Choose(target);
+        var auto = LocatorPolicy.Choose(new CapturedTarget { Candidates = candidates });
+        return new PanelElement(node, page)
+        {
+            Name = target.Text ?? target.Label ?? target.Name ?? target.Id,
+            Tag = target.Tag,
+            Locator = LocatorPolicy.Describe(picked),
+            Dialog = description.Dialog?.Title,
+            Candidates = CandidatesOf(candidates),
+            Chosen = target.Chosen,
+            Picked = IndexOf(candidates, picked),
+            Auto = IndexOf(candidates, auto),
+            Gone = gone,
+            Fillable = fillable,
+        };
+    }
+
+    private static List<PanelCandidate> CandidatesOf(List<CapturedCandidate> candidates) =>
+    [
+        .. candidates.Select((candidate, index) => new PanelCandidate(index, candidate.Kind,
+            LocatorPolicy.Describe(candidate) ?? candidate.Kind, Code(candidate), candidate.Count)
+        {
+            Rejection = LocatorPolicy.WhyLost(candidate),
+            Usable = LocatorPolicy.CanUse(candidate),
+            Problem = candidate.Kind == "generator" ? LocatorPolicy.Problem(candidate) : null,
+        }),
+    ];
 
     private static string? ValueOf(CapturedAction source) => source.Kind switch
     {

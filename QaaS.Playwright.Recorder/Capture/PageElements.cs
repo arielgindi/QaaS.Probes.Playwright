@@ -12,12 +12,17 @@ internal sealed class ElementDescription
     public CapturedTarget? Target { get; set; }
 }
 
+/// <summary>An element of a page, by the capture script's id for it, and how to locate it.</summary>
+internal sealed record DescribedElement(int Id, ElementDescription Description);
+
 /// <summary>
 /// A page's elements as they were when the person pressed F4: the tree the panel shows, and how to locate each element
-/// a click may target, found then, as a menu that closed since is gone.
+/// a click may act on, found then, as a menu that closed since is gone; those in a menu, a list or a dialog first.
 /// </summary>
-internal sealed record FrozenElements(
-    string Page, DateTimeOffset At, string Tree, IReadOnlyDictionary<int, ElementDescription> Described);
+internal sealed record FrozenElements(string Page, DateTimeOffset At, string Tree, IReadOnlyList<DescribedElement> Described)
+{
+    public ElementDescription? DescriptionOf(int id) => Described.FirstOrDefault(element => element.Id == id)?.Description;
+}
 
 /// <summary>Calls the capture script in a page: its elements for the panel, and the recording's state for its overlay.</summary>
 internal static class PageElements

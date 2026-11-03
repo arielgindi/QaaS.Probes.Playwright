@@ -1108,11 +1108,11 @@ internal static class CaptureScript
               .reverse()
               .map((node) => ({ node, transient: !!node.closest(TRANSIENT) }))
               .sort((a, b) => Number(b.transient) - Number(a.transient));
-            const described = {};
+            const described = [];
             for (const { node } of targets) {
               if (now() - started > DESCRIBE_BUDGET_MS) break;
               const description = safe(() => describe(node, { interactive: true }), null);
-              if (description) described[nodeId(node)] = description;
+              if (description) described.push({ id: nodeId(node), description });
             }
             control({ type: 'freeze', described,
               tree: { root: nodeId(document.body), nodes, children, truncated: nodes.length >= MAX_FROZEN || undefined } });

@@ -8,7 +8,14 @@ export interface PanelState {
   target: string;
   /** The flow is there already: Save keeps it and saves the recording beside it. */
   kept?: boolean;
-  status: 'recording' | 'saving';
+  /** Paused by the person, or while the login flow runs, nothing is recorded. */
+  status: Status;
+  /** Why the recording is paused when the person did not pause it, e.g. the login flow failed. */
+  notice?: string;
+  /** The login flow the recording runs after. */
+  login?: string;
+  /** The element picked in the Elements view, located as a recorded action's element is. */
+  element?: PickedElement;
   code: string;
   yaml: string;
   steps: Step[];
@@ -17,6 +24,8 @@ export interface PanelState {
   /** Why the last command did not work, e.g. a name a flow cannot have. */
   error?: string;
 }
+
+export type Status = 'recording' | 'paused' | 'login' | 'saving';
 
 export interface Lines {
   first: number;
@@ -57,7 +66,62 @@ export interface Action {
   chosen?: number;
   picked?: number;
   auto?: number;
+  /** Added in the Elements view rather than done in the app. */
+  added?: boolean;
 }
+
+export interface PickedElement {
+  node: number;
+  page: string;
+  name?: string;
+  tag: string;
+  locator?: string;
+  dialog?: string;
+  candidates: Candidate[];
+  chosen?: number;
+  picked?: number;
+  auto?: number;
+  /** Not on the page now, e.g. an item of a menu that closed: its locators were found when frozen. */
+  gone?: boolean;
+  fillable?: boolean;
+}
+
+/** An element of the recorded page, as the Elements view lists it. */
+export interface DomNode {
+  id: number;
+  parent?: number;
+  /** The tag, or #shadow-root. */
+  tag: string;
+  elementId?: string;
+  classes?: string;
+  role?: string;
+  testId?: string;
+  name?: string;
+  type?: string;
+  /** aria-label, or placeholder. */
+  label?: string;
+  /** Its own text, not its children's; may be right-to-left. */
+  text?: string;
+  /** How many children it has. */
+  count: number;
+  hidden?: boolean;
+  fillable?: boolean;
+}
+
+/** Nodes, and the children of those whose children came with them. */
+export interface DomPatch {
+  root: number;
+  nodes: DomNode[];
+  children: Record<string, number[]>;
+  matches?: number[];
+  truncated?: boolean;
+}
+
+/** What the recorder sends the Elements view. */
+export type ElementsMessage =
+  | { kind: 'tree' | 'search'; page: string; url: string; data: DomPatch }
+  | { kind: 'frozen'; page: string; at: string; data: DomPatch; described: number[] }
+  | { kind: 'changed' };
 
 export interface Effect {
   kind: string;
@@ -88,7 +152,19 @@ export type Command =
   | { type: 'ready' }
   | { type: 'choose'; action: string; candidate: number | null }
   | { type: 'highlight'; action: string; candidate?: number }
+  | { type: 'highlight'; node: number; frozen: boolean }
+  | { type: 'highlight'; candidate: number }
   | { type: 'unhighlight' }
   | { type: 'undo' }
   | { type: 'rename'; name: string }
-  | { type: 'save' };
+  | { type: 'save' }
+  | { type: 'pause' }
+  | { type: 'elements'; op: 'tree'; ids: number[]; on: boolean }
+  | { type: 'elements'; op: 'search'; query: string; on: boolean }
+  | { type: 'elements'; op: 'watch'; on: boolean }
+  | { type: 'elements'; op: 'frozen' }
+  | { type: 'pick'; node?: number; frozen?: boolean }
+  | { type: 'choosePicked'; candidate: number | null }
+  | { type: 'useForStep'; action: string }
+  | { type: 'addClick'; action?: string }
+  | { type: 'addFill'; action?: string; value: string };
