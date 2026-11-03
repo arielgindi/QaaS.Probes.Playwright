@@ -22,8 +22,11 @@ internal sealed record LoginFlow(string Flow, string Assembly, string? Settings,
 /// </summary>
 internal static class LoginRunner
 {
-    /// <summary>Returns null when the flow passed, else why it failed, as the probe reports it, its secrets hidden.</summary>
-    public static async Task<string?> RunAsync(LoginFlow login, IPage page, string baseUrl)
+    /// <summary>
+    /// Returns null when the flow passed, else why it failed, as the probe reports it, its secrets hidden. Once
+    /// <paramref name="stopped"/>, what it still logs is not shown: the person logs in by hand.
+    /// </summary>
+    public static async Task<string?> RunAsync(LoginFlow login, IPage page, string baseUrl, CancellationToken stopped = default)
     {
         var secrets = Secrets.None;
         try
@@ -31,7 +34,7 @@ internal static class LoginRunner
             var flowConfiguration = LoginSettings.Read(login.Settings, login.Flow);
             secrets = Secrets.Of(flowConfiguration, "");
             FlowAssemblyContext.Load(login.Assembly);
-            var context = new Context { Logger = new ConsoleLogger(secrets) };
+            var context = new Context { Logger = new ConsoleLogger(secrets, stopped) };
             var (flow, problems) = FlowLoader.Load(login.Flow, context, baseUrl, flowConfiguration);
             try
             {
@@ -52,12 +55,25 @@ internal static class LoginRunner
         }
     }
 
-    // What the flow logs, in the console, its secrets hidden.
-    private sealed class ConsoleLogger(Secrets secrets) : ILogger
+    /// <summary>Hides the login's secrets, e.g. its password, in what is shown of it while it runs.</summary>
+    public static Func<string, string> Scrubber(LoginFlow login)
+    {
+        try
+        {
+            return Secrets.Of(LoginSettings.Read(login.Settings, login.Flow), "").Scrub;
+        }
+        catch (InvalidOperationException)
+        {
+            return text => text; // The flow fails on its settings before it shows anything.
+        }
+    }
+
+    // What the flow logs, in the console, its secrets hidden; nothing once it was stopped.
+    private sealed class ConsoleLogger(Secrets secrets, CancellationToken stopped) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information && !stopped.IsCancellationRequested;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)

@@ -341,16 +341,29 @@ function Banner({ state }: { state: PanelState }) {
         </span>
       </div>
     );
-  if (state.status === 'login')
+  if (state.status === 'login') {
+    const progress = state.loginProgress;
     return (
       <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
         <span class="size-3.5 shrink-0 animate-spin-slow rounded-full border-[1.5px] border-info border-t-transparent" />
         <span class="min-w-0 flex-1">
-          <span class="font-medium">Logging in with {state.login}…</span>
-          <span class="text-info/80"> Nothing it does is recorded; the recording starts on the page it leaves.</span>
+          <span class="font-medium">{progress?.text ?? `Logging in with ${state.login}…`}</span>
+          {progress?.last && <span class="text-info/80"> Last: {progress.last}.</span>}
+          <span class="text-info/80">
+            {progress?.slow ? ' Taking long? Log in by hand.' : ' Nothing it does is recorded; the recording starts on the page it leaves.'}
+          </span>
         </span>
+        <button
+          type="button"
+          onClick={() => send({ type: 'loginByHand' })}
+          title="Stop the login flow, and log in in the app yourself (Esc there)"
+          class="inline-flex h-7 shrink-0 items-center rounded-md border border-info/35 px-2 text-[11.5px] font-medium text-info transition hover:bg-info/10"
+        >
+          Log in by hand
+        </button>
       </div>
     );
+  }
   if (state.status !== 'paused') return null;
   return (
     <div role="status" class="flex shrink-0 items-start gap-2.5 border-b border-warn/25 bg-warn/9 px-4 py-2 text-[12.5px] leading-snug text-warn">

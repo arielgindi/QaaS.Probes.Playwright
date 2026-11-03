@@ -14,6 +14,9 @@ export interface PanelState {
   notice?: string;
   /** The login flow the recording runs after. */
   login?: string;
+  /** How the login flow goes while it runs: "Logging in with LoginFlow… 12 s, on /signin", what it did last, and
+   * whether it has run long enough to offer logging in by hand. */
+  loginProgress?: { text: string; last?: string; slow: boolean };
   /** The element picked in the Elements view, located as a recorded action's element is. */
   element?: PickedElement;
   /** The flow's test run going on, or the last one. */
@@ -268,6 +271,7 @@ export type Command =
   | { type: 'rename'; name: string }
   | { type: 'save' }
   | { type: 'pause' }
+  | { type: 'loginByHand' }
   | { type: 'test'; action?: string; slow: boolean }
   | { type: 'stopTest' }
   | { type: 'clearTest' }

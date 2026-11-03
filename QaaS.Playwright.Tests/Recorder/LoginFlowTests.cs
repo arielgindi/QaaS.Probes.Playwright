@@ -29,10 +29,10 @@ public class LoginFlowTests
             BrowserArgs = ["--headless=new"],
         }, _ => { });
         Recording recording;
-        string? failure;
+        LoginEnd? failure;
         try
         {
-            failure = await session.LogInAsync(page => LoginRunner.RunAsync(request.Login, page, request.Url));
+            failure = await session.LogInAsync((page, _) => LoginRunner.RunAsync(request.Login, page, request.Url));
             var page = session.Page;
             await Expect(page.Locator("#user")).ToHaveTextAsync("alice");
             await page.GotoAsync($"{site.Url}/order");

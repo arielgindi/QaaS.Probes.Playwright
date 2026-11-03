@@ -72,6 +72,7 @@ internal static class FlowRecorder
             {
                 // The login's own way in and out of the pause is told by LogInAsync.
                 if (news is RecordingState state) { if (!Volatile.Read(ref loggingIn)) ConsoleUi.StateChanged(state); }
+                else if (news is LoginProgress progress) ConsoleUi.LoginProgressed(progress);
                 else if (news is FrozenElements frozen) ConsoleUi.Froze(frozen);
                 else ConsoleUi.Captured(news);
             });
@@ -241,17 +242,33 @@ internal static class FlowRecorder
         return true;
     }
 
-    // The login flow runs on the page the recording opened on the URL, before anything is recorded. When it fails, the
-    // recording stays paused for the person to log in by hand and resume it, or to close the browser. Returns why it
-    // failed, or null.
+    // The login flow runs on the page the recording opened on the URL, before anything is recorded. When it fails, or the
+    // person stops it (Esc here or in the page, or the panel) or it hangs, the recording stays paused for the person to
+    // log in by hand and resume it, or to close the browser. Returns why it did not log in, or null.
     private static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
     {
         var login = request.Login!;
         ConsoleUi.LoggingIn(login, request.LoginRemembered);
-        var failure = await session.LogInAsync(page => LoginRunner.RunAsync(login, page, request.Url));
-        if (failure is not null) ConsoleUi.LoginFailed(login.Flow, failure, request.Continue ? request.ClassName : null);
-        else ConsoleUi.LoggedIn(login.Flow, request.Continue ? null : session.Page.Url);
-        return failure;
+        using var watching = new CancellationTokenSource();
+        var escape = ConsoleUi.EscapePressedAsync(watching.Token);
+        _ = escape.ContinueWith(pressed => { if (pressed.Result) session.LogInByHand(); }, TaskScheduler.Default);
+        LoginEnd? end;
+        try
+        {
+            end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, request.Url, stopped),
+                LoginRunner.Scrubber(login));
+        }
+        finally
+        {
+            await watching.CancelAsync();
+            await escape;
+        }
+
+        var continued = request.Continue ? request.ClassName : null;
+        if (end is null) ConsoleUi.LoggedIn(login.Flow, request.Continue ? null : session.Page.Url);
+        else if (end.ByHand) ConsoleUi.LoginStopped(end.Why, continued);
+        else ConsoleUi.LoginFailed(login.Flow, end.Why, continued);
+        return end?.Why;
     }
 
     // The raw recording, beside the flow and named after it, for a person to share when an element was located badly.

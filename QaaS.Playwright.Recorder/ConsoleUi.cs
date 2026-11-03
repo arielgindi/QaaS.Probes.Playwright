@@ -29,6 +29,10 @@ internal static class ConsoleUi
     private static Capture.RecordingState _state;
     private static int _cancelled;
 
+    // The width of the line redrawn in place while the login flow runs, the cursor at its end; 0 when none is.
+    private static int _live;
+    private static bool _slowTold;
+
     public static string Version =>
         typeof(ConsoleUi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             .Split('+')[0] ?? "unknown";
@@ -299,6 +303,7 @@ internal static class ConsoleUi
 
     public static void Error(string message)
     {
+        lock (Gate) EndLive();
         var t = Terminal.Error;
         t.WriteLine();
         Status(t, Margin, t.Glyph("×", "x"), Tone.Error, message);
@@ -554,6 +559,7 @@ internal static class ConsoleUi
             .SelectMany(line => Terminal.Wrap(line, width)).DefaultIfEmpty("").ToList();
         lock (Gate)
         {
+            EndLive();
             t.WriteLine(indent + t.Paint(glyph, glyphTone) + " " + t.Paint(lines[0], tone));
             foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', start) + t.Paint(more, tone));
         }
@@ -657,6 +663,7 @@ internal static class ConsoleUi
 
     public static void LoggingIn(Login.LoginFlow login, bool remembered)
     {
+        _slowTold = false;
         var values = login.Settings is null ? "" : $", its values from {Relative(login.Settings)}";
         Phase($"Logging in with {login.Flow}, from {Relative(login.Assembly)}{values}");
         if (remembered) Status(Out, Margin, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
@@ -725,6 +732,75 @@ internal static class ConsoleUi
     // "User", "User and Password", "User, Password and Url".
     private static string List(IReadOnlyList<string> names) =>
         names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
+
+    /// <summary>
+    /// How the login flow goes, on a line under its own redrawn each second, when a person watches; once it is slow, how
+    /// to stop it, which a log gets too.
+    /// </summary>
+    public static void LoginProgressed(LoginProgress progress)
+    {
+        var t = Out;
+        lock (Gate)
+        {
+            if (progress.Slow && !_slowTold)
+            {
+                _slowTold = true;
+                Info("Taking long? Press Esc to log in by hand.");
+            }
+
+            if (Console.IsOutputRedirected) return;
+            var line = Margin + "  " + t.Fit(Terminal.Clean(progress.Detail), t.Width - 1 - Margin.Length - 2);
+            var width = Terminal.WidthOf(line);
+            t.Writer.Write("\r" + t.Paint(line, Tone.Dim) + new string(' ', Math.Max(0, _live - width)));
+            t.Writer.Flush();
+            _live = Math.Max(width, 1);
+        }
+    }
+
+    // Clears the line redrawn in place, for a line written after it. Under the gate.
+    private static void EndLive()
+    {
+        if (_live == 0) return;
+        Out.Writer.Write("\r" + new string(' ', _live) + "\r");
+        _live = 0;
+    }
+
+    /// <summary>
+    /// Completes with true when the person presses Esc in the console; with false once <paramref name="stop"/> is
+    /// cancelled, or when nobody types here.
+    /// </summary>
+    public static async Task<bool> EscapePressedAsync(CancellationToken stop)
+    {
+        if (Console.IsInputRedirected) return false;
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                while (Console.KeyAvailable)
+                    if (Console.ReadKey(intercept: true).Key == ConsoleKey.Escape)
+                        return true;
+                await Task.Delay(100, stop);
+            }
+        }
+        catch (Exception failure) when (failure is OperationCanceledException or InvalidOperationException or IOException)
+        {
+            // Stopped, or the console takes no keys.
+        }
+
+        return false;
+    }
+
+    /// <summary>The login flow was stopped, for the person to log in by hand: why, and what to do.</summary>
+    /// <param name="why">Why it was stopped, e.g. the person pressed Esc.</param>
+    /// <param name="continued">The flow whose steps were to replay after it, which cannot; null when recording anew.</param>
+    public static void LoginStopped(string why, string? continued = null)
+    {
+        Warning(why);
+        Info(continued is null
+            ? "Nothing is recorded yet. Log in by hand in the browser, then press F8 there (or Resume in the panel) to " +
+              "start recording. To quit, close the browser."
+            : $"The steps of {continued} replay after it, so nothing was replayed: continue {continued} again once it logs in.");
+    }
 
     /// <param name="flow">The login flow.</param>
     /// <param name="url">Where the recording starts; null when the steps of the flow continued replay first.</param>
