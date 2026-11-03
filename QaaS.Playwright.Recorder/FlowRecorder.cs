@@ -120,15 +120,41 @@ internal static class FlowRecorder
         return await SaveAsync(request, recording, autosave);
     }
 
-    // "12 actions", as the flow does them and its summary counts them once saved.
-    private static string ActionsIn(Recording recording, string flow) =>
-        FlowCodeGenerator.Generate(recording, flow, "Flows").ActionLines.Count is var count && count == 1 ? "1 action" : $"{count} actions";
+    // "12 actions", as the flow does them and its summary counts them once saved; as recorded when the flow cannot be
+    // written, so a recording is still offered, and can be discarded, whatever it holds.
+    private static string ActionsIn(Recording recording, string flow)
+    {
+        int count;
+        try
+        {
+            count = FlowCodeGenerator.Generate(recording, flow, "Flows").ActionLines.Count;
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            count = recording.Actions.Count;
+        }
+
+        return count == 1 ? "1 action" : $"{count} actions";
+    }
 
     // Writes the flow and its values, says what was saved, and keeps the recording to continue it. Returns the exit code.
     private static async Task<int> SaveAsync(RecordRequest request, Recording recording, Autosave autosave)
     {
-        var flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir),
-            request.AutoChecks);
+        GeneratedFlow flow;
+        try
+        {
+            flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir),
+                request.AutoChecks);
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            // A recorder bug, not the person's: the recording stays kept, to save once the recorder is fixed.
+            ConsoleUi.Error($"Could not write the flow {request.ClassName}: {failure.GetType().Name}: {failure.Message}\n" +
+                            "  The recording is kept: run qaas-playwright again after updating it to save it.\n" +
+                            $"  Please report this, with where it happened:\n{failure.StackTrace}");
+            return 1;
+        }
+
         SavedFlow saved;
         try
         {

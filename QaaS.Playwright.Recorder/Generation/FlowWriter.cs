@@ -177,6 +177,9 @@ internal sealed partial class FlowWriter
 
     private void WriteStep(Step step)
     {
+        // A dialog no step before opened is found in RunAsync, written in RunAsync's own state: not the step before's,
+        // whose loop item RunAsync has not, nor none, as for a flow whose first step is in a dialog.
+        _step = new StepState(new Scope("page", "page", null, "page"), counted: null);
         var argument = step.Dialog is { } title ? DialogVariable(step, title) : step.Page;
         var scope = step.Dialog is not null
             ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
