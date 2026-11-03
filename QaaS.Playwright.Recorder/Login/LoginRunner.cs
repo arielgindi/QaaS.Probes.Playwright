@@ -8,9 +8,13 @@ namespace QaaS.Playwright.Recorder.Login;
 
 /// <summary>A flow of the person's tests to run before recording, e.g. their login, and where it is.</summary>
 /// <param name="Flow">The flow's class name, as SetupFlows names it.</param>
-/// <param name="Assembly">The test project's built assembly, which has the flow.</param>
+/// <param name="Assembly">The DLL in the test project's bin folder that has the flow, or the project's own.</param>
 /// <param name="Settings">A YAML file with the flow's settings, or null for their defaults.</param>
-internal sealed record LoginFlow(string Flow, string Assembly, string? Settings);
+/// <param name="Found">
+/// The recorder found it in the tests, rather than the person giving it: it is found again each time, in the newest
+/// build.
+/// </param>
+internal sealed record LoginFlow(string Flow, string Assembly, string? Settings, bool Found = false);
 
 /// <summary>
 /// Runs a login flow on the recording's page as the probe runs a setup flow: found by its class name, given BaseUrl and
@@ -32,7 +36,7 @@ internal static class LoginRunner
             try
             {
                 if (problems.Count > 0)
-                    throw new InvalidOperationException($"{login.Flow} has invalid settings: {string.Join("; ", problems)}");
+                    throw new InvalidOperationException($"{login.Flow} cannot run with its values: {string.Join("; ", problems)}");
                 await flow.RunAsync(page);
             }
             finally

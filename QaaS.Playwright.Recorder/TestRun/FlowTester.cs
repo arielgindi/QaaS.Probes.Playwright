@@ -302,7 +302,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         if (message.Contains("strict mode violation", StringComparison.Ordinal))
             hints.Add("Its locator finds more than one element now: choose another one for this step in the inspector.");
         if (inLogin is not null && login is not null)
-            hints.Add($"{inLogin} is your tests' own flow, from {Path.GetFileName(login.Assembly)}: check it, its settings " +
+            hints.Add($"{inLogin} is your tests' own flow, from {ConsoleUi.Relative(login.Assembly)}: check it, its values " +
                       "and its build, or record with --no-login.");
 
         return new TestFailure(FlowReport.Summarize(message))

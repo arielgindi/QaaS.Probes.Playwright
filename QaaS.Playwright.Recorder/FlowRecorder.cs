@@ -169,8 +169,8 @@ internal static class FlowRecorder
         {
             if (flow?.Login?.Flow != after)
             {
-                ConsoleUi.Error($"{request.ClassName} was recorded after {after}: continue it with --login {after} " +
-                                "--login-assembly <your test project's built .dll>.");
+                ConsoleUi.Error($"{request.ClassName} was recorded after {after}: continue it with --login {after}, in your " +
+                                $"test project's folder, built; or add --login-assembly: the DLL in its bin folder that has {after}.");
                 return null;
             }
 

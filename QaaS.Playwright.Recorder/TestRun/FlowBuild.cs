@@ -209,7 +209,7 @@ internal sealed partial class FlowBuild : IDisposable
         if (File.Exists(asyncInterfaces)) yield return asyncInterfaces;
     }
 
-    private static async Task<(int ExitCode, string Log)> DotnetAsync(string folder, string[] arguments, CancellationToken cancel)
+    internal static async Task<(int ExitCode, string Log)> DotnetAsync(string folder, string[] arguments, CancellationToken cancel)
     {
         var start = new ProcessStartInfo(Dotnet(), arguments)
         {
