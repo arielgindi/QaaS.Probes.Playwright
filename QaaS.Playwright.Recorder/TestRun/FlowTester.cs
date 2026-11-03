@@ -223,8 +223,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         // A replay goes on in the recorded window, after the login the recording ran, or from how the recording started,
         // and is stopped between statements.
         var replay = report.Replay;
-        if (!replay || report.FromStart) report = Enter(report, TestPhase.Opening, times);
-        if (report.FromStart) await session.ResetToStartAsync();
+        if (!replay) report = Enter(report, TestPhase.Opening, times);
+        if (report.FromStart)
+        {
+            report = Enter(report, TestPhase.StartPage, times);
+            await session.ResetToStartAsync();
+        }
+
         await using var run = replay
             ? await BrowserSession.OnPageAsync(session.Page, config, log)
             : await BrowserSession.OpenAsync(browser, config, log);
@@ -249,7 +254,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         {
             if (!report.Replay || report.FromStart)
             {
-                report = Enter(report, TestPhase.StartPage, times);
+                if (report.Phase != TestPhase.StartPage) report = Enter(report, TestPhase.StartPage, times);
                 await run.OpenBaseUrlAsync(config.BaseUrl);
             }
 

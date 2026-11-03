@@ -8,10 +8,10 @@ import { Lightbox, TestBar } from './components/TestRun';
 import { Timeline } from './components/Timeline';
 import { TopBar, type View } from './components/TopBar';
 import { useElements } from './elements';
-import { isGoing, useSlowMotion } from './test';
-import { plural, subjectOf, verbOf } from './text';
+import { isGoing, numberOf, useSlowMotion } from './test';
+import { cls, plural, subjectOf, verbOf } from './text';
 import { useTheme } from './theme';
-import type { Action, PanelState } from './types';
+import type { Action, PanelState, Rerecord } from './types';
 
 const waiting: PanelState = { flow: '', target: '', status: 'recording', code: '', yaml: '', steps: [], checks: [] };
 
@@ -45,6 +45,9 @@ export function App() {
   const test = state.test;
   const testing = isGoing(test);
   const canTest = actions.length > 0 && !saving && !testing && state.status !== 'login';
+  const part = state.rerecord;
+  // A step is recorded again from the flow's start: not while anything runs, nor while another part is.
+  const canRerecord = canTest && (!part || part.phase === 'done');
 
   // The newest action is selected as it comes, unless the person is looking at an older one.
   useEffect(() => {
@@ -113,14 +116,24 @@ export function App() {
   const stopTest = () => {
     if (testing) send({ type: 'stopTest' });
   };
+  const toggleTry = () => {
+    if (!saving && ['recording', 'paused', 'trying'].includes(state.status)) send({ type: 'try' });
+  };
+  const partDone = () => {
+    if (part?.phase === 'recording') send({ type: 'rerecordDone' });
+  };
+  const partCancel = () => {
+    if (part && part.phase !== 'done') send({ type: 'rerecordCancel' });
+  };
   const choose = (action: Action, candidate: number | null) => send({ type: 'choose', action: action.id, candidate });
   const pick = (node: number) => send({ type: 'pick', node, frozen: elements.source === 'frozen' });
 
   // Keys: ↑ and ↓ move through the steps, Delete deletes the selected one, Ctrl+Z undoes the last change, Ctrl+S saves,
-  // F8 pauses or resumes, F6 checks something in the app; Ctrl+Enter or F5 tests the flow, Ctrl+Shift+Enter runs it to the
-  // selected step, Esc or Shift+F5 stops the test.
-  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check });
-  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check };
+  // F8 pauses or resumes, F6 checks something in the app, F7 tries things there; Ctrl+Enter or F5 tests the flow,
+  // Ctrl+Shift+Enter runs it to the selected step, Esc or Shift+F5 stops the test. While a part is recorded again, F2 is
+  // done with it, and Esc keeps it as it was.
+  const keys = useRef({ actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part });
+  keys.current = { actions, selected, select, undo, save, pause, runTest, stopTest, testing, remove, check, toggleTry, partDone, partCancel, part };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = keys.current;
@@ -134,6 +147,17 @@ export function App() {
       if (event.key === 'F8' && !event.repeat) {
         event.preventDefault();
         current.pause();
+        return;
+      }
+      // F7 would turn on caret browsing.
+      if (event.key === 'F7') {
+        event.preventDefault();
+        if (!event.repeat) current.toggleTry();
+        return;
+      }
+      if (event.key === 'F2' && current.part?.phase === 'recording') {
+        event.preventDefault();
+        if (!event.repeat) current.partDone();
         return;
       }
       // F6 would move the focus to the address bar.
@@ -159,6 +183,11 @@ export function App() {
       if (event.key === 'Escape' && current.testing) {
         event.preventDefault();
         current.stopTest();
+        return;
+      }
+      if (event.key === 'Escape' && (current.part?.phase === 'recording' || current.part?.phase === 'failed')) {
+        event.preventDefault();
+        current.partCancel();
         return;
       }
       if (command && key === 'z' && !event.shiftKey) {
@@ -200,6 +229,7 @@ export function App() {
         canSave={actions.length > 0}
         undo={state.undo}
         checking={!!state.checking}
+        onTry={toggleTry}
         view={view}
         theme={theme}
         testing={testing}
@@ -216,7 +246,7 @@ export function App() {
         onView={setView}
         onTheme={toggleTheme}
       />
-      <Banner state={state} />
+      <Banner state={state} canTest={canTest} onDone={partDone} onCancel={partCancel} onTest={() => runTest()} />
       {test && (
         <TestBar
           test={test}
@@ -260,6 +290,12 @@ export function App() {
           onRenameStep={(action, name) => send({ type: 'renameStep', action, name })}
           onDropCheck={(action, key, drop) => send({ type: 'dropCheck', action, key, drop })}
           onAutoChecks={(on) => send({ type: 'autoChecks', on })}
+          rerecord={part}
+          tried={state.tried}
+          login={state.login}
+          canRerecord={canRerecord}
+          onRerecord={(action, step, after, label) => send({ type: 'rerecord', action, step, after, label })}
+          onAddTried={(action) => send({ type: 'addTried', action })}
         />
         {view === 'elements' ? (
           <ElementsView model={elements} actions={elementActions} picked={state.element?.node} onPick={pick} />
@@ -322,8 +358,25 @@ export function App() {
 }
 
 // While paused, logging in or replaying the recording continued, nothing is recorded: the panel says so, and why.
-// Resume is in the top bar. In check mode, it says what a click in the app does.
-function Banner({ state }: { state: PanelState }) {
+// Resume is in the top bar. In check mode, it says what a click in the app does. While a part is recorded again, it
+// says how far that got, and how to end it; while trying, that nothing is recorded.
+function Banner({ state, canTest, onDone, onCancel, onTest }: { state: PanelState; canTest: boolean; onDone(): void; onCancel(): void; onTest(): void }) {
+  if (state.rerecord && !(state.rerecord.phase === 'done' && state.status === 'trying'))
+    return <PartBanner part={state.rerecord} actions={state.steps.flatMap((step) => step.actions)} canTest={canTest} onDone={onDone} onCancel={onCancel} onTest={onTest} />;
+  if (state.status === 'trying')
+    return (
+      <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
+        <Icon name="flask" size={14} class="shrink-0" />
+        <span class="min-w-0 flex-1">
+          <span class="font-medium">Trying: nothing is recorded.</span>
+          <span class="text-info/85"> Each action shows under the steps as the recorder would write it; Add to flow keeps one. Try (F7) again goes back to recording.</span>
+        </span>
+        <button type="button" onClick={() => send({ type: 'try', on: false })} class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-info/35 px-2 text-[11.5px] font-medium text-info transition hover:bg-info/10">
+          Stop trying
+          <kbd class="rounded border border-info/30 px-1 font-sans text-[10.5px] leading-4">F7</kbd>
+        </button>
+      </div>
+    );
   if (state.continued?.banner)
     return (
       <div role="status" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
@@ -385,6 +438,92 @@ function Banner({ state }: { state: PanelState }) {
   );
 }
 
+// A part recorded again: the replay up to it, the replay failed, the part recording, or done.
+function PartBanner({ part, actions, canTest, onDone, onCancel, onTest }: { part: Rerecord; actions: Action[]; canTest: boolean; onDone(): void; onCancel(): void; onTest(): void }) {
+  const what = part.after ? `Recording after ${part.part}` : `Re-recording ${part.part}`;
+  const button = 'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition';
+  if (part.phase === 'replaying')
+    return (
+      <div role="status" aria-label="Re-recording" class="flex shrink-0 items-center gap-2.5 border-b border-info/25 bg-info/8 px-4 py-2 text-[12.5px] leading-snug text-info">
+        <span class="size-3.5 shrink-0 animate-spin-slow rounded-full border-[1.5px] border-info border-t-transparent" />
+        <span class="min-w-0 flex-1">
+          <span class="font-medium">Replaying the flow up to {part.after ? 'the end of ' : ''}{part.part}…</span>
+          <span class="text-info/85"> In the recorded window, from its start, as a test runs it; nothing is recorded.</span>
+        </span>
+        <button type="button" onClick={onCancel} class={cls(button, 'border-info/35 text-info hover:bg-info/10')}>
+          Cancel
+          <kbd class="rounded border border-info/30 px-1 font-sans text-[10.5px] leading-4">Esc</kbd>
+        </button>
+      </div>
+    );
+  if (part.phase === 'failed') {
+    const at = numberOf(actions, part.failedAt);
+    return (
+      <div role="alert" aria-label="Re-recording" class="flex shrink-0 items-start gap-2.5 border-b border-bad/30 bg-bad/[0.07] px-4 py-2 text-[12.5px] leading-snug text-bad">
+        <Icon name="warn" size={14} class="mt-[2px] shrink-0" />
+        <span class="min-w-0 flex-1">
+          <span class="font-medium">The replay did not get to {part.part}.</span>
+          <span class="text-bad/85">
+            {part.problem ? ` ${part.problem}` : at ? ` It failed at step ${at}: see why on its card. The app is where it stopped, so you can record again from there.` : ' It failed before the first step.'}
+          </span>
+        </span>
+        {at > 0 && (
+          <button type="button" onClick={() => send({ type: 'rerecordFrom' })} class={cls(button, 'border-bad/40 bg-bad/10 text-bad hover:bg-bad/16')}>
+            <Icon name="rerecord" size={12} />
+            Re-record from step {at}
+          </button>
+        )}
+        <button type="button" onClick={onCancel} class={cls(button, 'border-transparent text-bad/85 hover:bg-bad/10')}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+  if (part.phase === 'recording')
+    return (
+      <div role="status" aria-label="Re-recording" class="flex shrink-0 items-start gap-2.5 border-b border-rec/30 bg-rec/[0.07] px-4 py-2 text-[12.5px] leading-snug text-fg">
+        <span class="mt-[5px] size-2 shrink-0 animate-rec rounded-full bg-rec" />
+        <span class="min-w-0 flex-1">
+          <span class="font-medium">
+            {what}: {part.after ? 'record what goes there' : 'do it again'}, then press Done (or Esc to keep {part.after ? 'the flow' : 'it'} as it was).
+          </span>
+          <span class="text-muted">
+            {part.loop && !part.after ? ' It is a loop: its repeats are recorded again together.' : ''}
+            {part.fresh.length > 0 ? ` ${plural(part.fresh.length, 'action')} so far; the steps after it stay.` : ' The steps after it stay.'}
+          </span>
+        </span>
+        <button type="button" onClick={onDone} class={cls(button, 'border-rec/40 bg-rec text-white hover:brightness-110')}>
+          <Icon name="tick" size={12} class="stroke-[2.4]" />
+          Done
+          <kbd class="rounded bg-white/20 px-1 font-sans text-[10.5px] leading-4">F2</kbd>
+        </button>
+        <button type="button" onClick={onCancel} class={cls(button, 'border-line-strong text-muted hover:bg-raised hover:text-fg')}>
+          Keep it as it was
+          <kbd class="rounded border border-line px-1 font-sans text-[10.5px] leading-4 text-faint">Esc</kbd>
+        </button>
+      </div>
+    );
+  return (
+    <div role="status" aria-label="Re-recording" class="flex shrink-0 items-center gap-2.5 border-b border-ok/25 bg-ok/8 px-4 py-2 text-[12.5px] leading-snug text-ok">
+      <Icon name="checkCircle" size={14} class="shrink-0" />
+      <span class="min-w-0 flex-1">
+        <span class="font-medium">{part.after ? `Recorded after ${part.part}.` : `Re-recorded ${part.part}.`}</span>
+        <span class="text-ok/85">
+          {' '}Test the flow to see it run as it will be saved; Ctrl+Z brings it back as it was.
+          {part.paused ? ' Paused: the app is where that part left it, not at the end of the flow.' : ''}
+        </span>
+      </span>
+      <button type="button" disabled={!canTest} onClick={onTest} class={cls(button, 'border-ok/40 bg-ok/10 text-ok hover:bg-ok/16 disabled:opacity-40')}>
+        <Icon name="play" size={11} fill="currentColor" />
+        Test
+      </button>
+      <button type="button" aria-label="Dismiss" onClick={() => send({ type: 'rerecordDismiss' })} class="rounded p-0.5 transition hover:bg-ok/15">
+        <Icon name="cross" size={13} />
+      </button>
+    </div>
+  );
+}
+
 function StatusBar({ state, actions }: { state: PanelState; actions: Action[] }) {
   const settings = new Set(actions.flatMap((action) => action.settings.map((setting) => setting.name))).size;
   const toCheck = state.checks.length;
@@ -410,6 +549,7 @@ function StatusBar({ state, actions }: { state: PanelState; actions: Action[] })
         <Hint keys="Ctrl ↵">test</Hint>
         <Hint keys="F6">check</Hint>
         <Hint keys="F8">pause</Hint>
+        <Hint keys="F7">try</Hint>
         <Hint keys="Ctrl Z">undo</Hint>
         <Hint keys="Ctrl S">save</Hint>
       </span>
