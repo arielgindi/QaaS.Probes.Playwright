@@ -288,8 +288,10 @@ internal static partial class LocatorPolicy
             return candidate.Kind switch
             {
                 "generator" => "none",
-                "role" or "roleInGroup" or "row" =>
-                    $"no AriaRole for '{candidate.Parts.First(part => part.M == "role" && AriaRoleName(part.Role) is null).Role}'",
+                _ when WholeRow(candidate) => "finds the row by all it says",
+                _ when candidate.Parts.Any(part => IsJunk(part.Text) || IsJunk(part.Name)) => "a text no person wrote",
+                "role" or "roleInGroup" or "row" when candidate.Parts.FirstOrDefault(part => part.M == "role" && AriaRoleName(part.Role) is null) is { } unknown =>
+                    $"no AriaRole for '{unknown.Role}'",
                 _ => "looks generated",
             };
         return candidate switch
