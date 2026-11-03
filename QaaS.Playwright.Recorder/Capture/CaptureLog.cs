@@ -686,6 +686,9 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         public CapturedScroll? Scrolled { get; set; }
         public CapturedTarget? To { get; set; }
         public bool? HoverMenu { get; set; }
+        public CapturedTarget? HoverOpener { get; set; }
+        public string? OptionCss { get; set; }
+        public bool? Committed { get; set; }
         public bool? Focus { get; set; }
         public bool? Watched { get; set; }
         public bool? Multi { get; set; }
@@ -704,7 +707,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
                 Id = Id!, T = T, Kind = Kind ?? "", Page = page, Widget = Widget, Value = Value, Raw = Raw, Final = Final,
                 Picked = Picked, Checked = Checked, Key = Key, OnPage = OnPage, Files = Files, Url = Url, Dialog = Dialog,
                 OpenDialogs = OpenDialogs, Target = target, Field = Field, Option = Option, Opener = Opener, Scrolled = Scrolled, To = To, HoverMenu = HoverMenu,
-                Focus = Focus, Watched = Watched, Check = Check, Group = Group, Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
+                HoverOpener = HoverOpener, OptionCss = OptionCss, Committed = Committed, Focus = Focus, Watched = Watched, Check = Check, Group = Group, Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
             };
         }
 

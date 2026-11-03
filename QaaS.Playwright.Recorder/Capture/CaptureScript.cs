@@ -1099,6 +1099,18 @@ internal static class CaptureScript
             return lastClick && now() - lastClick.t <= 60000 && near(lastClick.element) ? lastClick.element : null;
           };
 
+          // An option without a role, as antd's virtual list draws them beside a hidden list for assistive technology: an
+          // item of a list that opened in a popup of its own, while one combobox says it is open, which it is the choice of.
+          function optionOfPopup(element) {
+            const option = closestUp(element, '[class*=select-item-option], [class*=-option][class*=item], [class*=option][aria-selected]');
+            if (!option || containsDeep(option, element) === false) return null;
+            const open = [...document.querySelectorAll('[role=combobox][aria-expanded=true]')].filter((field) => !containsDeep(option, field));
+            if (open.length !== 1) return null;
+            let popup = option;
+            while (upFrom(popup) && upFrom(popup) !== document.body && !/dropdown|popup|popover|listbox|menu/i.test(popup.getAttribute('class') ?? '')) popup = upFrom(popup);
+            return { option, owner: open[0], popup };
+          }
+
           function draftFor(hit) {
             const picked = pickedFor(hit);
             const element = picked ?? retarget(hit);
@@ -1116,10 +1128,11 @@ internal static class CaptureScript
             if (fileInput) return { ignore: 'file chooser' };
             if (isTextual(element) && !element.readOnly && !fromDecoration.has(element)) return { ignore: 'focus', element };
             const toggle = element.matches(TOGGLES) ? element : null;
-            const option = closestUp(element, '[role=option]');
+            const roleless = closestUp(element, '[role=option]') ? null : optionOfPopup(element);
+            const option = closestUp(element, '[role=option]') ?? roleless?.option;
             if (option) {
-              const listbox = closestUp(option, '[role=listbox]');
-              const owner = listbox ? ownerOf(listbox) : null;
+              const listbox = roleless?.popup ?? closestUp(option, '[role=listbox]');
+              const owner = roleless?.owner ?? (listbox ? ownerOf(listbox) : null);
               const info = describe(option, { pageLevel: true, noRow: true });
               // A Select's menu hides the rest of the page from assistive technology, so the field is described as it was
               // when its menu opened.
@@ -1128,7 +1141,9 @@ internal static class CaptureScript
                 widget: !owner ? 'option' : isAutocomplete(owner) || isTextual(owner) && !owner.readOnly ? 'autocomplete'
                   : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
-                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')), scrolled: scrolledList(option) };
+                ...(roleless ? { optionCss: libraryCss(option), optionText: shownText(option) } : {}),
+                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')),
+                hoverOpener: hoverMenus.get(option.closest('[role=menu], [role=listbox]')) ?? null, scrolled: scrolledList(option) };
             }
             // An element the person picked is what they act on, whatever it is.
             const info = describe(element, picked ? { interactive: true } : {});
@@ -1141,7 +1156,8 @@ internal static class CaptureScript
               ...(toggle && !toggle.matches('input') ? { before: toggle.getAttribute('aria-checked') === 'true' } : {}),
               ...(equivalents.length ? { equivalents } : {}),
               adornmentField: !isTextual(element) ? fieldOfAdornment(element) : null,
-              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
+              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), hoverOpener: hoverMenus.get(element.closest('[role=menu]')) ?? null,
+              scrolled: scrolledList(element) };
           }
 
           // A list that renders only what is in sight, scrolled to the element: what the flow scrolls first, as far. It says
@@ -1185,8 +1201,11 @@ internal static class CaptureScript
               return;
             }
             if (draft.kind === 'choose') {
-              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text, opener: owner ? openerOf(owner) : null });
-              if (owner) settleChoice(state.id, owner, listbox, draft.option.text);
+              // An option of no role by the text it shows, as its name may come from a title no person wrote.
+              const { optionText, ...told } = rest;
+              const value = optionText || draft.option.text;
+              record({ ...told, id: state.id, t: state.t, via, value, opener: owner ? openerOf(owner) : null });
+              if (owner) settleChoice(state.id, owner, listbox, value);
               return;
             }
             if (adornmentField) {
@@ -2300,7 +2319,10 @@ internal static class CaptureScript
           // ----------------------------------------------------------------------------------------------- effects
           // What the page shows changes a moment after an action: a dialog opens or closes, an alert appears, a busy
           // indicator (a progress bar, as MUI's CircularProgress and LinearProgress are, or aria-busy) comes and goes.
-          const hoverMenus = new WeakSet();
+          // Each menu that opened as the pointer rested, with what the pointer was on then: what the flow hovers first.
+          const hoverMenus = new WeakMap();
+          let hovered = null;
+          addEventListener('pointermove', (event) => { if (event.isTrusted) hovered = deepTarget(event); }, { capture: true, passive: true });
           const BUSY = '[role=progressbar], [aria-busy=true]';
           const busyKind = (element) => element.matches('[role=progressbar]') ? 'progressbar' : 'ariaBusy';
           const busySince = new WeakMap();
@@ -2330,7 +2352,8 @@ internal static class CaptureScript
             for (const [alert, text] of next.alerts)
               if (shown.alerts.get(alert) !== text && text) effect('alert', { text: normalizeValue(text), alertCount });
             for (const menu of next.menus)
-              if (!shown.menus.has(menu) && now() - lastPointer > 1000) hoverMenus.add(menu);
+              if (!shown.menus.has(menu) && now() - lastPointer > 1000)
+                hoverMenus.set(menu, hovered?.isConnected && !containsDeep(menu, hovered) ? describe(retarget(hovered)).target : null);
             // An indicator that came up after an action is its doing, once none of its kind is left.
             for (const element of next.busy)
               if (!shown.busy.has(element) && lastAction && now() - lastAction.t <= 5000)

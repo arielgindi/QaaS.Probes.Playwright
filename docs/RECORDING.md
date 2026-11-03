@@ -856,7 +856,12 @@ An element in a dialog is located inside it (`dialog.GetByRole(...)`). A dialog 
 modal often has, takes the heading it shows as its title, and is found by it:
 `page.GetByRole(AriaRole.Dialog).Filter(new() { Has = page.GetByText("Shipping", new() { Exact = true }) })`. The
 options of a select or autocomplete open outside the dialog, so they come from `dialog.Page`; one that another list on
-the page has too, from its own list (`GetByRole(AriaRole.Listbox, new() { Name = "Delivery window" })`).
+the page has too, from its own list (`GetByRole(AriaRole.Listbox, new() { Name = "Delivery window" })`). An option
+with no role, as antd's list draws them beside a hidden one for assistive technology, is a choice of the one combobox
+that is open, a setting as any choice, found by its text among the options of its kind that show, as closed lists stay
+in the page hidden: `page.Locator("div.ant-select-item:visible").GetByText(Configuration.Status, new() { Exact = true })`,
+never by a title no person wrote (`[object Object]`). An item of a menu that opened as the pointer rested on something,
+as an avatar's menu does, is clicked after the flow hovers that (`page.Locator("[id='avatar']").HoverAsync()`).
 
 ### What each action expects
 

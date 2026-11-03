@@ -385,7 +385,15 @@ internal sealed partial class FlowWriter
                 { Actions = _step.Actions.Take(1).ToList() });
         }
 
-        var problem = source.HoverMenu == true
+        // A menu that opened as the pointer rested is opened so: by hovering what the pointer was on.
+        var opener = source.HoverMenu == true && LocatorPolicy.Choose(source.HoverOpener) is { } hovered ? hovered : null;
+        if (opener is not null)
+        {
+            var why = LocatorPolicy.Problem(opener);
+            _step.Add($"await {Render(opener, source)}{Break}.HoverAsync();", why);
+        }
+
+        var problem = source.HoverMenu == true && opener is null
             ? "the menu it is in opened on hover: hover what opens it first (HoverAsync)"
             : null;
         switch (action.Kind)
@@ -510,8 +518,11 @@ internal sealed partial class FlowWriter
         var list = source.Option?.Candidates.FirstOrDefault(candidate => candidate is { Kind: "role", Matches: true }
             && candidate.Parts is [.., { M: "role", Role: "listbox" }, { M: "role", Role: "option" }])?.Parts[^2];
         var inList = list is null ? "" : LocatorPolicy.Render("", [list], breakBefore: Break);
-        var option = $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
-        var optionProblem = source.Option is null || source.Option.Candidates.Any(candidate =>
+        // An option with no role, among those of its kind that show, by its text: antd's list keeps closed ones, hidden.
+        var option = source.OptionCss is { } optionCss
+            ? $"{scope.Page}.Locator({CSharp.Literal(optionCss + ":visible")}){Break}.GetByText({Setting(action.OptionValue ?? action.Value)}, new() {{ Exact = true }})"
+            : $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
+        var optionProblem = source.Option is null || source.OptionCss is not null || source.Option.Candidates.Any(candidate =>
             candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
             ? null
             : "the option's name did not find it alone when recorded";
