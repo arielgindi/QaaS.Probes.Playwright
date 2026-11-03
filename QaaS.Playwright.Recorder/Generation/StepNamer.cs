@@ -155,10 +155,12 @@ internal static partial class StepNamer
         // An item of a list without a role of its own; a link or menu item of one when a click confirms it.
         var item = last.Source.Target is { Item: true, Role: null or "option" or "listitem" }
                    || (confirmed && last.Source.Target is { Item: true, Role: "link" or "menuitem" });
-        // Its words before a number, as "Express" of "Express 2 days".
+        // One that goes to another address is a way there, not a choice.
+        if (!item || last.Has("urlChanged") || last.Has("popup")) return null;
+        // Its words before a number, as "Express" of "Express 2 days"; one not in English is an option still.
         var words = Label(last)?.Split(' ').TakeWhile(word => !word.Any(char.IsDigit)).ToList() ?? [];
         var label = string.Join(' ', words);
-        return item && label.Length is > 0 and <= 40 && CSharp.IsAsciiText(label) ? CSharp.Pascal(label) : null;
+        return label.Length is > 0 and <= 40 && CSharp.IsAsciiText(label) ? CSharp.Pascal(label) : "Option";
     }
 
     private static string LoopName(Step step, Loop loop)
