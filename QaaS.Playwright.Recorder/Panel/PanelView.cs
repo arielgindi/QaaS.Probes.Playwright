@@ -46,6 +46,12 @@ internal sealed record PanelView(
     /// <summary>The recording this one continues, when it does.</summary>
     public PanelContinued? Continued { get; init; }
 
+    /// <summary>A part of the flow the person records again, or records after, and how it goes.</summary>
+    public PanelRerecord? Rerecord { get; init; }
+
+    /// <summary>While trying (F7): each action tried, as the recorder would write it, oldest first.</summary>
+    public IReadOnlyList<PanelAction>? Tried { get; init; }
+
     /// <summary>The page reads it as JSON: camelCase, text of every script kept readable, nothing missing written.</summary>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -67,6 +73,46 @@ internal sealed record PanelContinued(string Label)
     public string? After { get; init; }
 
     public string? Banner { get; init; }
+}
+
+/// <summary>
+/// A part of the flow the person records again, or records after (<paramref name="After"/>), named
+/// <paramref name="Part"/>: <c>replaying</c> the flow up to it, <c>failed</c> to, <c>recording</c> it, or <c>done</c>.
+/// </summary>
+internal sealed record PanelRerecord(string Part, string Phase, bool After)
+{
+    /// <summary>The part is a loop, recorded again whole.</summary>
+    public bool Loop { get; init; }
+
+    /// <summary>The actions of the flow recorded in the part so far.</summary>
+    public IReadOnlyList<string> Fresh { get; init; } = [];
+
+    /// <summary>The action of the flow what is recorded follows, while nothing is yet; null at its start.</summary>
+    public string? At { get; init; }
+
+    /// <summary>The action the replay failed at; null when it failed before the first, e.g. in the login flow.</summary>
+    public string? FailedAt { get; init; }
+
+    /// <summary>Why the replay could not run at all.</summary>
+    public string? Problem { get; init; }
+
+    /// <summary>Once done: the recording is paused, as the app is not where the flow ends.</summary>
+    public bool Paused { get; init; }
+}
+
+/// <summary>
+/// A part of the flow to record again, or to record after, named <paramref name="Label"/>: the recorded actions it
+/// replaces, the recorded actions what is recorded goes after and before (null: at the start, at the end), the action
+/// of the flow a replay runs to first (null: none), and the part's first and last actions of the flow.
+/// </summary>
+internal sealed record RerecordPart(string Label, bool Loop)
+{
+    public IReadOnlyList<string> Replaced { get; init; } = [];
+    public string? After { get; init; }
+    public string? Before { get; init; }
+    public string? UpTo { get; init; }
+    public string First { get; init; } = "";
+    public string Last { get; init; } = "";
 }
 
 /// <summary>A method of the flow: the actions on one page or in one dialog.</summary>
@@ -113,6 +159,18 @@ internal sealed record PanelAction(string Id, string Kind)
 
     /// <summary>The checks after the action: its auto checks, those dropped too, and those the person chose.</summary>
     public IReadOnlyList<Expectation> Expects { get; init; } = [];
+
+    /// <summary>Tried (F7), not recorded: a card of what the recorder would write for it.</summary>
+    public bool Tried { get; init; }
+
+    /// <summary>For an action tried: why each locator tried before the one chosen lost, as the overlay says it.</summary>
+    public IReadOnlyList<string>? Reasons { get; init; }
+
+    /// <summary>For an action tried: what the overlay notes, e.g. that the element is no control.</summary>
+    public string? Note { get; init; }
+
+    /// <summary>For an action tried that the flow would leave out: why.</summary>
+    public string? Omitted { get; init; }
 }
 
 /// <summary>An element picked in the Elements view, located as a recorded action's element is.</summary>
@@ -277,6 +335,12 @@ internal sealed record PanelCandidate(int Index, string Kind, string Label, stri
 /// <summary>A view of the recording, and the actions in it its commands refer to.</summary>
 internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string, PlannedAction> Actions)
 {
+    /// <summary>The recording the view is of.</summary>
+    public Recording Recording { get; init; } = new("", []);
+
+    /// <summary>The steps of the flow, as planned.</summary>
+    public IReadOnlyList<Step> Steps { get; init; } = [];
+
     /// <summary>The recorded actions that undoing the last action leaves out: it, and what led to it.</summary>
     public IReadOnlyList<string> Undo { get; init; } = [];
 
@@ -292,7 +356,9 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     /// <param name="namespaceName">The flow's namespace.</param>
     /// <param name="status"><c>recording</c>, <c>paused</c>, <c>login</c> or <c>saving</c>.</param>
     /// <param name="error">Why the last command did not work.</param>
-    public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, string status, string? error)
+    /// <param name="fresh">The actions recorded in the part being recorded again, which Undo takes back first.</param>
+    public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, string status, string? error,
+        IReadOnlySet<string>? fresh = null)
     {
         var plan = FlowPlanner.Plan(recording, request.ClassName);
         var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
@@ -306,10 +372,80 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         };
 
         var planned = plan.Steps.SelectMany(step => step.Actions).ToList();
+        var sources = SourcesOf(recording, planned);
         return new PanelSnapshot(view, planned.DistinctBy(action => action.Source.Id).ToDictionary(action => action.Source.Id))
         {
-            Undo = UndoOf(recording, planned), Sources = SourcesOf(recording, planned),
+            Undo = fresh is { Count: > 0 } ? FreshUndo(recording, planned, fresh, sources) : UndoOf(recording, planned),
+            Sources = sources, Recording = recording, Steps = plan.Steps,
         };
+    }
+
+    /// <summary>
+    /// The part of the flow the action <paramref name="actionId"/> is, or its whole step: the recorded actions it is
+    /// made of, which recording it again replaces, where what is recorded then goes, and the action of the flow the
+    /// replay runs to first (null for none). <paramref name="after"/> records after it instead, replacing nothing: the
+    /// replay runs through it. A loop is a part whole, named for its step; else the part is called
+    /// <paramref name="label"/>, as the person sees it. Null when the flow has no such action.
+    /// </summary>
+    public RerecordPart? PartOf(string actionId, bool wholeStep, bool after, string label)
+    {
+        var step = Steps.FirstOrDefault(step => step.Actions.Any(action => action.Source.Id == actionId));
+        if (step is null) return null;
+        var loop = step.Loop is not null;
+        var part = (wholeStep || loop ? step.Actions.Select(action => action.Source.Id) : [actionId]).ToHashSet();
+        return PartBetween(part, after, loop ? step.Name : label, loop);
+    }
+
+    /// <summary>
+    /// The part from the action <paramref name="from"/> to the end of <paramref name="part"/>: recorded again from
+    /// where a replay up to <paramref name="part"/> stopped.
+    /// </summary>
+    public RerecordPart? PartFrom(string from, RerecordPart part, string label)
+    {
+        var order = Planned();
+        var first = order.IndexOf(Steps.FirstOrDefault(step => step.Loop is not null && step.Actions.Any(action => action.Source.Id == from))
+            ?.Actions[0].Source.Id ?? from);
+        var last = Math.Max(order.IndexOf(part.Last), first);
+        return first < 0 ? null : PartBetween([.. order.Skip(first).Take(last - first + 1)], after: false, label, loop: false);
+    }
+
+    // The flow's actions, in the order it does them; a loop's repeat by repeat.
+    private List<string> Planned() => [.. Steps.SelectMany(step => step.Actions).Select(action => action.Source.Id).Distinct()];
+
+    private RerecordPart? PartBetween(HashSet<string> part, bool after, string label, bool loop)
+    {
+        var order = Planned();
+        var first = order.FindIndex(part.Contains);
+        var last = order.FindLastIndex(part.Contains);
+        if (first < 0) return null;
+        var ids = Recording.Actions.Select(action => action.Id).ToList();
+        var next = last + 1 < order.Count ? order[last + 1] : null;
+        // From what led to the part's first action to what led to the action after it, but what belongs to others.
+        var start = ids.IndexOf(Sources[order[first]][0]);
+        var end = next is null ? ids.Count - 1 : ids.IndexOf(Sources[next][0]) - 1;
+        var others = order.Where(id => !part.Contains(id)).SelectMany(id => Sources[id]).ToHashSet();
+        return new RerecordPart(label, loop)
+        {
+            Replaced = after ? [] : [.. ids.Skip(start).Take(end - start + 1).Where(id => !others.Contains(id))],
+            After = after ? ids[end] : start > 0 ? ids[start - 1] : null,
+            Before = next is null ? null : ids[end + 1],
+            UpTo = after ? order[last] : first > 0 ? order[first - 1] : null,
+            First = order[first],
+            Last = order[last],
+        };
+    }
+
+    // In the part being recorded again, the last of the flow's actions recorded in it, with what led to it and all
+    // recorded after it; a check chosen last goes alone.
+    private static List<string> FreshUndo(Recording recording, List<PlannedAction> planned, IReadOnlySet<string> fresh,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> sources)
+    {
+        var ids = recording.Actions.Where(action => fresh.Contains(action.Id)).Select(action => action.Id).ToList();
+        if (recording.Actions.LastOrDefault(action => fresh.Contains(action.Id)) is { Kind: "expect" } check) return [check.Id];
+        var last = planned.LastOrDefault(action => fresh.Contains(action.Source.Id));
+        if (last is null) return ids;
+        var from = ids.IndexOf(sources[last.Source.Id][0]);
+        return [.. ids.Skip(Math.Max(from, 0))];
     }
 
     // Each action of the flow, what only led to it since the action before it (opening a Select, typing into an
@@ -370,6 +506,64 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
             Expects = flow.Expects.GetValueOrDefault(source.Id) ?? [],
         };
     }
+
+    /// <summary>
+    /// What the recorder would write for each action the person tried (F7), had it been recorded where the next action
+    /// goes: before the action <paramref name="before"/>, else last. Each is planned and written in the flow alone, as
+    /// it would be: its locator and why the ones before it lost, the auto checks after it, and the setting a value it
+    /// typed or chose would be; or why the flow would leave it out. With each, the planned action, to point at it.
+    /// </summary>
+    public static IReadOnlyList<(PanelAction Card, PlannedAction? Planned)> Tried(Recording recording, Recording tried,
+        string? before, RecordRequest request, string namespaceName)
+    {
+        var at = before is null ? -1 : recording.Actions.ToList().FindIndex(action => action.Id == before);
+        var cards = new List<(PanelAction, PlannedAction?)>();
+        foreach (var action in tried.Actions.Where(action => action.Kind != "expect"))
+        {
+            List<CapturedAction> actions = [.. recording.Actions];
+            actions.Insert(at < 0 ? actions.Count : at, action);
+            var plan = FlowPlanner.Plan(recording with { Actions = actions }, request.ClassName);
+            var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
+            var step = plan.Steps.FirstOrDefault(step => step.Actions.Any(planned => planned.Source.Id == action.Id));
+            var planned = step?.Actions.First(planned => planned.Source.Id == action.Id);
+            var card = planned is null
+                ? Unplanned(action)
+                : Describe(planned, flow, inLoop: step!.Loop is not null) with { Lines = null };
+            var element = action.Element;
+            cards.Add((card with
+            {
+                Tried = true,
+                Reasons = element is null ? [] : LocatorPolicy.WhyNot(element, planned?.Locator, byName: action.Widget == "radio"),
+                Note = element is { Interactive: false } ? "not a control: kept only if the page reacts" : null,
+                Omitted = planned is null ? WhyLeftOut(action) : null,
+            }, planned));
+        }
+
+        return cards;
+    }
+
+    // An action tried that the flow leaves out, as the recorder saw it.
+    private static PanelAction Unplanned(CapturedAction action)
+    {
+        var element = action.Element;
+        var candidates = element?.Candidates ?? [];
+        var chosen = LocatorPolicy.Choose(element, byName: action.Widget == "radio");
+        return new PanelAction(action.Id, action.Kind)
+        {
+            Widget = action.Widget, Page = action.Page, Value = ValueOf(action),
+            Element = element is null ? null : element.Text ?? element.Label ?? element.Name ?? element.Id ?? element.Tag,
+            Locator = LocatorPolicy.Describe(chosen), Candidates = CandidatesOf(candidates), Picked = IndexOf(candidates, chosen),
+            Auto = IndexOf(candidates, chosen), Effects = [.. action.Effects.Select(EffectOf).OfType<PanelEffect>().Distinct()],
+        };
+    }
+
+    private static string WhyLeftOut(CapturedAction action) => action switch
+    {
+        { Widget: "select-open" or "autocomplete-button" } => "It opens the list: the flow chooses the option picked next, and opens it then.",
+        { Kind: "press", Key: "Escape" } => "Escape changed nothing on the page, so the flow leaves it out.",
+        { Kind: "click" or "dblclick" } => "A click on no control that changed nothing: the flow leaves it out.",
+        _ => "It only leads to the next action: the flow does it as part of that one.",
+    };
 
     // A setting, and how the person may change it: text typed may be unique per run, and a date typed within a year of
     // the day it was recorded may be typed as days from the day the flow runs.

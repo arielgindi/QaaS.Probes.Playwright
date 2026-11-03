@@ -55,6 +55,9 @@ const paths = {
   calendar: 'M5 5.5h14a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z M4 10h16 M8.5 3.5v4 M15.5 3.5v4',
   hash: 'M9.5 4l-2 16 M16.5 4l-2 16 M4.5 9h15 M4 15h15',
   restore: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3 M4.5 4.5v4.2h4.2',
+  rerecord: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3 M4.5 4.5v4.2h4.2 M12 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z',
+  recordAfter: 'M12 3.5v9 M8.5 9l3.5 3.5 3.5-3.5 M5 16.5h14 M5 20h9',
+  flask: 'M9 3.5h6 M10.3 3.5v5.4L5.2 18a1.6 1.6 0 0 0 1.4 2.5h10.8a1.6 1.6 0 0 0 1.4-2.5l-5.1-9.1V3.5 M7.4 14.5h9.2',
 } as const;
 
 export type IconName = keyof typeof paths;

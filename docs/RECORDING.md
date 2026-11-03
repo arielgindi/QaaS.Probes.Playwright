@@ -75,14 +75,16 @@ not in frames, which are not recorded.
 | `F8` | Pauses or resumes the recording (see [Pausing](#pausing)). |
 | `F4` | Freezes the page's elements for the panel's [Elements view](#the-elements-view), e.g. with a menu open. |
 | `F9` | Hides or shows the overlay. Hidden, the recorder records as it would without it. |
+| `F7` | Tries things without recording them: each action shows in the panel as the recorder would write it (see [Trying things](#trying-things)). |
+| `F2` | While a part of the flow is recorded again, ends it and keeps what you did (see [Recording a part again](#recording-a-part-again)). Otherwise it is the page's. |
 | `Alt+↑` | Picks the element around the one in the box (the box turns orange): the next click records it instead. |
 | `Alt+↓` | Goes back toward the element under the pointer. |
 
 A pick holds while the pointer stays on the same element, and is dropped when it moves to another. These keys do
 nothing in Chrome by themselves, type no text, and cannot be a page's access key; they still reach the page as for a
 person, so with a select or an autocomplete field focused, `Alt+↓` also opens its list. On macOS, `Alt` is `Option`,
-and the function keys may need `fn`. (`F7` would toggle Chrome's caret browsing, with a prompt that takes the focus
-and closes the very menu being frozen, so freezing is on `F4`.)
+and the function keys may need `fn`. Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the
+focus and close the very menu being frozen, which is also why freezing is on `F4`.
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
 recorder saves two files: `Flows/LoginFlow.cs`
@@ -273,7 +275,7 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 |---|---|
 | Point at a step or a locator | Highlights in the recorded window what it finds |
 | ↑ / ↓ | Selects the step before or after |
-| **Undo**, Ctrl+Z | Takes back your last change in the panel, or else leaves the last step out of the flow; the app stays as it is. Its tooltip says which |
+| **Undo**, Ctrl+Z | Takes back your last change in the panel, or else leaves the last step out of the flow; the app stays as it is. Its tooltip says which. It also brings back a part [recorded again](#recording-a-part-again) as it was |
 | **Check**, F6 | [Checks something](#checking-what-the-page-shows) in the app: the next click there picks an element |
 | **Auto checks**, above the steps | Turns every [auto check](#what-each-action-expects) on or off, as `--no-auto-checks` |
 | ✕ on a check | Drops that auto check, or deletes a check you chose; ↺ brings a dropped one back |
@@ -283,7 +285,12 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 | **Pause** / **Resume**, F8 | Pauses or resumes the recording, as `F8` in the recorded window does |
 | **Test**, Ctrl+Enter or F5 | [Tests the flow](#testing-the-flow) recorded so far, as it will be saved, in a window of its own |
 | **Run to here**, Ctrl+Shift+Enter | Tests it up to the selected step, and that step too |
-| **Stop**, Esc or Shift+F5 | Stops the test |
+| **Stop**, Esc or Shift+F5 | Stops the test, or the replay up to a part recorded again |
+| **Re-record**, on a step's name or an action (point at it) | [Records it again](#recording-a-part-again): the recorded window replays the flow up to it, then what you do takes its place |
+| **Record after this**, on a step's name or an action | Replays the flow through it, then what you record goes after it, before the steps after it |
+| **Done**, F2 / **Keep it as it was**, Esc | Ends recording a part again: keeps what you did, or the part as it was |
+| **Try**, F7 | [Tries things](#trying-things) in the app: nothing is recorded, and each action shows as the recorder would write it |
+| **Add to flow**, on a tried action | Adds it to the flow where the next action goes |
 | The gauge, beside **Test** | Tests in slow motion: each action waits 500 ms first |
 | **Save**, Ctrl+S | Ends the recording and saves the flow, as closing the browser does |
 
@@ -405,6 +412,61 @@ The result stays until you test again or dismiss it; once you change the flow, i
 - **Stop**, `Esc` or `Shift+F5` closes the test's window and ends the run; closing that window does too.
 - **It needs the .NET SDK** of the recorder's .NET (10), which a test project needs anyway; the recorder itself runs
   on the runtime. Without it, **Test** says so, and the recording goes on.
+
+### Recording a part again
+
+When a part of the flow is not what you want, e.g. you went through a dialog the long way, record that part again
+rather than the whole flow. Point at a step's name, or at an action, and click **Re-record**; the panel says what that
+does in the app, and does it once you confirm:
+
+1. **The recorded window goes back to the start of the flow and replays it up to the part**, as
+   [Test](#testing-the-flow) runs it: built as saved, through the probe's runner, with its timeouts and the flow's
+   values, but in the recorded window itself, as [continuing](#continuing-a-flow) does. Its cookies and the start
+   page's storage are cleared first; then your [login flow](#logging-in-first) logs in, or the login the recording
+   started from is put back, and the start page opens. Nothing is recorded meanwhile, and the overlay says
+   `Testing the flow · replaying it here`. Like a test, it really does what the flow does in your app.
+2. **Then do the part again.** A banner says `Re-recording FillNewTicketAsync: do it again, then press Done (or Esc to
+   keep it as it was)`, and the overlay `Re-recording FillNewTicketAsync · F2 when done`. What you do goes in place of
+   the part's actions, its cards marked `new`, and the steps after it stay. Checks (`F6`), pausing (`F8`) and trying
+   (`F7`) work as ever.
+3. **Done**, `F2` in the app or the panel, keeps it, and the code is written with it: **Test** the flow to see it run as
+   it will be saved. **Keep it as it was**, `Esc` in the panel, keeps the part as it was. Either way the recording then
+   pauses, as the app is where the part left it, not at the end of the flow, unless the part was the flow's last. Undo
+   (`Ctrl+Z`) brings back the part as it was; before anything is recorded in it, Undo keeps it as it was.
+
+**Record after this**, on a step's name or an action, replays the flow through it instead, and what you record goes
+after it, before the steps after it, which stay; nothing is replaced. It ends in the same way.
+
+- **A step**, by its name, is all its actions; **an action** is that one, with what only led to it (opening a select)
+  and its checks. In a [loop](#repeated-actions), re-recording one repeat re-records the whole loop, as the
+  confirmation says, and recording after one records after the loop.
+- **When the replay does not get to the part**, the panel shows where it failed and why, as a test run does, and so
+  does the console. The app is then where the replay stopped: **Re-record from step 3** records again from the step that
+  failed to the end of the part, and **Cancel** keeps the flow as it is.
+- **It is in the recording**, so autosave, `--keep-recording` and [continuing](#continuing-a-flow) keep the flow as you
+  recorded it again, and a recording continued can be recorded again in part too. It needs the panel and the .NET SDK,
+  as **Test** does.
+- A part that opens a pop-up or a tab that the steps after it act in: they act in the page the part opened when first
+  recorded, which the flow no longer opens. Record them again with it.
+
+### Trying things
+
+To see what the recorder would make of something without recording it, press `F7` in the app, or **Try** in the panel.
+As when paused, nothing you do is recorded, and the overlay says `Trying: nothing is recorded · F7 records again`; but
+the box and its label follow the pointer as when recording, and each action shows under the steps as a dimmed `tried`
+card, written as the recorder would write it where the next action goes:
+
+- the locator it would use, and why the ones before it lost, as the overlay's label says it;
+- the other locators it found, each with what it found (`✓ 1 match`, `✗ found 3`, `✗ looks generated`);
+- the auto checks it would add after it: the dialog it opened or closed, the message, the new address;
+- for what you typed or chose, the setting it would be, e.g. `setting Title = 'Printer jammed'`;
+- or, for what the flow would leave out (a click on no control that changed nothing, opening a select), why.
+
+**Add to flow**, on a card, adds that action where the next action goes: at the end, or in the part being recorded
+again. It is then an action of the flow, as one added in the [Elements view](#the-elements-view) is, and Undo takes it
+back. `F7` again, or **Stop trying**, goes back to recording as resuming after a [pause](#pausing) does: if the app is
+on another page then, the flow goes there by its address. Leaving Try clears the cards. Without the panel, Try is a
+pause.
 
 ### The Elements view
 

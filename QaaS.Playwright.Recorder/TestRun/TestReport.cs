@@ -105,6 +105,12 @@ internal sealed record TestReport(int Run, string Flow, string Code, IReadOnlyLi
     /// <summary>A replay of the recording a recording continues, in the recorded window (<see cref="FlowTester.ReplayAsync"/>).</summary>
     public bool Replay { get; init; }
 
+    /// <summary>
+    /// A replay from the recording's start, as a test runs, in the recorded window: up to <see cref="UpTo"/>, or none of
+    /// the flow's actions when it is null, for a part to be recorded again from there.
+    /// </summary>
+    public bool FromStart { get; init; }
+
     /// <summary>The login flow that runs first, by its class name.</summary>
     public string? Login { get; init; }
 
@@ -138,7 +144,7 @@ internal sealed record TestReport(int Run, string Flow, string Code, IReadOnlyLi
     public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>How many actions the run goes through: all of them, or those up to <see cref="UpTo"/>.</summary>
-    public int Total => UpTo is null ? Actions.Count : Actions.TakeWhile(action => action != UpTo).Count() + 1;
+    public int Total => UpTo is null ? FromStart ? 0 : Actions.Count : Actions.TakeWhile(action => action != UpTo).Count() + 1;
 
     /// <summary>
     /// The recorded actions it did not get to replay, or not pass: those after the last one that passed in a row from the

@@ -8,7 +8,9 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// browser dialogs), then ties each change of the page to the action that caused it. While paused it collects nothing,
 /// and what happened meanwhile is no action's doing. Made from a recording it continues, it starts with that one's
 /// actions, and adds what is recorded after them. It also keeps the person's changes in the panel, each of which
-/// <see cref="Undo"/> takes back, newest first, in turn with the actions recorded. Safe to call from any thread.
+/// <see cref="Undo"/> takes back, newest first, in turn with the actions recorded, and the parts they recorded again
+/// (<see cref="BeginSplice"/>): what is recorded then goes in place of the part, before the actions after it. Safe to
+/// call from any thread.
 /// </summary>
 internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 {
@@ -34,6 +36,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     private readonly Dictionary<string, ActionEdit> _edits = [];
     private readonly List<Change> _changes = [];
     private readonly List<(long From, long To)> _pauses = [];
+    private readonly List<Splice> _splices = [];
     private bool? _autoChecks = from?.AutoChecks;
     private long _sequence;
     private long _version;
@@ -94,6 +97,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 
             _indexById[action.Id] = _actions.Count;
             _actions.Add(action);
+            OpenSplice()?.Members.Add(action.Id);
             return action.Final == false ? null : action;
         }
     }
@@ -146,15 +150,21 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     /// address while paused, or opened meanwhile, is gone to by that address, as the person would type it: the step
     /// after the pause acts on that page, and a replay would otherwise still be where the pause began. How the app got
     /// there was not recorded, so the flow lists it to check by hand. The first time a log created paused resumes, the
-    /// recording starts on the pages as they are.
+    /// recording starts on the pages as they are. <paramref name="rebase"/> starts it so too after a pause: the flow was
+    /// replayed meanwhile, up to where it goes on (<see cref="BeginSplice"/>), so the pages are where it leaves them.
     /// </summary>
-    public void Resume(IReadOnlyCollection<(string Page, string Url)> pages, long at)
+    public void Resume(IReadOnlyCollection<(string Page, string Url)> pages, long at, bool rebase = false)
     {
         lock (_gate)
         {
             if (!_paused) return;
             (_paused, _resumedAt) = (false, at);
-            if (!_started)
+            if (_started && rebase)
+            {
+                _pauses.Add((_pausedAt, at));
+                foreach (var (page, url) in pages) _pageEvents.Add(new PageEvent("navigated", page, url, at, _sequence++));
+            }
+            else if (!_started)
             {
                 _started = true;
                 // What the pages do from now on is none of a continued recording's actions' doing.
@@ -203,15 +213,79 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     {
         lock (_gate)
         {
-            var at = afterId is not null && _indexById.TryGetValue(afterId, out var after) ? after + 1 : _actions.Count;
+            // While a part is recorded again, last is where what is recorded goes, and so is the start of the part.
+            var open = OpenSplice();
+            var member = open is not null && (afterId is null || afterId == open.After || open.Members.Contains(afterId));
+            afterId = afterId is null && open is not null
+                ? _actions.LastOrDefault(other => open.Members.Contains(other.Id))?.Id ?? open.After
+                : afterId;
+            var at = afterId is not null && _indexById.TryGetValue(afterId, out var after) ? after + 1
+                : open is not null ? 0
+                : _actions.Count;
             action.Added = true;
             action.T = at > 0 ? _actions[at - 1].T : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _actions.Insert(at, action);
             for (var index = at; index < _actions.Count; index++) _indexById[_actions[index].Id] = index;
+            if (member) open!.Members.Add(action.Id);
             Remember($"Remove the {action.Kind} added", () => _removed.Add(action.Id));
         }
 
         Changed();
+    }
+
+    /// <summary>
+    /// Records a part of the flow again, or more of it after an action: what is recorded from now on, until
+    /// <see cref="EndSplice"/>, goes in place of the recorded actions <paramref name="replaced"/>, after the action
+    /// <paramref name="after"/> and before <paramref name="before"/> (null: at the end), and the actions after it stay.
+    /// <paramref name="label"/> names the part as Undo says it. Undone before anything is recorded in it, the part is
+    /// kept as it was. One part at a time: a part begun ends the one before, kept.
+    /// </summary>
+    public void BeginSplice(string label, IReadOnlyCollection<string> replaced, string? after, string? before)
+    {
+        lock (_gate)
+        {
+            if (OpenSplice() is { } open) Close(open, keep: true);
+            var splice = new Splice(label, [.. replaced], after, before, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            _splices.Add(splice);
+            splice.Change = Remember($"Keep {label} as it was", () => splice.Undone = true);
+        }
+
+        Changed();
+    }
+
+    /// <summary>
+    /// Ends the part begun with <see cref="BeginSplice"/>: what was recorded in it stays in its place, and Undo then
+    /// brings the part back as it was; or, not <paramref name="keep"/>, the part is as it was before. Returns whether a
+    /// part was being recorded.
+    /// </summary>
+    public bool EndSplice(bool keep)
+    {
+        lock (_gate)
+        {
+            if (OpenSplice() is not { } open) return false;
+            Close(open, keep);
+        }
+
+        Changed();
+        return true;
+    }
+
+    /// <summary>A part is recorded again, or more after an action (<see cref="BeginSplice"/>).</summary>
+    public bool Splicing
+    {
+        get { lock (_gate) return OpenSplice() is not null; }
+    }
+
+    /// <summary>
+    /// The actions of <paramref name="recording"/> recorded in the part being recorded again, or after the action it
+    /// goes on from; empty when none is.
+    /// </summary>
+    public IReadOnlySet<string> Fresh(Recording recording)
+    {
+        lock (_gate)
+            return OpenSplice() is { } open
+                ? recording.Actions.Where(action => InSegment(open, action)).Select(action => action.Id).ToHashSet()
+                : new HashSet<string>();
     }
 
     /// <summary>The page of the last action, or null before the first.</summary>
@@ -346,6 +420,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
             var notRecorded = new List<string>(_notRecordedBefore);
             foreach (var pageEvent in PageEventsThatMatter())
                 Attribute(pageEvent, actions, notRecorded, _pauses);
+            foreach (var splice in _splices) Place(splice, actions);
 
             actions.RemoveAll(action => _removed.Contains(action.Id));
 
@@ -356,21 +431,60 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         }
     }
 
+    private Splice? OpenSplice() => _splices.LastOrDefault(splice => splice is { Until: null, Undone: false });
+
+    // A part kept is undone whole, newest first with the changes after it; one not kept was never there.
+    private void Close(Splice splice, bool keep)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _changes.Remove(splice.Change!);
+        if (!keep || (splice.Replaced.Count == 0 && !_actions.Any(action => InSegment(splice, action))))
+        {
+            splice.Undone = true;
+            return;
+        }
+
+        splice.Until = now;
+        splice.Change = Remember($"Bring back {splice.Label} as it was", () => splice.Undone = true);
+    }
+
+    // What the part recorded: the actions recorded or added in it, and the navigations and tabs it made.
+    private bool InSegment(Splice splice, CapturedAction action) =>
+        splice.Members.Contains(action.Id)
+        || (!_indexById.ContainsKey(action.Id) && action.T >= splice.Since && action.T <= (splice.Until ?? long.MaxValue));
+
+    // The part recorded goes before the action that followed the part it replaces, in the order it was recorded; the
+    // actions it replaces go. A part kept as it was leaves the recording as it was.
+    private void Place(Splice splice, List<CapturedAction> actions)
+    {
+        var segment = actions.Where(action => InSegment(splice, action)).ToList();
+        actions.RemoveAll(action => InSegment(splice, action));
+        if (splice.Undone) return;
+        actions.RemoveAll(action => splice.Replaced.Contains(action.Id));
+        var before = splice.Before is null ? -1 : actions.FindIndex(action => action.Id == splice.Before);
+        actions.InsertRange(before < 0 ? actions.Count : before, segment);
+    }
+
     private void Changed() => Interlocked.Increment(ref _version);
 
     // A change of the person's, newer than every action recorded: one recorded since is undone first.
     private Change? LastChange()
     {
         var change = _changes.LastOrDefault();
-        var lastAction = _actions.Where(action => !_removed.Contains(action.Id)).Select(action => action.T).DefaultIfEmpty().Max();
+        var lastAction = _actions.Where(action => !_removed.Contains(action.Id) && !_splices.Any(splice => splice.Undone && splice.Members.Contains(action.Id)))
+            .Select(action => action.T).DefaultIfEmpty().Max();
         return change is not null && change.At >= lastAction ? change : null;
     }
 
-    private void Remember(string undo, params Action[] restore) =>
-        _changes.Add(new Change(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), undo, () =>
+    private Change Remember(string undo, params Action[] restore)
+    {
+        var change = new Change(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), undo, () =>
         {
             foreach (var step in restore) step();
-        }));
+        });
+        _changes.Add(change);
+        return change;
+    }
 
     // Puts the entry back as it is now: the value, or none.
     private static Action Restore<T>(Dictionary<string, T> values, string key)
@@ -515,6 +629,32 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     }
 
     private sealed record NavigationRequest(string Page, long Sequence, Task<bool> ByThePerson);
+
+    /// <summary>
+    /// A part recorded again, or recorded after an action: the actions it replaces, where what is recorded in it goes,
+    /// since when it records, until when once it ended, and the actions recorded or added in it.
+    /// </summary>
+    private sealed class Splice(string label, HashSet<string> replaced, string? after, string? before, long since)
+    {
+        public string Label { get; } = label;
+        public HashSet<string> Replaced { get; } = replaced;
+
+        /// <summary>The action before the part, which an action added at its start follows; null at the flow's start.</summary>
+        public string? After { get; } = after;
+
+        /// <summary>The action after the part, which what is recorded in it goes before; null at the end.</summary>
+        public string? Before { get; } = before;
+
+        public long Since { get; } = since;
+        public long? Until { get; set; }
+        public HashSet<string> Members { get; } = [];
+
+        /// <summary>Kept as it was: by Esc, or by Undo.</summary>
+        public bool Undone { get; set; }
+
+        /// <summary>The change Undo takes back to keep the part as it was.</summary>
+        public Change? Change { get; set; }
+    }
 
     /// <summary>A change the person made in the panel: when, how undoing it reads, and what undoes it.</summary>
     private sealed record Change(long At, string Undo, Action Restore);

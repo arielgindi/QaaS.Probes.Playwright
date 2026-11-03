@@ -246,7 +246,7 @@ internal static class ConsoleUi
                 new Span($" {t.Glyph("→", "->")} ", Tone.Dim), new Span(Relative(request.CodePath), Shrink: Shrink.Middle, Untrusted: true)]);
             if (from is not null) Field(t, "From", [new Span(from, Tone.Dim)]);
             Keys(t, [("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("F6", "check"),
-                ("F8", "pause"), ("F4", "freeze elements"), ("Enter", "or close Chrome to finish")]);
+                ("F8", "pause"), ("F7", "try"), ("F4", "freeze elements"), ("Enter", "or close Chrome to finish")]);
             t.WriteLine();
             if (from is null) RecordingState(t, "Recording", "Work through the site in Chrome; each action shows here.");
             else RecordingState(t, "Continuing", "Its steps replay first; then each action you do shows here, after them.");
@@ -831,6 +831,38 @@ internal static class ConsoleUi
         if (before == Capture.RecordingState.Testing || before == state) return;
         if (state == Capture.RecordingState.Paused) Paused();
         else if (state == Capture.RecordingState.Recording) Resumed();
+        else if (state == Capture.RecordingState.Trying)
+            Status(Out, Margin, Out.Glyph("◇", "~"), Tone.Accent,
+                "Trying. Nothing is recorded: the panel shows what the recorder would write for each action. F7 goes back.");
+    }
+
+    // ── Recording a part again ──────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The replay up to a part went well: the person records it again, or records after it.</summary>
+    /// <param name="part">The part, e.g. <c>FillNewTicketAsync</c>.</param>
+    /// <param name="after">Recording more after it, rather than it again.</param>
+    public static void Rerecording(string part, bool after)
+    {
+        lock (Gate)
+            RecordingState(Out, after ? $"Recording after {part}" : $"Re-recording {part}",
+                (after ? "What you do now goes there, before the steps after it." : "Do it again in Chrome: it replaces the steps it had.") +
+                " Then F2 there, or Done in the panel; Esc in the panel keeps the flow as it was.");
+    }
+
+    /// <summary>The replay did not get to the part: the panel offers to record again from where it stopped.</summary>
+    public static void ReplayStopped(string part) =>
+        Info($"The replay did not get to {part}: in the panel, re-record from the step that failed instead, or cancel.");
+
+    /// <summary>A part recorded again was kept, or kept as it was; the recording is paused when the app is elsewhere.</summary>
+    public static void Rerecorded(string part, bool kept, bool paused)
+    {
+        lock (Gate)
+        {
+            if (kept) Success($"{part} is in the flow as you did it now. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
+            else Info($"Kept {part} as it was.");
+            if (paused)
+                Info("The app is where that part left it, not at the end of the flow: Resume (F8) records at the end from there.");
+        }
     }
 
     public static void Froze(FrozenElements frozen) =>
@@ -840,7 +872,9 @@ internal static class ConsoleUi
     // ── Testing the flow ────────────────────────────────────────────────────────────────────────────────────────
 
     public static void Testing(TestRun.TestReport report) =>
-        Phase(report.Replay ? $"Replaying the {Count(report.Total, "step")} of {report.Flow}"
+        Phase(report is { FromStart: true, Total: 0 } ? $"Going back to the start of {report.Flow}"
+            : report.FromStart ? $"Replaying {report.Flow} from its start up to step {report.Total}"
+            : report.Replay ? $"Replaying the {Count(report.Total, "step")} of {report.Flow}"
             : report.UpTo is null ? $"Testing {report.Flow}"
             : $"Testing {report.Flow} up to step {report.Total} of {report.Actions.Count}");
 
@@ -859,6 +893,10 @@ internal static class ConsoleUi
         {
             switch (report.Outcome)
             {
+                case TestRun.TestOutcome.Passed when report.FromStart:
+                    Success(report.Total == 0 ? $"Back at the start of {report.Flow}."
+                        : $"Replayed {report.Flow} up to step {report.Total}{(took is null ? "" : $" in {took}")}.");
+                    break;
                 case TestRun.TestOutcome.Passed when report.Replay:
                     Success($"Replayed the {steps} of {report.Flow}{(took is null ? "" : $" in {took}")}. What you do now " +
                             "is added after them.");
