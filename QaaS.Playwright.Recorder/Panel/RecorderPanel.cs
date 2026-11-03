@@ -18,9 +18,10 @@ namespace QaaS.Playwright.Recorder.Panel;
 /// F4, and adds or re-targets steps on the one the person picks. Test runs the flow so far in a window of its own
 /// (<see cref="FlowTester"/>), and shows how each step went. Check puts the recorded page in check mode, as F6 there
 /// does; the person deletes steps, renames them, changes their values and drops auto checks here, each change undone
-/// with Undo.
+/// with Undo. A step or an action is recorded again here, or more is recorded after it, and Try shows what the recorder
+/// would write for what the person tries in the app (<c>RecorderPanel.Parts.cs</c>).
 /// </summary>
-internal sealed class RecorderPanel : IAsyncDisposable
+internal sealed partial class RecorderPanel : IAsyncDisposable
 {
     private const string Resource = "QaaS.Playwright.Recorder.Panel.panel.html";
 
@@ -99,6 +100,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
             session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
+            session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
             panel._worker = Task.Run(panel.RunAsync);
             return panel;
         }
@@ -146,6 +148,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
     private async Task RunAsync()
     {
         var shownVersion = -1L;
+        var shownTried = -2L;
         try
         {
             while (!_stop.IsCancellationRequested && !_page.IsClosed)
@@ -156,6 +159,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 foreach (var command in commands.Where(command => command.Type is not ("highlight" or "unhighlight")))
                 {
                     if (command.Type is "elements" or "pick") await ElementsAsync(command);
+                    else if (IsPartCommand(command)) await PartAsync(command);
                     else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
                     else Carry(command);
                 }
@@ -166,8 +170,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 await ShowElementsChangesAsync();
 
                 var version = _session.Log.Version;
-                if (version == shownVersion && !_refresh) continue;
-                (shownVersion, _refresh) = (version, false);
+                var tried = _session.Tried?.Version ?? -1;
+                if (version == shownVersion && tried == shownTried && !_refresh) continue;
+                (shownVersion, shownTried, _refresh) = (version, tried, false);
                 await ShowAsync();
             }
         }
@@ -209,6 +214,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
                 break;
             case "undo" when _shown is { } shown:
                 _session.Log.Undo(shown.Undo);
+                Undone();
                 break;
             case "delete" when command.Action is { } id && _shown is { } shown:
                 _session.Log.Remove(shown.Sources.GetValueOrDefault(id) ?? [id], $"Restore {Called(shown, id)}");
@@ -427,7 +433,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
         try
         {
             _namespace ??= ProjectNamespace.Of(Request.OutputDir);
-            _shown = PanelSnapshot.Of(_session.Build(), Request, _namespace, Status(), _error);
+            var recording = _session.Build();
+            var fresh = _session.Log.Fresh(recording);
+            _shown = PanelSnapshot.Of(recording, Request, _namespace, Status(), _error, fresh);
             _shown = _shown with
             {
                 View = _shown.View with
@@ -446,6 +454,8 @@ internal sealed class RecorderPanel : IAsyncDisposable
                             .LastOrDefault(action => _continued.Contains(action.Id))?.Id,
                         Banner = _banner,
                     },
+                    Rerecord = PartView(_shown, fresh),
+                    Tried = TriedView(_shown),
                 },
             };
         }
@@ -468,6 +478,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
         RecordingState.Paused => "paused",
         RecordingState.LoggingIn => "login",
         RecordingState.Testing => "testing",
+        RecordingState.Trying => "trying",
         _ => "recording",
     };
 
@@ -475,7 +486,9 @@ internal sealed class RecorderPanel : IAsyncDisposable
     // Elements view, or a candidate of the one picked there; null hides it.
     private async Task HighlightAsync(PanelCommand? command)
     {
-        var action = command is { Type: "highlight", Action: { } id } ? _shown?.Actions.GetValueOrDefault(id) : null;
+        var action = command is { Type: "highlight", Action: { } id }
+            ? _shown?.Actions.GetValueOrDefault(id) ?? _triedPlanned.GetValueOrDefault(id)
+            : null;
         var candidate = command?.Candidate is { } index ? action?.Source.Element?.Candidates.ElementAtOrDefault(index) : action?.Locator;
         var page = action is null ? null : _session.PageNamed(action.Source.Page);
         string? selector = null;
@@ -582,6 +595,15 @@ internal sealed class RecorderPanel : IAsyncDisposable
 
         /// <summary>For an auto check: dropped, or back.</summary>
         public bool? Drop { get; init; }
+
+        /// <summary>For recording a part again: the action's whole step, rather than the action.</summary>
+        public bool? Step { get; init; }
+
+        /// <summary>For recording a part again: recording after it instead, replacing nothing.</summary>
+        public bool? After { get; init; }
+
+        /// <summary>For recording a part again: what the person calls it, e.g. the step's name.</summary>
+        public string? Label { get; init; }
     }
 
     /// <summary>The element picked in the Elements view: where it is, and how to locate it.</summary>

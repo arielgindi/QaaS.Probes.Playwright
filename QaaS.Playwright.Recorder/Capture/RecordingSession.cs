@@ -402,9 +402,10 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>
     /// Has the person try things in the app, or go back to what the recording did before (F7, or Try in the panel):
     /// while trying, nothing is recorded, as when paused, and what they do is collected in <see cref="Tried"/> instead.
-    /// Returns the state it went to; while the login flow runs or the flow is tested, it stays as it is.
+    /// Returns the state it went to; while the login flow runs or the flow is tested, it stays as it is. Not
+    /// <paramref name="resume"/>, it goes from trying to paused, e.g. before the flow is replayed up to a part.
     /// </summary>
-    public RecordingState ToggleTry()
+    public RecordingState ToggleTry(bool resume = true)
     {
         RecordingState state;
         lock (_gate)
@@ -420,8 +421,9 @@ internal sealed class RecordingSession : IAsyncDisposable
                     (Tried, _state) = (tried, RecordingState.Trying);
                     break;
                 case RecordingState.Trying:
-                    if (_beforeTry == RecordingState.Recording) Log.Resume(OpenPages(), Now());
-                    (Tried, _state) = (null, _beforeTry);
+                    var back = resume ? _beforeTry : RecordingState.Paused;
+                    if (back == RecordingState.Recording) Log.Resume(OpenPages(), Now());
+                    (Tried, _state) = (null, back);
                     break;
                 default:
                     return _state;
