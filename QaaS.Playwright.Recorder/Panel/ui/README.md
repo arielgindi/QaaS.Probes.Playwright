@@ -29,10 +29,12 @@ and the two talk through two functions on the window (`src/bridge.ts`):
 - `window.__qaasPanelShow(json)`: the recorder calls it with each state, the flow exactly as it will be saved
   (`../PanelView.cs`, typed in `src/types.ts`).
 - `window.__qaasPanelElements(json)`: the recorder calls it with the recorded page's elements for the Elements view: a
-  level of the live tree, a search's matches, the tree frozen with F4, or that the page changed.
+  level of the live tree, a search's matches, the tree frozen with F4, what the app in inspect mode points at or picked,
+  or that the page changed.
 - `window.__qaasPanelSend(json)`: the recorder exposes it for the panel's commands: `ready`, `choose`, `highlight`,
   `unhighlight`, `undo`, `rename`, `save`, `pause`, `loginByHand` (stops the login flow, to log in by hand), for the
-  Elements view `elements`, `pick`, `choosePicked`, `useForStep`, `addClick` and `addFill`, for testing the flow
+  Elements view `elements` (`tree`, `search`, `watch`, `inspect`, `mark` and `preview`), `pick`, `choosePicked`,
+  `useForStep`, `addClick`, `addFill` and `addCheck`, for testing the flow
   `test`, `stopTest` and `clearTest`, for checks and edits `checkMode`, `autoChecks`, `dropCheck`, `delete`,
   `renameStep` and `editValue`, for recording a part again `rerecord`, `rerecordDone`, `rerecordCancel`, `rerecordFrom`
   and `rerecordDismiss`, and for trying `try` and `addTried`.

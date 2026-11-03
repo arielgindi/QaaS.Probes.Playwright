@@ -138,6 +138,12 @@ internal sealed class RecordingSession : IAsyncDisposable
     public event Action? ElementsChanged;
 
     /// <summary>
+    /// Raised, on Playwright's thread, with what a page in inspect mode (Ctrl+Shift+C) tells, as JSON: that it went in or
+    /// out of it, the element under the pointer, or the one a click picked, with the elements around it.
+    /// </summary>
+    public event Action<string, string>? Inspected;
+
+    /// <summary>
     /// A page is in check mode (F6, or Check in the panel): a click there picks an element to check, and does nothing
     /// else.
     /// </summary>
@@ -724,7 +730,8 @@ internal sealed class RecordingSession : IAsyncDisposable
     }
 
     // What the capture script asks or tells: the state its overlay shows, F8 to pause or resume, F4 with the frozen
-    // elements, that the page's elements changed, or that it went in or out of check mode.
+    // elements, that the page's elements changed, what it points at or picked in inspect mode, or that it went in or out
+    // of check mode.
     private void Control(IPage? page, string json)
     {
         var message = JsonSerializer.Deserialize<ControlMessage>(json, Recording.Json);
@@ -743,6 +750,9 @@ internal sealed class RecordingSession : IAsyncDisposable
                 break;
             case "changed":
                 ElementsChanged?.Invoke();
+                break;
+            case "inspect":
+                Inspected?.Invoke(AliasOf(page), json);
                 break;
             case "checking":
                 Checking = message.On == true;

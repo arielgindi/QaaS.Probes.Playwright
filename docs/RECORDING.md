@@ -74,6 +74,7 @@ not in frames, which are not recorded.
 | `F6` | Checks something on the page: the next click picks an element, then you choose the check (see [Checking what the page shows](#checking-what-the-page-shows)). |
 | `F8` | Pauses or resumes the recording (see [Pausing](#pausing)). |
 | `F4` | Freezes the page's elements for the panel's [Elements view](#the-elements-view), e.g. with a menu open. |
+| `Ctrl+Shift+C` | Picks an element for the panel's [Elements view](#the-elements-view): the box follows the pointer, and a click picks what is under it without clicking it. `Esc` leaves. |
 | `F9` | Hides or shows the overlay. Hidden, the recorder records as it would without it. |
 | `F7` | Tries things without recording them: each action shows in the panel as the recorder would write it (see [Trying things](#trying-things)). |
 | `F2` | While a part of the flow is recorded again, ends it and keeps what you did (see [Recording a part again](#recording-a-part-again)). Otherwise it is the page's. |
@@ -88,8 +89,9 @@ portal a menu is in: the page's own containers are never offered. A pick holds w
 element picked, and is dropped when it leaves it. These keys do nothing in Chrome by themselves, type no text, and
 cannot be a page's access key; they still reach the page as for a person, so with a select or an autocomplete field
 focused, `Alt+↓` also opens its list. On Windows, `Alt` pressed and let go alone puts the focus on Chrome's menu, but
-not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and the function keys may need `fn`. Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the
-focus and close the very menu being frozen, which is also why freezing is on `F4`.
+not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and the function keys may need `fn`.
+Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the focus and close the very menu being
+frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
 recorder saves two files: `Flows/LoginFlow.cs`
@@ -282,6 +284,7 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 | ↑ / ↓ | Selects the step before or after |
 | **Undo**, Ctrl+Z | Takes back your last change in the panel, or else leaves the last step out of the flow; the app stays as it is. Its tooltip says which. It also brings back a part [recorded again](#recording-a-part-again) as it was |
 | **Check**, F6 | [Checks something](#checking-what-the-page-shows) in the app: the next click there picks an element |
+| Ctrl+Shift+C | Picks an element in the app for the [Elements view](#the-elements-view) |
 | **Auto checks**, above the steps | Turns every [auto check](#what-each-action-expects) on or off, as `--no-auto-checks` |
 | ✕ on a check | Drops that auto check, or deletes a check you chose; ↺ brings a dropped one back |
 | The trash on a step, Delete | Deletes the action from the flow, with what led to it and its checks |
@@ -476,26 +479,63 @@ pause.
 ### The Elements view
 
 For what a hover cannot reach or single out (a menu item in a portal, a nested dropdown, an element under another),
-**Elements** shows the recorded page's elements as a tree, as a browser's developer tools do: each element's tag, id,
-classes (those a framework generates left out), role, test id, name and own text. A level loads as you open it, so a
-large page stays fast, and the tree follows the page as it changes, once you leave it alone for a moment. Search by
-text, id or CSS selector (Enter goes to the next match), or **Refresh**.
+**Elements** shows the recorded page's elements as a tree, as a browser's developer tools do. Each row is the tag, its
+id and classes (those a framework generates left out), then, dimmed: its role (a `tr` is a `row`), its accessible name,
+its own text, its test id, and for an element with no text of its own, the start of the text inside it, so four
+`div.field` read `Name`, `Category`, `Stock` and `Notes`. A level loads as you open it, and only the rows in view are
+drawn, so a page of thousands of elements stays fast. Shadow roots show as `#shadow-root`, and a same-origin frame's
+elements inside its `iframe`.
 
-Point at an element to see it in the app; click it to pick it. The inspector then lists every locator for it, each
-checked against the page, chosen by the same rules as for a recorded click, and the steps it can become:
+Pick an element the way you would in the developer tools:
+
+- **In the app**: `Ctrl+Shift+C` (in the app or the panel), or the arrow at the top left of the view. A box follows the
+  pointer in the app, named as the tree names it (`li 192 × 32 option “Cables”`), and the tree opens to the element and
+  scrolls to it. A click picks it: the app never sees that click, nothing is recorded, and the keys go on in the panel.
+  `Esc` there, or `Ctrl+Shift+C` again, leaves without picking. A menu that closes when the focus leaves the app stays
+  open, as the focus stays there.
+- **In the tree**: point at a row to see its element in the app, scrolled into view if it is out of it; click a row to
+  pick it. The path to the element picked shows under the tree; click a part of it to pick that one.
+- **By search**: type in the tree or the search field. It finds by text in an element's id, test id, name, label or
+  own text, by CSS (`#filter`, `.menu li`) or by role (`role=button[name="Save"]`), says how many (`2 of 11`), and
+  picks the first as it finds it; Enter and Shift+Enter go to the next and the one before. Every match is boxed in the
+  app, the one you are at stronger, and the app scrolls to it.
+
+When a dialog, a menu or a list opens on the page, **Open on the page** names it above the tree (`listbox “Category”`):
+click it to go to it, opened. The tree follows the page as it changes, once you leave it alone for a moment, keeping
+what you opened and picked; **Refresh** reads it at once.
+
+**Interactive only**, the funnel beside the search, leaves out what you do not act on: what is inside a wrapper shows in
+its place, and `⋯` before an element says wrappers were left out around it. Rows, dialogs, menus, lists, tables, forms
+and frames stay, so a table row holds its button directly. The panel remembers it.
+
+| Key, in the tree | Does |
+|---|---|
+| ↑ / ↓, Page Up / Page Down, Home / End | Picks the element before or after |
+| → / ← | Opens the element, or goes to its first child; closes it, or goes to the element around it |
+| Enter | Makes the step marked `↵` in the inspector |
+| A letter | Starts a search with it |
+| Esc | Clears the search, or leaves inspect mode |
+
+The inspector shows the steps the element can become, each with the lines it writes, `−` for those it takes out and `+`
+for those it adds, and how many elements its locator finds (`its locator: 1 match`). Each changes the code at once, and
+Undo takes it back:
 
 | In the inspector | Does |
 |---|---|
-| **Use for this step** | Has the step selected on the left act on this element instead; the code changes at once |
-| **Add click** | Adds a click on it after the selected step, or last |
-| **Add fill…** | Adds typing a text you give into it (a text field), as a setting of the flow like a recorded one |
-| **Copy locator** | Copies its locator's C# |
+| **Use for “…”** | Has the step selected on the left act on this element instead. Marked `↵` when the element is around, inside or in the same row as that step's element: a click recorded on the wrong one |
+| **Add click** | Adds a click on it where the next action goes: last, or in a part [recorded again](#recording-a-part-again). Marked `↵` otherwise |
+| **Add fill…** | For a text field: adds typing a text you give into it, as a setting of the flow like a recorded one. Enter opens it, the text is typed at once, Enter adds it. Marked `↵` for a text field |
+| **Add check** | Adds a [check](#checking-what-the-page-shows) of it, of the kind you choose: its text, a field's value, whether it shows, the count of items it is one of… |
+| **Copy** | Copies its locator's C# |
 
-A menu that closes as soon as the focus leaves the app closes before you can click into the panel. Open it, press `F4`
-in the app, and the panel shows the page's elements as they were then, opened at the menu, with the locators of each
-element a click acts on found at that moment. Pick an item even after the menu closed: it is marked "Not on the page
-now", and a click added on it replays, as the step before it opens the menu again. **Back to live** leaves the frozen
-tree. Neither the tree nor `F4` changes the page or is recorded.
+Below them, every locator for it, each checked against the page, chosen by the same rules as for a recorded click.
+
+A menu that closes as soon as the focus leaves the app closes before you can click into the panel, unless you pick in
+the app. Else open it, press `F4` in the app, and the panel shows the page's elements as they were then, opened at the
+menu, with the locators of each element a click acts on found at that moment. Pick an item even after the menu closed:
+it is marked "Not on the page now", and a click added on it replays, as the step before it opens the menu again.
+**Back to live** leaves the frozen tree. Neither the tree, inspect mode nor `F4` changes the page or is recorded. An
+element in a frame can be found and seen, but not made a step: the flow does not act inside frames.
 
 ## What gets generated
 

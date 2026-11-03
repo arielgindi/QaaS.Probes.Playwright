@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { tokenizeCSharp } from '../syntax/csharp';
 import { candidateKind, candidateStatus, cls, effectLabel, isUnusable, subjectOf, verbOf } from '../text';
 import { duration } from '../test';
 import type { Action, Candidate, PickedElement, Setting, TestStep } from '../types';
@@ -283,42 +284,80 @@ function InPlace(props: {
 
 interface ElementProps {
   element?: PickedElement;
-  /** The step "Use for this step" changes, and the one an added step follows. */
+  /** The step "Use for" changes. */
   step?: Action;
-  last: boolean;
+  /** Where a step added goes, e.g. "at the end". */
+  where: string;
   disabled: boolean;
+  /** What Undo takes back. */
+  undo?: string;
   onChoose(candidate: number | null): void;
   onHighlight(candidate: number | null): void;
   onUse(action: Action): void;
-  onAddClick(after?: string): void;
-  onAddFill(value: string, after?: string): void;
+  onAdd(kind: 'click' | 'fill' | 'check', value: string): void;
+  /** Another check chosen, for its lines to show. */
+  onCheckKind(kind: string): void;
+  onUndo(): void;
+  /** Set to what Enter in the tree does: what the inspector offers first. */
+  primary: { current: (() => void) | null };
 }
 
-/** The element picked in the Elements view: every way to locate it, and the steps it can become. */
-export function ElementInspector({ element, step, last, disabled, onChoose, onHighlight, onUse, onAddClick, onAddFill }: ElementProps) {
+/** The element picked in the Elements view: the steps it can become, each with the lines it writes, and every way to locate it. */
+export function ElementInspector({ element, step, where, disabled, undo, onChoose, onHighlight, onUse, onAdd, onCheckKind, onUndo, primary }: ElementProps) {
   const [fill, setFill] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const fillField = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setFill(null);
     setDone(null);
   }, [element?.node]);
   useEffect(() => {
     if (!done) return;
-    const timer = window.setTimeout(() => setDone(null), 2400);
+    const timer = window.setTimeout(() => setDone(null), 8000);
     return () => window.clearTimeout(timer);
   }, [done]);
+  // The field takes the keys as it opens: what is typed next is the text.
+  useEffect(() => {
+    if (fill !== null) fillField.current?.focus();
+  }, [fill !== null]);
+
+  const previews = new Map((element?.previews ?? []).map((preview) => [preview.kind, preview]));
+  const checks = element?.checks ?? [];
+  const check = checks[element?.check ?? 0];
+  const canUse = !!step && previews.has('use') && !disabled;
+  const use = () => {
+    if (!step || !canUse) return;
+    onUse(step);
+    setDone(`“${verbOf(step)} ${subjectOf(step)}” now acts on it`);
+  };
+  const click = () => {
+    if (disabled) return;
+    onAdd('click', '');
+    setDone(`Added a click ${where}`);
+  };
+  const openFill = () => {
+    if (disabled || !element?.fillable) return;
+    setFill(fill ?? '');
+    fillField.current?.focus();
+  };
+  const addCheck = () => {
+    if (disabled || !check) return;
+    onAdd('check', check.kind);
+    setDone(`Added a check ${where}: ${check.name.toLowerCase()}`);
+  };
+  const first = element?.primary === 'use' && canUse ? 'use' : element?.primary === 'fill' && element.fillable ? 'fill' : 'click';
+  primary.current = !element ? null : first === 'use' ? use : first === 'fill' ? openFill : click;
 
   if (!element)
     return (
       <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
         <PaneHeader title="Inspector" />
-        <Empty icon="elements" title="No element picked" text="Pick an element in the tree to see every way to locate it, and to make it a step." />
+        <Empty icon="elements" title="No element picked" text="Pick an element in the tree, or in the app with Ctrl+Shift+C, to make it a step and see every way to locate it." />
       </aside>
     );
 
   const candidate = element.candidates.find((option) => option.index === element.picked);
-  const after = step && !last ? step.id : undefined;
-  const where = after ? `after “${verbOf(step!)} ${subjectOf(step!)}”` : 'at the end';
+  const status = candidate && candidateStatus(candidate);
   const copy = async () => {
     if (candidate && (await copyText(candidate.code))) setDone('Copied the locator');
   };
@@ -338,70 +377,104 @@ export function ElementInspector({ element, step, last, disabled, onChoose, onHi
             opens it again.
           </Note>
         )}
-        <div class="mt-4 rounded-xl border border-line bg-canvas p-3">
-          <div class="flex flex-wrap gap-1.5">
-            <ActionButton primary disabled={disabled || !step} title={step ? undefined : 'Select a step on the left first'} onClick={() => {
-              if (!step) return;
-              onUse(step);
-              setDone(`“${verbOf(step)} ${subjectOf(step)}” now acts on it`);
-            }}>
-              <Icon name="target" size={14} />
-              Use for this step
-            </ActionButton>
-            <ActionButton disabled={disabled} onClick={() => {
-              onAddClick(after);
-              setDone(`Added a click ${where}`);
-            }}>
-              <Icon name="click" size={14} />
-              Add click
-            </ActionButton>
-            <ActionButton disabled={disabled || !element.fillable} title={element.fillable ? undefined : 'Only a text field can be filled'} onClick={() => setFill(fill === null ? '' : null)} pressed={fill !== null}>
-              <Icon name="fill" size={14} />
-              Add fill…
-            </ActionButton>
-            <ActionButton disabled={!candidate} onClick={copy} title="Copy the locator's C#">
-              <Icon name="copy" size={14} />
-              Copy locator
-            </ActionButton>
-          </div>
-          {fill !== null && (
-            <form
-              class="mt-2.5 flex gap-1.5"
-              onSubmit={(event) => {
-                event.preventDefault();
-                onAddFill(fill, after);
-                setFill(null);
-                setDone(`Added a fill ${where}`);
-              }}
-            >
-              <input
-                autoFocus
-                dir="auto"
-                value={fill}
-                placeholder="The text to type"
-                onInput={(event) => setFill(event.currentTarget.value)}
-                onKeyDown={(event) => event.key === 'Escape' && setFill(null)}
-                class="h-8 min-w-0 flex-1 rounded-lg border border-line-strong bg-panel px-2.5 text-[12.5px] text-fg outline-none placeholder:text-faint focus:border-accent/60"
-              />
-              <ActionButton primary submit>Add</ActionButton>
-            </form>
-          )}
-          <p class={cls('mt-2.5 text-[11.5px] leading-snug', done ? 'text-ok' : 'text-faint')} role="status">
-            {done ? (
-              <span class="inline-flex items-center gap-1">
-                <Icon name="tick" size={12} class="stroke-[2.4]" />
-                {done}
+        <section aria-label="Make it a step" class="mt-4 space-y-1.5">
+          <div class="flex items-center gap-2 text-[11px] font-medium tracking-[0.06em] text-faint uppercase">
+            Make it a step
+            {status && (
+              <span
+                title={candidate ? `${candidateKind(candidate)}: what the flow finds it by` : undefined}
+                class={cls('ml-auto inline-flex items-center gap-1 rounded-full px-2 py-px text-[11px] font-medium tracking-normal normal-case tabular-nums', status.ok ? 'bg-ok/12 text-ok' : 'bg-bad/12 text-bad')}
+              >
+                <Icon name={status.ok ? 'tick' : 'cross'} size={10} class="stroke-[2.6]" />
+                its locator: {status.text}
               </span>
-            ) : step ? (
-              <>
-                “Use for this step” changes “{verbOf(step)} {subjectOf(step)}”. A step you add goes {where}, written as a
-                recorded one.
-              </>
-            ) : (
-              <>A step you add goes at the end; select a step on the left to put it after that one.</>
             )}
-          </p>
-        </div>
+          </div>
+          <StepChoice
+            icon="target"
+            label={step ? `Use for “${verbOf(step)} ${subjectOf(step)}”` : 'Use for the selected step'}
+            hint={step ? (canUse ? '' : 'it acts on no element') : 'select one on the left'}
+            title={step && canUse ? `“${verbOf(step)} ${subjectOf(step)}” acts on this element instead` : undefined}
+            primary={first === 'use'}
+            disabled={!canUse}
+            code={previews.get('use')?.code}
+            was={previews.get('use')?.was}
+            onClick={use}
+          />
+          <StepChoice icon="click" label="Add click" hint={where} primary={first === 'click'} disabled={disabled} code={previews.get('click')?.code} onClick={click} />
+          {element.fillable && (
+            <StepChoice icon="fill" label="Add fill…" hint={where} primary={first === 'fill'} disabled={disabled} pressed={fill !== null} code={previews.get('fill')?.code} onClick={openFill}>
+              {fill !== null && (
+                <form
+                  class="mt-2 flex gap-1.5"
+                  onClick={(event) => event.stopPropagation()}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    onAdd('fill', fill);
+                    setFill(null);
+                    setDone(`Added a fill ${where}`);
+                  }}
+                >
+                  <input
+                    ref={fillField}
+                    dir="auto"
+                    value={fill}
+                    aria-label="The text to type"
+                    placeholder="The text to type, then Enter"
+                    onInput={(event) => setFill(event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Escape') return;
+                      event.stopPropagation();
+                      setFill(null);
+                    }}
+                    class="h-8 min-w-0 flex-1 rounded-lg border border-line-strong bg-panel px-2.5 text-[12.5px] text-fg outline-none placeholder:text-faint focus:border-accent/60"
+                  />
+                  <ActionButton primary submit>
+                    Add
+                  </ActionButton>
+                </form>
+              )}
+            </StepChoice>
+          )}
+          {check && (
+            <StepChoice icon="checkCircle" label="Add check" hint={where} disabled={disabled} code={previews.get('check')?.code} onClick={addCheck}>
+              <select
+                aria-label="What to check"
+                value={check.kind}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                onChange={(event) => onCheckKind(event.currentTarget.value)}
+                class="mt-2 h-7 w-full max-w-full rounded-md border border-line-strong bg-panel px-1.5 text-[12px] text-fg outline-none focus:border-accent/60"
+              >
+                {checks.map((each) => (
+                  <option key={each.kind} value={each.kind}>
+                    {each.name}
+                    {each.value !== undefined && each.value !== '' ? ` “${each.value.length > 40 ? `${each.value.slice(0, 39)}…` : each.value}”` : ''}
+                  </option>
+                ))}
+              </select>
+            </StepChoice>
+          )}
+          <div class="flex min-h-7 items-center gap-2 pt-1 text-[11.5px] leading-snug" role="status">
+            {done ? (
+              <span class="inline-flex min-w-0 items-center gap-1 text-ok">
+                <Icon name="tick" size={12} class="shrink-0 stroke-[2.4]" />
+                <span class="min-w-0 truncate">{done}</span>
+                {undo && done !== 'Copied the locator' && (
+                  <button type="button" onClick={() => { onUndo(); setDone(null); }} title={undo} class="ml-1 shrink-0 rounded px-1 font-medium text-accent-fg transition hover:underline">
+                    Undo
+                  </button>
+                )}
+              </span>
+            ) : (
+              <span class="text-faint">Enter in the tree makes the one marked ↵; Undo takes any back.</span>
+            )}
+            <button type="button" disabled={!candidate} onClick={copy} title="Copy the locator's C#" class="ml-auto inline-flex shrink-0 items-center gap-1 rounded px-1 text-muted transition hover:text-fg disabled:opacity-40">
+              <Icon name="copy" size={12} />
+              Copy
+            </button>
+          </div>
+        </section>
         {element.candidates.length > 0 ? (
           <Section
             title="Locator"
@@ -423,6 +496,75 @@ export function ElementInspector({ element, step, last, disabled, onChoose, onHi
         )}
       </div>
     </aside>
+  );
+}
+
+// A step the element can become: what it does, the lines it writes, and for the first, the key that makes it.
+function StepChoice(props: {
+  icon: IconName;
+  label: string;
+  hint: string;
+  title?: string;
+  primary?: boolean;
+  pressed?: boolean;
+  disabled?: boolean;
+  code?: string;
+  was?: string;
+  onClick(): void;
+  children?: ComponentChildren;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={props.disabled ? -1 : 0}
+      aria-disabled={props.disabled}
+      aria-pressed={props.pressed}
+      title={props.title}
+      onClick={() => !props.disabled && props.onClick()}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        if (!props.disabled) props.onClick();
+      }}
+      class={cls(
+        'block w-full rounded-lg border px-3 py-2 text-left transition',
+        props.disabled ? 'cursor-not-allowed border-line opacity-50' : 'cursor-pointer hover:bg-raised',
+        !props.disabled && (props.primary ? 'border-accent/55 bg-accent/7 shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_9%,transparent)]' : 'border-line bg-canvas hover:border-line-strong'),
+      )}
+    >
+      <span class="flex min-w-0 items-center gap-2">
+        <Icon name={props.icon} size={14} class={cls('shrink-0', props.primary ? 'text-accent-fg' : 'text-muted')} />
+        <span dir="auto" class="min-w-0 truncate text-[12.5px] font-medium text-fg">{props.label}</span>
+        {props.hint && <span class="min-w-0 shrink-0 truncate text-[11.5px] text-faint">{props.hint}</span>}
+        {props.primary && !props.disabled && <kbd class="ml-auto shrink-0 rounded border border-accent/40 px-1 font-sans text-[10.5px] leading-4 text-accent-fg">↵</kbd>}
+      </span>
+      {props.was && <CodeLines code={props.was} gone />}
+      {props.code && <CodeLines code={props.code} />}
+      {props.children}
+    </div>
+  );
+}
+
+// The lines a step writes (+) or takes out (−), the first few of them.
+const SHOWN_LINES = 4;
+
+function CodeLines({ code, gone }: { code: string; gone?: boolean }) {
+  const lines = tokenizeCSharp(code);
+  const more = lines.length - SHOWN_LINES;
+  return (
+    <code dir="ltr" class={cls('mt-1.5 block font-mono text-[11.5px] leading-[1.55] break-words whitespace-pre-wrap', gone && 'line-through decoration-bad/60 opacity-60')}>
+      {lines.slice(0, more > 1 ? SHOWN_LINES : lines.length).map((tokens, at) => (
+        <span key={at} class="block">
+          <span class={cls('mr-1.5 select-none', gone ? 'text-bad' : 'text-ok')}>{gone ? '−' : '+'}</span>
+          {tokens.map((token, index) => (
+            <span key={index} class={`tk-${token.kind}`}>
+              {token.text}
+            </span>
+          ))}
+        </span>
+      ))}
+      {more > 1 && <span class="block font-sans text-[11px] text-faint no-underline">… {more} more lines</span>}
+    </code>
   );
 }
 

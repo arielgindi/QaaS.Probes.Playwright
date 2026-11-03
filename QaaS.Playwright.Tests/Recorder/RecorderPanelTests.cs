@@ -210,7 +210,7 @@ public class RecorderPanelTests
             await app.EvaluateAsync("() => document.activeElement.blur()");
             await Expect(app.GetByRole(AriaRole.Menu)).ToHaveCountAsync(0);
 
-            await view.GetByRole(AriaRole.Treeitem).Filter(new() { HasText = "Archive" }).ClickAsync();
+            await view.GetByRole(AriaRole.Treeitem, new() { Name = "menuitem “Archive”" }).ClickAsync();
             await Expect(view.GetByText("Not on the page now")).ToBeVisibleAsync();
             await view.GetByRole(AriaRole.Button, new() { Name = "Add click" }).ClickAsync();
             await view.GetByRole(AriaRole.Radio, new() { Name = "Code" }).ClickAsync();
@@ -224,6 +224,104 @@ public class RecorderPanelTests
 
         Assert.That(recording.Actions.Select(action => (action.Target?.Text, action.Added)),
             Is.EqualTo(new[] { ("Actions", false), ("Archive", true) }), "F4 and the panel record nothing themselves");
+    }
+
+    [Test]
+    [Category("EndToEnd")]
+    public async Task ElementsView_InspectModePicksWhatIsClickedInTheApp_WithoutClickingIt_AndEnterAddsTheStepItPreviews()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var options = new RecordingOptions($"{site.Url}/helpdesk")
+        {
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
+        };
+        var session = await RecordingSession.StartAsync(options, _ => { });
+        Recording recording;
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "assign-ticket", options.Url]));
+            var app = session.Page;
+            var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+            var assign = app.GetByRole(AriaRole.Row, new() { Name = "TCK-1041" }).GetByRole(AriaRole.Button);
+            const string button = ".GetByRole(AriaRole.Button, new() { Name = \"Assign to me\", Exact = true }).ClickAsync();";
+
+            // Ctrl+Shift+C in the app: the panel shows the page's elements, and the tree follows the pointer there.
+            await app.Keyboard.PressAsync("Control+Shift+C");
+            await Expect(view.GetByText("Point at an element in the app")).ToBeVisibleAsync();
+            await assign.HoverAsync();
+            await Expect(view.GetByRole(AriaRole.Treeitem, new() { Name = "button “Assign to me”" })).ToBeVisibleAsync();
+
+            // A click picks the button: the app never sees it, and it is not recorded.
+            await assign.ClickAsync();
+            await Expect(view.GetByRole(AriaRole.Treeitem, new() { Selected = true })).ToContainTextAsync("Assign to me");
+            await Expect(view.GetByText("Point at an element in the app")).ToBeHiddenAsync();
+            await Expect(app.GetByRole(AriaRole.Alert)).ToHaveCountAsync(0);
+            var addClick = view.GetByRole(AriaRole.Button, new() { Name = "Add click" });
+            await Expect(addClick).ToContainTextAsync("+await page.GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.Ticket })");
+            await Expect(addClick).ToContainTextAsync(button);
+
+            // Enter in the tree adds the step marked first, as previewed.
+            await view.GetByRole(AriaRole.Tree).PressAsync("Enter");
+            await view.GetByRole(AriaRole.Radio, new() { Name = "Code" }).ClickAsync();
+            await Expect(view.GetByRole(AriaRole.Region, new() { Name = "Code" })).ToContainTextAsync(button);
+        }
+        finally
+        {
+            recording = await session.StopAsync();
+        }
+
+        Assert.That(recording.Actions.Select(action => (action.Target?.Text, action.Added)),
+            Is.EqualTo(new[] { ("Assign to me", true) }), "inspect mode records nothing itself");
+    }
+
+    [Test]
+    [Category("EndToEnd")]
+    public async Task ElementsView_FindsAnElementByRole_AndUsesItForTheSelectedStep_AsPreviewed_WhichUndoTakesBack()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var options = new RecordingOptions($"{site.Url}/helpdesk")
+        {
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
+        };
+        var session = await RecordingSession.StartAsync(options, _ => { });
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "assign-ticket", options.Url]));
+            var app = session.Page;
+            var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+            var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
+
+            // A click recorded on the row's subject, where the person meant its button.
+            await app.GetByText("VPN drops every hour").ClickAsync();
+            await Expect(code).ToContainTextAsync("VPN drops every hour");
+            await view.GetByRole(AriaRole.Radio, new() { Name = "Elements" }).ClickAsync();
+
+            // Found by role, the second of three: the first is picked as it is found, Enter goes to the next.
+            var find = view.GetByRole(AriaRole.Textbox, new() { Name = "Find an element" });
+            await find.FillAsync("role=button[name=\"Assign to me\"]");
+            await Expect(view.GetByText("1 of 3")).ToBeVisibleAsync();
+            await find.PressAsync("Enter");
+            await Expect(view.GetByText("2 of 3")).ToBeVisibleAsync();
+
+            var use = view.GetByRole(AriaRole.Button, new() { Name = "Use for" });
+            const string button = ".GetByRole(AriaRole.Button, new() { Name = \"Assign to me\", Exact = true })";
+            await Expect(use).ToContainTextAsync("−    .GetByRole(AriaRole.Row, new() { Name = $\"{Configuration.Ticket} VPN drops every hour Assign to me\"");
+            await Expect(use).ToContainTextAsync("+await page.GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.Ticket })");
+            await Expect(use).ToContainTextAsync(button);
+            await use.ClickAsync();
+            await view.GetByRole(AriaRole.Radio, new() { Name = "Code" }).ClickAsync();
+            await Expect(code).ToContainTextAsync(button);
+
+            await view.Keyboard.PressAsync("Control+z");
+            await Expect(code).ToContainTextAsync("VPN drops every hour Assign to me");
+            await Expect(code).Not.ToContainTextAsync(button);
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
     }
 
     private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");

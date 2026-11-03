@@ -420,7 +420,7 @@ const page: Spec = ['body', {}, [
         ['thead', {}, [['tr', {}, [['th', { text: 'Ticket' }], ['th', { text: 'Subject' }], ['th', { text: 'Owner' }]]]]],
         ['tbody', {}, ['TCK-1040 Password reset', 'TCK-1041 VPN drops every hour', 'TCK-1042 Laptop for a new starter'].map((row) => {
           const [key, ...subject] = row.split(' ');
-          return ['tr', { classes: 'MuiTableRow-root' }, [['td', { text: key }], ['td', { text: subject.join(' ') }],
+          return ['tr', { classes: 'MuiTableRow-root', implicit: 'row', accName: `${row} ⋮` }, [['td', { text: key, implicit: 'cell' }], ['td', { text: subject.join(' '), implicit: 'cell' }],
             ['td', {}, [['button', { label: `Actions for ${key}`, classes: 'MuiIconButton-root', text: '⋮' }]]]]] as Spec;
         })],
       ]],
@@ -462,6 +462,23 @@ const closeTicket: PickedElement = {
     { index: 0, kind: 'role', label: 'menuitem "Close ticket"', code: 'page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket", Exact = true })', count: 1, usable: true },
     { index: 1, kind: 'generator', label: 'GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket" })', code: 'page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket" })', count: 1, usable: true },
   ],
+  // The lines each step on it would write, as the recorder previews them.
+  previews: [
+    {
+      kind: 'use',
+      was: 'await page.GetByRole(AriaRole.Button, new() { Name = "Actions for TCK-1042" }).ClickAsync();',
+      code: 'await page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket", Exact = true }).ClickAsync();',
+    },
+    { kind: 'click', code: 'await page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket", Exact = true }).ClickAsync();' },
+    { kind: 'check', code: 'await Expect(page.GetByRole(AriaRole.Menuitem, new() { Name = "Close ticket", Exact = true })).ToHaveTextAsync("Close ticket"); // check' },
+  ],
+  checks: [
+    { kind: 'text', name: 'Has text', value: 'Close ticket' },
+    { kind: 'visible', name: 'Visible' },
+    { kind: 'hidden', name: 'Gone' },
+  ],
+  check: 0,
+  primary: 'click',
 };
 
 // A failure screenshot: the helpdesk's ticket dialog, drawn small.
