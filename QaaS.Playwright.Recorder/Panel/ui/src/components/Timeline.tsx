@@ -50,7 +50,7 @@ interface Asking {
   step: boolean;
   after: boolean;
   label: string;
-  /** The part is a loop, of this many actions. */
+  /** The part is a loop, of this many repeats. */
   loop?: number;
 }
 
@@ -67,8 +67,10 @@ export function Timeline(props: Props) {
     if (!canRerecord) setAsking(null);
   }, [canRerecord]);
   const ask = (step: Step, action: Action, whole: boolean, after: boolean) => {
-    const loop = step.actions.length > 1 && step.actions.some((other) => other.id !== action.id && other.lines?.first === action.lines?.first);
-    setAsking({ action: action.id, step: whole, after, label: whole || loop ? step.name : `${verbOf(action)} “${subjectOf(action)}”`, loop: loop ? step.actions.length : undefined });
+    // A loop's repeats share the lines of its body.
+    const repeats = step.actions.filter((other) => other.lines && other.lines.first === action.lines?.first).length;
+    const loop = repeats > 1;
+    setAsking({ action: action.id, step: whole, after, label: whole || loop ? step.name : `${verbOf(action)} “${subjectOf(action)}”`, loop: loop ? repeats : undefined });
   };
   const confirm = () => {
     if (asking) props.onRerecord(asking.action, asking.step, asking.after, asking.label);
@@ -236,10 +238,10 @@ function Confirm({ asking, login, onConfirm, onCancel }: { asking: Asking; login
         <span dir="auto">{asking.label}</span>?
       </p>
       <p class="mt-1 text-muted">
-        The recorded window goes back to the start of the flow, {from}and replays it {asking.after ? 'through this step' : 'up to this step'}, really doing what it
-        does in your app; nothing is recorded meanwhile. {asking.after ? 'Then what you do goes here, before the steps after it.' : 'Then do it again: it replaces what it had, and the steps after it stay.'}
+        The recorded window goes back to the start of the flow, {from}and replays it {asking.after ? `through this ${asking.loop ? 'loop' : 'step'}` : `up to this ${asking.loop ? 'loop' : 'step'}`},
+        really doing what it does in your app; nothing is recorded meanwhile. {asking.after ? 'Then what you do goes here, before the steps after it.' : 'Then do it again: it replaces what it had, and the steps after it stay.'}
       </p>
-      {asking.loop && !asking.after && <p class="mt-1 text-warn">It is a loop: all {plural(asking.loop, 'action')} of its repeats are recorded again together.</p>}
+      {asking.loop && !asking.after && <p class="mt-1 text-warn">It is a loop: re-recording one repeat re-records the whole loop, all {plural(asking.loop, 'repeat')} of it.</p>}
       {asking.loop && asking.after && <p class="mt-1 text-warn">It is a loop: what you record goes after all its repeats.</p>}
       <div class="mt-2 flex items-center gap-1.5">
         <button

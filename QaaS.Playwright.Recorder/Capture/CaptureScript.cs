@@ -855,7 +855,7 @@ internal static class CaptureScript
             else if (state === 'testing') showPill('Testing the flow', part ? 'replaying it here; nothing is recorded' : 'in its own window; nothing is recorded', true, true);
             else if (state === 'login' && loginText) showPill(loginText, loginHint, true, true);
             else if (state === 'trying') showPill('Trying: nothing is recorded', 'F7 records again', true, true);
-            else if (state === 'recording' && part) showPill(`Re-recording ${part}`, 'F2 when done', true, true);
+            else if (state === 'recording' && part) showPill(part, 'F2 when done', true, true);
             else if (view) view.state.className = 'state';
           }
           function applyState(next, nextPart) {

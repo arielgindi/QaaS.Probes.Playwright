@@ -154,7 +154,10 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// </summary>
     public CaptureLog? Tried { get; private set; }
 
-    /// <summary>The part being recorded again, as the overlay names it (<see cref="Rerecording"/>); else null.</summary>
+    /// <summary>
+    /// What the overlay says of the part being recorded again, e.g. <c>Re-recording FillNewTicketAsync</c>
+    /// (<see cref="Rerecording"/>); else null.
+    /// </summary>
     public string? RerecordingPart
     {
         get { lock (_gate) return _rerecording; }
@@ -376,7 +379,7 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>
     /// After a replay up to a part of the flow, which the person records again (<see cref="CaptureLog.BeginSplice"/>):
-    /// records from the pages as the replay left them, named <paramref name="part"/> in the overlay, until
+    /// records from the pages as the replay left them, the overlay saying <paramref name="part"/>, until
     /// <see cref="Rerecording"/> is given null. The pages went where the flow goes, so nothing is gone to by its address.
     /// </summary>
     public RecordingState ResumeAfterReplay(string part)
@@ -392,7 +395,7 @@ internal sealed class RecordingSession : IAsyncDisposable
         return Announce(RecordingState.Recording);
     }
 
-    /// <summary>Names the part the person records again in the overlay, which says how to end it; null, none.</summary>
+    /// <summary>Says in the overlay what part the person records again, and how to end it; null, none.</summary>
     public void Rerecording(string? part)
     {
         lock (_gate) _rerecording = part;

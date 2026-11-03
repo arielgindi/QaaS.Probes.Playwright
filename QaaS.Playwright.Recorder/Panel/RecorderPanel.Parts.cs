@@ -79,7 +79,7 @@ internal sealed partial class RecorderPanel
         }
 
         _part = new PartRecording(part, after);
-        _session.Rerecording(part.Label);
+        _session.Rerecording(after ? $"Recording after {part.Label}" : $"Re-recording {part.Label}");
         _namespace ??= ProjectNamespace.Of(Request.OutputDir);
         var request = Request;
         var namespaceName = _namespace;
@@ -118,7 +118,7 @@ internal sealed partial class RecorderPanel
         _part!.Part = part;
         _part.Phase = "recording";
         _session.Log.BeginSplice(part.Label, part.Replaced, part.After, part.Before);
-        _session.ResumeAfterReplay(part.Label);
+        _session.ResumeAfterReplay(_part.After ? $"Recording after {part.Label}" : $"Re-recording {part.Label}");
         _tester.Clear();
         ConsoleUi.Rerecording(part.Label, _part.After);
     }
@@ -186,7 +186,7 @@ internal sealed partial class RecorderPanel
         var at = ids.Take(before).LastOrDefault(planned.Contains);
         return new PanelRerecord(part.Part.Label, part.Phase, part.After)
         {
-            Loop = part.Part.Loop, Fresh = [.. ids.Where(fresh.Contains)], At = at, FailedAt = part.FailedAt,
+            Loop = part.Part.Loop, Fresh = [.. ids.Where(id => fresh.Contains(id) && planned.Contains(id))], At = at, FailedAt = part.FailedAt,
             Problem = part.Problem, Paused = part.Paused,
         };
     }
