@@ -453,6 +453,7 @@ public class RealSiteRecordingTests
                 .And.Contain("GetByRole(AriaRole.Link, new() { Name = $\"{Configuration.FirstName} Abernathy\" })").And.Not.Contain("OpenLLeonie"),
                 "a person's link without the initial of their avatar, in its name or its step's");
             Assert.That(customersFlow.Yaml, Does.Contain("Search: ''").And.Not.Contain("Q:"), "a field named q by what it says");
+            Assert.That(customersFlow.Code, Does.Not.Contain("goes to /react-admin-demo/#/[id]"), "a sort changes the query, and goes to no other page");
             Assert.That(customersFlow.Code, Does.Not.Contain("UNDO").And.Not.Contain("ToHaveURLAsync(new Regex(\"/react-admin-demo/#/customers\\\\?\"))")
                 .And.Contain("GetByText(\"Customers\")).ToBeVisibleAsync(); // check"),
                 "no message's button, no address the page was at already, no element checked to have the text it is found by");

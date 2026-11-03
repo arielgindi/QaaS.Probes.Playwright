@@ -470,7 +470,9 @@ internal static partial class StepNamer
             var closed = action.Effects.Where(effect => effect.Kind == "dialogClosed").Select(effect => effect.Dialog?.Title);
             foreach (var title in closed.Distinct())
                 results.Add(title == Step.Dialog ? "closes the dialog" : $"closes {Quote(title) ?? "a dialog"}");
-            if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route)
+            // Not a page of the same route, as a sort or a filter changes only the query.
+            if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route
+                && route != Route(action.Source.Url))
                 results.Add($"goes to {route}");
             if (action.Effects.FirstOrDefault(FlowWriter.IsAlert) is { } alert)
                 results.Add(Short || Quote(FlowWriter.WithoutButton(alert.Text!)) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
@@ -517,7 +519,8 @@ internal static partial class StepNamer
     public static string? Route(string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
-        var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment : uri.AbsolutePath;
+        // A route in the fragment without its query: #/customers?filter=… is #/customers.
+        var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment.Split('?')[0] : uri.AbsolutePath;
         return string.Join('/', route.Split('/').Select(segment =>
             segment.Any(char.IsDigit) || (segment.Length > 12 && UnstableId.IsGuidLike(segment))
                 ? "[id]"
