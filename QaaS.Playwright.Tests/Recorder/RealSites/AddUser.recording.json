@@ -1,0 +1,4814 @@
+{
+  "startUrl": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+  "actions": [
+    {
+      "id": "htjbdg-1",
+      "t": 1793727292809,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Admin",
+      "raw": "Admin",
+      "final": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "username",
+        "text": "Username",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='username']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "username"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Username"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Username\" })",
+            "selector": "internal:role=textbox[name=\"Username\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "htjbdg-2",
+      "t": 1793727295760,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "admin123",
+      "raw": "admin123",
+      "final": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "type": "password",
+        "name": "password",
+        "text": "Password",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='password']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "password"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Password\" })",
+            "selector": "internal:role=textbox[name=\"Password\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "htjbdg-3",
+      "t": 1793727301015,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Login",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Login",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Login"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Login\" })",
+            "selector": "internal:role=button[name=\"Login\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "htjbdg-3",
+          "t": 1793727301846,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "l4b9ev-1",
+      "t": 1793727314725,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"Sidepanel\").Locator(\"div\").Filter(new() { HasText = \"AdminPIMLeaveTimeRecruitmentMy\" }).Locator(\"div\").Nth(1)",
+            "selector": "internal:label=\"Sidepanel\"i >> div >> internal:has-text=\"AdminPIMLeaveTimeRecruitmentMy\"i >> div >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "l4b9ev-2",
+      "t": 1793727317472,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Admin",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Admin",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Admin"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Admin\" })",
+            "selector": "internal:role=link[name=\"Admin\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "l4b9ev-2",
+          "t": 1793727318033,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-1",
+      "t": 1793727323383,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "on",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"\" }).GetByLabel(\"\")",
+            "selector": "internal:role=columnheader[name=\"\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-5",
+      "t": 1793727354614,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": false,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "18",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "manimarann",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "manimarann"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" manimarann ESS Manimaran N\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\" manimarann ESS Manimaran N\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-6",
+      "t": 1793727355896,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "manimarann",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "manimarann"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" manimarann ESS Manimaran N\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\" manimarann ESS Manimaran N\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "w3d5u2-6",
+          "sinceAction": 16,
+          "t": 1793727355912,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-7",
+      "t": 1793727357306,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "w3d5u2-7",
+          "sinceAction": 29,
+          "t": 1793727357335,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-8",
+      "t": 1793727364070,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "13",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "Jobinsam@6742",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Jobinsam@6742"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" Jobinsam@6742 ESS Jobin Sam\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\" Jobinsam@6742 ESS Jobin Sam\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-9",
+      "t": 1793727365502,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Jobinsam@6742",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Jobinsam@6742"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" Jobinsam@6742 ESS Jobin Sam\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\" Jobinsam@6742 ESS Jobin Sam\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "w3d5u2-9",
+          "sinceAction": 22,
+          "t": 1793727365524,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-10",
+      "t": 1793727366520,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "w3d5u2-10",
+          "sinceAction": 112,
+          "t": 1793727366632,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-11",
+      "t": 1793727372000,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "15",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "ksenia.kuz751968",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "ksenia.kuz751968"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" ksenia.kuz751968 ESS Ksenia\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\" ksenia.kuz751968 ESS Ksenia\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-12",
+      "t": 1793727373370,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "ksenia.kuz751968",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "ksenia.kuz751968"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" ksenia.kuz751968 ESS Ksenia\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\" ksenia.kuz751968 ESS Ksenia\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "w3d5u2-12",
+          "sinceAction": 34,
+          "t": 1793727373404,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-13",
+      "t": 1793727374639,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "w3d5u2-13",
+          "sinceAction": 94,
+          "t": 1793727374733,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-14",
+      "t": 1793727379242,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "14",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "kmn25326",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "kmn25326"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" kmn25326 ESS Joao Santos\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\" kmn25326 ESS Joao Santos\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-15",
+      "t": 1793727380470,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "kmn25326",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "kmn25326"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" kmn25326 ESS Joao Santos\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\" kmn25326 ESS Joao Santos\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "w3d5u2-15",
+          "sinceAction": 143,
+          "t": 1793727380613,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-16",
+      "t": 1793727381351,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "w3d5u2-16",
+          "sinceAction": 83,
+          "t": 1793727381434,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-17",
+      "t": 1793727385757,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "16",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "nqw35599",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "nqw35599"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" nqw35599 ESS Joao Santos\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\" nqw35599 ESS Joao Santos\"i] >> internal:label=\"\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-18",
+      "t": 1793727386937,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "nqw35599",
+          "header": "UsernameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "nqw35599"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \" nqw35599 ESS Joao Santos\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\" nqw35599 ESS Joao Santos\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "w3d5u2-18",
+          "sinceAction": 8,
+          "t": 1793727386945,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-19",
+      "t": 1793727387833,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "w3d5u2-19",
+          "sinceAction": 100,
+          "t": 1793727387933,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "w3d5u2-20",
+      "t": 1793727395044,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "-- Select --",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "-- Select --"
+              }
+            ],
+            "count": 2,
+            "text": "-- Select --"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".oxd-select-text\").First",
+            "selector": ".oxd-select-text >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-21",
+      "t": 1793727396496,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "Admin",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "Admin",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Admin",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Admin"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Admin\" })",
+            "selector": "internal:role=option[name=\"Admin\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Admin",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Admin",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Admin"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Admin\" })",
+            "selector": "internal:role=option[name=\"Admin\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-22",
+      "t": 1793727398863,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "-- Select --",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "-- Select --"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "-- Select --"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^-- Select --$\") }).Nth(2)",
+            "selector": "div >> internal:has-text=/^-- Select --$/ >> nth=2"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-23",
+      "t": 1793727400033,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "Disabled",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "Disabled",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Disabled",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Disabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Disabled\" })",
+            "selector": "internal:role=option[name=\"Disabled\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Disabled",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Disabled",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Disabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Disabled\" })",
+            "selector": "internal:role=option[name=\"Disabled\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-24",
+      "t": 1793727402329,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Disabled",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Disabled"
+              }
+            ],
+            "count": 3,
+            "text": "Disabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"form div\").Filter(new() { HasTextRegex = new Regex(\"^Disabled$\") }).Nth(2)",
+            "selector": "form div >> internal:has-text=/^Disabled$/ >> nth=2"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-25",
+      "t": 1793727404469,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "Enabled",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "Enabled",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Enabled",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Enabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Enabled\" })",
+            "selector": "internal:role=option[name=\"Enabled\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Enabled",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Enabled",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Enabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Enabled\" })",
+            "selector": "internal:role=option[name=\"Enabled\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-26",
+      "t": 1793727405629,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Search",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Search",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Search"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Search\" })",
+            "selector": "internal:role=button[name=\"Search\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "w3d5u2-27",
+      "t": 1793727410990,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/viewSystemUsers",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Amira 21730",
+          "header": "Employee NameAscendingDescending"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Amira 21730"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": ""
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"\" }).Nth(1)",
+            "selector": "internal:role=button[name=\"\"i] >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "w3d5u2-27",
+          "t": 1793727411402,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "pytz7k-1",
+      "t": 1793727414194,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Status",
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Status"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Status"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^StatusEnabled$\") }).First",
+            "selector": "div >> internal:has-text=/^StatusEnabled$/ >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-2",
+      "t": 1793727414820,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Enabled",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Enabled"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Enabled"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Enabled$\") }).Nth(2)",
+            "selector": "div >> internal:has-text=/^Enabled$/ >> nth=2"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-3",
+      "t": 1793727419024,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "p",
+        "text": "* Required",
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "* Required"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "* Required"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"* Required\")",
+            "selector": "internal:text=\"* Required\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-4",
+      "t": 1793727420779,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "p",
+        "text": "* Required",
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "* Required"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "* Required"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"* Required\")",
+            "selector": "internal:text=\"* Required\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-5",
+      "t": 1793727421494,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"* Required Cancel Save\")",
+            "selector": "internal:text=\"* Required Cancel Save\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-6",
+      "t": 1793727421867,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"* Required Cancel Save\")",
+            "selector": "internal:text=\"* Required Cancel Save\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-7",
+      "t": 1793727422055,
+      "kind": "dblclick",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"* Required Cancel Save\")",
+            "selector": "internal:text=\"* Required Cancel Save\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "pytz7k-8",
+      "t": 1793727423328,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/admin/saveSystemUser/113",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Performance",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Performance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Performance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Performance\" })",
+            "selector": "internal:role=link[name=\"Performance\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "pytz7k-8",
+          "t": 1793727423893,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/performance/searchEvaluatePerformanceReview",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "xqn3mo-1",
+      "t": 1793727426469,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/performance/searchEvaluatePerformanceReview",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "My Info",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "My Info",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "My Info"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"My Info\" })",
+            "selector": "internal:role=link[name=\"My Info\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "xqn3mo-1",
+          "t": 1793727427091,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "ihqosh-1",
+      "t": 1793727434717,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Single",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Single"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Single"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Single$\") }).Nth(2)",
+            "selector": "div >> internal:has-text=/^Single$/ >> nth=2"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-2",
+      "t": 1793727435905,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "Other",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "Other",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Other",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Other"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Other\" })",
+            "selector": "internal:role=option[name=\"Other\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Other",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Other",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Other"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Other\" })",
+            "selector": "internal:role=option[name=\"Other\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-3",
+      "t": 1793727437941,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Save"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save"
+              }
+            ],
+            "count": 2,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"form\").Filter(new() { HasText = \"Employee Full NameEmployee\" }).GetByRole(AriaRole.Button)",
+            "selector": "form >> internal:has-text=\"Employee Full NameEmployee\"i >> internal:role=button"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-4",
+      "t": 1793727443103,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "i",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Driver's License NumberLicense Expiry Date$\") }).Locator(\"i\")",
+            "selector": "div >> internal:has-text=/^Driver\\'s License NumberLicense Expiry Date$/ >> i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-5",
+      "t": 1793727444855,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"13\")",
+            "selector": "internal:text=\"13\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-6",
+      "t": 1793727446306,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "i",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Driver's License NumberLicense Expiry Date$\") }).Locator(\"i\")",
+            "selector": "div >> internal:has-text=/^Driver\\'s License NumberLicense Expiry Date$/ >> i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-7",
+      "t": 1793727447179,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "March",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "March"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "March"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"March\" })",
+            "selector": "internal:role=listitem >> internal:has-text=\"March\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-8",
+      "t": 1793727448304,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "June",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "June"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "June"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"June\")",
+            "selector": "internal:text=\"June\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-9",
+      "t": 1793727448931,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"2025\" })",
+            "selector": "internal:role=listitem >> internal:has-text=\"2025\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-10",
+      "t": 1793727450148,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"20251970197119721973197419751976197719781979198019811982198319841985198619871988\")",
+            "selector": "internal:text=\"20251970197119721973197419751976197719781979198019811982198319841985198619871988\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-11",
+      "t": 1793727452019,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"22\")",
+            "selector": "internal:text=\"22\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-12",
+      "t": 1793727453385,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Save"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save"
+              }
+            ],
+            "count": 2,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"form\").Filter(new() { HasText = \"Employee Full NameEmployee\" }).GetByRole(AriaRole.Button)",
+            "selector": "form >> internal:has-text=\"Employee Full NameEmployee\"i >> internal:role=button"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-13",
+      "t": 1793727455117,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^A\\\\+$\") }).Nth(2)",
+            "selector": "div >> internal:has-text=/^A\\+$/ >> nth=2"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-14",
+      "t": 1793727457375,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "B-",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "B-",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "B-",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "B-"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"B-\", Exact = true })",
+            "selector": "internal:role=option[name=\"B-\"s]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "B-",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "B-",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "B-"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"B-\", Exact = true })",
+            "selector": "internal:role=option[name=\"B-\"s]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "ihqosh-15",
+      "t": 1793727461307,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "124445",
+      "raw": "124445",
+      "final": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"form\").Filter(new() { HasText = \"Blood TypeB-Test_Field Save\" }).GetByRole(AriaRole.Textbox)",
+            "selector": "form >> internal:has-text=\"Blood TypeB-Test_Field Save\"i >> internal:role=textbox"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ihqosh-16",
+      "t": 1793727463545,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"form\").Filter(new() { HasText = \"Blood TypeB-Test_Field Save\" }).GetByRole(AriaRole.Textbox)",
+            "selector": "form >> internal:has-text=\"Blood TypeB-Test_Field Save\"i >> internal:role=textbox"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ihqosh-17",
+      "t": 1793727466755,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Contact Details",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Contact Details",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Contact Details"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Contact Details\" })",
+            "selector": "internal:role=link[name=\"Contact Details\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "ihqosh-17",
+          "t": 1793727467114,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/contactDetails/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "i7ce42-1",
+      "t": 1793727468785,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/contactDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Dependents",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Dependents",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Dependents"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Dependents\" })",
+            "selector": "internal:role=link[name=\"Dependents\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "i7ce42-1",
+          "t": 1793727469202,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "kjgtm0-1",
+      "t": 1793727471912,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Add",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "text": "Add"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add"
+              }
+            ],
+            "count": 2,
+            "text": "Add"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Add\" }).Nth(1)",
+            "selector": "internal:role=button[name=\" Add\"i] >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "kjgtm0-2",
+      "t": 1793727475316,
+      "kind": "fill",
+      "page": "page",
+      "widget": "textarea",
+      "value": "klasmvlksadmvklasdmv",
+      "raw": "klasmvlksadmvklasdmv",
+      "final": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "textarea",
+        "role": "textbox",
+        "text": "Type comment here",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Type comment here",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Type comment here"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Type comment here\" })",
+            "selector": "internal:role=textbox[name=\"Type comment here\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "kjgtm0-3",
+      "t": 1793727477621,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "kjgtm0-4",
+      "t": 1793727479086,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Browse",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Browse"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Browse"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Browse\")",
+            "selector": "internal:text=\"Browse\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "kjgtm0-5",
+      "t": 1793727482325,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewDependents/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Job",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Job",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Job"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Job\" })",
+            "selector": "internal:role=link[name=\"Job\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "kjgtm0-5",
+          "t": 1793727482702,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewJobDetails/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "er9jgf-1",
+      "t": 1793727489197,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewJobDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "value": "on",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"\", new() { Exact = true })",
+            "selector": "internal:label=\"\"s"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "er9jgf-2",
+      "t": 1793727491068,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewJobDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Contract Start Date",
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Contract Start Date"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Contract Start Date"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Contract Start Date$\") }).First",
+            "selector": "div >> internal:has-text=/^Contract Start Date$/ >> nth=0"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "input",
+          "role": "textbox",
+          "text": "yyyy-dd-mm",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "textbox",
+                  "name": "yyyy-dd-mm",
+                  "exact": true
+                }
+              ],
+              "count": 3,
+              "text": "yyyy-dd-mm"
+            },
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "textbox",
+                  "name": "yyyy-dd-mm"
+                }
+              ],
+              "count": 3,
+              "text": "yyyy-dd-mm"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"yyyy-dd-mm\" }).Nth(1)",
+              "selector": "internal:role=textbox[name=\"yyyy-dd-mm\"i] >> nth=1"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "er9jgf-3",
+      "t": 1793727495152,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewJobDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Contract Start Date",
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Contract Start Date"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Contract Start Date"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Contract Start Date$\") }).First",
+            "selector": "div >> internal:has-text=/^Contract Start Date$/ >> nth=0"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "input",
+          "role": "textbox",
+          "text": "yyyy-dd-mm",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "textbox",
+                  "name": "yyyy-dd-mm",
+                  "exact": true
+                }
+              ],
+              "count": 3,
+              "text": "yyyy-dd-mm"
+            },
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "textbox",
+                  "name": "yyyy-dd-mm"
+                }
+              ],
+              "count": 3,
+              "text": "yyyy-dd-mm"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"yyyy-dd-mm\" }).Nth(1)",
+              "selector": "internal:role=textbox[name=\"yyyy-dd-mm\"i] >> nth=1"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "er9jgf-4",
+      "t": 1793727496925,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewJobDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Report-to",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Report-to",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Report-to"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Report-to\" })",
+            "selector": "internal:role=link[name=\"Report-to\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "er9jgf-4",
+          "t": 1793727497280,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewReportToDetails/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "yuczej-1",
+      "t": 1793727499666,
+      "kind": "drag",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewReportToDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Report-to",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Report-to",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Report-to"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Report-to\" })",
+            "selector": "internal:role=link[name=\"Report-to\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "yuczej-2",
+      "t": 1793727500201,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewReportToDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Report-to",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Report-to",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Report-to"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Report-to\" })",
+            "selector": "internal:role=link[name=\"Report-to\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "lml1mm-1",
+      "t": 1793727501221,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewReportToDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Qualifications",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Qualifications",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Qualifications"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Qualifications\" })",
+            "selector": "internal:role=link[name=\"Qualifications\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "lml1mm-1",
+          "t": 1793727501705,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewQualifications/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "569wyi-1",
+      "t": 1793727504882,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewQualifications/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Add",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "text": "Add"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add"
+              }
+            ],
+            "count": 6,
+            "text": "Add"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".oxd-button\").First",
+            "selector": ".oxd-button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "569wyi-2",
+      "t": 1793727509997,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewQualifications/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Claim",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Claim",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Claim"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Claim\" })",
+            "selector": "internal:role=link[name=\"Claim\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "569wyi-2",
+          "t": 1793727510574,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/viewAssignClaim",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "eui3hw-1",
+      "t": 1793727518889,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/viewAssignClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Assign Claim",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Assign Claim",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Assign Claim"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Assign Claim\" })",
+            "selector": "internal:role=link[name=\"Assign Claim\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "eui3hw-1",
+          "t": 1793727518992,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/viewAssignClaim#",
+          "page": "page"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "eui3hw-1",
+          "t": 1793727519243,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/assignClaim",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "gosclp-1",
+      "t": 1793727520511,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/assignClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "My Claims",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "My Claims",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "My Claims"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"My Claims\" })",
+            "selector": "internal:role=link[name=\"My Claims\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "gosclp-1",
+          "t": 1793727520625,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/assignClaim#",
+          "page": "page"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "gosclp-1",
+          "t": 1793727520886,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/viewClaim",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "syvoww-1",
+      "t": 1793727522348,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/viewClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Submit Claim",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Submit Claim",
+                "exact": true
+              }
+            ],
+            "text": "Submit Claim"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Submit Claim"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Submit Claim"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Submit Claim\" })",
+            "selector": "internal:role=button[name=\" Submit Claim\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "syvoww-1",
+          "t": 1793727522798,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/submitClaim",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "wkbb79-1",
+      "t": 1793727526403,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/submitClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "-- Select --",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "-- Select --"
+              }
+            ],
+            "count": 2,
+            "text": "-- Select --"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\".oxd-select-text\").First",
+            "selector": ".oxd-select-text >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "wkbb79-2",
+      "t": 1793727527515,
+      "kind": "choose",
+      "page": "page",
+      "widget": "option",
+      "value": "Travel Allowance",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/submitClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "option",
+        "text": "Travel Allowance",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Travel Allowance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Travel Allowance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Travel Allowance\" })",
+            "selector": "internal:role=option[name=\"Travel Allowance\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Travel Allowance",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Travel Allowance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Travel Allowance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Travel Allowance\" })",
+            "selector": "internal:role=option[name=\"Travel Allowance\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "wkbb79-3",
+      "t": 1793727528875,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/submitClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Claim",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Claim",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Claim"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Claim\", Exact = true })",
+            "selector": "internal:role=link[name=\"Claim\"s]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "wkbb79-4",
+      "t": 1793727529422,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/claim/submitClaim",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Buzz",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Buzz",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Buzz"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Buzz\" })",
+            "selector": "internal:role=link[name=\"Buzz\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "wkbb79-4",
+          "t": 1793727530048,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-1",
+      "t": 1793727540694,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "svg",
+        "id": "heart-svg",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='heart-svg']"
+              }
+            ],
+            "count": 10,
+            "value": "heart-svg"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div:nth-child(4) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg\")",
+            "selector": "div:nth-child(4) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "g",
+          "id": "Group",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='Group']"
+                }
+              ],
+              "count": 10,
+              "value": "Group"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"div:nth-child(4) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group\")",
+              "selector": "div:nth-child(4) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-2",
+      "t": 1793727542393,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "svg",
+        "id": "heart-svg",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='heart-svg']"
+              }
+            ],
+            "count": 10,
+            "value": "heart-svg"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg\")",
+            "selector": "div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "g",
+          "id": "Group",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='Group']"
+                }
+              ],
+              "count": 10,
+              "value": "Group"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group\")",
+              "selector": "div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group"
+            }
+          ]
+        },
+        {
+          "tag": "path",
+          "id": "heart",
+          "text": "",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='heart']"
+                }
+              ],
+              "count": 10,
+              "value": "heart"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group > #heart\")",
+              "selector": "div:nth-child(5) > .oxd-sheet > .orangehrm-buzz-post-footer > .orangehrm-buzz-post-actions > div > #heart-svg > #Group > #heart"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-3",
+      "t": 1793727544820,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "text": "Leticia Amanda",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Leticia Amanda"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Leticia Amanda"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"span\").Filter(new() { HasText = \"Leticia Amanda\" })",
+            "selector": "span >> internal:has-text=\"Leticia Amanda\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-4",
+      "t": 1793727548625,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Most Liked Posts",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Most Liked Posts",
+                "exact": true
+              }
+            ],
+            "text": "Most Liked Posts"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Most Liked Posts"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Most Liked Posts"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Most Liked Posts\" })",
+            "selector": "internal:role=button[name=\" Most Liked Posts\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-5",
+      "t": 1793727552379,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"li > .oxd-icon-button\").First",
+            "selector": "li > .oxd-icon-button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-6",
+      "t": 1793727554288,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "listitem",
+        "text": "Delete Post",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Delete Post"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Delete Post"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menu).GetByRole(AriaRole.Listitem)",
+            "selector": "internal:role=menu >> internal:role=listitem"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "u2dny6-6",
+          "sinceAction": 166,
+          "t": 1793727554454,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-7",
+      "t": 1793727555212,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "dialog": {
+        "title": "Are you Sure?",
+        "raw": "",
+        "heading": "Are you Sure?",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Are you Sure?"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Yes, Delete",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete",
+                "exact": true
+              }
+            ],
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Are you Sure?",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes, Delete"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes, Delete"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \" Yes, Delete\" })",
+            "selector": "internal:role=button[name=\" Yes, Delete\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "u2dny6-7",
+          "sinceAction": 139,
+          "t": 1793727555351,
+          "dialog": {
+            "title": "Are you Sure?",
+            "raw": "",
+            "heading": "Are you Sure?",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-8",
+      "t": 1793727556967,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Share Photos",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Share Photos",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Share Photos"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Share Photos\" })",
+            "selector": "internal:role=button[name=\"Share Photos\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "u2dny6-8",
+          "sinceAction": 185,
+          "t": 1793727557152,
+          "dialog": {
+            "title": "Share Photos",
+            "raw": "",
+            "heading": "Share Photos",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "u2dny6-8",
+          "sinceAction": 683,
+          "t": 1793727557650,
+          "dialog": {
+            "title": "Share Photos",
+            "raw": "",
+            "heading": "Share Photos",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-9",
+      "t": 1793727558588,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Share Video",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Share Video",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Share Video"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Share Video\" })",
+            "selector": "internal:role=button[name=\"Share Video\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "u2dny6-9",
+          "sinceAction": 166,
+          "t": 1793727558754,
+          "dialog": {
+            "title": "Share Video",
+            "raw": "",
+            "heading": "Share Video",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-10",
+      "t": 1793727568286,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "dialog": {
+        "title": "Share Video",
+        "raw": "",
+        "heading": "Share Video",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Share Video"
+      ],
+      "target": {
+        "tag": "img",
+        "text": "profile picture",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Img, new() { Name = \"profile picture\" })",
+            "selector": "internal:role=dialog >> internal:role=img[name=\"profile picture\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-11",
+      "t": 1793727569993,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "dialog": {
+        "title": "Share Video",
+        "raw": "",
+        "heading": "Share Video",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Share Video"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "×",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Share Video",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "×",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "×"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"×\" })",
+            "selector": "internal:role=button[name=\"×\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "u2dny6-11",
+          "sinceAction": 257,
+          "t": 1793727570250,
+          "dialog": {
+            "title": "Share Video",
+            "raw": "",
+            "heading": "Share Video",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-12",
+      "t": 1793727571906,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Help",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Help",
+                "exact": true
+              }
+            ],
+            "text": "Help"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Help"
+              }
+            ],
+            "text": "Help"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"\" })",
+            "selector": "internal:role=button[name=\"\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "popup",
+          "actionId": "u2dny6-12",
+          "t": 1793727572009,
+          "page": "page1"
+        }
+      ]
+    },
+    {
+      "id": "u2dny6-13",
+      "t": 1793727581813,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Performance",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Performance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Performance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Performance\" })",
+            "selector": "internal:role=link[name=\"Performance\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "u2dny6-14",
+      "t": 1793727582232,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/buzz/viewBuzz",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Dashboard",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Dashboard",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Dashboard"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Dashboard\" })",
+            "selector": "internal:role=link[name=\"Dashboard\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "u2dny6-14",
+          "t": 1793727582585,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "1yref2-1",
+      "t": 1793727594092,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Apply Leave",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Apply Leave",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Apply Leave"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Apply Leave\" })",
+            "selector": "internal:role=button[name=\"Apply Leave\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "1yref2-1",
+          "t": 1793727594480,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/leave/applyLeave",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4rr6mv-1",
+      "t": 1793727596341,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/leave/applyLeave",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Apply",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Apply",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Apply"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Apply\" })",
+            "selector": "internal:role=button[name=\"Apply\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": []
+    },
+    {
+      "id": "4rr6mv-2",
+      "t": 1793727599355,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/leave/applyLeave",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "PIM",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "PIM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "PIM"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"PIM\" })",
+            "selector": "internal:role=link[name=\"PIM\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "4rr6mv-2",
+          "t": 1793727599939,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewEmployeeList",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "yhtow7-1",
+      "t": 1793727602380,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewEmployeeList",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "My Info",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "My Info",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "My Info"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"My Info\" })",
+            "selector": "internal:role=link[name=\"My Info\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "yhtow7-1",
+          "t": 1793727603015,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "exmvaz-1",
+      "t": 1793727604412,
+      "kind": "click",
+      "page": "page",
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/pim/viewPersonalDetails/empNumber/7",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Performance",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Performance",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Performance"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Performance\" })",
+            "selector": "internal:role=link[name=\"Performance\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "actionId": "exmvaz-1",
+          "t": 1793727604955,
+          "url": "https://opensource-demo.orangehrmlive.com/web/index.php/performance/searchEvaluatePerformanceReview",
+          "page": "page"
+        }
+      ]
+    }
+  ]
+}
