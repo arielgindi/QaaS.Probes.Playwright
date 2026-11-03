@@ -2,7 +2,17 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Colours are tokens, one set per theme; Tailwind's utilities read them (bg-panel, text-muted, border-line, ...). */
+/*
+ * The design system's tokens, one set per theme; Tailwind's utilities read them (bg-panel, text-muted, border-line, ...).
+ *
+ * - Type: text-tag 10.5, text-meta 11.5, text-body 12.5, text-title 13.5, text-head 15 (px). Code is 12.5 mono.
+ * - Spacing: Tailwind's 4 px steps, mostly 1, 1.5, 2, 3, 4 and 6.
+ * - Radii: tags rounded-sm (4), controls rounded-md (6), cards rounded-lg (8), popovers and dialogs rounded-xl (12).
+ * - Elevation: shadow-e1 (a raised control), shadow-e2 (a popover, a toast), shadow-e3 (a dialog).
+ * - Modes, each with one colour, in the panel and in the recorded page alike: recording and re-recording (rec), paused
+ *   (warn), logging in (info), testing (accent), trying (try), checking (ok) and inspecting (inspect).
+ * Every text colour has a contrast of 4.5:1 or more on canvas, panel and raised, in both themes.
+ */
 @theme inline {
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
@@ -18,36 +28,54 @@
   --color-ok: var(--ok);
   --color-bad: var(--bad);
   --color-warn: var(--warn);
-  --color-on-warn: var(--on-warn);
   --color-info: var(--info);
   --color-rec: var(--rec);
+  --color-try: var(--try);
+  --color-inspect: var(--inspect);
   --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas,
     "Liberation Mono", monospace;
+  --text-tag: 10.5px;
+  --text-tag--line-height: 16px;
+  --text-meta: 11.5px;
+  --text-meta--line-height: 16px;
+  --text-body: 12.5px;
+  --text-body--line-height: 18px;
+  --text-title: 13.5px;
+  --text-title--line-height: 20px;
+  --text-head: 15px;
+  --text-head--line-height: 22px;
+  --shadow-e1: var(--elevation-1);
+  --shadow-e2: var(--elevation-2);
+  --shadow-e3: var(--elevation-3);
 }
 
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #0c0d10;
-  --panel: #111317;
-  --raised: #181b20;
-  --line: #22262c;
-  --line-strong: #30353d;
-  --fg: #e8eaed;
-  --muted: #9aa1ab;
-  --faint: #6c737e;
-  --accent: #7c82ff;
+  --canvas: #0d0e11;
+  --panel: #121418;
+  --raised: #1a1d22;
+  --line: #23272d;
+  --line-strong: #343a42;
+  --fg: #e9ebee;
+  --muted: #a3aab4;
+  --faint: #848c97;
+  --accent: #5e63ea;
   --accent-fg: #a5a9ff;
   --on-accent: #ffffff;
   --ok: #4cc38a;
   --bad: #f2777f;
   --warn: #f1b44c;
-  --on-warn: #1c1405;
   --info: #6cb4ff;
-  --rec: #f25858;
-  --line-selected: #1a1c2c;
+  --rec: #f26464;
+  --try: #3cc6c9;
+  --inspect: #c49bff;
+  --elevation-1: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-2: 0 0 0 1px rgb(255 255 255 / 0.04), 0 8px 24px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+  --elevation-3: 0 0 0 1px rgb(255 255 255 / 0.05), 0 24px 64px rgb(0 0 0 / 0.55), 0 4px 12px rgb(0 0 0 / 0.35);
+  --line-selected: #191b2b;
   --line-hovered: #15171c;
   --line-failed: #1e1215;
   --line-failed-strong: #34161b;
@@ -58,9 +86,9 @@
   --tk-prop: #d6dae0;
   --tk-str: #9ed48f;
   --tk-num: #f2a77c;
-  --tk-com: #6a717c;
+  --tk-com: #848c97;
   --tk-doc: #939ba6;
-  --tk-doctag: #586069;
+  --tk-doctag: #6f7782;
   --tk-docref: #5ec8c0;
   --tk-punc: #8b929c;
   --tk-key: #86b4ff;
@@ -68,23 +96,27 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --canvas: #f7f8fa;
+  --canvas: #f6f7f9;
   --panel: #ffffff;
-  --raised: #f2f4f7;
+  --raised: #f1f3f6;
   --line: #e3e6eb;
-  --line-strong: #d3d8df;
+  --line-strong: #cfd4db;
   --fg: #16181d;
-  --muted: #5a626e;
-  --faint: #8a919c;
-  --accent: #5157e6;
+  --muted: #555d69;
+  --faint: #6b7380;
+  --accent: #4f55e0;
   --accent-fg: #4148d6;
   --on-accent: #ffffff;
-  --ok: #17824f;
-  --bad: #cf3344;
-  --warn: #a86a00;
-  --on-warn: #ffffff;
-  --info: #1f6fd1;
-  --rec: #e03b3b;
+  --ok: #157a4a;
+  --bad: #c4283a;
+  --warn: #8f5b00;
+  --info: #1d66c4;
+  --rec: #cf2f2f;
+  --try: #0b7a85;
+  --inspect: #7a35e0;
+  --elevation-1: 0 1px 2px rgb(16 24 40 / 0.06), 0 0 0 1px rgb(16 24 40 / 0.02);
+  --elevation-2: 0 0 0 1px rgb(16 24 40 / 0.06), 0 8px 24px rgb(16 24 40 / 0.14), 0 2px 6px rgb(16 24 40 / 0.08);
+  --elevation-3: 0 0 0 1px rgb(16 24 40 / 0.06), 0 24px 64px rgb(16 24 40 / 0.22), 0 4px 12px rgb(16 24 40 / 0.1);
   --line-selected: #eceefd;
   --line-hovered: #f0f2f5;
   --line-failed: #fdf1f2;
@@ -96,9 +128,9 @@
   --tk-prop: #1f2328;
   --tk-str: #2e7a33;
   --tk-num: #b5541c;
-  --tk-com: #8a929c;
+  --tk-com: #6b7380;
   --tk-doc: #5f6773;
-  --tk-doctag: #a5acb6;
+  --tk-doctag: #8a919c;
   --tk-docref: #0d7a74;
   --tk-punc: #6b7480;
   --tk-key: #2d5fcf;
@@ -116,7 +148,7 @@
     background: var(--canvas);
     color: var(--fg);
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: 12.5px;
     line-height: 1.45;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
@@ -127,9 +159,10 @@
     background: color-mix(in oklab, var(--accent) 35%, transparent);
   }
 
+  /* One focus ring everywhere: two pixels of the accent, outside the control. */
   :focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--accent) 75%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid color-mix(in oklab, var(--accent-fg) 80%, transparent);
+    outline-offset: 2px;
   }
 
   * {
@@ -137,19 +170,20 @@
     scrollbar-color: var(--line-strong) transparent;
   }
 
-  button:focus-visible,
-  [role="radio"]:focus-visible,
-  [role="treeitem"]:focus-visible {
-    outline-offset: 2px;
+  kbd {
+    font-family: var(--font-sans);
   }
 }
 
 @layer components {
-  /* Three columns when there is room; else the code over the inspector, beside the steps; else all stacked. */
+  /*
+   * Three columns when there is room, the steps and the inspector as wide as the person dragged them; else the code
+   * over the inspector, beside the steps; else all stacked.
+   */
   .layout {
     display: grid;
-    grid-template-areas: "steps code inspector";
-    grid-template-columns: 300px minmax(0, 1fr) 356px;
+    grid-template-areas: "steps split-left code split-right inspector";
+    grid-template-columns: var(--steps-width, 300px) 0 minmax(0, 1fr) 0 var(--inspector-width, 360px);
     grid-template-rows: minmax(0, 1fr);
   }
 
@@ -166,11 +200,19 @@
     border-left: 1px solid var(--line);
   }
 
+  .area-split-left {
+    grid-area: split-left;
+  }
+
+  .area-split-right {
+    grid-area: split-right;
+  }
+
   @media (max-width: 1179.98px) {
     .layout {
-      grid-template-areas: "steps code" "steps inspector";
-      grid-template-columns: 276px minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
+      grid-template-areas: "steps split-left code" "steps split-left split-right" "steps split-left inspector";
+      grid-template-columns: var(--steps-width, 276px) 0 minmax(0, 1fr);
+      grid-template-rows: minmax(0, var(--code-share, 1.25fr)) 0 minmax(0, var(--inspector-share, 1fr));
     }
 
     .area-inspector {
@@ -184,6 +226,11 @@
       grid-template-areas: "steps" "code" "inspector";
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .area-split-left,
+    .area-split-right {
+      display: none;
     }
 
     .area-steps {
@@ -216,11 +263,11 @@
 
 @keyframes rec-pulse {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--rec) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 55%, transparent);
   }
   70%,
   100% {
-    box-shadow: 0 0 0 6px transparent;
+    box-shadow: 0 0 0 5px transparent;
   }
 }
 
@@ -273,6 +320,34 @@
 
 @utility animate-fade-in {
   animation: fade-in 140ms ease-out both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+@utility animate-pop-in {
+  animation: pop-in 160ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* A placeholder line while something loads. */
+@utility skeleton {
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--raised) 25%, color-mix(in oklab, var(--line-strong) 60%, var(--raised)) 50%, var(--raised) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

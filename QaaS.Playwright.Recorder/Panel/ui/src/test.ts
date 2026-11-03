@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { usePref } from './prefs';
 import type { Action, TestRun } from './types';
 
 /** Whether the run is going on: getting ready for its first step, or running it. */
@@ -36,24 +37,8 @@ export function numberOf(actions: Action[], id?: string): number {
   return id ? actions.findIndex((action) => action.id === id) + 1 : 0;
 }
 
-const slowKey = 'qaas-panel-slow-motion';
-
 /** Whether a test runs in slow motion, as the person last chose. */
 export function useSlowMotion(): [boolean, () => void] {
-  const [slow, setSlow] = useState(() => {
-    try {
-      return localStorage.getItem(slowKey) === 'on';
-    } catch {
-      return false;
-    }
-  });
-  const toggle = () => {
-    setSlow(!slow);
-    try {
-      localStorage.setItem(slowKey, slow ? 'off' : 'on');
-    } catch {
-      // A page without an origin of its own has no storage: the choice lasts until the panel closes.
-    }
-  };
-  return [slow, toggle];
+  const [slow, setSlow] = usePref('slowMotion', 'off');
+  return [slow === 'on', () => setSlow(slow === 'on' ? 'off' : 'on')];
 }

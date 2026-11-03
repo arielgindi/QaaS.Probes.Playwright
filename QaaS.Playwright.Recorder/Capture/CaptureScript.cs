@@ -928,78 +928,110 @@ internal static class CaptureScript
           }), true);
 
           // ------------------------------------------------------------------------------------------------- overlay
-          // A box follows the pointer over the element a click would record, labelled with the locator the flow would use
-          // and why the ones tried before it lost, as the recorder's own policy answers through window.__qaasExplain. It is
-          // drawn in a closed shadow root, which neither the page nor Playwright's selectors see; it never takes the pointer
-          // or the focus, and takes no room. F9 hides or shows it. While it shows, Alt+Up picks the element around the one in
-          // the box and Alt+Down goes back toward the element under the pointer; a click then records the element picked.
-          // Moving to another element drops the pick. While the recording is paused, a pill at the top says so instead,
-          // and while a login flow runs, how it goes.
+          // A box follows the pointer over the element a click would record, labelled with what the click does, the
+          // locator the flow would use, how many it finds, and once the pointer rests, why the ones tried before it lost, as
+          // the recorder's own policy answers through window.__qaasExplain. One box in every mode, its colour and its tag
+          // saying which: recording, an element picked with Alt+Up, check mode, trying, inspect mode, and what the panel
+          // points at. It is drawn in a closed shadow root, which neither the page nor Playwright's selectors see; it never
+          // takes the pointer or the focus, and takes no room. It glides from element to element, drawn once a frame, and
+          // steps aside while the person drags or selects, or is on a scrollbar. F9 hides or shows it. While it shows,
+          // Alt+Up picks the element around the one in the box and Alt+Down goes back toward the element under the pointer;
+          // a click then records the element picked. Moving to another element drops the pick. A pill at the top says the
+          // mode the recording is in, when it is not plain recording, and fades when the pointer comes near it.
           const OVERLAY_CSS = `
             :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
               left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
               pointer-events: none !important; }
-            .box, .label { position: fixed; display: none; box-sizing: border-box; pointer-events: none; }
-            .box { border: 2px solid #1a73e8; border-radius: 2px; background: rgba(26, 115, 232, .12);
-              box-shadow: 0 0 0 1px rgba(255, 255, 255, .9); }
-            .box.picked { border-color: #e37400; background: rgba(227, 116, 0, .14); }
-            .label { max-width: min(560px, calc(100vw - 8px)); padding: 4px 8px; border-radius: 4px;
-              background: rgba(24, 24, 27, .95); color: #d4d4d8; direction: ltr; unicode-bidi: isolate; text-align: left;
-              font: 11px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overflow-wrap: anywhere;
-              box-shadow: 0 2px 6px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .25); }
-            .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
-            .locator { font-size: 12px; font-weight: 600; color: #fff; }
-            .pick, .problem { color: #fbbf24; }
-            .pick { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; color: #a1a1aa; }
-            .pick b { color: #c4b5fd; font-weight: 600; }
-            .pick i { color: #93c5fd; font-style: normal; }
-            .pick .on { padding: 0 3px; border-radius: 3px; background: rgba(227, 116, 0, .28); color: #fbbf24; }
+            .box, .label, .mark, .tip, .extra { position: fixed; top: 0; left: 0; display: none; box-sizing: border-box;
+              pointer-events: none; }
+            [data-mode] { --mode: #4f55e0; }
+            [data-mode=picked] { --mode: #d97706; }
+            [data-mode=check] { --mode: #16a34a; }
+            [data-mode=try] { --mode: #0e9aa7; }
+            [data-mode=inspect] { --mode: #8b5cf6; }
+            .box, .mark, .extra { border: 2px solid var(--mode); border-radius: 3px;
+              background: color-mix(in srgb, var(--mode) 10%, transparent);
+              box-shadow: 0 0 0 1px rgba(255, 255, 255, .85), 0 0 0 3px color-mix(in srgb, var(--mode) 16%, transparent); }
+            .extra { border-width: 1.5px; border-style: dashed; box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); }
+            .label, .tip { max-width: min(460px, calc(100vw - 12px)); padding: 6px 9px 7px; border-radius: 8px;
+              background: rgba(20, 22, 27, .97); color: #d6dae0; direction: ltr; unicode-bidi: isolate; text-align: left;
+              font: 12px/1.45 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, -apple-system, Roboto, sans-serif;
+              overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(0, 0, 0, .26), 0 1px 3px rgba(0, 0, 0, .3),
+              0 0 0 1px rgba(255, 255, 255, .14); }
+            .glide { transition: transform 90ms cubic-bezier(.2, .7, .2, 1), width 90ms cubic-bezier(.2, .7, .2, 1),
+              height 90ms cubic-bezier(.2, .7, .2, 1); }
+            @media (prefers-reduced-motion: reduce) { .glide { transition: none; } }
+            .stale .head, .stale .loc, .stale .problem { opacity: .5; }
+            .head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+            .head::before { content: attr(data-tag); flex: none; padding: 0 6px; border-radius: 4px; color: #fff;
+              background: var(--mode); font-size: 10.5px; font-weight: 650; line-height: 17px; }
+            .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f4f5f7;
+              font-weight: 600; unicode-bidi: plaintext; }
+            .loc { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; }
+            .dot { flex: none; align-self: center; width: 7px; height: 7px; border-radius: 50%; background: #4cc38a; }
+            .fragile .dot { background: #f1b44c; }
+            .plain .dot { display: none; }
+            .locator, .reasons, .pick { font-family: ui-monospace, 'Cascadia Mono', 'JetBrains Mono', SFMono-Regular, Menlo,
+              Consolas, 'DejaVu Sans Mono', monospace; }
+            .locator { min-width: 0; color: #e9ebee; font-size: 11.5px; }
+            .locator b { color: #c6a2ff; font-weight: 600; }
+            .locator i { color: #86b4ff; font-style: normal; }
+            .count { flex: none; color: #4cc38a; font-size: 11px; }
+            .fragile .count { color: #f1b44c; }
+            .plain .count { color: #a3aab4; }
+            .problem { margin-top: 3px; color: #f1b44c; font-size: 11.5px; }
+            .more { display: none; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255, 255, 255, .1); }
+            .rest .more, .picked .more { display: block; }
+            .reasons, .note { color: #a3aab4; font-size: 11px; }
+            .pick { color: #a3aab4; font-size: 11px; }
+            .pick b { color: #c6a2ff; font-weight: 600; }
+            .pick i { color: #86b4ff; font-style: normal; }
+            .pick .on { padding: 0 3px; border-radius: 3px; background: rgba(217, 119, 6, .3); color: #fbbf24; }
             .pick .on b, .pick .on i { color: #fbbf24; }
-            .pick .keys { margin-left: 8px; color: #71717a; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-            .reasons, .note { color: #a1a1aa; }
-            .state { position: fixed; display: none; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box;
-              align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; pointer-events: none;
-              background: rgba(24, 24, 27, .94); color: #f4f4f5; direction: ltr; white-space: nowrap;
-              font: 500 12px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-              box-shadow: 0 4px 14px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .18); }
-            .state.shown { display: flex; }
-            .state::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: #fbbf24; }
-            .state.note::before { border-radius: 50%; background: #60a5fa; }
-            .state span { color: #a1a1aa; font-weight: 400; }
-            .box.check { border-color: #16a34a; background: rgba(22, 163, 74, .12); }
-            .chooser, .bar { --canvas: #f7f8fa; --panel: #ffffff; --raised: #f2f4f7; --line: #e3e6eb; --strong: #d3d8df;
-              --fg: #16181d; --muted: #5a626e; --faint: #8a919c; --accent: #5157e6; --ok: #17824f;
-              position: fixed; box-sizing: border-box; pointer-events: auto; direction: ltr; text-align: left;
-              color: var(--fg); background: var(--panel); border: 1px solid var(--strong);
-              font: 13px/1.45 Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-              box-shadow: 0 14px 36px rgba(15, 18, 28, .22), 0 2px 6px rgba(15, 18, 28, .14); }
+            .pick .keys { margin-left: 8px; color: #848c97; font-family: 'Segoe UI', system-ui, sans-serif; }
+            .pill, .chooser { --canvas: #f6f7f9; --panel: #ffffff; --raised: #f1f3f6; --line: #e3e6eb; --strong: #cfd4db;
+              --fg: #16181d; --muted: #555d69; --faint: #6b7380; --accent: #4f55e0; --ok: #157a4a;
+              position: fixed; box-sizing: border-box; direction: ltr; text-align: left; color: var(--fg);
+              background: var(--panel); border: 1px solid var(--strong);
+              font: 12.5px/1.45 Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+              box-shadow: 0 12px 32px rgba(16, 24, 40, .18), 0 2px 6px rgba(16, 24, 40, .1); }
             @media (prefers-color-scheme: dark) {
-              .chooser, .bar { --canvas: #0c0d10; --panel: #181b20; --raised: #22262c; --line: #2a2f36; --strong: #3a4049;
-                --fg: #e8eaed; --muted: #9aa1ab; --faint: #6c737e; --accent: #7c82ff; --ok: #4cc38a;
-                box-shadow: 0 14px 36px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .04); }
+              .pill, .chooser { --canvas: #0d0e11; --panel: #1a1d22; --raised: #23272d; --line: #2a2f36; --strong: #3a4049;
+                --fg: #e9ebee; --muted: #a3aab4; --faint: #848c97; --accent: #5e63ea; --ok: #4cc38a;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .04); }
             }
-            .bar { display: none; top: 12px; left: 50%; transform: translateX(-50%); align-items: center; gap: 10px;
-              padding: 5px 6px 5px 12px; border-radius: 999px; white-space: nowrap; font-size: 12.5px; }
-            .bar.shown { display: flex; }
-            .bar b { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
-            .bar b::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
-              box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
-            .bar .hint { color: var(--muted); }
-            .chooser button, .bar button { font: inherit; color: inherit; cursor: pointer; }
-            .bar .url { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--strong);
+            .pill { --tone: #e5484d; top: 10px; left: 50%; transform: translateX(-50%); display: none; align-items: center;
+              gap: 8px; max-width: calc(100vw - 24px); padding: 4px 5px 4px 11px; border-radius: 999px; white-space: nowrap;
+              pointer-events: none; transition: opacity 120ms ease-out; }
+            .pill.shown { display: flex; }
+            .pill.near { opacity: .18; }
+            .pill.interactive { pointer-events: auto; }
+            .pill::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone);
+              box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent); }
+            .pill[data-tone=warn] { --tone: #d68f00; }
+            .pill[data-tone=info] { --tone: #1d7ae0; }
+            .pill[data-tone=accent] { --tone: #5e63ea; }
+            .pill[data-tone=try] { --tone: #0e9aa7; }
+            .pill[data-tone=ok] { --tone: #16a34a; }
+            .pill[data-tone=inspect] { --tone: #8b5cf6; }
+            .pill b { font-weight: 600; }
+            .pill .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+            .pill kbd:last-child { margin-right: 4px; }
+            .chooser button, .pill button { font: inherit; color: inherit; cursor: pointer; }
+            .pill .url { height: 24px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--strong);
               background: var(--raised); font-size: 12px; font-weight: 500; }
-            .bar .url:hover { border-color: var(--faint); }
+            .pill .url:hover { border-color: var(--faint); }
             kbd { display: inline-block; padding: 0 5px; border-radius: 4px; border: 1px solid var(--strong);
-              background: var(--canvas); color: var(--muted); font: 500 10.5px/16px inherit; }
-            .chooser { width: 348px; max-width: calc(100vw - 16px); border-radius: 12px; overflow: hidden; }
-            .chooser .head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 9px;
-              border-bottom: 1px solid var(--line); }
+              background: var(--canvas); color: var(--muted); font: 500 10.5px/16px Inter, 'Segoe UI', system-ui, sans-serif; }
+            .chooser { width: 348px; max-width: calc(100vw - 16px); border-radius: 12px; overflow: hidden; pointer-events: auto; }
+            .chooser .head { padding: 10px 12px 9px; border-bottom: 1px solid var(--line); }
+            .chooser .head::before { content: none; }
             .chooser .badge { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 1px 8px 1px 6px;
               border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--ok);
               background: color-mix(in oklab, var(--ok) 14%, transparent); }
             .chooser .badge svg { width: 12px; height: 12px; }
-            .chooser .what { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-              color: var(--muted); font: 11.5px/1.4 ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace; }
+            .chooser .what { flex: 1; color: var(--muted); font-weight: 400; font: 11.5px/1.4 ui-monospace, 'Cascadia Mono', 'JetBrains Mono',
+              Menlo, Consolas, monospace; }
             .chooser .options { padding: 4px; max-height: 296px; overflow-y: auto; }
             .chooser .option { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 8px;
               border: 0; border-radius: 8px; background: transparent; text-align: left; }
@@ -1015,7 +1047,7 @@ internal static class CaptureScript
             .chooser .now { flex: none; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line);
               color: var(--faint); font-size: 10.5px; line-height: 16px; }
             .chooser .field { padding: 6px 12px 2px; }
-            .chooser .field input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 9px; border-radius: 8px;
+            .chooser .field input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 9px; border-radius: 6px;
               border: 1px solid var(--strong); background: var(--canvas); color: var(--fg); font: inherit; outline: none;
               unicode-bidi: plaintext; }
             .chooser .field input:focus { border-color: var(--accent);
@@ -1029,12 +1061,13 @@ internal static class CaptureScript
             .chooser .foot { display: flex; align-items: center; gap: 6px; padding: 9px 10px 10px 12px; color: var(--faint);
               font-size: 11.5px; }
             .chooser .add { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; height: 28px;
-              padding: 0 10px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px;
+              padding: 0 10px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-size: 12px;
               font-weight: 600; }
             .chooser .add kbd { border: 0; background: rgba(255, 255, 255, .2); color: #fff; }
             .chooser .add:disabled { opacity: .45; cursor: default; }`;
           // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
+          const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
           let overlayOn = true;
           let view = null;
           // What the pointer is over: the element hit, the one a click there targets, the one picked instead with the
@@ -1043,7 +1076,15 @@ internal static class CaptureScript
           let explaining = null;
           let explainAgain = false;
           let explainTimer = 0;
+          let explainBy = 0;
           let explainSeq = 0;
+          let restTimer = 0;
+          // The label shows the last answer, dimmed, until the next one comes: no flicker on the way between elements.
+          let labelled = false;
+          // Where the pointer is, which the label never covers; where it went down, to tell a drag from a click.
+          let pointer = { x: -1, y: -1 };
+          let downAt = null;
+          let dragging = false;
 
           function overlayView() {
             if (view?.host.isConnected) return view;
@@ -1060,10 +1101,18 @@ internal static class CaptureScript
             };
             const box = part(root, 'box');
             const label = part(root, 'label');
-            view = { host, root, box, label, pick: part(label, 'pick'), locator: part(label, 'locator'),
-              problem: part(label, 'problem'), reasons: part(label, 'reasons'), note: part(label, 'note'),
-              state: part(root, 'state'), bar: part(root, 'bar') };
-            // What is done in the chooser and the bar stays in them: the page sees none of it.
+            const head = part(label, 'head');
+            const what = part(head, 'what');
+            const loc = part(label, 'loc');
+            part(loc, 'dot');
+            const locator = part(loc, 'locator');
+            const count = part(loc, 'count');
+            const problem = part(label, 'problem');
+            const more = part(label, 'more');
+            view = { host, root, box, label, head, what, loc, locator, count, problem, more, reasons: part(more, 'reasons'),
+              note: part(more, 'note'), pick: part(more, 'pick'), pill: part(root, 'pill') };
+            box.dataset.mode = label.dataset.mode = 'record';
+            // What is done in the chooser and the pill stays in them: the page sees none of it.
             for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'keydown', 'keyup', 'input'])
               root.addEventListener(type, (event) => event.stopPropagation());
             document.documentElement.appendChild(host);
@@ -1076,25 +1125,42 @@ internal static class CaptureScript
             view.label.style.display = 'none';
           }
 
-          // The pill at the top: the recording is paused, or, for a moment, what a key did.
+          // The pill at the top: the mode the recording is in, or, for a moment, what a key did. Its tone is the mode's
+          // colour, as the panel shows it; its key, the one that leaves the mode.
           let pillTimer = 0;
-          function showPill(text, hint, note, keep) {
+          function showPill(tone, text, hint, key, transient) {
             clearTimeout(pillTimer);
-            const { state: pill } = overlayView();
-            pill.className = `state shown${note ? ' note' : ''}`;
-            pill.textContent = text;
-            const span = pill.appendChild(document.createElement('span'));
-            span.textContent = hint;
-            if (note && !keep) pillTimer = setTimeout(() => safe(showState), 2500);
+            const { pill } = overlayView();
+            pill.replaceChildren();
+            pill.className = 'pill shown';
+            pill.dataset.tone = tone;
+            pill.appendChild(document.createElement('b')).textContent = text;
+            if (hint) {
+              const span = pill.appendChild(document.createElement('span'));
+              span.className = 'hint';
+              span.textContent = hint;
+            }
+            if (key) pill.appendChild(document.createElement('kbd')).textContent = key;
+            if (transient) pillTimer = setTimeout(() => safe(showState), 2500);
+            return pill;
           }
           function showState() {
             clearTimeout(pillTimer);
-            if (state === 'paused') showPill('Recording paused', 'F8 resumes');
-            else if (state === 'testing') showPill('Testing the flow', part ? 'replaying it here; nothing is recorded' : 'in its own window; nothing is recorded', true, true);
-            else if (state === 'login' && loginText) showPill(loginText, loginHint, true, true);
-            else if (state === 'trying') showPill('Trying: nothing is recorded', 'F7 records again', true, true);
-            else if (state === 'recording' && part) showPill(part, 'F2 when done', true, true);
-            else if (view) view.state.className = 'state';
+            if (checking || inspecting) return;
+            if (state === 'paused') showPill('warn', 'Recording paused', 'nothing is recorded · resume', 'F8');
+            else if (state === 'testing') showPill('accent', 'Testing the flow', part ? 'replaying it here · nothing is recorded' : 'in its own window · nothing is recorded');
+            else if (state === 'login' && loginText) showPill('info', loginText, loginHint);
+            else if (state === 'trying') showPill('try', 'Trying', 'nothing is recorded · record again', 'F7');
+            else if (state === 'recording' && part) showPill('rec', part, 'do it again, then', 'F2');
+            else if (view) view.pill.className = 'pill';
+          }
+          // The pill fades while the pointer is near it, so what is under it can be seen and clicked.
+          function nearPill() {
+            const pill = view?.pill;
+            if (!pill?.classList.contains('shown')) return;
+            const box = pill.getBoundingClientRect();
+            const near = pointer.x > box.left - 24 && pointer.x < box.right + 24 && pointer.y < box.bottom + 24;
+            pill.classList.toggle('near', near && !pill.classList.contains('interactive'));
           }
           function applyState(next, nextPart) {
             if (!['recording', 'paused', 'login', 'testing', 'trying'].includes(next)) return;
@@ -1115,35 +1181,97 @@ internal static class CaptureScript
             showState();
           }
 
-          // The box over the element, and the label below it, or above it when there is no room below.
+          // Drawn once a frame at most, however fast the pointer moves or the page scrolls.
+          let drawFrame = 0;
+          const scheduleDraw = () => {
+            if (!drawFrame) drawFrame = requestAnimationFrame(() => { drawFrame = 0; safe(drawOverlay); });
+          };
+          const modeOf = () => (checking ? 'check' : hover?.picked ? 'picked' : state === 'trying' ? 'try' : 'record');
+
+          // The box over the element, and the label beside it.
           function drawOverlay() {
             const element = hover?.boxed ?? hover?.shown;
-            if (!(overlayOn || checking) || !element?.isConnected) { hideOverlay(); return; }
+            if (!(overlayOn || checking) || dragging || !element?.isConnected) { hideOverlay(); return; }
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
             const { box, label } = overlayView();
-            box.classList.toggle('picked', !!hover.picked);
-            box.classList.toggle('check', checking);
-            Object.assign(box.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
+            const glide = box.style.display === 'block' && !reducedMotion.matches;
+            box.dataset.mode = label.dataset.mode = modeOf();
+            box.classList.toggle('glide', glide);
+            Object.assign(box.style, { display: 'block', transform: `translate(${rect.left}px, ${rect.top}px)`,
               width: `${rect.width}px`, height: `${rect.height}px` });
-            if (!hover.answer || chooser) { label.style.display = 'none'; return; }
+            if (!labelled || chooser) { label.style.display = 'none'; return; }
+            const showing = label.style.display === 'block';
             label.style.display = 'block';
-            const size = label.getBoundingClientRect();
-            const below = rect.bottom + 4;
-            const above = rect.top - size.height - 4;
-            const top = below + size.height <= innerHeight ? below : above >= 0 ? above : innerHeight - size.height - 4;
-            const left = Math.min(Math.max(4, rect.left), innerWidth - size.width - 4);
-            Object.assign(label.style, { left: `${Math.max(4, left)}px`, top: `${Math.max(4, top)}px` });
+            const { left, top } = placeLabel(rect, label.getBoundingClientRect());
+            label.classList.toggle('glide', showing && !reducedMotion.matches);
+            label.style.transform = `translate(${left}px, ${top}px)`;
           }
+
+          // Below the element, else above it, else inside it at the edge away from the pointer; on the screen, and never
+          // over the pointer.
+          function placeLabel(rect, size) {
+            const gap = 6;
+            const edge = 6;
+            const fits = (top) => top >= edge && top + size.height <= innerHeight - edge;
+            const left = Math.max(edge, Math.min(rect.left, innerWidth - size.width - edge));
+            const covers = (top) => pointer.x >= left - 4 && pointer.x <= left + size.width + 4 && pointer.y >= top - 4 &&
+              pointer.y <= top + size.height + 4;
+            const below = rect.bottom + gap;
+            const above = rect.top - gap - size.height;
+            const insideTop = Math.max(edge, rect.top + gap);
+            const insideBottom = Math.min(innerHeight - edge, rect.bottom - gap) - size.height;
+            const away = Math.abs(pointer.y - insideTop) > Math.abs(pointer.y - insideBottom - size.height) ? [insideTop, insideBottom] : [insideBottom, insideTop];
+            const choices = [below, above, ...away].filter(fits);
+            const top = choices.find((choice) => !covers(choice)) ?? choices[0] ?? Math.max(edge, innerHeight - size.height - edge);
+            // Still over the pointer: beside it instead.
+            if (covers(top)) {
+              const right = pointer.x + 16;
+              return { left: right + size.width <= innerWidth - edge ? right : Math.max(edge, pointer.x - 16 - size.width), top };
+            }
+            return { left, top };
+          }
+
+          // What a click there does, as the tag of the label says it.
+          const verbFor = (element) => element.matches(TOGGLES) ? (roleOf(element) === 'radio' ? 'Pick' : 'Tick')
+            : isTextual(element) ? 'Fill'
+            : element.tagName === 'SELECT' || closestUp(element, '[role=option]') ? 'Choose'
+            : 'Click';
+          // What it is, as a person reads it: its role and name, else its tag.
+          const whatOf = (element) => {
+            const role = roleOf(element);
+            const name = clean(accessibleName(element)).slice(0, 80);
+            return role ? (name ? `${role} “${name}”` : role) : tagOf(element);
+          };
+          // Why the locators before the one chosen lost, without those the element simply has none of.
+          const shortReasons = (reasons) => (reasons ?? []).filter((reason) => !/: (none|no name)$/.test(reason)).slice(0, 3).join('  ·  ');
 
           function fillLabel(answer, state) {
             const parts = overlayView();
             const line = (part, text) => { part.textContent = text || ''; part.style.display = text ? 'block' : 'none'; };
-            crumbs(parts.pick, state);
-            line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
+            const element = state.picked ?? state.shown;
+            const verb = verbFor(element);
+            parts.head.dataset.tag = checking ? 'Check' : state.picked ? `Picked · ${verb}` : modeOf() === 'try' ? `Try · ${verb}` : verb;
+            parts.what.textContent = whatOf(element);
+            parts.locator.textContent = answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it';
+            parts.loc.classList.toggle('fragile', !!answer.problem || !answer.locator);
+            parts.loc.classList.remove('plain');
+            parts.count.textContent = answer.count > 1 ? `found ${answer.count}` : answer.count === 1 ? '1 match' : '';
             line(parts.problem, answer.problem);
-            line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
-            line(parts.note, checking ? 'click to check it  ·  Esc leaves check mode' : answer.note);
+            line(parts.reasons, shortReasons(answer.reasons));
+            line(parts.note, checking ? '' : answer.note);
+            crumbs(parts.pick, state);
+            parts.more.style.display = parts.reasons.textContent || parts.note.textContent || state.chain ? '' : 'none';
+            parts.label.classList.remove('stale');
+            parts.label.classList.toggle('picked', !!state.chain);
+            labelled = true;
+            // The details, once the pointer rests on it.
+            clearTimeout(restTimer);
+            restTimer = setTimeout(() => safe(() => {
+              if (hover !== state) return;
+              parts.label.classList.add('rest');
+              scheduleDraw();
+            }), 450);
           }
 
           const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
@@ -1215,7 +1343,7 @@ internal static class CaptureScript
             if (index === state.index) {
               // At either end: the breadcrumb shows it.
               if (state.answer) fillLabel(state.answer, state);
-              drawOverlay();
+              scheduleDraw();
               return;
             }
             state.index = index;
@@ -1223,12 +1351,17 @@ internal static class CaptureScript
             state.shown = state.picked ?? closestUp(state.element, '[role=option]') ?? state.element;
             state.boxed = null;
             state.answer = null;
-            drawOverlay();
-            scheduleExplain();
+            view?.label.classList.add('stale');
+            scheduleDraw();
+            scheduleExplain(0);
           }
 
-          function scheduleExplain() {
-            if (!explainTimer) explainTimer = setTimeout(() => { explainTimer = 0; safe(explain); }, 80);
+          // Asked once the pointer settles on an element, so passing over many asks about none of them; at the latest a
+          // moment after it began to move.
+          function scheduleExplain(wait = 90) {
+            clearTimeout(explainTimer);
+            if (!explainBy) explainBy = now() + 300;
+            explainTimer = setTimeout(() => { explainTimer = 0; explainBy = 0; safe(explain); }, Math.max(0, Math.min(wait, explainBy - now())));
           }
 
           // Asks the recorder what a click on the element records: one question at a time, about the latest element. The
@@ -1258,44 +1391,81 @@ internal static class CaptureScript
               state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
               fillLabel(state.answer, state);
               if (chooser?.element === shown && state.answer.locator) chooser.what.textContent = state.answer.locator;
-              drawOverlay();
+              scheduleDraw();
             }
-            if (explainAgain) { explainAgain = false; scheduleExplain(); }
+            if (explainAgain) { explainAgain = false; scheduleExplain(0); }
           }
 
+          // On a scrollbar of the element: the page's own, or one of a box that scrolls.
+          function onScrollbar(element, x, y) {
+            if (element === document.documentElement) return true;
+            if (element.scrollHeight <= element.clientHeight && element.scrollWidth <= element.clientWidth) return false;
+            const box = element.getBoundingClientRect();
+            const inX = x - box.left - element.clientLeft;
+            const inY = y - box.top - element.clientTop;
+            return (element.scrollHeight > element.clientHeight && inX > element.clientWidth) ||
+              (element.scrollWidth > element.clientWidth && inY > element.clientHeight);
+          }
+
+          let moveFrame = 0;
+          let moved = null;
           addEventListener('pointermove', (event) => safe(() => {
-            if (!event.isTrusted || chooser || !(overlayOn && recording()) && !checking) return;
-            const hit = deepTarget(event);
-            if (hit === hover?.hit) {
+            if (!event.isTrusted) return;
+            pointer = { x: event.clientX, y: event.clientY };
+            moved = { hit: deepTarget(event), buttons: event.buttons };
+            if (!moveFrame) moveFrame = requestAnimationFrame(() => { moveFrame = 0; safe(() => movedTo(moved)); });
+          }), { capture: true, passive: true });
+          addEventListener('pointerdown', (event) => { if (event.isTrusted) downAt = { x: event.clientX, y: event.clientY }; },
+            { capture: true, passive: true });
+          addEventListener('pointerup', () => safe(() => {
+            downAt = null;
+            if (dragging) { dragging = false; scheduleDraw(); }
+          }), { capture: true, passive: true });
+
+          // What the pointer moved onto, once a frame.
+          function movedTo({ hit, buttons }) {
+            nearPill();
+            // Dragging, or selecting text: the overlay steps aside until the button is let go.
+            dragging = buttons !== 0 && !checking && !!downAt && Math.hypot(pointer.x - downAt.x, pointer.y - downAt.y) > 6;
+            if (dragging) { hideOverlay(); return; }
+            if (chooser || !(overlayOn && recording()) && !checking) return;
+            const target = hit && !onScrollbar(hit, pointer.x, pointer.y) ? hit : null;
+            if (target && target === hover?.hit) {
               // The page may have changed under a pointer at rest.
               if (now() - hover.at > 1500) scheduleExplain();
+              scheduleDraw();
               return;
             }
             // Within the element picked, the pick holds, on the path to where the pointer is now.
-            if (hover?.picked && hit && containsDeep(hover.picked, hit) && !checking) {
+            if (hover?.picked && target && containsDeep(hover.picked, target) && !checking) {
               const picked = hover.picked;
-              hover.hit = hit;
+              hover.hit = target;
               hover.chain = chainOf(hover);
-              if (!hover.chain.includes(picked)) hover.chain = [hit, ...hover.chain.filter((node) => node !== hit)];
+              if (!hover.chain.includes(picked)) hover.chain = [target, ...hover.chain.filter((node) => node !== target)];
               hover.index = hover.chain.indexOf(picked);
               return;
             }
-            hover = hit && hit !== document.body && hit !== document.documentElement && !hit.matches('iframe, frame')
-              ? hoverOver(hit) : null;
-            drawOverlay();
+            hover = target && target !== document.body && target !== document.documentElement && !target.matches('iframe, frame')
+              ? hoverOver(target) : null;
+            clearTimeout(restTimer);
+            if (view) view.label.classList.remove('rest', 'picked');
+            if (hover) view?.label.classList.add('stale');
+            else labelled = false;
+            scheduleDraw();
             if (hover) scheduleExplain();
-          }), { capture: true, passive: true });
+          }
           addEventListener('pointerout', (event) => safe(() => {
             // Off the page, or into a frame, which records nothing.
-            if (event.isTrusted && !event.relatedTarget) { hover = null; hideOverlay(); }
+            if (event.isTrusted && !event.relatedTarget) { hover = null; labelled = false; hideOverlay(); }
           }), { capture: true, passive: true });
-          addEventListener('scroll', () => safe(drawOverlay), { capture: true, passive: true });
-          addEventListener('resize', () => safe(drawOverlay), { passive: true });
+          addEventListener('scroll', scheduleDraw, { capture: true, passive: true });
+          addEventListener('resize', scheduleDraw, { passive: true });
           addEventListener('keydown', (event) => safe(() => {
             if (!event.isTrusted || event.ctrlKey || event.metaKey || event.shiftKey) return;
             if (event.key === 'F9' && !event.altKey && !event.repeat) {
               overlayOn = !overlayOn;
               hover = null;
+              labelled = false;
               hideOverlay();
             } else if (event.key === 'Escape' && state === 'login' && loginEscape && !event.repeat) {
               control({ type: 'loginByHand' });
@@ -1457,8 +1627,9 @@ internal static class CaptureScript
           function startChecking() {
             if (checking) return;
             if (state !== 'recording') {
-              showPill(state === 'paused' ? 'Recording paused' : state === 'trying' ? 'Trying' : 'Not now',
-                state === 'paused' ? 'F8 resumes, then F6 checks' : state === 'trying' ? 'F7 records again, then F6 checks' : 'the recording is busy', true);
+              showPill(state === 'paused' ? 'warn' : state === 'trying' ? 'try' : 'warn', state === 'paused' ? 'Recording paused' : state === 'trying' ? 'Trying' : 'Not now',
+                state === 'paused' ? 'resume first, then check' : state === 'trying' ? 'record again first, then check' : 'the recording is busy',
+                state === 'paused' ? 'F8' : state === 'trying' ? 'F7' : '', true);
               return;
             }
             flushTyping();
@@ -1466,23 +1637,14 @@ internal static class CaptureScript
             checking = true;
             hover = null;
             hideOverlay();
-            const { bar } = overlayView();
-            bar.replaceChildren();
-            const title = bar.appendChild(document.createElement('b'));
-            title.textContent = 'Check mode';
-            const hint = bar.appendChild(document.createElement('span'));
-            hint.className = 'hint';
-            hint.textContent = 'Click what the flow should check';
-            const url = bar.appendChild(document.createElement('button'));
+            // In its place at the top, the pill of the mode the recording was in.
+            const pill = showPill('ok', 'Check', 'click what the flow should check · leave', 'Esc');
+            const url = pill.insertBefore(document.createElement('button'), pill.lastChild);
             url.className = 'url';
             url.type = 'button';
             url.textContent = 'URL is…';
             url.addEventListener('click', () => safe(() => openChooser(null)));
-            bar.appendChild(document.createElement('kbd')).textContent = 'Esc';
-            bar.classList.add('shown');
-            // In its place at the top, the pill of a part being recorded again.
-            clearTimeout(pillTimer);
-            view.state.className = 'state';
+            pill.classList.add('interactive');
             control({ type: 'checking', on: true });
           }
 
@@ -1492,12 +1654,12 @@ internal static class CaptureScript
             checking = false;
             hover = null;
             hideOverlay();
-            view?.bar.classList.remove('shown');
+            if (view) view.pill.className = 'pill';
             showState();
             control({ type: 'checking', on: false });
           }
 
-          // The chooser, beside the element, or under the bar for the address.
+          // The chooser, beside the element, or under the pill for the address.
           function openChooser(element) {
             closeChooser();
             const { kinds, index } = element ? kindsFor(element) : { kinds: [{ kind: 'url', name: 'URL is', value: location.href,
@@ -1610,7 +1772,7 @@ internal static class CaptureScript
               url: location.href });
             const what = option.kind === 'url' ? 'the address' : option.name.toLowerCase();
             stopChecking();
-            showPill('Check added', what, true);
+            showPill('ok', 'Check added', what, '', true);
           }
 
           // In check mode, a click picks what to check, and nothing reaches the page but the pointer's moves; keys go to
@@ -1983,7 +2145,7 @@ internal static class CaptureScript
             }
             control({ type: 'freeze', described,
               tree: { root: nodeId(document.body), nodes, children, truncated: nodes.length >= MAX_FROZEN || undefined } });
-            showPill('Elements frozen', 'pick them in the panel', true);
+            showPill('info', 'Elements frozen', 'pick them in the panel', '', true);
           }
 
           // The panel follows the page as it changes, once it settles; it hears of a dialog, a menu or a list that opened.
@@ -2030,23 +2192,14 @@ internal static class CaptureScript
           };
 
           // ------------------------------------------------------------------------------------------- marks, inspect
-          // The panel's pointer on an element boxes it here, named as the tree names it, and scrolls it into view; its
-          // search boxes each match, the current one stronger. Drawn in the overlay's closed shadow root.
+          // The panel's pointer on an element boxes it here, as the overlay's box does, named as the tree names it, and
+          // scrolls it into view; so do a step or a locator the panel points at, every element it finds; the Elements
+          // view's search boxes each match, the current one stronger. Drawn in the overlay's closed shadow root.
           const MARKS_CSS = `
-            .mark, .hit, .tip { position: fixed; display: none; box-sizing: border-box; pointer-events: none; }
-            .mark { border: 2px solid #5157e6; border-radius: 2px; background: rgba(81, 87, 230, .16);
-              box-shadow: 0 0 0 1px rgba(255, 255, 255, .9); }
-            .hit { border: 1.5px solid rgba(217, 119, 6, .9); border-radius: 2px; background: rgba(245, 158, 11, .14); }
-            .hit.current { border-width: 2px; border-color: #d97706; background: rgba(245, 158, 11, .26); }
-            .tip { max-width: min(520px, calc(100vw - 8px)); padding: 4px 8px; border-radius: 4px; white-space: nowrap;
-              overflow: hidden; text-overflow: ellipsis; background: rgba(24, 24, 27, .95); color: #a1a1aa; direction: ltr;
-              font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-              box-shadow: 0 2px 6px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .25); }
-            .tip b { color: #c4b5fd; font-weight: 600; }
-            .tip i { color: #93c5fd; font-style: normal; }
-            .tip span { color: #e4e4e7; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; unicode-bidi: isolate; }
-            .bar.inspect b::before { background: #5157e6; box-shadow: 0 0 0 3px rgba(81, 87, 230, .22); }`;
-          let marked = { hover: null, matches: [], current: null };
+            .hit { position: fixed; top: 0; left: 0; display: none; box-sizing: border-box; pointer-events: none;
+              border: 1.5px solid rgba(217, 119, 6, .9); border-radius: 2px; background: rgba(245, 158, 11, .14); }
+            .hit.current { border-width: 2px; border-color: #d97706; background: rgba(245, 158, 11, .26); }`;
+          let marked = { hover: null, matches: [], current: null, shown: [], tag: '' };
           let marks = null;
           let markFrame = 0;
           function marksView() {
@@ -2061,7 +2214,7 @@ internal static class CaptureScript
               element.setAttribute('aria-hidden', 'true');
               return element;
             };
-            marks = { root, hits: [], box: part('mark'), tip: part('tip') };
+            marks = { root, hits: [], extras: [], box: part('mark'), tip: part('tip'), tipFor: null };
             return marks;
           }
           const markable = (node) => node?.nodeType === 11 ? node.host : node?.nodeType === 1 && node.isConnected ? node : null;
@@ -2074,28 +2227,36 @@ internal static class CaptureScript
               left += outer.left + frame.clientLeft;
               top += outer.top + frame.clientTop;
             }
-            return { left, top, width: rect.width, height: rect.height };
+            return { left, top, width: rect.width, height: rect.height, right: left + rect.width, bottom: top + rect.height };
           }
-          const place = (element, box) => Object.assign(element.style, { display: 'block', left: `${box.left}px`, top: `${box.top}px`,
+          const place = (element, box) => Object.assign(element.style, { display: 'block', transform: `translate(${box.left}px, ${box.top}px)`,
             width: `${box.width}px`, height: `${box.height}px` });
-          function nameTip(tip, element, box) {
-            const id = element.id ? `#${element.id}` : '';
-            const first = typeof element.className === 'string' ? element.className.trim().split(/\s+/)[0] : '';
-            const role = element.getAttribute('role') || roleOf(element);
-            const name = role ? clean(accessibleName(element)).slice(0, 60) : '';
+          // The tip over a marked element, as the label over a hovered one: what it is, its tag, id or class, its size.
+          function nameTip(tip, element, box, tag, more) {
             tip.replaceChildren();
-            tip.appendChild(document.createElement('b')).textContent = element.tagName.toLowerCase();
-            if (id) tip.appendChild(document.createElement('i')).textContent = id;
-            else if (first) tip.append(`.${first}`);
-            tip.append(`  ${Math.round(box.width)} × ${Math.round(box.height)}`);
-            if (role) tip.append(`  ${role}`);
-            if (name) tip.appendChild(document.createElement('span')).textContent = ` “${name}”`;
+            const head = tip.appendChild(document.createElement('div'));
+            head.className = 'head';
+            head.dataset.tag = tag;
+            head.appendChild(document.createElement('div')).className = 'what';
+            head.firstChild.textContent = whatOf(element);
+            const loc = tip.appendChild(document.createElement('div'));
+            loc.className = 'loc plain';
+            const code = loc.appendChild(document.createElement('div'));
+            code.className = 'locator';
+            code.appendChild(document.createElement('b')).textContent = element.tagName.toLowerCase();
+            const first = typeof element.className === 'string' ? element.className.trim().split(/\s+/)[0] : '';
+            if (element.id) code.appendChild(document.createElement('i')).textContent = `#${element.id}`;
+            else if (first) code.append(`.${first}`);
+            const size = loc.appendChild(document.createElement('div'));
+            size.className = 'count';
+            size.textContent = `${Math.round(box.width)} × ${Math.round(box.height)}${more ? `  ·  ${more}` : ''}`;
           }
           function drawMarks() {
             markFrame = 0;
-            const { hover, matches: hits, current } = marked;
-            if (!hover?.isConnected && !hits.length) {
-              if (marks) for (const element of [marks.box, marks.tip, ...marks.hits]) element.style.display = 'none';
+            const { hover, matches: hits, current, shown, tag } = marked;
+            const target = hover?.isConnected ? hover : shown.find((element) => element.isConnected) ?? null;
+            if (!target && !hits.length && !shown.length) {
+              if (marks) for (const element of [marks.box, marks.tip, ...marks.hits, ...marks.extras]) element.style.display = 'none';
               return;
             }
             const view = marksView();
@@ -2105,17 +2266,36 @@ internal static class CaptureScript
               if (element.isConnected) place(hit, boxOf(element)); else hit.style.display = 'none';
             });
             for (const hit of view.hits.slice(hits.length)) hit.style.display = 'none';
-            if (hover?.isConnected) {
-              const box = boxOf(hover);
+            // The other elements a locator the panel points at finds.
+            const others = hover?.isConnected ? [] : shown.filter((element) => element !== target && element.isConnected);
+            others.forEach((element, index) => {
+              const extra = view.extras[index] ?? (view.extras[index] = view.root.insertBefore(document.createElement('div'), view.box));
+              extra.className = 'extra';
+              extra.dataset.mode = 'record';
+              place(extra, boxOf(element));
+            });
+            for (const extra of view.extras.slice(others.length)) extra.style.display = 'none';
+            if (target) {
+              const box = boxOf(target);
+              const mode = hover?.isConnected ? (inspecting ? 'inspect' : 'record') : 'record';
+              view.box.dataset.mode = view.tip.dataset.mode = mode;
               place(view.box, box);
-              nameTip(view.tip, hover, box);
+              const name = hover?.isConnected ? (inspecting ? 'Inspect' : 'Element') : tag || 'Step';
+              const more = shown.length > 1 && !hover?.isConnected ? `found ${shown.length}` : '';
+              const key = `${name}|${more}|${Math.round(box.width)}×${Math.round(box.height)}`;
+              // Filled again only when it shows another element, or its size changed.
+              if (view.tipFor !== target || view.tipKey !== key) {
+                nameTip(view.tip, target, box, name, more);
+                view.tipFor = target;
+                view.tipKey = key;
+              }
               view.tip.style.display = 'block';
-              const size = view.tip.getBoundingClientRect();
-              const top = box.top - size.height - 4 >= 0 ? box.top - size.height - 4 : Math.min(box.top + box.height + 4, innerHeight - size.height - 4);
-              Object.assign(view.tip.style, { left: `${Math.max(4, Math.min(box.left, innerWidth - size.width - 4))}px`, top: `${Math.max(4, top)}px` });
+              const at = placeLabel(box, view.tip.getBoundingClientRect());
+              view.tip.style.transform = `translate(${at.left}px, ${at.top}px)`;
             } else {
               view.box.style.display = 'none';
               view.tip.style.display = 'none';
+              view.tipFor = null;
             }
             // It follows the element as the page scrolls or moves it.
             markFrame = requestAnimationFrame(() => safe(drawMarks));
@@ -2134,6 +2314,11 @@ internal static class CaptureScript
               if (marked.hover && command.scroll) reveal(marked.hover);
             }
             if ('matches' in command) marked.matches = (command.matches ?? []).map(nodeById).map(markable).filter(Boolean).slice(0, 300);
+            if ('elements' in command || command.op === 'show') {
+              marked.shown = (command.elements ?? []).filter((element) => element?.nodeType === 1).slice(0, 50);
+              marked.tag = command.tag ?? '';
+              if (marked.shown[0] && command.scroll) reveal(marked.shown[0]);
+            }
             if ('current' in command) {
               const was = marked.current;
               marked.current = markable(nodeById(command.current));
@@ -2151,7 +2336,7 @@ internal static class CaptureScript
           let unhookFrames = [];
           function startInspecting() {
             if (inspecting) return;
-            if (state === 'login' || state === 'testing') { showPill('Not now', 'the recording is busy', true); return; }
+            if (state === 'login' || state === 'testing') { showPill('warn', 'Not now', 'the recording is busy', '', true); return; }
             stopChecking();
             flushTyping();
             inspecting = true;
@@ -2159,16 +2344,7 @@ internal static class CaptureScript
             hideOverlay();
             observe();
             sent = new WeakMap();
-            const { bar } = overlayView();
-            bar.replaceChildren();
-            bar.appendChild(document.createElement('b')).textContent = 'Inspect';
-            const hint = bar.appendChild(document.createElement('span'));
-            hint.className = 'hint';
-            hint.textContent = 'Point at an element; a click picks it in the panel';
-            bar.appendChild(document.createElement('kbd')).textContent = 'Esc';
-            bar.classList.add('shown', 'inspect');
-            clearTimeout(pillTimer);
-            view.state.className = 'state';
+            showPill('inspect', 'Inspect', 'point at an element, a click picks it in the panel · leave', 'Esc');
             hookFrames();
             control({ type: 'inspect', on: true });
           }
@@ -2182,9 +2358,8 @@ internal static class CaptureScript
             if (!markFrame) drawMarks();
             for (const unhook of unhookFrames) safe(unhook);
             unhookFrames = [];
-            view?.bar.classList.remove('inspect');
             if (!checking) {
-              view?.bar.classList.remove('shown');
+              if (view) view.pill.className = 'pill';
               showState();
             }
             if (!watching) { watcher?.disconnect(); watcher = null; }
@@ -2278,6 +2453,8 @@ internal static class CaptureScript
               case 'describe': return JSON.stringify(describeNode(command.id, command.near ? JSON.parse(command.near) : null));
               case 'watch': watch(!!command.on); return null;
               case 'mark': setMarks(command); return null;
+              // What a step or a locator the panel points at finds, every element of it; none hides them.
+              case 'show': setMarks({ op: 'show', elements: command.elements, tag: command.tag }); return null;
               case 'inspect': command.on ? startInspecting() : stopInspecting(); return null;
               case 'check':
                 if (command.on) { stopInspecting(); startChecking(); } else stopChecking();

@@ -2,6 +2,37 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- **The recorder looks and reads as one calm tool.** The panel, the overlay in the recorded page and the console share
+  one design system: a type scale of five sizes, one set of radii and shadows, one button hierarchy (primary, secondary,
+  ghost, danger), one icon style, and light and dark palettes whose text meets WCAG AA contrast. Each mode has one colour
+  everywhere: recording and re-recording red, paused amber, logging in blue, testing indigo, trying teal, checking green,
+  inspecting violet.
+- **One status strip says what the recorder is doing and how to leave it**, under the panel's top bar, in place of the
+  banners and the test bar that stacked there: the mode, a short line, and the button and the key that end it. A test's
+  result shows there, or as a chip at its end while another mode is on; it never moves the panes.
+- **Every command is a key away.** `Ctrl+K` lists every command with its key, to find one by typing; `?` shows the keys
+  in the app and in the panel; the footer points at `Ctrl+K` until it was used once.
+- **Calmer steps.** A card says what was done, the value, the locator and its checks; what the page did shows only when
+  no check says it already. The buttons of a card and of a step are icons that no longer cover its text. A loading tree
+  or a login shows placeholders, and a search of the elements that finds nothing says so.
+- **One toast at a time**, at the bottom, with Undo where a change can be undone, also for a step added in the Elements
+  view; a command the panel refused says why in it, once.
+- **The panes are resizable**, by dragging the edge between them or with the arrow keys, and the panel keeps them, with
+  the theme, slow motion and **Interactive only**, in `~/.qaas/recorder-panel.json`. It fits from 520 px wide.
+- **The hover box in the recorded page.** One box and label in every mode, its colour and tag saying which. The label
+  says what a click does there (`Click`, `Fill`, `Choose`, `Tick`, `Pick`) and on what, the locator with how many it
+  found and a green or amber dot, and once the pointer rests, why the others lost, without those the element has none
+  of. It glides from element to element, drawn once a frame, keeps its last words dimmed until the next ones come, never
+  covers the pointer or leaves the screen, and steps aside while dragging, selecting text or on a scrollbar. What the
+  panel points at is boxed in the same style, every element a locator finds. The pill at the top of the page names the
+  mode in its colour with the key that leaves it, and fades as the pointer comes near it.
+- **The console** prints each mode as a line of its own, its word in a column (`● Recording`, `║ Paused`, `◇ Trying`,
+  `› Testing`, `✓ Passed`, `× Failed`), with the panel's words: a checkbox is ticked and a radio picked, as `check` is a
+  check of what the page shows. A click that only opens a select is no longer printed, so the numbers are the panel's
+  step numbers; a part's replay no longer prints what the page did again; a check of an element's own text says it once.
+
 ## 2.0.1
 
 - Fixed: the recorder stopped with a NullReferenceException writing a flow whose first step is in a dialog no recorded

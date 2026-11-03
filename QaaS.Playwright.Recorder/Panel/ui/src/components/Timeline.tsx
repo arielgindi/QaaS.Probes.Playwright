@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isGoing, useNow } from '../test';
-import { candidateKind, candidateStatus, cls, detailOf, effectLabel, plural, subjectOf, verbOf } from '../text';
+import { candidateKind, candidateStatus, cls, detailOf, effectLabel, plural, shortReasons, subjectOf, verbOf } from '../text';
 import type { Action, Effect, Expect, PanelState, Rerecord, Status, Step, TestFailure, TestRun, TestStep } from '../types';
 import { Icon, type IconName, kindIcon } from './icons';
 import { PaneHeader } from './PaneHeader';
-import { FailureDetails, Spinner, StepStatus } from './TestRun';
+import { FailureDetails, StepStatus } from './TestRun';
+import { Button, focusOnMount, EmptyState, Kbd, Spinner, Tag } from './ui';
 
 interface Props {
   steps: Step[];
@@ -85,6 +86,11 @@ export function Timeline(props: Props) {
   useEffect(() => {
     list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [selected, count]);
+  // What is tried shows as it is tried, under the steps.
+  const triedCount = tried?.length;
+  useEffect(() => {
+    if (triedCount !== undefined) list.current?.querySelector('[aria-label="Tried"] li:last-child, [aria-label="Tried"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [triedCount]);
   // The step running stays in view as the test goes through the flow.
   useEffect(() => {
     if (running) list.current?.querySelector(`[data-action="${CSS.escape(running)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -93,88 +99,94 @@ export function Timeline(props: Props) {
   const failure = test?.failure;
   return (
     <section aria-label="Steps" class="area-steps flex min-h-0 flex-col border-r border-line bg-panel">
-      <PaneHeader title="Steps">
-        {count > 0 && <span class="tabular-nums">{count}</span>}
+      <PaneHeader title="Steps" count={count || undefined}>
         <Switch on={autoChecks} disabled={!canEdit} onChange={props.onAutoChecks} />
       </PaneHeader>
-      <div ref={list} class="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onMouseLeave={() => onHover(null)}>
+      <div ref={list} class="min-h-0 flex-1 overflow-y-auto px-2 pb-6" onMouseLeave={() => onHover(null)}>
         {failure && !failure.action && test.state === 'failed' && (
           <div class="px-1 pt-3">
             <FailureDetails failure={failure} file={file} onEnlarge={onEnlarge} />
           </div>
         )}
         {here === null && <RecordingHere rerecord={rerecord!} />}
-        {steps.length === 0 ? (
-          here === undefined && <Empty status={status} />
-        ) : (
-          steps.map((step) => (
-            <div key={step.actions[0]?.id ?? step.name} class="pt-3">
-              <div class="group/step relative flex min-w-0 items-center gap-2 px-2 pb-1.5 text-[11px] text-faint">
-                <StepName name={step.name} disabled={!canEdit || step.actions.length === 0} onRename={(name) => props.onRenameStep(step.actions[0].id, name)} />
-                {step.dialog && (
-                  <span dir="auto" class="min-w-0 truncate rounded border border-line px-1.5 leading-4">
-                    {step.dialog}
+        {steps.length === 0
+          ? here === undefined && <Empty status={status} />
+          : steps.map((step, index) => (
+              <div key={step.actions[0]?.id ?? step.name} class={index === 0 ? 'pt-2' : 'pt-4'}>
+                <div class="group/step flex min-w-0 items-center gap-1.5 px-2 pb-1.5">
+                  <StepName name={step.name} disabled={!canEdit || step.actions.length === 0} onRename={(name) => props.onRenameStep(step.actions[0].id, name)} />
+                  {step.dialog && (
+                    <span dir="auto" title={`In the dialog “${step.dialog}”`} class="flex min-w-0 shrink items-center gap-1 text-meta text-faint">
+                      <Icon name="dialog" size={11} class="shrink-0" />
+                      <span class="truncate">{step.dialog}</span>
+                    </span>
+                  )}
+                  <span class="ml-auto flex shrink-0 items-center gap-0.5">
+                    {canRerecord && step.actions.length > 0 && (
+                      <span class="hidden items-center gap-0.5 group-hover/step:flex group-focus-within/step:flex">
+                        <Button
+                          size="sm"
+                          iconOnly
+                          icon="rerecord"
+                          label={`Re-record ${step.name}: replay the flow up to it in the app, then do it again`}
+                          onClick={() => ask(step, step.actions[0], true, false)}
+                        />
+                        <Button
+                          size="sm"
+                          iconOnly
+                          icon="recordAfter"
+                          label={`Record after ${step.name}: replay the flow through it in the app, then record what goes after it`}
+                          onClick={() => ask(step, step.actions.at(-1)!, true, true)}
+                        />
+                      </span>
+                    )}
+                    {test && <StepMark actions={step.actions} test={test} />}
                   </span>
+                </div>
+                {asking?.step && step.actions.some((action) => action.id === asking.action) && (
+                  <Confirm asking={asking} login={props.login} onConfirm={confirm} onCancel={() => setAsking(null)} />
                 )}
-                {test && <StepMark actions={step.actions} test={test} />}
-                {canRerecord && step.actions.length > 0 && (
-                  <span class="absolute -top-0.5 right-1.5 hidden items-center gap-1 group-hover/step:flex group-focus-within/step:flex">
-                    <PartButton icon="rerecord" label="Re-record" title={`Re-record ${step.name}: replay the flow up to it in the app, then do it again`} onClick={() => ask(step, step.actions[0], true, false)} />
-                    <PartButton icon="recordAfter" label="Record after" title={`Record after ${step.name}: replay the flow through it in the app, then record what goes after it`} onClick={() => ask(step, step.actions.at(-1)!, true, true)} />
-                  </span>
-                )}
+                <ol class="relative space-y-0.5 before:absolute before:top-5 before:bottom-5 before:left-[20px] before:w-px before:bg-line">
+                  {step.actions.flatMap((action) => [
+                    <Card
+                      key={action.id}
+                      action={action}
+                      fresh={fresh.has(action.id)}
+                      canRerecord={canRerecord}
+                      onRerecord={(after) => ask(step, action, false, after)}
+                      selected={action.id === selected}
+                      test={test?.steps[action.id]}
+                      failure={test?.state === 'failed' && failure?.action === action.id ? failure : undefined}
+                      file={file}
+                      now={now}
+                      canRun={canRun}
+                      canEdit={canEdit}
+                      onSelect={onSelect}
+                      onHover={onHover}
+                      onRunTo={onRunTo}
+                      onEnlarge={onEnlarge}
+                      onDelete={props.onDelete}
+                      onDropCheck={props.onDropCheck}
+                    />,
+                    asking && !asking.step && asking.action === action.id && (
+                      <li key="asking">
+                        <Confirm asking={asking} login={props.login} onConfirm={confirm} onCancel={() => setAsking(null)} />
+                      </li>
+                    ),
+                    action.id === continued?.after && <Continued key="continued" label={continued.label} />,
+                    action.id === here && <RecordingHere key="here" rerecord={rerecord!} />,
+                  ])}
+                </ol>
               </div>
-              {asking?.step && step.actions.some((action) => action.id === asking.action) && (
-                <Confirm asking={asking} login={props.login} onConfirm={confirm} onCancel={() => setAsking(null)} />
-              )}
-              <ol class="relative space-y-1 before:absolute before:top-4 before:bottom-4 before:left-[22px] before:w-px before:bg-line-strong">
-                {step.actions.flatMap((action) => [
-                  <Card
-                    key={action.id}
-                    action={action}
-                    fresh={fresh.has(action.id)}
-                    canRerecord={canRerecord}
-                    onRerecord={(after) => ask(step, action, false, after)}
-                    selected={action.id === selected}
-                    test={test?.steps[action.id]}
-                    failure={test?.state === 'failed' && failure?.action === action.id ? failure : undefined}
-                    file={file}
-                    now={now}
-                    canRun={canRun}
-                    canEdit={canEdit}
-                    onSelect={onSelect}
-                    onHover={onHover}
-                    onRunTo={onRunTo}
-                    onEnlarge={onEnlarge}
-                    onDelete={props.onDelete}
-                    onDropCheck={props.onDropCheck}
-                  />,
-                  asking && !asking.step && asking.action === action.id && (
-                    <li key="asking">
-                      <Confirm asking={asking} login={props.login} onConfirm={confirm} onCancel={() => setAsking(null)} />
-                    </li>
-                  ),
-                  action.id === continued?.after && <Continued key="continued" label={continued.label} />,
-                  action.id === here && <RecordingHere key="here" rerecord={rerecord!} />,
-                ])}
-              </ol>
-            </div>
-          ))
-        )}
+            ))}
         {tried && <Tried tried={tried} rerecord={rerecord} canAdd={canEdit} onHover={onHover} onAdd={props.onAddTried} />}
-        {status === 'paused' && steps.length > 0 && (
-          <div class="mx-1 mt-3 flex items-center gap-2 rounded-lg border border-dashed border-warn/40 px-3 py-2 text-[12px] text-warn">
-            <Icon name="pause" size={13} class="shrink-0" />
-            Paused here: nothing is recorded until you resume
-          </div>
-        )}
         {notes.length > 0 && (
-          <div class="mx-1 mt-4 rounded-lg border border-warn/30 bg-warn/8 p-2.5 text-[12px] text-warn">
-            <div class="mb-1 flex items-center gap-1.5 font-medium">
+          <div class="mx-1 mt-5 rounded-lg border border-warn/30 bg-warn/[0.06] px-3 py-2.5 text-meta text-warn">
+            <div class="mb-1 flex items-center gap-1.5 font-semibold">
               <Icon name="warn" size={13} />
               Check by hand
             </div>
-            <ul class="space-y-1 pl-5 leading-snug">
+            <ul class="space-y-1 pl-5">
               {notes.map((note) => (
                 <li key={note} class="list-disc">
                   {note}
@@ -191,10 +203,10 @@ export function Timeline(props: Props) {
 // Where the recording continued ends, and what is recorded now begins.
 function Continued({ label }: { label: string }) {
   return (
-    <li role="separator" class="flex items-center gap-2 py-1.5 pl-2 text-[11px] text-info">
-      <span class="flex-1 border-t border-dashed border-info/50" />
+    <li role="separator" class="flex items-center gap-2 py-2 pl-2 text-meta text-info">
+      <span class="flex-1 border-t border-dashed border-info/40" />
       {label}
-      <span class="flex-1 border-t border-dashed border-info/50" />
+      <span class="flex-1 border-t border-dashed border-info/40" />
     </li>
   );
 }
@@ -202,83 +214,67 @@ function Continued({ label }: { label: string }) {
 // Where what is recorded in a part goes, while it records.
 function RecordingHere({ rerecord }: { rerecord: Rerecord }) {
   return (
-    <li role="separator" class="flex list-none items-center gap-2 py-1.5 pl-3 text-[11px] font-medium text-rec">
-      <span class="size-2 shrink-0 animate-rec rounded-full bg-rec" />
+    <li role="separator" class="flex list-none items-center gap-2 py-2 pl-[15px] text-meta font-medium text-rec">
+      <span class="size-2 shrink-0 animate-rec rounded-full bg-rec text-rec" />
       <span class="shrink-0">{rerecord.fresh.length > 0 ? 'Recording here' : rerecord.after ? `Recording after ${rerecord.part}` : `Re-recording ${rerecord.part} here`}</span>
-      <span class="flex-1 border-t border-dashed border-rec/50" />
+      <span class="flex-1 border-t border-dashed border-rec/40" />
     </li>
-  );
-}
-
-function PartButton({ icon, label, title, onClick }: { icon: IconName; label: string; title: string; onClick(): void }) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      title={title}
-      aria-label={title}
-      class="inline-flex h-6 items-center gap-1 rounded-md border border-line-strong bg-panel px-1.5 text-[11px] font-medium text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-faint/60 hover:text-fg"
-    >
-      <Icon name={icon} size={12} class="text-rec" />
-      <span class="max-[1100px]:sr-only">{label}</span>
-    </button>
   );
 }
 
 // What recording a part again does in the app, before it does it.
 function Confirm({ asking, login, onConfirm, onCancel }: { asking: Asking; login?: string; onConfirm(): void; onCancel(): void }) {
-  const from = login ? `logs in with ${login}, ` : '';
+  const part = asking.loop ? 'loop' : 'step';
   return (
-    <div role="dialog" aria-label={asking.after ? 'Record after' : 'Re-record'} data-own-keys class="mx-1 my-1.5 rounded-lg border border-rec/35 bg-rec/[0.06] p-2.5 text-[12px] leading-snug text-fg">
-      <p class="font-medium">
+    <div
+      role="dialog"
+      aria-label={asking.after ? 'Record after' : 'Re-record'}
+      data-own-keys
+      onKeyDown={(event) => event.key === 'Escape' && onCancel()}
+      class="animate-pop-in mx-1 my-1.5 rounded-xl border border-line-strong bg-raised p-3 text-body shadow-e2"
+    >
+      <p class="font-semibold text-fg">
         {asking.after ? 'Record after ' : 'Re-record '}
         <span dir="auto">{asking.label}</span>?
       </p>
-      <p class="mt-1 text-muted">
-        The recorded window goes back to the start of the flow, {from}and replays it {asking.after ? `through this ${asking.loop ? 'loop' : 'step'}` : `up to this ${asking.loop ? 'loop' : 'step'}`},
-        really doing what it does in your app; nothing is recorded meanwhile. {asking.after ? 'Then what you do goes here, before the steps after it.' : 'Then do it again: it replaces what it had, and the steps after it stay.'}
+      <p class="mt-1 text-meta text-muted">
+        The app goes back to the start{login ? `, logs in with ${login},` : ''} and replays the flow {asking.after ? 'through' : 'up to'} this {part}, really
+        doing it in your app. {asking.after ? 'Then record what goes after it.' : 'Then do it again; the steps after it stay.'}
       </p>
-      {asking.loop && !asking.after && <p class="mt-1 text-warn">It is a loop: re-recording one repeat re-records the whole loop, all {plural(asking.loop, 'repeat')} of it.</p>}
-      {asking.loop && asking.after && <p class="mt-1 text-warn">It is a loop: what you record goes after all its repeats.</p>}
-      <div class="mt-2 flex items-center gap-1.5">
-        <button
-          type="button"
-          autoFocus
-          onClick={onConfirm}
-          onKeyDown={(event) => event.key === 'Escape' && onCancel()}
-          class="inline-flex h-7 items-center gap-1.5 rounded-md bg-rec px-2.5 text-[11.5px] font-semibold text-white transition hover:brightness-110"
-        >
-          <Icon name={asking.after ? 'recordAfter' : 'rerecord'} size={12} />
+      {asking.loop && (
+        <p class="mt-1.5 flex gap-1.5 text-meta text-warn">
+          <Icon name="warn" size={12} class="mt-0.5 shrink-0" />
+          {asking.after ? 'What you record goes after all its repeats.' : `All ${plural(asking.loop, 'repeat')} of the loop are recorded again.`}
+        </p>
+      )}
+      <div class="mt-3 flex items-center gap-1.5">
+        <Button variant="primary" size="sm" icon={asking.after ? 'recordAfter' : 'rerecord'} autoFocus onClick={onConfirm}>
           {asking.after ? 'Record after it' : 'Re-record'}
-        </button>
-        <button type="button" onClick={onCancel} class="inline-flex h-7 items-center rounded-md px-2 text-[11.5px] font-medium text-muted transition hover:bg-raised hover:text-fg">
+        </Button>
+        <Button size="sm" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
 
-// While trying: what the recorder would write for each action tried, dimmed, with Add to flow.
+// While trying: what the recorder would write for each action tried, with Add to flow.
 function Tried({ tried, rerecord, canAdd, onHover, onAdd }: { tried: Action[]; rerecord?: Rerecord; canAdd: boolean; onHover(id: string | null): void; onAdd(id: string): void }) {
   const where = rerecord?.phase === 'recording' ? 'where the part records' : 'at the end of the flow';
   return (
-    <section aria-label="Tried" class="mx-1 mt-4 rounded-lg border border-info/25 bg-info/[0.04] p-1.5">
-      <div class="flex items-center gap-1.5 px-1.5 pt-0.5 text-[11px] font-medium text-info">
+    <section aria-label="Tried" class="mx-1 mt-5 rounded-xl border border-try/30 bg-try/[0.04] p-1.5">
+      <div class="flex items-center gap-1.5 px-1.5 pt-0.5 pb-1.5 text-meta font-semibold text-try">
         <Icon name="flask" size={12} />
         Tried, not recorded
-        {tried.length > 0 && <span class="ml-auto font-normal tabular-nums text-faint">{tried.length}</span>}
+        {tried.length > 0 && <span class="ml-auto font-normal text-muted tabular-nums">{tried.length}</span>}
       </div>
-      <p class="px-1.5 pb-1.5 text-[11px] text-faint">Add to flow puts one {where}.</p>
       {tried.length === 0 ? (
-        <p class="px-1.5 pb-1 text-[12px] leading-snug text-muted">Click, type or choose in the app: each action shows here as the recorder would write it.</p>
+        <p class="px-1.5 pb-1.5 text-meta text-muted">Click, type or choose in the app: each action shows here as it would be written. Add to flow puts one {where}.</p>
       ) : (
         <ol class="space-y-1.5">
           {tried.map((action) => (
-            <TriedCard key={action.id} action={action} canAdd={canAdd} onHover={onHover} onAdd={() => onAdd(action.id)} />
+            <TriedCard key={action.id} action={action} canAdd={canAdd} where={where} onHover={onHover} onAdd={() => onAdd(action.id)} />
           ))}
         </ol>
       )}
@@ -286,94 +282,89 @@ function Tried({ tried, rerecord, canAdd, onHover, onAdd }: { tried: Action[]; r
   );
 }
 
-function TriedCard({ action, canAdd, onHover, onAdd }: { action: Action; canAdd: boolean; onHover(id: string | null): void; onAdd(): void }) {
+function TriedCard({ action, canAdd, where, onHover, onAdd }: { action: Action; canAdd: boolean; where: string; onHover(id: string | null): void; onAdd(): void }) {
   const detail = detailOf(action);
   const checks = (action.expects ?? []).filter((expect) => expect.auto);
   const others = action.candidates.filter((candidate) => candidate.index !== action.picked);
-  const why = [...(action.reasons ?? []), ...(action.note ? [action.note] : [])];
+  const why = [shortReasons(action.reasons), action.note].filter(Boolean);
   return (
-    <li data-tried={action.id} onMouseEnter={() => onHover(action.id)} class="group/tried rounded-lg border border-dashed border-line-strong bg-panel/60 px-2.5 py-2 text-[12px] transition hover:bg-panel">
-      <div class="opacity-75 transition group-hover/tried:opacity-100">
-        <div class="flex min-w-0 items-baseline gap-1.5">
-          <Icon name={kindIcon(action.kind)} size={12} class="shrink-0 self-center text-faint" />
-          <span class="shrink-0 text-muted">{verbOf(action)}</span>
-          <span dir="auto" class="min-w-0 truncate font-medium text-fg">
-            {subjectOf(action)}
-          </span>
-          <span class="ml-auto shrink-0 self-center rounded border border-info/35 px-1 text-[10px] leading-4 font-medium text-info">tried</span>
-        </div>
-        {detail && (
-          <div class="mt-0.5 flex min-w-0 items-baseline gap-1.5">
-            <span class="shrink-0 text-faint">{action.kind === 'choose' ? 'option' : action.kind === 'press' ? 'key' : 'with'}</span>
-            <span dir="auto" class="min-w-0 truncate text-muted">{detail}</span>
+    <li data-tried={action.id} onMouseEnter={() => onHover(action.id)} class="group/tried rounded-lg border border-line bg-panel px-2.5 py-2 text-meta transition hover:border-line-strong">
+      <div class="flex min-w-0 items-baseline gap-1.5">
+        <Icon name={kindIcon(action.kind)} size={12} class="shrink-0 self-center text-faint" />
+        <span class="shrink-0 text-muted">{verbOf(action)}</span>
+        <span dir="auto" class="min-w-0 truncate text-body font-medium text-fg">
+          {subjectOf(action)}
+        </span>
+        <span class="ml-auto self-center">
+          <Tag tone="try">tried</Tag>
+        </span>
+      </div>
+      {detail && <Detail action={action} detail={detail} />}
+      {action.omitted ? (
+        <p class="mt-1.5 text-muted">{action.omitted}</p>
+      ) : (
+        <>
+          <div class="mt-1.5 flex min-w-0 items-baseline gap-1.5">
+            <span class="shrink-0 text-faint">would use</span>
+            <code dir="ltr" class="min-w-0 truncate font-mono text-fg/90" title={action.locator}>
+              {action.locator ?? 'nothing finds it'}
+            </code>
           </div>
-        )}
-        {action.omitted ? (
-          <p class="mt-1.5 text-[11.5px] leading-snug text-faint">{action.omitted}</p>
-        ) : (
-          <>
-            <div class="mt-1.5 flex min-w-0 items-baseline gap-1.5">
-              <span class="shrink-0 text-[11px] text-faint">would use</span>
-              <code dir="ltr" class="min-w-0 truncate rounded-md border border-line bg-canvas px-1.5 py-px font-mono text-[11px] text-fg/85" title={action.locator}>
-                {action.locator ?? 'nothing finds it'}
-              </code>
-            </div>
-            {why.length > 0 && (
-              <p dir="ltr" class="mt-1 font-mono text-[10.5px] leading-snug break-words text-faint">
-                {why.join('  ·  ')}
-              </p>
-            )}
-            {action.checks.map((check) => (
-              <p key={check} class="mt-1 flex gap-1.5 text-[11px] leading-snug text-warn">
-                <Icon name="warn" size={11} class="mt-px shrink-0" />
-                {check}
-              </p>
-            ))}
-            {others.length > 0 && (
-              <ul aria-label="Other locators" class="mt-1.5 space-y-px">
+          {why.length > 0 && (
+            <p dir="ltr" class="mt-0.5 truncate font-mono text-tag text-faint" title={why.join('  ·  ')}>
+              {why.join('  ·  ')}
+            </p>
+          )}
+          {action.checks.map((check) => (
+            <p key={check} class="mt-1 flex gap-1.5 text-warn">
+              <Icon name="warn" size={11} class="mt-0.5 shrink-0" />
+              {check}
+            </p>
+          ))}
+          {others.length > 0 && (
+            <details class="group/others mt-1">
+              <summary class="flex cursor-pointer list-none items-center gap-1 text-faint transition select-none hover:text-fg">
+                <Icon name="chevron" size={11} class="transition group-open/others:rotate-90" />
+                {plural(others.length, 'other locator')}
+              </summary>
+              <ul aria-label="Other locators" class="mt-1 space-y-px pl-4">
                 {others.map((candidate) => {
                   const status = candidateStatus(candidate);
                   return (
-                    <li key={candidate.index} title={`${candidateKind(candidate)}: ${candidate.code}`} class="flex min-w-0 items-baseline gap-1.5 text-[11px]">
-                      <code dir="ltr" class="min-w-0 flex-1 truncate font-mono text-[10.5px] text-muted">{candidate.label}</code>
-                      <span class={cls('shrink-0 tabular-nums', status.ok ? 'text-ok/90' : 'text-faint')}>
+                    <li key={candidate.index} title={`${candidateKind(candidate)}: ${candidate.code}`} class="flex min-w-0 items-baseline gap-1.5">
+                      <code dir="ltr" class="min-w-0 flex-1 truncate font-mono text-muted">{candidate.label}</code>
+                      <span class={cls('shrink-0 tabular-nums', status.ok ? 'text-ok' : 'text-faint')}>
                         {status.ok ? '✓' : '✗'} {status.text}
                       </span>
                     </li>
                   );
                 })}
               </ul>
-            )}
-            {(checks.length > 0 || action.settings.length > 0) && (
-              <div class="mt-1.5 flex flex-wrap gap-1">
-                {checks.map((expect) => (
-                  <span key={expect.key} class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-ok/25 bg-ok/[0.06] px-1.5 py-px text-[11px] text-ok/90">
-                    <Icon name="tick" size={11} class="shrink-0 stroke-[2.4]" />
-                    <span dir="auto" class="truncate">{expect.text}</span>
-                  </span>
-                ))}
-                {action.settings.map((setting) => (
-                  <span key={setting.role} class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-line bg-raised px-1.5 py-px text-[11px] text-muted" title="The setting of the flow it would type or choose">
-                    <span class="shrink-0 text-faint">setting</span>
-                    <span class="shrink-0 font-mono text-[10.5px] text-fg/85">{setting.name}</span>
-                    <span dir="auto" class="min-w-0 truncate">= {setting.value}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+            </details>
+          )}
+          {(checks.length > 0 || action.settings.length > 0) && (
+            <div class="mt-1.5 flex flex-wrap gap-1">
+              {checks.map((expect) => (
+                <span key={expect.key} class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-sm bg-ok/10 px-1.5 text-ok">
+                  <Icon name="tick" size={11} class="shrink-0 stroke-[2.4]" />
+                  <span dir="auto" class="truncate">{expect.text}</span>
+                </span>
+              ))}
+              {action.settings.map((setting) => (
+                <span key={setting.role} class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-sm bg-raised px-1.5 text-muted" title="The setting of the flow it would type or choose">
+                  <span class="shrink-0 text-faint">setting</span>
+                  <span class="max-w-[55%] min-w-0 shrink-0 truncate font-mono text-fg/90">{setting.name}</span>
+                  <span dir="auto" class="min-w-0 truncate">= {setting.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       {canAdd && !action.omitted && (
-        <button
-          type="button"
-          onClick={onAdd}
-          title="Add this action to the flow, as the recorder would have written it"
-          class="mt-2 inline-flex h-6 items-center gap-1 rounded-md border border-accent/35 bg-accent/10 px-2 text-[11px] font-medium text-accent-fg transition hover:bg-accent/18"
-        >
-          <Icon name="plus" size={11} class="stroke-[2.4]" />
+        <Button size="sm" variant="secondary" icon="plus" onClick={onAdd} title={`Add this action to the flow, ${where}, as the recorder would have written it`} class="mt-2">
           Add to flow
-        </button>
+        </Button>
       )}
     </li>
   );
@@ -390,99 +381,78 @@ interface CardProps extends Pick<Props, 'file' | 'canRun' | 'canEdit' | 'canRere
   onRerecord(after: boolean): void;
 }
 
+// An effect an auto check of the action already says, in its list of checks.
+const checkedBy: Record<string, (key: string) => boolean> = {
+  dialogOpened: (key) => key === 'opened',
+  dialogClosed: (key) => key.startsWith('closed:'),
+  urlChanged: (key) => key === 'url',
+  alert: (key) => key.startsWith('alert:'),
+  tabSelected: (key) => key === 'selected',
+};
+
 function Card({ action, selected, test, failure, file, now, canRun, canEdit, canRerecord, fresh, onRerecord, onSelect, onHover, onRunTo, onEnlarge, onDelete, onDropCheck }: CardProps) {
-  const warn = action.checks.length > 0;
   const detail = detailOf(action);
   const state = test?.state;
   const expects = action.expects ?? [];
+  // What the page did, unless a check below says it already.
+  const effects = action.effects.filter((effect) => !expects.some((expect) => checkedBy[effect.kind]?.(expect.key)));
+  const tools = canRun || canRerecord || canEdit;
   return (
     <li
       data-action={action.id}
       onMouseEnter={() => onHover(action.id)}
       class={cls(
-        'group/card relative animate-step-in rounded-lg border transition',
-        state === 'skipped' && 'opacity-55',
+        'group/card relative animate-step-in rounded-lg border transition-colors',
+        state === 'skipped' && 'opacity-60',
         state === 'failed'
           ? selected
-            ? 'border-bad/60 bg-bad/12'
-            : 'border-bad/40 bg-bad/[0.07] hover:bg-bad/10'
+            ? 'border-bad/55 bg-bad/10'
+            : 'border-bad/35 bg-bad/[0.06] hover:bg-bad/[0.09]'
           : state === 'running'
-            ? 'border-accent/50 bg-accent/[0.08] shadow-[0_0_0_3px_color-mix(in_oklab,var(--accent)_10%,transparent)]'
+            ? 'border-accent-fg/45 bg-accent/[0.08]'
             : selected
-              ? 'border-accent/45 bg-accent/10'
+              ? 'border-accent-fg/40 bg-accent/[0.09]'
               : fresh
                 ? 'border-rec/30 bg-rec/[0.05] hover:bg-rec/[0.08]'
                 : 'border-transparent hover:bg-raised',
       )}
     >
-      <button type="button" aria-current={selected} onClick={() => onSelect(action.id)} class="relative block w-full rounded-lg py-2 pr-2.5 pl-11 text-left">
-        <span
-          class={cls(
-            'absolute top-[7px] left-[10px] grid size-6 place-items-center rounded-md border bg-panel transition',
-            state === 'failed'
-              ? 'border-bad/70 bg-bad/12 text-bad'
-              : state === 'passed'
-                ? 'border-ok/45 text-ok'
-                : state === 'running'
-                  ? 'border-accent text-accent-fg'
-                  : warn
-                    ? 'border-warn/50 text-warn'
-                    : selected
-                      ? 'border-accent/60 text-accent-fg'
-                      : 'border-line-strong text-muted',
-          )}
-        >
-          <Icon name={kindIcon(action.kind)} size={13} />
-        </span>
-        <span class="flex min-w-0 items-baseline gap-1.5">
-          <span class="shrink-0 text-[12px] text-muted">{verbOf(action)}</span>
-          <span dir="auto" class="min-w-0 truncate font-medium text-fg">
-            {subjectOf(action)}
-          </span>
-          {(action.added || test || fresh) && (
-            <span class={cls('ml-auto flex shrink-0 items-center gap-1.5 self-center', (canRun || canEdit) && 'group-hover/card:invisible')}>
-              {fresh && (
-                <span title="Recorded now, in place of the part recorded again" class="rounded border border-rec/30 bg-rec/10 px-1 text-[10px] leading-4 font-medium text-rec">
-                  new
-                </span>
-              )}
-              {action.added && (
-                <span title="Added in the panel" class="rounded border border-accent/30 bg-accent/10 px-1 text-[10px] leading-4 font-medium text-accent-fg">
-                  added
-                </span>
-              )}
-              {test && <StepStatus step={test} now={now} />}
+      <button type="button" aria-current={selected} onClick={() => onSelect(action.id)} class="flex w-full min-w-0 gap-2.5 rounded-lg py-2 pr-2.5 pl-2 text-left">
+        <KindMark kind={action.kind} state={state} warn={action.checks.length > 0} selected={selected} />
+        <span class="block min-w-0 flex-1">
+          <span class={cls('flex min-w-0 items-baseline gap-1.5', tools && 'group-hover/card:pr-24 group-focus-within/card:pr-24')}>
+            <span class="shrink-0 text-meta text-muted">{verbOf(action)}</span>
+            <span dir="auto" class="min-w-0 truncate text-body font-medium text-fg">
+              {subjectOf(action)}
             </span>
-          )}
-        </span>
-        {detail && (
-          <span class="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-[12px]">
-            <span class="shrink-0 text-faint">{action.kind === 'choose' ? 'option' : action.kind === 'press' ? 'key' : 'with'}</span>
-            <span dir="auto" class="min-w-0 truncate text-muted">
-              {detail}
-            </span>
+            {(action.added || test || fresh) && (
+              <span class={cls('ml-auto flex shrink-0 items-center gap-1.5 self-center', tools && 'group-hover/card:hidden group-focus-within/card:hidden')}>
+                {fresh && <Tag tone="rec" title="Recorded now, in place of the part recorded again">new</Tag>}
+                {action.added && <Tag tone="accent" title="Added in the panel">added</Tag>}
+                {test && <StepStatus step={test} now={now} />}
+              </span>
+            )}
           </span>
-        )}
-        {action.locator && (
-          <span class="mt-1.5 flex min-w-0">
-            <code dir="ltr" class="min-w-0 truncate rounded-md border border-line bg-canvas px-1.5 py-px font-mono text-[11px] text-muted">
+          {detail && <Detail action={action} detail={detail} />}
+          {action.locator && (
+            <code dir="ltr" title={action.locator} class="mt-0.5 block truncate font-mono text-meta text-faint">
               {action.locator}
             </code>
-          </span>
-        )}
-        {action.effects.length > 0 && (
-          <span class="mt-1.5 flex flex-wrap gap-1">
-            {action.effects.map((effect) => (
-              <Badge key={effect.kind + effect.text} effect={effect} />
-            ))}
-          </span>
-        )}
-        {action.checks.map((check) => (
-          <span key={check} class="mt-1.5 flex gap-1.5 rounded-md bg-warn/10 px-1.5 py-1 text-[11.5px] leading-snug text-warn">
-            <Icon name="warn" size={12} class="mt-px shrink-0" />
-            <span>{check}</span>
-          </span>
-        ))}
+          )}
+          {effects.length > 0 && (
+            <span class="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-meta text-muted">
+              {effects.map((effect) => (
+                <EffectLine key={effect.kind + effect.text} effect={effect} />
+              ))}
+            </span>
+          )}
+          {action.checks.map((check) => (
+            <span key={check} class="mt-1.5 flex gap-1.5 rounded-md bg-warn/10 px-1.5 py-1 text-meta text-warn">
+              <Icon name="warn" size={12} class="mt-0.5 shrink-0" />
+              <span>{check}</span>
+            </span>
+          ))}
+        </span>
       </button>
       {expects.length > 0 && (
         <ul aria-label="Checks" class="space-y-px pr-1.5 pb-1.5 pl-[38px]">
@@ -491,52 +461,65 @@ function Card({ action, selected, test, failure, file, now, canRun, canEdit, can
           ))}
         </ul>
       )}
-      <span class="absolute top-[6px] right-1.5 hidden items-center gap-1 group-hover/card:flex group-focus-within/card:flex">
-        {canRun && (
-          <button
-            type="button"
-            onClick={() => onRunTo(action.id)}
-            title="Run the flow up to this step, and this step too (Ctrl+Shift+Enter on the selected step)"
-            class="inline-flex h-6 items-center gap-1 rounded-md border border-line-strong bg-panel px-1.5 text-[11px] font-medium text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-faint/60 hover:text-fg"
-          >
-            <Icon name="runTo" size={11} class="text-ok" />
-            Run to here
-          </button>
-        )}
-        {canRerecord && (
-          <>
-            <CardButton icon="rerecord" title="Re-record: replay the flow up to this step in the app, then do it again" onClick={() => onRerecord(false)} />
-            <CardButton icon="recordAfter" title="Record after this: replay the flow through this step in the app, then record what goes after it" onClick={() => onRerecord(true)} />
-          </>
-        )}
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => onDelete(action.id)}
-            title="Delete this action from the flow (Delete). Undo brings it back."
-            aria-label={`Delete ${verbOf(action)} ${subjectOf(action)}`}
-            class="grid size-6 place-items-center rounded-md border border-line-strong bg-panel text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-bad/50 hover:text-bad"
-          >
-            <Icon name="trash" size={12} />
-          </button>
-        )}
-      </span>
-      {failure && <FailureDetails failure={failure} file={file} onEnlarge={onEnlarge} />}
+      {tools && (
+        <span class="absolute top-1.5 right-1.5 hidden items-center gap-px rounded-md border border-line-strong bg-panel p-px shadow-e2 group-focus-within/card:flex group-hover/card:flex">
+          {canRun && (
+            <Button size="sm" iconOnly icon="runTo" label="Run to here: test the flow up to this step, and this step too (Ctrl+Shift+Enter on the selected step)" onClick={() => onRunTo(action.id)} />
+          )}
+          {canRerecord && (
+            <>
+              <Button size="sm" iconOnly icon="rerecord" label="Re-record: replay the flow up to this step in the app, then do it again" onClick={() => onRerecord(false)} />
+              <Button size="sm" iconOnly icon="recordAfter" label="Record after this: replay the flow through this step in the app, then record what goes after it" onClick={() => onRerecord(true)} />
+            </>
+          )}
+          {canEdit && (
+            <Button size="sm" iconOnly icon="trash" label={`Delete ${verbOf(action)} ${subjectOf(action)} (Delete). Undo brings it back.`} onClick={() => onDelete(action.id)} class="hover:text-bad" />
+          )}
+        </span>
+      )}
+      {failure && (
+        <div class="px-2 pb-2">
+          <FailureDetails failure={failure} file={file} onEnlarge={onEnlarge} />
+        </div>
+      )}
     </li>
   );
 }
 
-function CardButton({ icon, title, onClick }: { icon: IconName; title: string; onClick(): void }) {
+// The action's kind, in a small square on the line of the steps, coloured by how it went.
+function KindMark({ kind, state, warn, selected }: { kind: string; state?: TestStep['state']; warn: boolean; selected: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      class="grid size-6 place-items-center rounded-md border border-line-strong bg-panel text-muted shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition hover:border-rec/50 hover:text-rec"
+    <span
+      class={cls(
+        'relative z-[1] mt-px grid size-6 shrink-0 place-items-center rounded-md border bg-panel transition-colors',
+        state === 'failed'
+          ? 'border-bad/60 text-bad'
+          : state === 'passed'
+            ? 'border-ok/45 text-ok'
+            : state === 'running'
+              ? 'border-accent-fg/70 text-accent-fg'
+              : warn
+                ? 'border-warn/50 text-warn'
+                : selected
+                  ? 'border-accent-fg/50 text-accent-fg'
+                  : 'border-line-strong text-muted',
+      )}
     >
-      <Icon name={icon} size={12} />
-    </button>
+      {state === 'running' ? <Spinner size={11} /> : <Icon name={kindIcon(kind)} size={13} />}
+    </span>
+  );
+}
+
+// What was typed, chosen or pressed: "= Printer jammed", "→ Software", "key Enter".
+function Detail({ action, detail }: { action: Action; detail: string }) {
+  const lead = action.kind === 'choose' ? '→' : action.kind === 'press' ? 'key' : action.kind === 'fill' ? '=' : 'with';
+  return (
+    <span class="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-meta">
+      <span class="shrink-0 text-faint">{lead}</span>
+      <span dir="auto" class="min-w-0 truncate text-fg/85">
+        {detail}
+      </span>
+    </span>
   );
 }
 
@@ -545,16 +528,17 @@ function CardButton({ icon, title, onClick }: { icon: IconName; title: string; o
 function ExpectRow({ expect, canEdit, onDrop }: { expect: Expect; canEdit: boolean; onDrop(drop: boolean): void }) {
   const dropped = !!expect.dropped;
   const action = !expect.auto ? 'Delete this check' : dropped ? 'Bring this auto check back' : 'Drop this auto check';
+  const kind = !expect.auto ? 'Your check' : dropped ? 'Auto check, dropped' : 'Auto check';
   return (
-    <li class="group/expect flex min-w-0 items-center gap-1.5 rounded-md py-px pr-0.5 pl-1.5 text-[11.5px] leading-5 hover:bg-canvas/70">
-      <Icon name={expect.auto ? 'tick' : 'checkCircle'} size={12} class={cls('shrink-0', dropped ? 'text-faint/70' : expect.auto ? 'text-ok/75' : 'text-ok', expect.auto && 'stroke-[2.4]')} />
-      <span dir="auto" class={cls('min-w-0 truncate', dropped ? 'text-faint line-through decoration-faint/60' : expect.auto ? 'text-muted' : 'text-fg')} title={expect.of ? `${expect.text} · ${expect.of}` : expect.text}>
+    <li class="group/expect flex min-h-6 min-w-0 items-center gap-1.5 rounded-md pr-0.5 pl-1.5 text-meta hover:bg-canvas/70">
+      <span title={kind} class="grid size-3.5 shrink-0 place-items-center">
+        <Icon name={expect.auto ? 'tick' : 'checkCircle'} size={12} class={cls(dropped ? 'text-faint' : 'text-ok', expect.auto && 'stroke-[2.4]')} />
+      </span>
+      <span dir="auto" class={cls('min-w-0 flex-1 truncate', dropped ? 'text-faint line-through decoration-faint/60' : expect.auto ? 'text-muted' : 'text-fg')} title={`${kind}: ${expect.text}${expect.of ? ` · ${expect.of}` : ''}`}>
         {expect.text}
-        {expect.of && <span class="text-faint"> · <span dir="ltr" class="font-mono text-[10.5px]">{expect.of}</span></span>}
+        {expect.of && <span class="text-faint"> · <span dir="ltr" class="font-mono">{expect.of}</span></span>}
       </span>
-      <span class={cls('ml-auto shrink-0 rounded px-1 text-[10px] leading-4 font-medium', expect.auto ? 'text-faint' : 'bg-ok/12 text-ok')}>
-        {dropped ? 'dropped' : expect.auto ? 'auto' : 'check'}
-      </span>
+      {dropped && <span class="shrink-0 text-tag text-faint">dropped</span>}
       {canEdit && (
         <button
           type="button"
@@ -562,7 +546,7 @@ function ExpectRow({ expect, canEdit, onDrop }: { expect: Expect; canEdit: boole
           title={action}
           aria-label={action}
           class={cls(
-            'grid size-5 shrink-0 place-items-center rounded opacity-0 transition group-hover/expect:opacity-100 focus-visible:opacity-100',
+            'grid size-5 shrink-0 place-items-center rounded-sm opacity-0 transition group-hover/expect:opacity-100 focus-visible:opacity-100',
             dropped ? 'text-accent-fg hover:bg-accent/12' : 'text-muted hover:bg-bad/12 hover:text-bad',
           )}
         >
@@ -584,7 +568,7 @@ function StepName({ name, disabled, onRename }: { name: string; disabled: boolea
         disabled={disabled}
         onClick={() => setDraft(name.replace(/Async$/, ''))}
         title="Rename the step's method"
-        class="group/name -mx-1 inline-flex min-w-0 items-center gap-1 rounded px-1 font-mono transition hover:bg-raised hover:text-fg disabled:pointer-events-none"
+        class="group/name -mx-1 inline-flex min-w-0 shrink items-center gap-1 rounded-sm px-1 font-mono text-meta font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none"
       >
         <span class="truncate">{name}</span>
         <Icon name="pencil" size={11} class="shrink-0 opacity-0 transition group-hover/name:opacity-100" />
@@ -596,10 +580,10 @@ function StepName({ name, disabled, onRename }: { name: string; disabled: boolea
     if (next !== name.replace(/Async$/, '')) onRename(next);
   };
   return (
-    <label class="-mx-1 flex min-w-0 items-center rounded border border-accent/50 bg-panel px-1 font-mono text-fg">
+    <label class="-mx-1 flex min-w-0 items-center rounded-sm border border-accent-fg/50 bg-panel px-1 font-mono text-meta text-fg">
       <span class="sr-only">Step name</span>
       <input
-        autoFocus
+        ref={focusOnMount}
         value={draft}
         spellcheck={false}
         onInput={(event) => setDraft(event.currentTarget.value)}
@@ -625,10 +609,10 @@ function Switch({ on, disabled, onChange }: { on: boolean; disabled: boolean; on
       disabled={disabled}
       onClick={() => onChange(!on)}
       title={on ? 'Auto checks are on: after each action the flow checks what it did. Click to turn them all off, as --no-auto-checks.' : 'Auto checks are off. Click to have the flow check after each action what it did.'}
-      class="-mr-1 inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-[11px] font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-50"
+      class="-mr-1 inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-50"
     >
       Auto checks
-      <span class={cls('relative h-3.5 w-6 rounded-full transition', on ? 'bg-ok' : 'bg-line-strong')}>
+      <span class={cls('relative h-3.5 w-6 rounded-full transition-colors', on ? 'bg-ok' : 'bg-line-strong')}>
         <span class={cls('absolute top-0.5 size-2.5 rounded-full bg-white shadow-[0_1px_1px_rgb(0_0_0/0.25)] transition-all', on ? 'left-3' : 'left-0.5')} />
       </span>
     </button>
@@ -640,14 +624,14 @@ function StepMark({ actions, test }: { actions: Action[]; test: TestRun }) {
   const states = actions.map((action) => test.steps[action.id]?.state);
   if (states.includes('failed'))
     return (
-      <span class="ml-auto inline-flex shrink-0 items-center text-bad" title="A step in it failed">
+      <span class="inline-flex size-5 shrink-0 items-center justify-center text-bad" title="A step in it failed">
         <Icon name="cross" size={11} class="stroke-[2.6]" />
       </span>
     );
-  if (states.includes('running')) return <Spinner size={9} class="ml-auto text-accent-fg" />;
+  if (states.includes('running')) return <Spinner size={10} class="mx-[5px] text-accent-fg" />;
   if (states.length > 0 && states.every((state) => state === 'passed'))
     return (
-      <span class="ml-auto inline-flex shrink-0 items-center text-ok" title="Every step in it passed">
+      <span class="inline-flex size-5 shrink-0 items-center justify-center text-ok" title="Every step in it passed">
         <Icon name="tick" size={11} class="stroke-[2.6]" />
       </span>
     );
@@ -664,13 +648,13 @@ const effectIcons: Record<string, IconName> = {
   jsDialog: 'alert',
 };
 
-function Badge({ effect }: { effect: Effect }) {
+function EffectLine({ effect }: { effect: Effect }) {
   return (
-    <span class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-line bg-raised px-1.5 py-px text-[11px] text-muted">
-      <Icon name={effectIcons[effect.kind] ?? 'dialog'} size={11} class="shrink-0" />
+    <span class="inline-flex max-w-full min-w-0 items-center gap-1" title={effect.text ? `${effectLabel(effect)}: ${effect.text}` : effectLabel(effect)}>
+      <Icon name={effectIcons[effect.kind] ?? 'dialog'} size={11} class="shrink-0 text-faint" />
       <span class="shrink-0">{effectLabel(effect)}</span>
       {effect.text && (
-        <span dir={effect.kind === 'urlChanged' ? 'ltr' : 'auto'} class={cls('min-w-0 truncate text-fg/80', effect.kind === 'urlChanged' && 'font-mono text-[10.5px]')}>
+        <span dir={effect.kind === 'urlChanged' ? 'ltr' : 'auto'} class={cls('min-w-0 truncate text-fg/80', effect.kind === 'urlChanged' && 'font-mono')}>
           {effect.text}
         </span>
       )}
@@ -679,20 +663,36 @@ function Badge({ effect }: { effect: Effect }) {
 }
 
 function Empty({ status }: { status: Status }) {
-  const [icon, title, text]: [IconName, string, string] =
-    status === 'login'
-      ? ['key', 'Logging in…', 'Your login flow is running. The recording starts on the page it leaves the app on.']
-      : status === 'paused'
-        ? ['pause', 'Recording paused', 'Resume to record your first step. What you do in the app meanwhile is not recorded.']
-        : ['pointer', 'Click something in the app to record the first step', 'Each action shows up here as it is recorded, with the code it writes and how its element is found.'];
-  return (
-    <div class="flex h-full flex-col items-center justify-center px-8 pb-12 text-center">
-      <div class="relative mb-5 grid size-12 place-items-center rounded-lg border border-line-strong bg-raised text-accent-fg">
-        <span class="absolute -inset-1.5 rounded-[11px] border border-accent/25" />
-        <Icon name={icon} size={20} />
+  if (status === 'login')
+    return (
+      <div class="space-y-3 px-2 pt-4" aria-label="Logging in">
+        {[0, 1, 2].map((row) => (
+          <div key={row} class="flex gap-2.5 px-2 opacity-70">
+            <span class="skeleton size-6 shrink-0" />
+            <span class="flex-1 space-y-1.5 pt-0.5">
+              <span class="skeleton block h-3 w-3/5" />
+              <span class="skeleton block h-2.5 w-4/5" />
+            </span>
+          </div>
+        ))}
+        <p class="px-2 pt-2 text-center text-meta text-muted">Your login flow is running. The recording starts on the page it leaves the app on.</p>
       </div>
-      <p class="text-[13.5px] font-medium text-fg">{title}</p>
-      <p class="mt-1.5 max-w-[32ch] text-[12.5px] leading-relaxed text-muted">{text}</p>
-    </div>
+    );
+  if (status === 'paused')
+    return (
+      <EmptyState icon="pause" title="Recording paused" class="h-full pb-12">
+        Resume (<Kbd>F8</Kbd>) to record your first step.
+      </EmptyState>
+    );
+  return (
+    <EmptyState icon="pointer" title="Click something in the app to record the first step" class="h-full pb-12">
+      <p>Each action shows up here as it is recorded, with the code it writes.</p>
+      <p class="mt-3 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-meta">
+        <span class="flex items-center gap-1"><Kbd>F6</Kbd> check</span>
+        <span class="flex items-center gap-1"><Kbd>F7</Kbd> try</span>
+        <span class="flex items-center gap-1"><Kbd>F8</Kbd> pause</span>
+        <span class="flex items-center gap-1"><Kbd>Ctrl K</Kbd> all commands</span>
+      </p>
+    </EmptyState>
   );
 }

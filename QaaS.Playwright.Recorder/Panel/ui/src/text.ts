@@ -4,8 +4,8 @@ const verbs: Record<string, string> = {
   click: 'Click',
   dblclick: 'Double-click',
   fill: 'Fill',
-  check: 'Check',
-  uncheck: 'Uncheck',
+  check: 'Tick',
+  uncheck: 'Untick',
   choose: 'Choose',
   press: 'Press',
   upload: 'Upload to',
@@ -14,7 +14,7 @@ const verbs: Record<string, string> = {
   newTab: 'Open a tab',
 };
 
-/** What the person did, as a verb: Click, Fill, Choose... */
+/** What the person did, as a verb: Click, Fill, Choose, Tick (a checkbox; Check is a check of what the page shows)... */
 export function verbOf(action: Action): string {
   if (action.kind === 'check' && action.widget === 'radio') return 'Pick';
   return verbs[action.kind] ?? action.kind;
@@ -75,6 +75,11 @@ const effects: Record<string, string> = {
 
 export function effectLabel(effect: Effect): string {
   return effects[effect.kind] ?? effect.kind;
+}
+
+/** Why the locators before the one chosen lost, without those the element simply has none of: "role: found 3". */
+export function shortReasons(reasons?: string[]): string {
+  return (reasons ?? []).filter((reason) => !/: (none|no name)$/.test(reason)).slice(0, 3).join('  ·  ');
 }
 
 export function plural(count: number, one: string, many = `${one}s`): string {

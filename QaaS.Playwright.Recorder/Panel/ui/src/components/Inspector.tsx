@@ -4,8 +4,10 @@ import { tokenizeCSharp } from '../syntax/csharp';
 import { candidateKind, candidateStatus, cls, effectLabel, isUnusable, subjectOf, verbOf } from '../text';
 import { duration } from '../test';
 import type { Action, Candidate, PickedElement, Setting, TestStep } from '../types';
+import { toast } from '../toast';
 import { Icon, type IconName } from './icons';
 import { PaneHeader } from './PaneHeader';
+import { Button, focusOnMount, EmptyState, Kbd, Link, SectionTitle } from './ui';
 
 interface Props {
   action?: Action;
@@ -29,25 +31,18 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
     <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
       <PaneHeader title="Inspector">
         {action?.lines && (
-          <span class="font-mono text-[11px] text-faint">
+          <span class="font-mono text-meta text-faint">
             {action.lines.first === action.lines.last ? `line ${action.lines.first}` : `lines ${action.lines.first}–${action.lines.last}`}
           </span>
         )}
         {action?.lines && (
-          <button
-            type="button"
-            disabled={!canRun}
-            onClick={() => onRunTo(action.id)}
-            title="Run the flow up to this step, and this step too (Ctrl+Shift+Enter)"
-            class="-mr-1.5 inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Icon name="runTo" size={11} class="text-ok" />
+          <Button size="sm" icon="runTo" disabled={!canRun} onClick={() => onRunTo(action.id)} title="Test the flow up to this step, and this step too (Ctrl+Shift+Enter)" class="-mr-1.5">
             Run to here
-          </button>
+          </Button>
         )}
       </PaneHeader>
       {action ? (
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-6">
+        <div class="min-h-0 flex-1 overflow-y-auto px-4 pt-3.5 pb-6">
           <Heading kind={verbOf(action)} title={subjectOf(action)}>
             {action.kind !== 'navigate' && action.kind !== 'newTab' && action.value && <Chip>{action.value}</Chip>}
             {action.dialog && <InDialog title={action.dialog} />}
@@ -61,10 +56,10 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
               title="Locator"
               aside={
                 action.chosen !== undefined &&
-                action.auto !== undefined && <LinkButton disabled={disabled} onClick={() => onChoose(action, null)}>Use the recorder's choice</LinkButton>
+                action.auto !== undefined && <Link disabled={disabled} onClick={() => onChoose(action, null)}>Use the recorder's choice</Link>
               }
             >
-              <Hint>Every way the recorder found to locate the element. Click one to use it; point at one to see what it finds in the app.</Hint>
+              <Hint>Click one to use it instead; point at one to see what it finds in the app.</Hint>
               <Locators
                 candidates={action.candidates}
                 picked={action.picked}
@@ -77,8 +72,8 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
             </Section>
           )}
           {action.settings.length > 0 && (
-            <Section title="Recorded values">
-              <Hint>Settings of the flow, with these as defaults; change them per case in the YAML. Click a name or a value to change it.</Hint>
+            <Section title="Settings">
+              <Hint>The values it recorded are their defaults; each case sets its own in the YAML. Click a name or a value to change it.</Hint>
               <dl class="divide-y divide-line overflow-hidden rounded-lg border border-line">
                 {action.settings.map((setting) => (
                   <SettingRow key={setting.role + setting.name} setting={setting} disabled={disabled} onEdit={(change) => onEdit(action, setting, change)} />
@@ -87,13 +82,13 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
             </Section>
           )}
           {action.effects.length > 0 && (
-            <Section title="What it did">
-              <ul class="space-y-1.5 text-[12.5px]">
+            <Section title="What the page did">
+              <ul class="space-y-1.5 text-body">
                 {action.effects.map((effect) => (
                   <li key={effect.kind + effect.text} class="flex min-w-0 items-baseline gap-2">
-                    <span class="w-[92px] shrink-0 text-muted">{effectLabel(effect)}</span>
+                    <span class="w-[92px] shrink-0 text-faint">{effectLabel(effect)}</span>
                     {effect.text && (
-                      <span dir={effect.kind === 'urlChanged' ? 'ltr' : 'auto'} class={cls('min-w-0 break-words text-fg', effect.kind === 'urlChanged' && 'font-mono text-[11.5px]')}>
+                      <span dir={effect.kind === 'urlChanged' ? 'ltr' : 'auto'} class={cls('min-w-0 break-words text-fg', effect.kind === 'urlChanged' && 'font-mono text-meta')}>
                         {effect.text}
                       </span>
                     )}
@@ -104,7 +99,9 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
           )}
         </div>
       ) : (
-        <Empty icon="pointer" title="No step selected" text="Select a step to see how its element is found, and every other way to find it." />
+        <EmptyState icon="pointer" title="No step selected" class="flex-1 pb-8">
+          Select a step to see how its element is found, and every other way to find it.
+        </EmptyState>
       )}
     </aside>
   );
@@ -150,7 +147,7 @@ function SettingRow({ setting, disabled, onEdit }: { setting: Setting; disabled:
       {setting.recorded !== undefined && (
         <Option icon="pencil">
           Recorded as <span dir="auto" class="font-mono text-fg/80">{setting.recorded}</span>
-          <LinkButton disabled={disabled} onClick={() => onEdit({ reset: true })}>Use it</LinkButton>
+          <Link disabled={disabled} onClick={() => onEdit({ reset: true })}>Use it</Link>
         </Option>
       )}
       {setting.unique !== undefined && (
@@ -161,13 +158,13 @@ function SettingRow({ setting, disabled, onEdit }: { setting: Setting; disabled:
           disabled={disabled}
           onClick={() => onEdit({ unique: !setting.unique })}
           title="The flow types it with its run's stamp appended, so a name it creates never repeats from run to run. A check of it reads the same value."
-          class="group mt-1.5 flex w-full min-w-0 items-center gap-2 rounded-md text-left text-[11.5px] text-muted transition hover:text-fg disabled:opacity-50"
+          class="group mt-1.5 flex w-full min-w-0 items-center gap-2 rounded-md text-left text-meta text-muted transition hover:text-fg disabled:opacity-50"
         >
           <span class={cls('grid size-3.5 shrink-0 place-items-center rounded border transition', setting.unique ? 'border-accent bg-accent text-on-accent' : 'border-line-strong group-hover:border-faint')}>
             {setting.unique && <Icon name="tick" size={10} class="stroke-[3]" />}
           </span>
           <span class="shrink-0 font-medium">Unique per run</span>
-          <span dir="auto" class="min-w-0 truncate font-mono text-[10.5px] text-faint">
+          <span dir="auto" class="min-w-0 truncate font-mono text-tag text-faint">
             {setting.text} {stampExample()}
           </span>
         </button>
@@ -175,11 +172,11 @@ function SettingRow({ setting, disabled, onEdit }: { setting: Setting; disabled:
       {relative && (
         <Option icon="calendar" tone="accent">
           {fromToday(relative.days)}, as <span class="font-mono">{relative.format}</span>
-          <LinkButton disabled={disabled} onClick={() => onEdit({ relative: false })}>Type the date</LinkButton>
+          <Link disabled={disabled} onClick={() => onEdit({ relative: false })}>Type the date</Link>
         </Option>
       )}
       {suggest && (
-        <div class="mt-1.5 flex items-center gap-2 rounded-md border border-dashed border-accent/35 bg-accent/[0.06] px-2 py-1.5 text-[11.5px] leading-snug text-muted">
+        <div class="mt-1.5 flex items-center gap-2 rounded-md border border-dashed border-accent/35 bg-accent/[0.06] px-2 py-1.5 text-meta text-muted">
           <Icon name="calendar" size={13} class="shrink-0 text-accent-fg" />
           <span class="min-w-0 flex-1">{suggest.days === 0 ? 'The day it was recorded.' : `${days(suggest.days)} ${suggest.days > 0 ? 'after' : 'before'} the day it was recorded.`}</span>
           <button
@@ -216,7 +213,7 @@ function stampExample(): string {
 
 function Option({ icon, tone, children }: { icon: IconName; tone?: 'accent'; children: ComponentChildren }) {
   return (
-    <div class={cls('mt-1.5 flex min-w-0 items-center gap-1.5 text-[11.5px] leading-snug', tone === 'accent' ? 'text-accent-fg' : 'text-muted')}>
+    <div class={cls('mt-1.5 flex min-w-0 items-center gap-1.5 text-meta', tone === 'accent' ? 'text-accent-fg' : 'text-muted')}>
       <Icon name={icon} size={12} class="shrink-0" />
       <span class="min-w-0 flex-1 truncate">{children}</span>
     </div>
@@ -247,7 +244,7 @@ function InPlace(props: {
         dir="auto"
         class={cls(
           // As wide as its column with the margins it reaches past it by.
-          '-mx-1 max-w-[calc(100%+0.5rem)] truncate rounded px-1 font-mono text-[11.5px] transition enabled:hover:bg-raised enabled:hover:ring-1 enabled:hover:ring-line-strong',
+          '-mx-1 max-w-[calc(100%+0.5rem)] truncate rounded px-1 font-mono text-meta transition enabled:hover:bg-raised enabled:hover:ring-1 enabled:hover:ring-line-strong',
           props.class,
         )}
       >
@@ -261,7 +258,7 @@ function InPlace(props: {
   };
   return (
     <input
-      autoFocus
+      ref={focusOnMount}
       aria-label={props.label}
       aria-invalid={!ok}
       dir="auto"
@@ -274,7 +271,7 @@ function InPlace(props: {
         if (event.key === 'Escape') setDraft(null);
       }}
       class={cls(
-        'h-6 w-full min-w-0 rounded border bg-panel px-1.5 font-mono text-[11.5px] text-fg outline-none',
+        'h-6 w-full min-w-0 rounded border bg-panel px-1.5 font-mono text-meta text-fg outline-none',
         props.align === 'right' && 'text-right',
         ok ? 'border-accent/60' : 'border-bad/70',
       )}
@@ -303,19 +300,12 @@ interface ElementProps {
 }
 
 /** The element picked in the Elements view: the steps it can become, each with the lines it writes, and every way to locate it. */
-export function ElementInspector({ element, step, where, disabled, undo, onChoose, onHighlight, onUse, onAdd, onCheckKind, onUndo, primary }: ElementProps) {
+export function ElementInspector({ element, step, where, disabled, onChoose, onHighlight, onUse, onAdd, onCheckKind, onUndo, primary }: ElementProps) {
   const [fill, setFill] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
   const fillField = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    setFill(null);
-    setDone(null);
-  }, [element?.node]);
-  useEffect(() => {
-    if (!done) return;
-    const timer = window.setTimeout(() => setDone(null), 8000);
-    return () => window.clearTimeout(timer);
-  }, [done]);
+  useEffect(() => setFill(null), [element?.node]);
+  // What a step made of it did, with Undo.
+  const setDone = (text: string) => toast({ text, icon: 'tick', tone: 'ok', action: { label: 'Undo', icon: 'undo', run: onUndo } });
   // The field takes the keys as it opens: what is typed next is the text.
   useEffect(() => {
     if (fill !== null) fillField.current?.focus();
@@ -352,21 +342,23 @@ export function ElementInspector({ element, step, where, disabled, undo, onChoos
     return (
       <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
         <PaneHeader title="Inspector" />
-        <Empty icon="elements" title="No element picked" text="Pick an element in the tree, or in the app with Ctrl+Shift+C, to make it a step and see every way to locate it." />
+        <EmptyState icon="elements" title="No element picked" class="flex-1 pb-8">
+          Pick one in the tree, or in the app with <Kbd>Ctrl Shift C</Kbd>, to make it a step and see every way to locate it.
+        </EmptyState>
       </aside>
     );
 
   const candidate = element.candidates.find((option) => option.index === element.picked);
   const status = candidate && candidateStatus(candidate);
   const copy = async () => {
-    if (candidate && (await copyText(candidate.code))) setDone('Copied the locator');
+    if (candidate && (await copyText(candidate.code))) toast({ text: 'Copied the locator', icon: 'copy' });
   };
   return (
     <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
       <PaneHeader title="Inspector">
-        <span class="font-mono text-[11px] tracking-normal text-faint normal-case">{element.page}</span>
+        <span class="font-mono text-meta text-faint">{element.page}</span>
       </PaneHeader>
-      <div class="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-6">
+      <div class="min-h-0 flex-1 overflow-y-auto px-4 pt-3.5 pb-6">
         <Heading kind="Element" title={element.name || `<${element.tag}>`}>
           <Chip mono>{`<${element.tag}>`}</Chip>
           {element.dialog && <InDialog title={element.dialog} />}
@@ -377,19 +369,22 @@ export function ElementInspector({ element, step, where, disabled, undo, onChoos
             opens it again.
           </Note>
         )}
-        <section aria-label="Make it a step" class="mt-4 space-y-1.5">
-          <div class="flex items-center gap-2 text-[11px] font-medium tracking-[0.06em] text-faint uppercase">
+        <section aria-label="Make it a step" class="mt-5 space-y-1.5">
+          <SectionTitle
+            aside={
+              status && (
+                <span
+                  title={candidate ? `${candidateKind(candidate)}: what the flow finds it by` : undefined}
+                  class={cls('inline-flex items-center gap-1 rounded-full px-2 text-meta leading-5 font-medium tabular-nums', status.ok ? 'bg-ok/12 text-ok' : 'bg-bad/12 text-bad')}
+                >
+                  <Icon name={status.ok ? 'tick' : 'cross'} size={10} class="stroke-[2.6]" />
+                  its locator: {status.text}
+                </span>
+              )
+            }
+          >
             Make it a step
-            {status && (
-              <span
-                title={candidate ? `${candidateKind(candidate)}: what the flow finds it by` : undefined}
-                class={cls('ml-auto inline-flex items-center gap-1 rounded-full px-2 py-px text-[11px] font-medium tracking-normal normal-case tabular-nums', status.ok ? 'bg-ok/12 text-ok' : 'bg-bad/12 text-bad')}
-              >
-                <Icon name={status.ok ? 'tick' : 'cross'} size={10} class="stroke-[2.6]" />
-                its locator: {status.text}
-              </span>
-            )}
-          </div>
+          </SectionTitle>
           <StepChoice
             icon="target"
             label={step ? `Use for “${verbOf(step)} ${subjectOf(step)}”` : 'Use for the selected step'}
@@ -427,7 +422,7 @@ export function ElementInspector({ element, step, where, disabled, undo, onChoos
                       event.stopPropagation();
                       setFill(null);
                     }}
-                    class="h-8 min-w-0 flex-1 rounded-lg border border-line-strong bg-panel px-2.5 text-[12.5px] text-fg outline-none placeholder:text-faint focus:border-accent/60"
+                    class="h-8 min-w-0 flex-1 rounded-lg border border-line-strong bg-panel px-2.5 text-body text-fg outline-none placeholder:text-faint focus:border-accent/60"
                   />
                   <ActionButton primary submit>
                     Add
@@ -444,7 +439,7 @@ export function ElementInspector({ element, step, where, disabled, undo, onChoos
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
                 onChange={(event) => onCheckKind(event.currentTarget.value)}
-                class="mt-2 h-7 w-full max-w-full rounded-md border border-line-strong bg-panel px-1.5 text-[12px] text-fg outline-none focus:border-accent/60"
+                class="mt-2 h-7 w-full max-w-full rounded-md border border-line-strong bg-panel px-1.5 text-meta text-fg outline-none focus:border-accent/60"
               >
                 {checks.map((each) => (
                   <option key={each.kind} value={each.kind}>
@@ -455,32 +450,21 @@ export function ElementInspector({ element, step, where, disabled, undo, onChoos
               </select>
             </StepChoice>
           )}
-          <div class="flex min-h-7 items-center gap-2 pt-1 text-[11.5px] leading-snug" role="status">
-            {done ? (
-              <span class="inline-flex min-w-0 items-center gap-1 text-ok">
-                <Icon name="tick" size={12} class="shrink-0 stroke-[2.4]" />
-                <span class="min-w-0 truncate">{done}</span>
-                {undo && done !== 'Copied the locator' && (
-                  <button type="button" onClick={() => { onUndo(); setDone(null); }} title={undo} class="ml-1 shrink-0 rounded px-1 font-medium text-accent-fg transition hover:underline">
-                    Undo
-                  </button>
-                )}
-              </span>
-            ) : (
-              <span class="text-faint">Enter in the tree makes the one marked ↵; Undo takes any back.</span>
-            )}
-            <button type="button" disabled={!candidate} onClick={copy} title="Copy the locator's C#" class="ml-auto inline-flex shrink-0 items-center gap-1 rounded px-1 text-muted transition hover:text-fg disabled:opacity-40">
-              <Icon name="copy" size={12} />
+          <div class="flex min-h-7 items-center gap-2 pt-1 text-meta">
+            <span class="flex min-w-0 items-center gap-1 text-faint">
+              <Kbd>↵</Kbd> in the tree makes the one marked; <Kbd>Ctrl Z</Kbd> takes it back
+            </span>
+            <Button size="sm" icon="copy" disabled={!candidate} onClick={copy} title="Copy the locator's C#" class="ml-auto">
               Copy
-            </button>
+            </Button>
           </div>
         </section>
         {element.candidates.length > 0 ? (
           <Section
             title="Locator"
-            aside={element.chosen !== undefined && <LinkButton disabled={disabled} onClick={() => onChoose(null)}>Use the recorder's choice</LinkButton>}
+            aside={element.chosen !== undefined && <Link disabled={disabled} onClick={() => onChoose(null)}>Use the recorder's choice</Link>}
           >
-            <Hint>The recorder's choice comes first, as for a recorded step. Click one to use another.</Hint>
+            <Hint>The recorder's choice comes first. Click another to use it.</Hint>
             <Locators
               candidates={element.candidates}
               picked={element.picked}
@@ -534,9 +518,9 @@ function StepChoice(props: {
     >
       <span class="flex min-w-0 items-center gap-2">
         <Icon name={props.icon} size={14} class={cls('shrink-0', props.primary ? 'text-accent-fg' : 'text-muted')} />
-        <span dir="auto" class="min-w-0 truncate text-[12.5px] font-medium text-fg">{props.label}</span>
-        {props.hint && <span class="min-w-0 shrink-0 truncate text-[11.5px] text-faint">{props.hint}</span>}
-        {props.primary && !props.disabled && <kbd class="ml-auto shrink-0 rounded border border-accent/40 px-1 font-sans text-[10.5px] leading-4 text-accent-fg">↵</kbd>}
+        <span dir="auto" class="min-w-0 truncate text-body font-medium text-fg">{props.label}</span>
+        {props.hint && <span class="min-w-0 shrink-0 truncate text-meta text-faint">{props.hint}</span>}
+        {props.primary && !props.disabled && <kbd class="ml-auto shrink-0 rounded border border-accent/40 px-1 font-sans text-tag leading-4 text-accent-fg">↵</kbd>}
       </span>
       {props.was && <CodeLines code={props.was} gone />}
       {props.code && <CodeLines code={props.code} />}
@@ -552,7 +536,7 @@ function CodeLines({ code, gone }: { code: string; gone?: boolean }) {
   const lines = tokenizeCSharp(code);
   const more = lines.length - SHOWN_LINES;
   return (
-    <code dir="ltr" class={cls('mt-1.5 block font-mono text-[11.5px] leading-[1.55] break-words whitespace-pre-wrap', gone && 'line-through decoration-bad/60 opacity-60')}>
+    <code dir="ltr" class={cls('mt-1.5 block font-mono text-meta break-words whitespace-pre-wrap', gone && 'line-through decoration-bad/60 opacity-60')}>
       {lines.slice(0, more > 1 ? SHOWN_LINES : lines.length).map((tokens, at) => (
         <span key={at} class="block">
           <span class={cls('mr-1.5 select-none', gone ? 'text-bad' : 'text-ok')}>{gone ? '−' : '+'}</span>
@@ -563,7 +547,7 @@ function CodeLines({ code, gone }: { code: string; gone?: boolean }) {
           ))}
         </span>
       ))}
-      {more > 1 && <span class="block font-sans text-[11px] text-faint no-underline">… {more} more lines</span>}
+      {more > 1 && <span class="block font-sans text-meta text-faint no-underline">… {more} more lines</span>}
     </code>
   );
 }
@@ -610,12 +594,12 @@ function Locators({ candidates, picked, auto, chosen, disabled, onChoose, onHigh
               <span class={cls('grid size-3.5 shrink-0 place-items-center rounded-full border transition', isPicked ? 'border-accent bg-accent' : 'border-line-strong group-hover:border-faint')}>
                 {isPicked && <span class="size-1.5 rounded-full bg-on-accent" />}
               </span>
-              <span class="min-w-0 truncate text-[12.5px] font-medium text-fg">{candidateKind(candidate)}</span>
+              <span class="min-w-0 truncate text-body font-medium text-fg">{candidateKind(candidate)}</span>
               {candidate.index === auto && <Tag title="The recorder's own choice">Auto</Tag>}
               {isPicked && chosen !== undefined && <Tag accent title="Your choice">Chosen</Tag>}
               <span
                 class={cls(
-                  'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-px text-[11px] font-medium tabular-nums',
+                  'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-px text-meta font-medium tabular-nums',
                   status.ok ? 'bg-ok/12 text-ok' : 'bg-bad/12 text-bad',
                 )}
               >
@@ -623,11 +607,11 @@ function Locators({ candidates, picked, auto, chosen, disabled, onChoose, onHigh
                 {status.text}
               </span>
             </span>
-            <code dir="ltr" class="mt-2 block font-mono text-[11.5px] leading-[1.6] break-words text-muted">
+            <code dir="ltr" class="mt-2 block font-mono text-meta break-words text-muted">
               {candidate.code}
             </code>
             {candidate.problem && (
-              <span class="mt-1.5 flex gap-1.5 text-[11.5px] leading-snug text-warn">
+              <span class="mt-1.5 flex gap-1.5 text-meta text-warn">
                 <Icon name="warn" size={12} class="mt-px shrink-0" />
                 {candidate.problem}
               </span>
@@ -642,11 +626,11 @@ function Locators({ candidates, picked, auto, chosen, disabled, onChoose, onHigh
 function Heading({ kind, title, children }: { kind: string; title: string; children?: ComponentChildren }) {
   return (
     <div>
-      <div class="text-[11px] font-medium tracking-[0.06em] text-faint uppercase">{kind}</div>
-      <div dir="auto" class="mt-1 text-[15px] leading-snug font-semibold tracking-[-0.01em] break-words text-fg">
+      <div class="text-meta font-medium text-muted">{kind}</div>
+      <div dir="auto" class="mt-0.5 text-head font-semibold tracking-[-0.01em] break-words text-fg">
         {title}
       </div>
-      {children && <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">{children}</div>}
+      {children && <div class="mt-2 flex flex-wrap items-center gap-1.5 text-meta text-muted">{children}</div>}
     </div>
   );
 }
@@ -661,7 +645,7 @@ function TestChip({ step }: { step: TestStep }) {
           ? ['border-accent/35 bg-accent/10 text-accent-fg', 'Running']
           : ['border-line bg-canvas text-faint', 'Not run in the test'];
   return (
-    <span class={cls('inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11.5px] font-medium', tone)}>
+    <span class={cls('inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-meta font-medium', tone)}>
       {step.state === 'passed' && <Icon name="tick" size={11} class="stroke-[2.6]" />}
       {step.state === 'failed' && <Icon name="cross" size={11} class="stroke-[2.6]" />}
       {text}
@@ -688,7 +672,7 @@ function Chip({ children, mono, tone }: { children: ComponentChildren; mono?: bo
       class={cls(
         'max-w-full truncate rounded-md border px-1.5 py-px',
         tone === 'accent' ? 'border-accent/30 bg-accent/10 text-accent-fg' : 'border-line bg-canvas text-fg/85',
-        mono && 'font-mono text-[11.5px]',
+        mono && 'font-mono text-meta',
       )}
     >
       {children}
@@ -698,7 +682,7 @@ function Chip({ children, mono, tone }: { children: ComponentChildren; mono?: bo
 
 function Checks({ checks }: { checks: string[] }) {
   return (
-    <div class="mt-3.5 space-y-1 rounded-lg border border-warn/30 bg-warn/8 p-2.5 text-[12px] leading-snug text-warn">
+    <div class="mt-3.5 space-y-1 rounded-lg border border-warn/30 bg-warn/8 p-2.5 text-meta text-warn">
       {checks.map((check) => (
         <div key={check} class="flex gap-1.5">
           <Icon name="warn" size={13} class="mt-px shrink-0" />
@@ -711,7 +695,7 @@ function Checks({ checks }: { checks: string[] }) {
 
 function Note({ icon, tone, children }: { icon: IconName; tone: 'info' | 'warn'; children: ComponentChildren }) {
   return (
-    <div class={cls('mt-3.5 flex gap-2 rounded-lg border p-2.5 text-[12px] leading-snug', tone === 'info' ? 'border-info/30 bg-info/8 text-info' : 'border-warn/30 bg-warn/8 text-warn')}>
+    <div class={cls('mt-3.5 flex gap-2 rounded-lg border p-2.5 text-meta', tone === 'info' ? 'border-info/30 bg-info/8 text-info' : 'border-warn/30 bg-warn/8 text-warn')}>
       <Icon name={icon} size={13} class="mt-px shrink-0" />
       <span>{children}</span>
     </div>
@@ -721,25 +705,14 @@ function Note({ icon, tone, children }: { icon: IconName; tone: 'info' | 'warn';
 function Section({ title, aside, children }: { title: string; aside?: ComponentChildren; children: ComponentChildren }) {
   return (
     <section class="mt-6">
-      <div class="mb-2 flex items-center text-[11px] font-medium tracking-[0.06em] text-faint uppercase">
-        {title}
-        <span class="ml-auto tracking-normal normal-case">{aside}</span>
-      </div>
+      <SectionTitle aside={aside}>{title}</SectionTitle>
       {children}
     </section>
   );
 }
 
 function Hint({ children }: { children: ComponentChildren }) {
-  return <p class="mb-2.5 text-[12px] leading-relaxed text-muted">{children}</p>;
-}
-
-function LinkButton({ disabled, onClick, children }: { disabled: boolean; onClick(): void; children: ComponentChildren }) {
-  return (
-    <button type="button" disabled={disabled} onClick={onClick} class="rounded px-1 text-[11.5px] font-medium text-accent-fg transition hover:underline disabled:opacity-50">
-      {children}
-    </button>
-  );
+  return <p class="mb-2.5 text-meta text-faint">{children}</p>;
 }
 
 function ActionButton(props: { primary?: boolean; submit?: boolean; pressed?: boolean; disabled?: boolean; title?: string; onClick?(): void; children: ComponentChildren }) {
@@ -751,7 +724,7 @@ function ActionButton(props: { primary?: boolean; submit?: boolean; pressed?: bo
       aria-pressed={props.pressed}
       onClick={props.onClick}
       class={cls(
-        'inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium transition disabled:pointer-events-none disabled:opacity-45',
+        'inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-body font-medium transition disabled:pointer-events-none disabled:opacity-45',
         props.primary
           ? 'bg-accent text-on-accent shadow-[0_1px_0_0_rgb(255_255_255/0.12)_inset] hover:brightness-110'
           : props.pressed
@@ -768,22 +741,10 @@ function Tag({ accent, title, children }: { accent?: boolean; title: string; chi
   return (
     <span
       title={title}
-      class={cls('shrink-0 rounded px-1.5 text-[10.5px] leading-4 font-medium', accent ? 'bg-accent/15 text-accent-fg' : 'border border-line text-muted')}
+      class={cls('shrink-0 rounded px-1.5 text-tag leading-4 font-medium', accent ? 'bg-accent/15 text-accent-fg' : 'border border-line text-muted')}
     >
       {children}
     </span>
-  );
-}
-
-function Empty({ icon, title, text }: { icon: IconName; title: string; text: string }) {
-  return (
-    <div class="flex flex-1 flex-col items-center justify-center gap-2 px-8 pb-8 text-center">
-      <span class="mb-1 grid size-9 place-items-center rounded-lg border border-line bg-raised text-faint">
-        <Icon name={icon} size={16} />
-      </span>
-      <p class="text-[13px] font-medium text-fg">{title}</p>
-      <p class="max-w-[30ch] text-[12.5px] leading-relaxed text-muted">{text}</p>
-    </div>
   );
 }
 

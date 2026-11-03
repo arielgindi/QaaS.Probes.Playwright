@@ -6,7 +6,7 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// <summary>
 /// What the recording overlay shows for the element under the pointer, answered for the capture script through the
 /// binding <c>__qaasExplain</c>: the locator a click there records, picked by the same policy the flow is written
-/// with, and why each locator tried before it lost.
+/// with, how many elements it found, and why each locator tried before it lost.
 /// </summary>
 internal static class OverlayLabel
 {
@@ -23,6 +23,7 @@ internal static class OverlayLabel
         var answer = new Answer(
             target == question.Target ? 0 : question.Equivalents!.IndexOf(target!) + 1,
             LocatorPolicy.Describe(chosen),
+            chosen?.Count,
             LocatorPolicy.Problem(chosen),
             target is null ? [] : LocatorPolicy.WhyNot(target, chosen, question.ByName),
             target is { Interactive: false } ? "not a control: kept only if the page reacts" : null);
@@ -53,5 +54,6 @@ internal static class OverlayLabel
         public bool ByName { get; set; }
     }
 
-    private sealed record Answer(int Element, string? Locator, string? Problem, IReadOnlyList<string> Reasons, string? Note);
+    /// <summary>The element it is recorded on, the locator and how many elements it found, and what to say of it.</summary>
+    private sealed record Answer(int Element, string? Locator, int? Count, string? Problem, IReadOnlyList<string> Reasons, string? Note);
 }
