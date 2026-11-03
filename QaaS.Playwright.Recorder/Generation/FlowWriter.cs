@@ -450,7 +450,11 @@ internal sealed partial class FlowWriter
     {
         var source = action.Source;
         var scope = _step.Scope;
-        var option = $"{scope.Page}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
+        // In its own list, when another list has an option of that name too.
+        var list = source.Option?.Candidates.FirstOrDefault(candidate => candidate is { Kind: "role", Matches: true }
+            && candidate.Parts is [.., { M: "role", Role: "listbox" }, { M: "role", Role: "option" }])?.Parts[^2];
+        var inList = list is null ? "" : LocatorPolicy.Render("", [list], breakBefore: Break);
+        var option = $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
         var optionProblem = source.Option is null || source.Option.Candidates.Any(candidate =>
             candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
             ? null
@@ -878,6 +882,7 @@ internal sealed partial class FlowWriter
             && part.Css is { } css && css.EndsWith(LocatorPolicy.CssValue(value), StringComparison.Ordinal))
             return $"$\"{CSharp.Escape(css[..^LocatorPolicy.CssValue(value).Length], true)}[value='{{{Setting(radio)}}}']\"";
         if (part.M == "filter" && part.HasText is { } shown) return Linked(shown);
+        if (part.M == "text" && part.Text is { } label) return Linked(label);
         if (part.M != "role" || part.Name is null) return null;
         if (action.Source.Widget == "radio" && action.Value is { } choice && part.Role == "radio" && part.Name == choice.Text)
             return Setting(choice);
