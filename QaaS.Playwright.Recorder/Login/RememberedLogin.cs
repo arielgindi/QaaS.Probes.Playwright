@@ -12,7 +12,14 @@ internal static class RememberedLogin
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    private static string FilePath => Path.Combine(Path.GetDirectoryName(BrowserDefaults.AuthStatePath)!, "recorder-logins.json");
+    private static string? _filePath;
+
+    /// <summary>Where the logins are kept: <c>~/.qaas/recorder-logins.json</c>, or another file for the recorder's tests.</summary>
+    internal static string FilePath
+    {
+        get => _filePath ??= Path.Combine(Path.GetDirectoryName(BrowserDefaults.AuthStatePath)!, "recorder-logins.json");
+        set => _filePath = value;
+    }
 
     /// <summary>The login last used in <paramref name="projectFolder"/>; null when none, or the file cannot be read.</summary>
     public static LoginFlow? In(string projectFolder) => Read().GetValueOrDefault(Key(projectFolder));
