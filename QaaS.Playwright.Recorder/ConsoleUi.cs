@@ -78,6 +78,7 @@ internal static class ConsoleUi
             ("F9", "Hides or shows the box over the element a click records"),
             ($"Alt+{t.Glyph("↑", "Up")} / Alt+{t.Glyph("↓", "Down")}", "Picks the element around the box, or goes back"),
             ("F8", "Pauses or resumes the recording"),
+            ("F6", "Checks something: a click picks the element, then you choose the check"),
             ("F4", "Freezes the page's elements for the panel's Elements tab"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
@@ -223,8 +224,8 @@ internal static class ConsoleUi
             Field(t, "Flow", [new Span(request.ClassName, Tone.Bold, Untrusted: true),
                 new Span($" {t.Glyph("→", "->")} ", Tone.Dim), new Span(Relative(request.CodePath), Shrink: Shrink.Middle, Untrusted: true)]);
             if (from is not null) Field(t, "From", [new Span(from, Tone.Dim)]);
-            Keys(t, [("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("F8", "pause"),
-                ("F4", "freeze elements"), ("Enter", "or close Chrome to finish")]);
+            Keys(t, [("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("F6", "check"),
+                ("F8", "pause"), ("F4", "freeze elements"), ("Enter", "or close Chrome to finish")]);
             t.WriteLine();
             if (from is null) RecordingState(t, "Recording", "Work through the site in Chrome; each action shows here.");
             else RecordingState(t, "Continuing", "Its steps replay first; then each action you do shows here, after them.");
@@ -405,6 +406,8 @@ internal static class ConsoleUi
         List<Span> subject = action.Kind switch
         {
             "navigate" or "newTab" => [Untrusted(action.Url ?? "", Tone.Bold, Shrink.Middle, order: 2)],
+            "expect" when action.Check == "url" => [new Span("URL ", Tone.Dim), Untrusted(action.Value ?? "", Tone.Bold, Shrink.Middle, order: 2)],
+            "expect" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {CheckOf(action)}", Tone.Dim)],
             "fill" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span(" = ", Tone.Dim), value],
             "choose" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {arrow} ", Tone.Dim), value],
             "upload" => [Untrusted(name, Tone.Bold, order: 0, min: 24), new Span($" {t.Glyph("←", "<-")} ", Tone.Dim), value],
@@ -442,9 +445,12 @@ internal static class ConsoleUi
     internal static IEnumerable<string> ChecksOf(CapturedAction action)
     {
         // As the flow writes them: a key pressed on the page, or with no element, goes to the keyboard.
+        // A check of a count or a row finds them all; one of the address finds nothing.
         var located = action.Kind is not ("navigate" or "newTab")
-                      && !(action.Kind == "press" && (action.OnPage == true || action.Element is null));
-        if (located && LocatorPolicy.Problem(LocatorPolicy.Choose(action.Element, byName: action.Widget == "radio")) is { } problem)
+                      && !(action.Kind == "press" && (action.OnPage == true || action.Element is null))
+                      && action is not { Kind: "expect", Check: "url" };
+        var found = action is { Kind: "expect", Group: { } group } ? group : action.Element;
+        if (located && LocatorPolicy.Problem(LocatorPolicy.Choose(found, byName: action.Widget == "radio")) is { } problem)
             yield return problem;
         if (action.HoverMenu == true) yield return "the menu opened on hover: add HoverAsync() on what opens it";
         if (action.Kind == "upload") yield return "the flow needs each file's full path: return it in FileToUpload";
@@ -490,7 +496,21 @@ internal static class ConsoleUi
         "drag" => (t.Glyph("↔", "~"), "drag"),
         "navigate" => (t.Glyph("→", ">"), "go to"),
         "newTab" => (t.Glyph("+", "+"), "new tab"),
+        "expect" => (t.Glyph("✓", "v"), "check"),
         var other => (t.Glyph("•", "*"), other),
+    };
+
+    // What a check the person chose expects, as the panel says it.
+    private static string CheckOf(CapturedAction check) => check.Check switch
+    {
+        "text" => $"has text \"{check.Value}\"",
+        "contains" => $"contains \"{check.Value}\"",
+        "value" => $"has value \"{check.Value}\"",
+        "count" => $"count is {check.Value}",
+        "row" => "row exists",
+        "hidden" => "is gone",
+        "visible" or null => "shows",
+        var other => other,
     };
 
     // A password is never shown, as someone may be watching the screen.
