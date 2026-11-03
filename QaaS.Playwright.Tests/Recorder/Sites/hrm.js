@@ -2,7 +2,8 @@
 // addresses (/web/index.php/...). Its selects are divs in a form group whose label is tied to nothing, the value they show
 // in a focusable div, their list beside them in the group; its icon buttons have no words, only a Bootstrap icon whose
 // glyph the icon font draws before them, which an accessible name then holds; its table is divs of rows and cells, with a
-// checkbox in its header and in each row, a sort menu hidden in each column's header, and a trash and a pencil in each row;
+// checkbox in its header and in each row, each under the box drawn over it, a sort menu hidden in each column's header,
+// and a trash and a pencil in each row;
 // deleting asks in a dialog with no name. Its pages have several forms, each with a heading and a Save of its own, and a
 // date input whose calendar opens in its group. Handlers are bound with addEventListener, as Vue's are: nothing in the
 // page tells which element handles a click.
@@ -41,11 +42,11 @@
     .oxd-table-header-cell,.oxd-table-cell{flex:1;padding:0 8px}.oxd-table-header-cell:first-child,.oxd-table-cell:first-child{flex:0 0 40px}
     .oxd-table-card{background:#fff;border-radius:12px;margin:6px 0}.oxd-table-header-sort{display:inline-block;margin-left:4px}
     .oxd-checkbox-wrapper label{position:relative;display:inline-flex;cursor:pointer}
-    .oxd-checkbox-wrapper input{position:absolute;opacity:0;width:1px;height:1px}
-    .oxd-checkbox-input{display:inline-grid;place-items:center;width:16px;height:16px;border:1px solid #64728c;border-radius:4px;color:transparent}
+    .oxd-checkbox-wrapper input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0}
+    .oxd-checkbox-input{position:relative;z-index:1;display:inline-grid;place-items:center;width:16px;height:16px;border:1px solid #64728c;border-radius:4px;color:transparent}
     input:checked+.oxd-checkbox-input{background:#ff7b1d;border-color:#ff7b1d;color:#fff}
-    .oxd-switch-wrapper label{display:inline-flex;cursor:pointer}.oxd-switch-wrapper input{position:absolute;opacity:0;width:1px;height:1px}
-    .oxd-switch-input{display:inline-block;width:36px;height:20px;border-radius:10px;background:#e8eaef}
+    .oxd-switch-wrapper label{position:relative;display:inline-flex;cursor:pointer}.oxd-switch-wrapper input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0}
+    .oxd-switch-input{position:relative;z-index:1;display:inline-block;width:36px;height:20px;border-radius:10px;background:#e8eaef}
     input:checked+.oxd-switch-input{background:#ff7b1d}
     .oxd-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)}
     .oxd-overlay--hide{display:none}.oxd-dialog-sheet{position:relative;width:420px;background:#fff;border-radius:16px;padding:24px;transition:opacity .2s}
@@ -130,6 +131,30 @@
     return wrapper;
   }
   document.addEventListener('click', () => openSelect?.());
+
+  // oxd's autocomplete: an input of no role whose hints, found as it is typed into, show in its wrapper a moment later.
+  function autocomplete(names) {
+    const field = h('input', { placeholder: 'Type for hints...' });
+    const wrapper = h('div', { class: 'oxd-autocomplete-wrapper' }, h('div', { class: 'oxd-autocomplete-text-input oxd-autocomplete-text-input--active' },
+      h('div', { class: 'oxd-autocomplete-text-input--before' }), field, h('div', { class: 'oxd-autocomplete-text-input--after' })));
+    let list = null;
+    let timer = null;
+    const close = () => { list?.remove(); list = null; };
+    field.addEventListener('input', () => {
+      clearTimeout(timer);
+      close();
+      if (!field.value) return;
+      list = h('div', { role: 'listbox', class: 'oxd-autocomplete-dropdown --positon-bottom' }, h('div', { role: 'option', class: 'oxd-autocomplete-option --disabled' }, 'Searching....'));
+      wrapper.append(list);
+      timer = setTimeout(() => {
+        const found = names.filter((name) => name.toLowerCase().includes(field.value.toLowerCase()));
+        list?.replaceChildren(...(found.length ? found : ['No Records Found']).map((name) => h('div', { role: 'option', class: 'oxd-autocomplete-option',
+          onClick: (event) => { event.stopPropagation(); if (!found.length) return; field.value = name; close(); } }, h('span', {}, name))));
+      }, 400);
+    });
+    document.addEventListener('click', close);
+    return wrapper;
+  }
 
   // oxd's date input: a calendar that opens in its wrapper, with a month and a year of its own lists, which sets the
   // input's value as yyyy-dd-mm and closes as a day is chosen.
@@ -266,7 +291,7 @@
     h('div', { class: 'oxd-form-row' }, h('div', { class: 'oxd-grid-4 orangehrm-full-width-grid' },
       h('div', { class: 'oxd-grid-item oxd-grid-item--gutters' }, group('Username', input())),
       h('div', { class: 'oxd-grid-item oxd-grid-item--gutters' }, group('User Role', select(['Admin', 'ESS']))),
-      h('div', { class: 'oxd-grid-item oxd-grid-item--gutters' }, group('Employee Name', input({ placeholder: 'Type for hints...' }))),
+      h('div', { class: 'oxd-grid-item oxd-grid-item--gutters' }, group('Employee Name', autocomplete(['Adna Maric', 'Dan Rose', 'Joao Santos', 'Leticia Amanda', 'Manimaran N']))),
       h('div', { class: 'oxd-grid-item oxd-grid-item--gutters' }, group('Status', select(['Enabled', 'Disabled']))))),
     h('hr', { class: 'oxd-divider', role: 'separator' }),
     h('div', { class: 'oxd-form-actions' }, button('Reset', 'ghost'), h('button', { type: 'submit', class: 'oxd-button oxd-button--medium oxd-button--secondary orangehrm-left-space' }, ' Search '))));

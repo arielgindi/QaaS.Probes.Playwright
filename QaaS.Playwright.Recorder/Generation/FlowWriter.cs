@@ -85,6 +85,11 @@ internal sealed partial class FlowWriter
     public const string ChosenCheck = " // check";
     private const string SlowTimeout = "new() { Timeout = 30_000 }";
 
+    // A click through what covers a checkbox: the box a library draws over it, inside its label.
+    private const string ForceOptions = "new() { Force = true }";
+
+    private static bool Covered(CapturedAction source) => source.Target?.Covered == true;
+
     private const string FileToUploadMethod = """
             // The recorder saw only the names of the files you uploaded: return each one's full path.
             private static string FileToUpload(string recordedName) =>
@@ -398,15 +403,16 @@ internal sealed partial class FlowWriter
             case "fill":
                 _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
                 break;
+            // A checkbox under the box drawn over it is ticked through that box, as the person clicked it.
             case "check" or "uncheck" when source.Widget == "radio":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.CheckAsync();", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.CheckAsync({(Covered(source) ? ForceOptions : "")});", problem);
                 break;
             // In a loop whose every round ticked it alike, or a checkbox of a group the loop goes over, as each round did.
             case "check" or "uncheck" when action.Value is not { Flag: not null }:
-                _step.Add($"await {Locate(action, ref problem)}{Break}.{(action.Kind == "check" ? "CheckAsync" : "UncheckAsync")}();", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.{(action.Kind == "check" ? "CheckAsync" : "UncheckAsync")}({(Covered(source) ? ForceOptions : "")});", problem);
                 break;
             case "check" or "uncheck":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.SetCheckedAsync({Setting(action.Value)});", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.SetCheckedAsync({Setting(action.Value)}{(Covered(source) ? ", " + ForceOptions : "")});", problem);
                 break;
             case "choose":
                 WriteChoice(action, problem);

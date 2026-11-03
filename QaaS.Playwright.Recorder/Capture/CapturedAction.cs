@@ -226,6 +226,9 @@ internal sealed class CapturedTarget
     /// <summary>A field the person can type in: a text input that is not read-only, a text area, an editable element.</summary>
     public bool? Editable { get; set; }
 
+    /// <summary>A checkbox or radio under the box a library draws over it, which a click at its middle lands on.</summary>
+    public bool? Covered { get; set; }
+
     public bool Interactive { get; set; }
 
     /// <summary>One of a list of like items, or in one: an option, a card among cards, a link of a menu.</summary>

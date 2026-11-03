@@ -721,6 +721,15 @@ internal static class CaptureScript
             return null;
           }
 
+          // A checkbox under the box a library draws over it: a click at its middle lands on the box, which Playwright's
+          // check does not take for the checkbox's own.
+          function isCovered(element) {
+            const box = element.getBoundingClientRect();
+            if (box.width === 0 || box.height === 0) return false;
+            const atMiddle = deepAt(box.left + box.width / 2, box.top + box.height / 2);
+            return !!atMiddle && atMiddle !== element && !containsDeep(element, atMiddle);
+          }
+
           // The candidates that find the element by what is around it: its form group's label, its section's heading, the
           // card it is in, the nearest stable id around it, its icon, its title, its place in a table's header or a
           // toolbar.
@@ -851,6 +860,7 @@ internal static class CaptureScript
               label: listLabel(element, role) ||
                 clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref)).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
+              covered: element.matches(TOGGLES) && isCovered(element) || undefined,
               groupLabel: nearby.group?.label || null,
               placeholder: element.getAttribute('placeholder') || describedBy(element),
               section: nearby.section?.heading || null,

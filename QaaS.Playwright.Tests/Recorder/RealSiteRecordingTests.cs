@@ -152,6 +152,10 @@ public class RealSiteRecordingTests
             // The select again, through the value it shows now.
             await person.ClickAsync(page.GetByText("Disabled", new() { Exact = true }));
             await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Enabled" }));
+            // Its autocomplete: a letter, then a hint.
+            await person.TypeAsync(Group("Employee Name").Locator("input"), "a");
+            await page.GetByRole(AriaRole.Option, new() { Name = "Joao Santos" }).WaitForAsync();
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Joao Santos" }));
             await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Search" }));
             await person.ClickAsync(page.Locator("button:has(i.bi-caret-down-fill)"));
             await person.ClickAsync(page.Locator("button:has(i.bi-caret-down-fill)"));
@@ -210,8 +214,8 @@ public class RealSiteRecordingTests
                     .And.Not.Contain("\"Browse\"").And.Not.Contain("DragToAsync").And.Not.Contain("HoverAsync"),
                     "no glued text, no calendar's day, no file chooser's click, no drag that dropped nowhere");
                 Assert.That(flow.Code, Does.Contain("foreach (var username in Configuration.UsernamesToDelete)")
-                    .And.Contain("Locator(\"button:has(i.bi-trash)\")").And.Contain("GetByRole(AriaRole.Checkbox).CheckAsync()"),
-                    "the delete rounds as a loop over the rows' keys, the trash by its icon");
+                    .And.Contain("Locator(\"button:has(i.bi-trash)\")").And.Contain("GetByRole(AriaRole.Checkbox).CheckAsync(new() { Force = true })"),
+                    "the delete rounds as a loop over the rows' keys, the trash by its icon, the checkbox through the box over it");
                 Assert.That(flow.Code, Does.Contain("Configuration.UsernamesToUncheck"), "the unticks as a loop");
                 Assert.That(flow.Code, Does.Contain("GetByRole(AriaRole.Columnheader).GetByRole(AriaRole.Checkbox)"), "select all by its place");
                 Assert.That(flow.Code, Does.Contain("Filter(new() { Has = page.GetByText(\"User Role\", new() { Exact = true }) })")
@@ -223,7 +227,8 @@ public class RealSiteRecordingTests
                 Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.LicenseExpiryDate)"), "the date as typed");
                 Assert.That(flow.Code, Does.Contain("Filter(new() { HasText = \"Joao Santos\" }).Locator(\"[id='heart-svg']\")"), "the post's like by its words");
                 Assert.That(flow.Code, Does.Not.Match(@"[a-z]\d+Async\("), "no numbered step");
-                Assert.That(flow.Yaml, Does.Contain("UserRole: 'Admin'").And.Contain("MaritalStatus: 'Other'").And.Contain("BloodType: 'B-'")
+                Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.EmployeeName)"), "the autocomplete typed its hint's own text");
+                Assert.That(flow.Yaml, Does.Contain("UserRole: 'Admin'").And.Contain("EmployeeName: 'Joao Santos'").And.Contain("MaritalStatus: 'Other'").And.Contain("BloodType: 'B-'")
                     .And.Contain("TestField: '124445'").And.Contain("IncludeEmploymentContractDetails: true").And.Contain("UsernamesToDelete:")
                     .And.Not.Contain("Admin: 'Admin'").And.Not.Contain("Value").And.Not.Contain("B:"), "settings by the groups' labels");
                 Assert.That(plan.Suggestions.Select(suggestion => suggestion.Key.Split(':')[0]), Does.Contain("replaced"),
