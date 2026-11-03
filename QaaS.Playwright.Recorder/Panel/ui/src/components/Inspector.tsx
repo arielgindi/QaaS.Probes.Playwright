@@ -245,7 +245,8 @@ function InPlace(props: {
         title={props.disabled ? props.title : `${props.title}: ${props.shown ?? props.text}`}
         dir="auto"
         class={cls(
-          '-mx-1 max-w-full truncate rounded px-1 font-mono text-[11.5px] transition enabled:hover:bg-raised enabled:hover:ring-1 enabled:hover:ring-line-strong',
+          // As wide as its column with the margins it reaches past it by.
+          '-mx-1 max-w-[calc(100%+0.5rem)] truncate rounded px-1 font-mono text-[11.5px] transition enabled:hover:bg-raised enabled:hover:ring-1 enabled:hover:ring-line-strong',
           props.class,
         )}
       >
