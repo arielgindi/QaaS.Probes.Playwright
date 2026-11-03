@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
@@ -43,6 +44,45 @@ public class RecorderPanelTests
                 Assert.That(action.Lines.Last, Is.LessThan(step.Lines.Last), $"{action.Kind} {action.Element}");
                 previous = action.Lines.Last;
             }
+        });
+    }
+
+    [Test]
+    public void AStepRecordedAgain_GoesInPlaceOfTheOld_TheStepsAfterItStay_AndUndoBringsTheOldBack()
+    {
+        var recorded = Recording.FromJson(File.ReadAllText(Path.Combine(GoldenFolder(), "ScheduleMaintenance.recording.json")));
+        var request = new RecordRequest("ScheduleMaintenance", recorded.StartUrl, "Flows");
+        var log = new CaptureLog(from: recorded);
+        var before = FlowCodeGenerator.Generate(log.Build(recorded.StartUrl), request.ClassName, "Flows").Code;
+        var shown = PanelSnapshot.Of(log.Build(recorded.StartUrl), request, "Flows", "recording", null);
+        var fill = shown.Steps.Single(step => step.Name == "FillScheduleMaintenanceAsync");
+        var part = shown.PartOf(fill.Actions[1].Source.Id, wholeStep: true, after: false, fill.Name)!;
+
+        // Done again with only the notes, typed otherwise, as the capture script reports it.
+        log.BeginSplice(part.Label, part.Replaced, part.After, part.Before);
+        var notes = JsonSerializer.SerializeToNode(recorded.Actions[6], Recording.Json)!.AsObject();
+        (notes["type"], notes["id"], notes["t"], notes["value"], notes["raw"]) =
+            ("action", "again-1", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "Grinding noise", "Grinding noise");
+        log.Add("page", notes.ToJsonString());
+        var recording = log.Build(recorded.StartUrl);
+        var during = PanelSnapshot.Of(recording, request, "Flows", "recording", null, log.Fresh(recording));
+        log.EndSplice(keep: true);
+        var again = FlowCodeGenerator.Generate(Recording.FromJson(log.Build(recorded.StartUrl).ToJson()), request.ClassName, "Flows");
+        var undo = log.NextUndo(hasSteps: true);
+        log.Undo([]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(part.Replaced, Is.EqualTo(recorded.Actions.Skip(2).Take(5).Select(action => action.Id)), "the step, and what led to it");
+            Assert.That((part.After, part.Before, part.UpTo), Is.EqualTo((recorded.Actions[1].Id, recorded.Actions[7].Id, recorded.Actions[1].Id)),
+                "the replay runs to the step before it");
+            Assert.That(recording.Actions.Select(action => action.Id),
+                Is.EqualTo(new[] { recorded.Actions[0].Id, recorded.Actions[1].Id, "again-1", recorded.Actions[7].Id }));
+            Assert.That(during.Undo, Is.EqualTo(new[] { "again-1" }), "Undo takes back what was recorded in the part first");
+            Assert.That(again.Code, Does.Contain("""Notes { get; init; } = "Grinding noise";""").And.Not.Contain("maintenanceTypeId")
+                .And.Contain("""Name = "Schedule", Exact = true"""), "kept in the recording's JSON, with the step after it");
+            Assert.That(undo, Is.EqualTo("Bring back FillScheduleMaintenanceAsync as it was"));
+            Assert.That(FlowCodeGenerator.Generate(log.Build(recorded.StartUrl), request.ClassName, "Flows").Code, Is.EqualTo(before));
         });
     }
 
@@ -95,6 +135,54 @@ public class RecorderPanelTests
 
         Assert.That(recording.Actions.Select(action => action.Target?.Text), Is.EqualTo(new[] { "New ticket", "Create ticket" }),
             "undone actions are left out, and nothing done in the panel is recorded");
+    }
+
+    [Test]
+    [Category("EndToEnd")]
+    public async Task Try_RecordsNothing_ShowsWhatTheRecorderWouldWrite_AndAddsWhatThePersonChoseToTheFlow()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var options = new RecordingOptions($"{site.Url}/helpdesk")
+        {
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
+        };
+        var session = await RecordingSession.StartAsync(options, _ => { });
+        Recording recording;
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", options.Url]));
+            var app = session.Page;
+            var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+            var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
+            var tried = view.GetByRole(AriaRole.Region, new() { Name = "Tried" });
+            await app.GetByTestId("new-ticket").ClickAsync();
+            await Expect(code).ToContainTextAsync("ToBeVisibleAsync");
+
+            await app.Keyboard.PressAsync("F7");
+            await Expect(tried).ToBeVisibleAsync();
+            await app.Locator("[name='title']").FillAsync("Printer jammed");
+            await app.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
+            var fill = tried.Locator("[data-tried]").Filter(new() { HasText = "Printer jammed" });
+            await Expect(fill).ToContainTextAsync("[name='title']");
+            await Expect(fill).ToContainTextAsync("Title= 'Printer jammed'");
+            await Expect(tried.Locator("[data-tried]").Filter(new() { HasText = "Create ticket" })).ToContainTextAsync("dialog closes");
+            await Expect(code).Not.ToContainTextAsync("FillAsync");
+
+            await fill.GetByRole(AriaRole.Button, new() { Name = "Add to flow" }).ClickAsync();
+            await Expect(code).ToContainTextAsync("FillAsync(Configuration.Title)");
+            await view.Keyboard.PressAsync("F7");
+            await Expect(tried).ToHaveCountAsync(0);
+        }
+        finally
+        {
+            recording = await session.StopAsync();
+        }
+
+        // As after a pause, the flow goes by its address to the page the app was left on.
+        Assert.That(recording.Actions.Select(action => (action.Kind, action.Target?.Text, action.Added)),
+            Is.EqualTo(new (string, string?, bool)[] { ("click", "New ticket", false), ("fill", "Title", true), ("navigate", null, false) }),
+            "only what was added from Try is in the flow");
     }
 
     [Test]

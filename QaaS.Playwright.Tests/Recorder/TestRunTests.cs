@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
@@ -236,6 +237,57 @@ public class TestRunTests
             Assert.That(continued.Actions.Take(2).Select(action => action.Id), Is.EqualTo(recorded.Actions.Take(2).Select(action => action.Id)));
             Assert.That(code, Does.Contain("FillAsync(Configuration.Title)").And.Contain("Name = \"Create ticket\""));
         });
+    }
+
+    [Test]
+    public async Task Rerecord_ReplaysUpToTheStepInTheRecordedWindow_PutsWhatIsDoneNowInItsPlace_AndUndoBringsItBack()
+    {
+        using var site = TestSite.Start();
+        var session = await StartAsync($"{site.Url}/helpdesk");
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", session.Options.Url]));
+            var app = session.Page;
+            var view = app.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+            var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
+            var banner = view.GetByRole(AriaRole.Status, new() { Name = "Re-recording" });
+            await app.GetByTestId("new-ticket").ClickAsync();
+            await Expect(code).ToContainTextAsync("ToBeVisibleAsync");
+            await app.Locator("[name='title']").FillAsync("Printer jammed");
+            await app.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
+            await Expect(code).ToContainTextAsync("ToBeHiddenAsync");
+
+            // The fill again: the flow replays up to it in the recorded window, which opens the dialog again.
+            var card = view.Locator("[data-action]").Filter(new() { HasText = "Printer jammed" });
+            // Selected, a card shows its buttons, as when pointed at.
+            await card.ClickAsync();
+            await card.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Re-record") }).ClickAsync();
+            await view.GetByRole(AriaRole.Dialog, new() { Name = "Re-record" }).GetByRole(AriaRole.Button, new() { Name = "Re-record", Exact = true }).ClickAsync();
+            await Expect(banner).ToContainTextAsync("do it again, then press Done", new() { Timeout = 60_000 });
+            await app.Locator("[name='title']").FillAsync("Scanner offline");
+            await app.Keyboard.PressAsync("F2");
+            await Expect(banner).ToContainTextAsync("Re-recorded");
+            await Expect(code).ToContainTextAsync("\"Scanner offline\"");
+            var rerecorded = session.Build();
+            var state = session.State;
+            var pages = app.Context.Pages.Count;
+
+            await view.Keyboard.PressAsync("Control+z");
+            await Expect(code).ToContainTextAsync("\"Printer jammed\"");
+            Assert.Multiple(() =>
+            {
+                Assert.That(rerecorded.Actions.Select(action => (action.Target?.Text, action.Value)),
+                    Is.EqualTo(new (string?, string?)[] { ("New ticket", null), ("Title", "Scanner offline"), ("Create ticket", null) }),
+                    "what was done again is in its place, the step after it stays, and nothing replayed is recorded");
+                Assert.That(state, Is.EqualTo(RecordingState.Paused), "the app is in the dialog, not where the flow ends");
+                Assert.That(pages, Is.EqualTo(1), "it replays in the recorded window");
+                Assert.That(session.Build().Actions.Select(action => action.Value), Has.Member("Printer jammed"));
+            });
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
     }
 
     // Never the person's own login.
