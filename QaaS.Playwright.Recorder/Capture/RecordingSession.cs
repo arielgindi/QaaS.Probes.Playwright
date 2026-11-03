@@ -32,6 +32,11 @@ internal sealed record RecordingOptions(string Url)
     public Recording? Continues { get; init; }
 }
 
+/// <summary>How a login flow ended when it did not log in: why, and whether it was stopped for the person to log in by hand.</summary>
+/// <param name="Why">Why it failed, as the probe says it; or why it was stopped.</param>
+/// <param name="ByHand">It was stopped (Esc, the panel, or it hung), rather than failing.</param>
+internal sealed record LoginEnd(string Why, bool ByHand);
+
 /// <summary>Whether what the person does is recorded.</summary>
 internal enum RecordingState
 {
@@ -75,6 +80,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     private Recording? _result;
     private RecordingState _state;
     private RecordingState _beforeTest;
+    private volatile LoginWatch? _login;
 
     private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
@@ -128,6 +134,12 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>Raised, on Playwright's thread, when a page went in or out of check mode.</summary>
     public event Action? CheckingChanged;
 
+    /// <summary>How the login flow goes while it runs, each second; null when none runs.</summary>
+    public LoginProgress? LoginProgress { get; private set; }
+
+    /// <summary>Raised each second while the login flow runs, and when it ended.</summary>
+    public event Action? LoginChanged;
+
     /// <summary>
     /// Opens Chrome on the URL with the capture script installed. <paramref name="onNews"/> receives each action and
     /// effect as it is captured, and each <see cref="RecordingState"/> the recording goes to, on Playwright's thread.
@@ -165,15 +177,53 @@ internal sealed class RecordingSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Runs the login flow on <see cref="Page"/>, which <paramref name="logIn"/> does and returns why it failed, or null.
-    /// The recording then starts on the page it left, or stays paused with why, for the person to log in by hand. A
-    /// recording that continues another goes on to replay it (<see cref="EndTest"/> ends that).
+    /// Runs the login flow on <see cref="Page"/>, which <paramref name="logIn"/> does and returns why it failed, or null;
+    /// its token is cancelled once it was stopped. While it runs, <see cref="LoginProgress"/> says each second how it
+    /// goes, and the pages' overlay shows it. <see cref="LogInByHand"/> stops it, as it stops itself after two minutes
+    /// of nothing, or when the app asked the browser to sign in: its page is then replaced by a fresh one at the same
+    /// address, the login so far kept, so whatever the flow waited for fails at once, and nothing it does reaches the
+    /// app. The recording then starts on the page the login left, or stays paused with why, for the person to log in
+    /// by hand. A recording that continues another goes on to replay it (<see cref="EndTest"/> ends that).
     /// </summary>
-    public async Task<string?> LogInAsync(Func<IPage, Task<string?>> logIn)
+    /// <param name="logIn">Runs the flow on the page.</param>
+    /// <param name="scrub">Hides the login's secrets in what is shown of it, e.g. a page's address.</param>
+    public async Task<LoginEnd?> LogInAsync(Func<IPage, CancellationToken, Task<string?>> logIn, Func<string, string>? scrub = null)
     {
-        var failure = await logIn(Page);
+        var flow = _options.LoginFlow ?? "the login flow";
+        var watch = new LoginWatch(flow, _options.Url, scrub ?? (text => text));
+        watch.Navigated(Page.Url);
+        _login = watch;
+        WatchNetwork(on: true);
+        using var stopped = new CancellationTokenSource();
+        LoginEnd? end;
+        try
+        {
+            var running = logIn(Page, stopped.Token);
+            using var ticking = new CancellationTokenSource();
+            var ticker = TickAsync(watch, ticking.Token);
+            var first = await Task.WhenAny((Task)running, watch.ByHand);
+            await ticking.CancelAsync();
+            await ticker;
+            if (first == running)
+            {
+                end = await running is { } failure ? new LoginEnd(failure, ByHand: false) : null;
+            }
+            else
+            {
+                await stopped.CancelAsync();
+                end = new LoginEnd(await watch.ByHand, ByHand: true);
+                await ReplacePageAsync();
+            }
+        }
+        finally
+        {
+            _login = null;
+            WatchNetwork(on: false);
+            LoginProgress = null;
+        }
+
         await AttachConsoleApiAsync();
-        if (failure is not null) Pause($"{_options.LoginFlow} failed: {failure}");
+        if (end is not null) Pause(end.ByHand ? end.Why : $"{flow} failed: {end.Why}");
         else if (_options.Continues is null) Resume();
         else
         {
@@ -181,7 +231,15 @@ internal sealed class RecordingSession : IAsyncDisposable
             Announce(RecordingState.Testing);
         }
 
-        return failure;
+        // The panel shows the state it went to.
+        LoginChanged?.Invoke();
+        return end;
+    }
+
+    /// <summary>Stops the login flow running, for the person to log in by hand: Esc, or the panel's Log in by hand.</summary>
+    public void LogInByHand()
+    {
+        if (_login is { } login) login.Stop($"You stopped {login.Flow}.");
     }
 
     /// <summary>
@@ -332,6 +390,87 @@ internal sealed class RecordingSession : IAsyncDisposable
         _playwright.Dispose();
     }
 
+    // Each second: how the login goes, for the console and the panel, and in each page's overlay; once it is slow, how
+    // to stop it there.
+    private async Task TickAsync(LoginWatch watch, CancellationToken stop)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            do
+            {
+                var progress = LoginProgress = watch.Tick();
+                _onNews(progress);
+                LoginChanged?.Invoke();
+                List<IPage> pages;
+                lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
+                var hint = string.Join(" · ", new[] { progress.Where is null ? null : $"on {progress.Where}",
+                    progress.Slow ? "Esc logs in by hand" : null }.OfType<string>());
+                var shown = new { op = "login", text = $"Logging in with {watch.Flow}… {progress.Seconds} s", hint, esc = progress.Slow };
+                // A page that is loading answers once it loaded: the next second will do.
+                await Task.WhenAny(Task.WhenAll(pages.Select(page => PageElements.CallAsync(page, shown))), Task.Delay(500, stop));
+            }
+            while (await timer.WaitForNextTickAsync(stop));
+        }
+        catch (OperationCanceledException)
+        {
+            // The login ended.
+        }
+    }
+
+    // What the login's pages send and get, while it runs: activity, what a document waits for, and the app asking the
+    // browser to sign in. Only then, as Playwright sends every request's events while anyone listens.
+    private void WatchNetwork(bool on)
+    {
+        if (on)
+        {
+            _context.Request += OnRequest;
+            _context.RequestFinished += OnAnswered;
+            _context.RequestFailed += OnAnswered;
+            _context.Response += OnResponse;
+        }
+        else
+        {
+            _context.Request -= OnRequest;
+            _context.RequestFinished -= OnAnswered;
+            _context.RequestFailed -= OnAnswered;
+            _context.Response -= OnResponse;
+        }
+    }
+
+    private void OnRequest(object? sender, IRequest request) =>
+        _login?.Requested(request, request.Url, request.IsNavigationRequest && request.Frame.ParentFrame is null);
+
+    private void OnAnswered(object? sender, IRequest request) => _login?.Answered(request);
+
+    private void OnResponse(object? sender, IResponse response)
+    {
+        if (response.Status == 401 && response.Request.IsNavigationRequest && response.Frame.ParentFrame is null
+            && response.Headers.TryGetValue("www-authenticate", out var scheme))
+            _login?.AuthAsked(scheme, response.Url);
+    }
+
+    // A fresh page in the old one's place, at the address it was at, and the old one closed: the login flow stopped
+    // there fails at once, whatever it waited for, and does nothing more. The login so far is the context's, and stays.
+    private async Task ReplacePageAsync()
+    {
+        var old = Page;
+        var url = old.IsClosed || old.Url is "" or "about:blank" ? _options.Url : old.Url;
+        var fresh = await _context.NewPageAsync();
+        Track(fresh, "page");
+        lock (_gate) _aliases.Remove(old);
+        Page = fresh;
+        try
+        {
+            await old.CloseAsync(new() { RunBeforeUnload = false });
+            await fresh.GotoAsync(url, new() { Timeout = NavigationTimeoutMs });
+        }
+        catch (PlaywrightException)
+        {
+            // The person goes on from where it is.
+        }
+    }
+
     // The capture script locates elements with Playwright's console API, which a driver only installs in debug mode
     // "console", read once, when the driver starts. Debug mode also turns off every timeout, so the recording's own driver
     // is not in it: a second driver is, and attaches to the same Chrome over CDP only to install the console API in its
@@ -449,6 +588,15 @@ internal sealed class RecordingSession : IAsyncDisposable
                 Checking = message.On == true;
                 CheckingChanged?.Invoke();
                 break;
+            case "loginByHand":
+                LogInByHand();
+                break;
+            case "loginAction" when _login is { } login:
+                var name = message.Name is { Length: > 0 } named ? $" “{named}”" : "";
+                login.Acted(message.Action == "type"
+                    ? $"typed in{(name.Length > 0 ? name : " a field")}"
+                    : $"clicked{(message.Role is { Length: > 0 } role ? $" {role}" : "")}{name}");
+                break;
         }
     }
 
@@ -475,21 +623,29 @@ internal sealed class RecordingSession : IAsyncDisposable
         _ => "recording",
     };
 
-    // Returns whether the page was opened during the recording, rather than by it.
-    private bool Track(IPage page)
+    // Returns whether the page was opened during the recording, rather than by it; one given its alias, e.g. the page
+    // in place of another, is not.
+    private bool Track(IPage page, string? alias = null)
     {
         bool opened;
         lock (_gate)
         {
-            if (_aliases.ContainsKey(page)) return false;
-            opened = _aliases.Count > 0;
-            _aliases[page] = opened ? $"page{_aliases.Count}" : "page";
+            if (_aliases.ContainsKey(page))
+            {
+                if (alias is not null) _aliases[page] = alias;
+                return false;
+            }
+
+            opened = alias is null && _aliases.Count > 0;
+            _aliases[page] = alias ?? (opened ? $"page{_aliases.Count}" : "page");
             if (_state != RecordingState.LoggingIn) WatchDialogs(page);
         }
 
         page.FrameNavigated += (_, frame) =>
         {
-            if (frame == page.MainFrame) Log.Navigated(AliasOf(page), frame.Url, Now());
+            if (frame != page.MainFrame) return;
+            Log.Navigated(AliasOf(page), frame.Url, Now());
+            _login?.Navigated(frame.Url);
         };
         page.Request += (_, request) =>
         {
@@ -577,5 +733,12 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         /// <summary>For check mode: whether the page is in it.</summary>
         public bool? On { get; set; }
+
+        /// <summary>For what a login flow did on the page: <c>click</c> or <c>type</c>, on an element of that role and name.</summary>
+        public string? Action { get; set; }
+
+        public string? Role { get; set; }
+
+        public string? Name { get; set; }
     }
 }

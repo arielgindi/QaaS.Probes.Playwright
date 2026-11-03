@@ -26,6 +26,17 @@ public sealed class LogInFlow : BasePlaywrightFlow<UserConfig>
     }
 }
 
+/// <summary>Types the user name, then waits for ever for a button the page never shows, as a login that hangs does.</summary>
+public sealed class HangingLogInFlow : BasePlaywrightFlow<NoConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.GotoAsync($"{BaseUrl}/login");
+        await page.GetByLabel("Username").FillAsync("alice");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Continue with single sign-on" }).ClickAsync(new() { Timeout = 0 });
+    }
+}
+
 /// <summary>Fills a password into a read-only field, so the timeout's call log quotes it.</summary>
 public sealed class FillReadOnlyPasswordFlow : BasePlaywrightFlow<PasswordConfig>
 {
