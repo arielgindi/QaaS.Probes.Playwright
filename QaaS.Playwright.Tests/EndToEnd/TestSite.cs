@@ -1,13 +1,16 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 
 namespace QaaS.Playwright.Tests.EndToEnd;
 
 /// <summary>
 /// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, a helpdesk with
-/// a ticket table and a dialog to record in, orders with a menu in a portal, and a to-do list.
+/// a ticket table and a dialog to record in, orders with a menu in a portal, a to-do list, and under <c>/pickers/</c>
+/// the option pickers of common UI libraries, each in a modal flow (<c>Recorder/Pickers/kit.js</c>).
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -72,6 +75,12 @@ public sealed class TestSite : IDisposable
             response.AppendCookie(new Cookie("user", request.QueryString["user"]) { Path = "/" });
             response.Redirect("/whoami");
             response.Close();
+            return;
+        }
+
+        if (path.StartsWith("/pickers/", StringComparison.Ordinal))
+        {
+            ServePicker(response, path["/pickers/".Length..]);
             return;
         }
 
@@ -159,6 +168,23 @@ public sealed class TestSite : IDisposable
           });
         </script>
         """;
+
+    // The kit's script, or a page that starts one of its cases.
+    private static void ServePicker(HttpListenerResponse response, string name)
+    {
+        if (name == "kit.js")
+        {
+            Send(response, "text/javascript; charset=utf-8", File.ReadAllBytes(Path.Combine(PickersFolder(), "kit.js")));
+            return;
+        }
+
+        var page = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Orders</title></head><body>" +
+                   $"<div id=\"root\"></div><script src=\"/pickers/kit.js\"></script><script>kit.start({JsonSerializer.Serialize(name)})</script></body></html>";
+        Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(page));
+    }
+
+    private static string PickersFolder([CallerFilePath] string here = "") =>
+        Path.Combine(Path.GetDirectoryName(here)!, "..", "Recorder", "Pickers");
 
     private string CreateTicket(string? name)
     {
