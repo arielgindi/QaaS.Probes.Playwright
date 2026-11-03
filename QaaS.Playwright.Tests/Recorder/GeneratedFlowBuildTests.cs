@@ -10,7 +10,7 @@ namespace QaaS.Playwright.Tests.Recorder;
 
 /// <summary>
 /// Every kind of flow the recorder writes must build in a test project as strict as a team's: the golden recordings,
-/// with and without auto checks, and the steps that read the flow's own members (BaseUrl, settings) or none. Its YAML
+/// with and without auto checks, the person's checks and edits among them, and the steps that read the flow's own members (BaseUrl, settings) or none. Its YAML
 /// must then bind to its settings as QaaS reads a test's, lists of a loop included.
 /// </summary>
 [TestFixture]
@@ -51,7 +51,8 @@ public class GeneratedFlowBuildTests
         var assembly = FlowAssemblyContext.Load(Path.Combine(_folder, "out", "GeneratedFlows.dll"));
         Assert.Multiple(() =>
         {
-            Assert.That(withoutChecks, Has.All.Not.Contain("Expect("), "without auto checks, a flow checks nothing");
+            Assert.That(withoutChecks, Has.All.Not.Contain("// auto check"), "without auto checks, a flow checks only what the person chose");
+            Assert.That(withoutChecks, Has.Some.Contain("Expect(").And.Contain("// check"));
             foreach (var (name, yaml) in generated)
                 Assert.That(Bind(assembly.GetTypes().Single(type => type.Name == name), yaml), Is.EqualTo(Defaults(assembly, name)),
                     $"{name}: its YAML binds to the values it recorded");

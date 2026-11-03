@@ -50,6 +50,11 @@ const paths = {
   bulb: 'M9.5 18h5 M10.5 21h3 M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.1V16h5v-.1c0-.8.4-1.5 1.1-2.1A6 6 0 0 0 12 3z',
   expand: 'M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5',
   minus: 'M7 12h10',
+  checkCircle: 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z M8.3 12.3l2.6 2.6 4.9-5.3',
+  trash: 'M4.5 7h15 M10 4h4 M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12 M10 11v5.5 M14 11v5.5',
+  calendar: 'M5 5.5h14a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z M4 10h16 M8.5 3.5v4 M15.5 3.5v4',
+  hash: 'M9.5 4l-2 16 M16.5 4l-2 16 M4.5 9h15 M4 15h15',
+  restore: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3 M4.5 4.5v4.2h4.2',
 } as const;
 
 export type IconName = keyof typeof paths;

@@ -47,8 +47,8 @@ internal static class FlowYaml
     public static string Scalar(Setting setting)
     {
         if (setting.Flag is { } flag) return flag ? "true" : "false";
-        if (setting.IsNumber && setting.Text is { } number) return number;
-        var text = setting.Text ?? "";
+        if (setting.IsNumber && setting.Value is { } number) return number;
+        var text = setting.Value ?? "";
         if (!text.Any(char.IsControl)) return $"'{text.Replace("'", "''", StringComparison.Ordinal)}'";
         var escaped = new StringBuilder("\"");
         foreach (var character in text)

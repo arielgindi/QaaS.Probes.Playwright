@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { candidateKind, candidateStatus, cls, effectLabel, isUnusable, subjectOf, verbOf } from '../text';
 import { duration } from '../test';
-import type { Action, Candidate, PickedElement, TestStep } from '../types';
+import type { Action, Candidate, PickedElement, Setting, TestStep } from '../types';
 import { Icon, type IconName } from './icons';
 import { PaneHeader } from './PaneHeader';
 
@@ -16,10 +16,14 @@ interface Props {
   onChoose(action: Action, candidate: number | null): void;
   onHighlight(action: string | null, candidate?: number): void;
   onRunTo(id: string): void;
+  onEdit(action: Action, setting: Setting, change: SettingChange): void;
 }
 
+/** A change of a setting: its name, its default, back to the value recorded, unique per run, or a date from today. */
+export type SettingChange = { name?: string; value?: string; reset?: boolean; unique?: boolean; relative?: boolean };
+
 /** The selected action: how its element is found, every other way to find it, and the values it records. */
-export function Inspector({ action, disabled, test, canRun, onChoose, onHighlight, onRunTo }: Props) {
+export function Inspector({ action, disabled, test, canRun, onChoose, onHighlight, onRunTo, onEdit }: Props) {
   return (
     <aside aria-label="Inspector" class="area-inspector flex min-h-0 flex-col bg-panel">
       <PaneHeader title="Inspector">
@@ -73,15 +77,10 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
           )}
           {action.settings.length > 0 && (
             <Section title="Recorded values">
-              <Hint>Settings of the flow, with these as defaults; change them per case in the YAML.</Hint>
+              <Hint>Settings of the flow, with these as defaults; change them per case in the YAML. Click a name or a value to change it.</Hint>
               <dl class="divide-y divide-line overflow-hidden rounded-lg border border-line">
                 {action.settings.map((setting) => (
-                  <div key={setting.name} class="flex items-baseline gap-3 bg-canvas px-2.5 py-1.5">
-                    <dt class="tk-key shrink-0 font-mono text-[11.5px]">{setting.name}</dt>
-                    <dd dir="auto" class="tk-str min-w-0 flex-1 truncate text-right font-mono text-[11.5px]" title={setting.value}>
-                      {setting.value}
-                    </dd>
-                  </div>
+                  <SettingRow key={setting.role + setting.name} setting={setting} disabled={disabled} onEdit={(change) => onEdit(action, setting, change)} />
                 ))}
               </dl>
             </Section>
@@ -107,6 +106,178 @@ export function Inspector({ action, disabled, test, canRun, onChoose, onHighligh
         <Empty icon="pointer" title="No step selected" text="Select a step to see how its element is found, and every other way to find it." />
       )}
     </aside>
+  );
+}
+
+// A setting: its name and value, each changed in place, and how the flow may type it: unique per run, or a date as days
+// from today, which a date typed near the day of the recording suggests.
+function SettingRow({ setting, disabled, onEdit }: { setting: Setting; disabled: boolean; onEdit(change: SettingChange): void }) {
+  const number = setting.type === 'int' || setting.type === 'decimal';
+  const valid = (text: string) =>
+    setting.type === 'int' ? /^-?(0|[1-9]\d{0,8})$/.test(text) : setting.type === 'decimal' ? /^-?(0|[1-9]\d{0,14})(\.\d{1,10})?$/.test(text) : true;
+  const { relative, suggest } = setting;
+  return (
+    <div class="bg-canvas px-2.5 py-1.5">
+      <div class="flex min-w-0 items-baseline gap-3">
+        <dt class="min-w-0 max-w-[62%] shrink-0">
+          <InPlace
+            label="Setting name"
+            text={setting.name}
+            mono
+            class="tk-key"
+            disabled={disabled || !setting.renamable}
+            title={setting.renamable ? 'Rename the setting' : 'A loop names its list itself'}
+            valid={(text) => /[A-Za-z]/.test(text)}
+            onCommit={(name) => onEdit({ name })}
+          />
+        </dt>
+        <dd class="min-w-0 flex-1 text-right">
+          <InPlace
+            label={`Value of ${setting.name}`}
+            text={setting.text ?? ''}
+            shown={setting.value}
+            mono
+            align="right"
+            class={number ? 'tk-num' : 'tk-str'}
+            disabled={disabled || setting.type === 'bool'}
+            title={setting.type === 'bool' ? 'Change it per case in the YAML' : relative ? 'The days from today' : 'Change the default'}
+            valid={valid}
+            onCommit={(value) => onEdit({ value })}
+          />
+        </dd>
+      </div>
+      {setting.recorded !== undefined && (
+        <Option icon="pencil">
+          Recorded as <span dir="auto" class="font-mono text-fg/80">{setting.recorded}</span>
+          <LinkButton disabled={disabled} onClick={() => onEdit({ reset: true })}>Use it</LinkButton>
+        </Option>
+      )}
+      {setting.unique !== undefined && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={setting.unique}
+          disabled={disabled}
+          onClick={() => onEdit({ unique: !setting.unique })}
+          title="The flow types it with its run's stamp appended, so a name it creates never repeats from run to run. A check of it reads the same value."
+          class="group mt-1.5 flex w-full min-w-0 items-center gap-2 rounded-md text-left text-[11.5px] text-muted transition hover:text-fg disabled:opacity-50"
+        >
+          <span class={cls('grid size-3.5 shrink-0 place-items-center rounded border transition', setting.unique ? 'border-accent bg-accent text-on-accent' : 'border-line-strong group-hover:border-faint')}>
+            {setting.unique && <Icon name="tick" size={10} class="stroke-[3]" />}
+          </span>
+          <span class="shrink-0 font-medium">Unique per run</span>
+          <span dir="auto" class="min-w-0 truncate font-mono text-[10.5px] text-faint">
+            {setting.text} {stampExample()}
+          </span>
+        </button>
+      )}
+      {relative && (
+        <Option icon="calendar" tone="accent">
+          {fromToday(relative.days)}, as <span class="font-mono">{relative.format}</span>
+          <LinkButton disabled={disabled} onClick={() => onEdit({ relative: false })}>Type the date</LinkButton>
+        </Option>
+      )}
+      {suggest && (
+        <div class="mt-1.5 flex items-center gap-2 rounded-md border border-dashed border-accent/35 bg-accent/[0.06] px-2 py-1.5 text-[11.5px] leading-snug text-muted">
+          <Icon name="calendar" size={13} class="shrink-0 text-accent-fg" />
+          <span class="min-w-0 flex-1">{suggest.days === 0 ? 'The day it was recorded.' : `${days(suggest.days)} ${suggest.days > 0 ? 'after' : 'before'} the day it was recorded.`}</span>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onEdit({ relative: true })}
+            title={`The setting becomes the days from today (${suggest.days}), and the flow types the date in ${suggest.format}`}
+            class="shrink-0 rounded-md bg-accent/12 px-2 py-0.5 font-medium text-accent-fg transition hover:bg-accent/20 disabled:opacity-50"
+          >
+            {suggest.days === 0 ? 'Type it as today' : `Type it as ${Math.abs(suggest.days)} ${suggest.days > 0 ? 'days from today' : 'days ago'}`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// "3 days", "1 day".
+function days(count: number): string {
+  return `${Math.abs(count)} day${Math.abs(count) === 1 ? '' : 's'}`;
+}
+
+// "3 days from today", "2 days before today", "Today".
+function fromToday(count: number): string {
+  return count === 0 ? 'Today' : `${days(count)} ${count > 0 ? 'from' : 'before'} today`;
+}
+
+// A stamp as a run appends it: the month, day and time, and three characters of its own.
+function stampExample(): string {
+  const now = new Date();
+  const two = (value: number) => String(value).padStart(2, '0');
+  return `${two(now.getMonth() + 1)}${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}-k7q`;
+}
+
+function Option({ icon, tone, children }: { icon: IconName; tone?: 'accent'; children: ComponentChildren }) {
+  return (
+    <div class={cls('mt-1.5 flex min-w-0 items-center gap-1.5 text-[11.5px] leading-snug', tone === 'accent' ? 'text-accent-fg' : 'text-muted')}>
+      <Icon name={icon} size={12} class="shrink-0" />
+      <span class="min-w-0 flex-1 truncate">{children}</span>
+    </div>
+  );
+}
+
+// A text changed in place: a click opens it, Enter or leaving it commits what is valid, Escape keeps it as it was.
+function InPlace(props: {
+  label: string;
+  text: string;
+  shown?: string;
+  mono?: boolean;
+  align?: 'right';
+  class: string;
+  disabled: boolean;
+  title: string;
+  valid(text: string): boolean;
+  onCommit(text: string): void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft === null)
+    return (
+      <button
+        type="button"
+        disabled={props.disabled}
+        onClick={() => setDraft(props.text)}
+        title={props.disabled ? props.title : `${props.title}: ${props.shown ?? props.text}`}
+        dir="auto"
+        class={cls(
+          // As wide as its column with the margins it reaches past it by.
+          '-mx-1 max-w-[calc(100%+0.5rem)] truncate rounded px-1 font-mono text-[11.5px] transition enabled:hover:bg-raised enabled:hover:ring-1 enabled:hover:ring-line-strong',
+          props.class,
+        )}
+      >
+        {props.shown ?? props.text}
+      </button>
+    );
+  const ok = props.valid(draft);
+  const commit = () => {
+    setDraft(null);
+    if (ok && draft !== props.text) props.onCommit(draft);
+  };
+  return (
+    <input
+      autoFocus
+      aria-label={props.label}
+      aria-invalid={!ok}
+      dir="auto"
+      value={draft}
+      spellcheck={false}
+      onInput={(event) => setDraft(event.currentTarget.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+        if (event.key === 'Escape') setDraft(null);
+      }}
+      class={cls(
+        'h-6 w-full min-w-0 rounded border bg-panel px-1.5 font-mono text-[11.5px] text-fg outline-none',
+        props.align === 'right' && 'text-right',
+        ok ? 'border-accent/60' : 'border-bad/70',
+      )}
+    />
   );
 }
 

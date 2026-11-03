@@ -22,6 +22,12 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
     /// <summary>The flow that ran before the recording started, e.g. a login flow, which the flow must run after.</summary>
     public string? After { get; init; }
 
+    /// <summary>
+    /// Whether the flow checks after each action what it did, as the person turned it in the panel; null leaves it to
+    /// the command line (<c>--no-auto-checks</c>).
+    /// </summary>
+    public bool? AutoChecks { get; init; }
+
     /// <summary>In the recorder's own copy of a recording, in <c>~/.qaas/recordings</c>: the flow it is of; else null.</summary>
     public AutosavedFlow? Autosave { get; init; }
 

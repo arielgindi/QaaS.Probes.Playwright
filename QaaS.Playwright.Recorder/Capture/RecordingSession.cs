@@ -50,7 +50,8 @@ internal enum RecordingState
 /// <summary>
 /// A recording in progress: Chrome with the capture script in every page, and the log of what the person does. It ends
 /// when the person closes the browser's last window, or when <see cref="StopAsync"/> is called (Enter in the console).
-/// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), and test the flow so far.
+/// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), choose checks of the page
+/// (F6), and test the flow so far.
 /// </summary>
 internal sealed class RecordingSession : IAsyncDisposable
 {
@@ -117,6 +118,15 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>Raised, on Playwright's thread, when a page's elements changed or were frozen.</summary>
     public event Action? ElementsChanged;
+
+    /// <summary>
+    /// A page is in check mode (F6, or Check in the panel): a click there picks an element to check, and does nothing
+    /// else.
+    /// </summary>
+    public bool Checking { get; private set; }
+
+    /// <summary>Raised, on Playwright's thread, when a page went in or out of check mode.</summary>
+    public event Action? CheckingChanged;
 
     /// <summary>
     /// Opens Chrome on the URL with the capture script installed. <paramref name="onNews"/> receives each action and
@@ -282,6 +292,18 @@ internal sealed class RecordingSession : IAsyncDisposable
         return Announce(state);
     }
 
+    /// <summary>
+    /// Has the page the person last acted on go in or out of check mode, as F6 there does, and brings it to the front.
+    /// The page says when it did: it refuses while the recording is paused.
+    /// </summary>
+    public async Task CheckModeAsync(bool on)
+    {
+        var page = PageNamed(CurrentPage());
+        if (page is null) return;
+        if (on) await page.BringToFrontAsync();
+        await PageElements.CallAsync(page, new { op = "check", on });
+    }
+
     /// <summary>The open page of the recording named <paramref name="alias"/> (<c>page</c>, <c>page1</c>, ...), or null.</summary>
     public IPage? PageNamed(string alias)
     {
@@ -403,7 +425,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     }
 
     // What the capture script asks or tells: the state its overlay shows, F8 to pause or resume, F4 with the frozen
-    // elements, or that the page's elements changed.
+    // elements, that the page's elements changed, or that it went in or out of check mode.
     private void Control(IPage? page, string json)
     {
         var message = JsonSerializer.Deserialize<ControlMessage>(json, Recording.Json);
@@ -422,6 +444,10 @@ internal sealed class RecordingSession : IAsyncDisposable
                 break;
             case "changed":
                 ElementsChanged?.Invoke();
+                break;
+            case "checking":
+                Checking = message.On == true;
+                CheckingChanged?.Invoke();
                 break;
         }
     }
@@ -548,5 +574,8 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         /// <summary>For F4: what the capture script found to locate each element a click may act on.</summary>
         public List<DescribedElement>? Described { get; set; }
+
+        /// <summary>For check mode: whether the page is in it.</summary>
+        public bool? On { get; set; }
     }
 }

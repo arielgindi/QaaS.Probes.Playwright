@@ -73,6 +73,9 @@ public class RecorderPanelTests
             await Expect(code).ToContainTextAsync("await page.GetByRole(AriaRole.Button, new() { Name = \"Assign to me\", Exact = true }).ClickAsync();");
             await Expect(view.GetByText("this locator found 3 elements when recorded").First).ToBeVisibleAsync();
 
+            // Undo takes back the choice first, then the step.
+            await view.Keyboard.PressAsync("Control+z");
+            await Expect(code).ToContainTextAsync("GetByRole(AriaRole.Row).Filter(new() { HasText = Configuration.Ticket })");
             await view.Keyboard.PressAsync("Control+z");
             await Expect(view.GetByText("Click something in the app to record the first step")).ToBeVisibleAsync();
 

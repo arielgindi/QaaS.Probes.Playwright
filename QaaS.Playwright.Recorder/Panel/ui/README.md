@@ -31,7 +31,8 @@ and the two talk through two functions on the window (`src/bridge.ts`):
   level of the live tree, a search's matches, the tree frozen with F4, or that the page changed.
 - `window.__qaasPanelSend(json)`: the recorder exposes it for the panel's commands: `ready`, `choose`, `highlight`,
   `unhighlight`, `undo`, `rename`, `save`, `pause`, for the Elements view `elements`, `pick`, `choosePicked`,
-  `useForStep`, `addClick` and `addFill`, and for testing the flow `test`, `stopTest` and `clearTest`.
+  `useForStep`, `addClick` and `addFill`, for testing the flow `test`, `stopTest` and `clearTest`, and for checks and
+  edits `checkMode`, `autoChecks`, `dropCheck`, `delete`, `renameStep` and `editValue`.
 
 ## Rules
 

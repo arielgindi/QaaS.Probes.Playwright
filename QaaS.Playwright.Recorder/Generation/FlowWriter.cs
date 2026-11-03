@@ -16,6 +16,17 @@ internal sealed record LineSpan(int First, int Last);
 /// </summary>
 internal sealed record ActionStatement(LineSpan Lines, IReadOnlyList<string> Actions);
 
+/// <summary>
+/// A check of the flow after an action: an auto check, by its key (<c>alert:...</c>, <c>url</c>, ...), or one the
+/// person chose, by its id. <see cref="Text"/> says what it expects, <see cref="Of"/> of what; a dropped auto check is
+/// not written.
+/// </summary>
+internal sealed record Expectation(string Key, string Text, bool Auto)
+{
+    public string? Of { get; init; }
+    public bool Dropped { get; init; }
+}
+
 /// <summary>The flow's source, its settings as YAML, and what to check by hand.</summary>
 internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<CheckByHand> Checks)
 {
@@ -30,14 +41,23 @@ internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<Che
 
     /// <summary>Each statement written for recorded actions, in the order of the code.</summary>
     public IReadOnlyList<ActionStatement> Statements { get; init; } = [];
+
+    /// <summary>
+    /// The checks after each action, by its id: the auto checks, dropped ones too, and those the person chose. An action
+    /// a loop repeats has the checks of the loop's body.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<Expectation>> Expects { get; init; } =
+        new Dictionary<string, IReadOnlyList<Expectation>>();
 }
 
 /// <summary>
 /// Writes a <see cref="FlowPlan"/> as a flow class: <c>RunAsync</c> calls one method per step, each step acts on the
 /// page or dialog it is given and ends with the Expect of what it changed, and every recorded value is read from the
 /// flow's settings. A locator used twice is a local of its own; a loop step does its first repeat for each item of its
-/// list. Each Expect the recorder adds as a check is marked <c>// auto check</c>, and left out without auto checks; a
-/// wait for the page to stop loading stays.
+/// list. Each Expect the recorder adds as a check is marked <c>// auto check</c>, and left out without auto checks or
+/// when the person dropped it; a wait for the page to stop loading stays. A check the person chose is marked
+/// <c>// check</c> and always written. A value typed before is read from its setting wherever a later locator, text or
+/// check shows it.
 /// </summary>
 internal sealed partial class FlowWriter
 {
@@ -48,6 +68,9 @@ internal sealed partial class FlowWriter
     private const string Break = "\u001F";
     /// <summary>What ends the line of a check the recorder added itself.</summary>
     public const string AutoCheck = " // auto check";
+
+    /// <summary>What ends the line of a check the person chose.</summary>
+    public const string ChosenCheck = " // check";
     private const string SlowTimeout = "new() { Timeout = 30_000 }";
 
     private const string FileToUploadMethod = """
@@ -62,15 +85,34 @@ internal sealed partial class FlowWriter
     private readonly List<(Step Step, string Signature, List<Line> Body)> _methods = [];
     private readonly Dictionary<string, string> _dialogVariables = [];
     private readonly HashSet<string> _runVariables = ["page"];
+    private readonly Dictionary<string, HashSet<string>> _dropped = [];
+    private readonly Dictionary<string, List<Expectation>> _expects = [];
+    private readonly HashSet<Setting> _settings;
+
+    // The settings read so far, in order; those typed, which a later locator may show. Each step is written twice from
+    // the same ones.
+    private List<Setting> _seen = [];
+    private List<Setting> _typed = [];
+
+    // The flow's properties that type a date relative to the day it runs, by the setting of its days.
+    private readonly Dictionary<Setting, string> _dates = [];
 
     // The step being written; each step is written twice, first to count how often each locator is used.
     private StepState _step = null!;
 
-    private FlowWriter(FlowPlan plan, bool autoChecks) => (_plan, _autoChecks) = (plan, autoChecks);
+    private FlowWriter(FlowPlan plan, bool autoChecks)
+    {
+        (_plan, _autoChecks, _settings) = (plan, plan.AutoChecks ?? autoChecks, [.. plan.Settings]);
+        foreach (var action in plan.Steps.SelectMany(step => step.Actions))
+            if (action.Source.Edit?.Dropped is { Count: > 0 } dropped) _dropped[action.Source.Id] = [.. dropped];
+    }
 
     /// <param name="plan">The flow to write.</param>
     /// <param name="namespaceName">The flow's namespace.</param>
-    /// <param name="autoChecks">Whether to check after each action what it did when recorded; waits stay without.</param>
+    /// <param name="autoChecks">
+    /// Whether to check after each action what it did when recorded, unless the person turned it in the panel; waits stay
+    /// without.
+    /// </param>
     public static GeneratedFlow Write(FlowPlan plan, string namespaceName, bool autoChecks = true)
     {
         var writer = new FlowWriter(plan, autoChecks);
@@ -84,12 +126,14 @@ internal sealed partial class FlowWriter
         /// <summary>The ids of the recorded actions the line is written for: one, or each repeat of it in a loop.</summary>
         public IReadOnlyList<string> Actions { get; init; } = [];
 
-        public bool Auto { get; init; }
+        /// <summary>What ends its last line: the mark of a check, auto or chosen.</summary>
+        public string Mark { get; init; } = "";
+
         public int Depth { get; init; }
     }
 
-    // Where a step's actions run: its dialog, whose page is dialog.Page, or a page.
-    private sealed record Scope(string Root, string Page, string? Dialog);
+    // Where a step's actions run: its dialog, whose page is dialog.Page, or a page; Alias is the page's own name.
+    private sealed record Scope(string Root, string Page, string? Dialog, string Alias);
 
     private sealed class StepState(Scope scope, StepState? counted)
     {
@@ -121,20 +165,27 @@ internal sealed partial class FlowWriter
         public int Depth { get; set; }
         public bool UsesFlow { get; set; }
 
+        /// <summary>The dialog the step's last action opened, once its variable is declared, which checks after it use.</summary>
+        public (string Title, string Variable)? Opened { get; set; }
+
         /// <summary>The C# written since it was reset reads a loop's item.</summary>
         public bool ReadsItem { get; set; }
 
-        public void Add(string text, string? check = null, bool auto = false) =>
-            Lines.Add(new Line(text, check) { Actions = Actions, Auto = auto, Depth = Depth });
+        public void Add(string text, string? check = null, string mark = "") =>
+            Lines.Add(new Line(text, check) { Actions = Actions, Mark = mark, Depth = Depth });
     }
 
     private void WriteStep(Step step)
     {
         var argument = step.Dialog is { } title ? DialogVariable(step, title) : step.Page;
-        var scope = step.Dialog is not null ? new Scope("dialog", "dialog.Page", step.Dialog) : new Scope(step.Page, step.Page, null);
+        var scope = step.Dialog is not null
+            ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
+            : new Scope(step.Page, step.Page, null, step.Page);
 
+        var (seen, typed) = (_seen.ToList(), _typed.ToList());
         _step = new StepState(scope, counted: null);
         WriteBody(step, last: false);
+        (_seen, _typed) = (seen, typed);
         _step = new StepState(scope, _step);
         WriteBody(step, last: true);
 
@@ -245,11 +296,25 @@ internal sealed partial class FlowWriter
         }
 
         // Each repeat may have left its message on the page, so there may be more of it than one.
+        _step.LoopValues.Clear();
         foreach (var (index, alert) in AlertsEveryRepeatShowedAlike(repeats).Where(_ => _autoChecks))
         {
             _step.Actions = [repeats[^1][index].Source.Id];
-            AddCheck(AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
+            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, _step.Scope, many: alert.AlertCount > 1));
         }
+
+        // A check after the last repeat reads what it typed from the list's last item.
+        var lastRepeat = repeats[^1];
+        if (loop.List is { } typed)
+        {
+            var values = lastRepeat.SelectMany(action => action.Values).ToList();
+            for (var index = 0; index < values.Count; index++)
+                _step.LoopValues[values[index]] = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
+        }
+
+        _step.Actions = [lastRepeat[^1].Source.Id];
+        WriteChecks(lastRepeat[^1]);
+        _step.LoopValues.Clear();
     }
 
     // The last word of the item's name, as a person names the item of a list: NewTask gives task.
@@ -295,8 +360,8 @@ internal sealed partial class FlowWriter
                     _step.Add($"await {Locate(action, ref problem)}{Break}.{method}();", problem);
                     // In a loop, a check stays only when it reads the loop's item.
                     if (_autoChecks && _step.Depth == 0 && action.Has("tabSelected"))
-                        AddCheck($"await Expect({Locate(action, ref problem)}){Break}" +
-                                 ".ToHaveAttributeAsync(\"aria-selected\", \"true\");");
+                        AddCheck("selected", "tab selected", $"await Expect({Locate(action, ref problem)}){Break}" +
+                                                             ".ToHaveAttributeAsync(\"aria-selected\", \"true\");");
                 }
 
                 break;
@@ -352,13 +417,30 @@ internal sealed partial class FlowWriter
                         : "a tab you opened yourself: the flow opens it here");
                 if (source.Url is { } opened) _step.Add($"await {source.Page}.GotoAsync({Address(opened)});");
                 break;
+            case "expect":
+                WriteCheck(source);
+                break;
             default:
                 if (last)
                     _plan.NotRecorded.Add($"a '{action.Kind}' the recorder did not understand, in {step.Name}: redo it by hand");
                 break;
         }
 
+        Saw(action);
         WriteEffects(action, step, isLast);
+    }
+
+    // What the action read is known to what follows it: a text that shows it, or a locator that shows what was typed.
+    // Not a loop's item, which only its repeat knows.
+    private void Saw(PlannedAction action)
+    {
+        if (_step.Depth > 0) return;
+        foreach (var setting in action.Values.Append(action.RowKey).OfType<Setting>().Where(_settings.Contains))
+        {
+            if (!_seen.Contains(setting)) _seen.Add(setting);
+            var typed = setting == action.SearchValue || (action.Kind == "fill" && setting == action.Value);
+            if (typed && !_typed.Contains(setting)) _typed.Add(setting);
+        }
     }
 
     private void WriteChoice(PlannedAction action, string? problem)
@@ -381,7 +463,7 @@ internal sealed partial class FlowWriter
                 if (_autoChecks && (_step.Depth == 0 || _step.LoopValues.ContainsKey(action.ShownValue ?? action.Value!)))
                 {
                     var field = Locate(action, ref problem);
-                    AddCheck(source.Widget == "select"
+                    AddCheck("shows", $"shows “{(action.ShownValue ?? action.Value)!.Value}”", source.Widget == "select"
                         ? $"await Expect({field}){Break}.ToHaveTextAsync({Setting(action.ShownValue ?? action.Value)});"
                         : $"await Expect({field}){Break}.ToHaveValueAsync({Setting(action.Value)});");
                 }
@@ -401,7 +483,8 @@ internal sealed partial class FlowWriter
     }
 
     // What the action changed: the dialog it closed, the address it went to (unless a stronger check says the same),
-    // the page's wait, the message it showed; and for the step's last action, the dialog it opened.
+    // the page's wait, the message it showed; then the checks the person chose after it; and for the step's last action,
+    // the dialog it opened, which the person's checks come after, or the page.
     private void WriteEffects(PlannedAction action, Step step, bool isLast)
     {
         var scope = _step.Scope;
@@ -410,10 +493,10 @@ internal sealed partial class FlowWriter
             .ToList();
         foreach (var dialog in closed.Where(_ => _autoChecks))
         {
-            var locator = dialog.Dialog?.Title == scope.Dialog && scope.Dialog is not null
-                ? "dialog"
-                : DialogLocator(scope.Page, dialog.Dialog).Locator;
-            AddCheck($"await Expect({locator}){Break}.ToBeHiddenAsync({SlowTimeout});");
+            var own = dialog.Dialog?.Title == scope.Dialog && scope.Dialog is not null;
+            var locator = own ? "dialog" : DialogLocator(scope.Page, dialog.Dialog).Locator;
+            var said = own || dialog.Dialog?.Title is not { Length: > 0 } title ? "dialog closes" : $"“{title}” closes";
+            AddCheck($"closed:{dialog.Dialog?.Title}", said, $"await Expect({locator}){Break}.ToBeHiddenAsync({SlowTimeout});");
         }
 
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
@@ -422,7 +505,8 @@ internal sealed partial class FlowWriter
         foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1))
         {
             var page = changed.Page is { } alias && alias != action.Source.Page ? alias : scope.Page;
-            AddCheck($"await Expect({page}){Break}.ToHaveURLAsync(new Regex({CSharp.Literal(UrlPattern(changed.Url!))}));");
+            AddCheck("url", $"URL {StepNamer.Route(changed.Url) ?? changed.Url}",
+                $"await Expect({page}){Break}.ToHaveURLAsync(new Regex({CSharp.Literal(UrlPattern(changed.Url!))}));");
         }
 
         // In a loop, the page is waited for where any repeat's was.
@@ -438,12 +522,15 @@ internal sealed partial class FlowWriter
 
         // In a loop, a message is checked where it shows the item, as each repeat's did.
         foreach (var alert in alerts.Where(alert => _autoChecks && (repeats is null || ShowsTheItem(alert, repeats.Value))))
-            AddCheck(AlertExpectation(alert, scope));
+            AddCheck($"alert:{alert.Text}", $"alert “{alert.Text}”", AlertExpectation(alert, scope));
 
+        // In a loop, the checks after the last repeat follow the loop.
         if (isLast && step.Opens is { } opened)
         {
             var (locator, check) = DialogLocator(scope.Page, opened);
-            if (!_autoChecks)
+            var shows = _autoChecks && !Dropped("opened");
+            if (_autoChecks) Expect(new Expectation("opened", "dialog shows", Auto: true) { Dropped = !shows });
+            if (!shows && action.Checks.Count == 0)
             {
                 _step.Add($"return {locator};", check);
                 return;
@@ -451,14 +538,35 @@ internal sealed partial class FlowWriter
 
             var variable = Unique(scope.Dialog is null ? "dialog" : "opened", _step.Locals);
             _step.Add($"var {variable} = {locator};", check);
-            AddCheck($"await Expect({variable}){Break}.ToBeVisibleAsync();");
+            _step.Opened = (opened.Title, variable);
+            if (shows) _step.Add($"await Expect({variable}){Break}.ToBeVisibleAsync();", mark: AutoCheck);
+            WriteChecks(action);
             _step.Add($"return {variable};");
+            return;
         }
-        else if (isLast && step.OpensPage is { } page)
-            _step.Add($"return {page};");
+
+        if (_step.Depth == 0) WriteChecks(action);
+        if (isLast && step.OpensPage is { } opensPage) _step.Add($"return {opensPage};");
     }
 
-    private void AddCheck(string text) => _step.Add(text, auto: true);
+    // An auto check of what the action did, unless the person dropped it; the panel lists it either way.
+    private void AddCheck(string key, string text, string code)
+    {
+        if (!_autoChecks) return;
+        var dropped = Dropped(key);
+        Expect(new Expectation(key, text, Auto: true) { Dropped = dropped });
+        if (!dropped) _step.Add(code, mark: AutoCheck);
+    }
+
+    private bool Dropped(string key) => _step.Actions.Any(id => _dropped.TryGetValue(id, out var keys) && keys.Contains(key));
+
+    // Told for each action the line is written for, once the step is written for good.
+    private void Expect(Expectation expectation)
+    {
+        if (_step.Uses is null) return;
+        foreach (var id in _step.Actions)
+            (_expects.TryGetValue(id, out var list) ? list : _expects[id] = []).Add(expectation);
+    }
 
     private static bool IsAlert(CapturedEffect effect) => effect is { Kind: "alert", Text.Length: > 0 };
 
@@ -552,6 +660,99 @@ internal sealed partial class FlowWriter
             "this dialog's title did not find it alone when recorded");
     }
 
+    // ── Checks the person chose ──────────────────────────────────────────────────────────────────────────────────
+
+    private void WriteChecks(PlannedAction action)
+    {
+        foreach (var check in action.Checks) WriteCheck(check);
+    }
+
+    // What the person chose to check (F6), marked "// check": what an element shows, its items or its row, or the
+    // page's address. A value read before reads its setting; a number left in a text is a record's own, which changes
+    // from run to run, so the words around it are expected, as a message is found.
+    private void WriteCheck(CapturedAction check)
+    {
+        var expected = check.Value ?? "";
+        string? problem = null;
+        string Element() => Located(check, check.Target, ref problem);
+
+        string Shows(Func<string, string> whole, Func<string, string> words) => Expected(expected) switch
+        {
+            ({ } code, false) => whole(code),
+            ({ } code, true) => words(code),
+            _ => "Not.ToBeEmptyAsync()",
+        };
+
+        var (line, said) = check.Check switch
+        {
+            "url" => ($"await Expect({PageOf(check)}){Break}.ToHaveURLAsync(new Regex({CSharp.Literal(UrlPattern(expected))}));",
+                $"URL {StepNamer.Route(expected) ?? expected}"),
+            "count" => ($"await Expect({Located(check, check.Group, ref problem)}){Break}.ToHaveCountAsync({CountOf(expected)});",
+                $"count is {CountOf(expected)}"),
+            "row" => ($"await Expect({Located(check, check.Group, ref problem)}){Break}.Not.ToHaveCountAsync(0);",
+                "a row of " + string.Join(", ", check.Group?.Candidates.FirstOrDefault()?.Parts.Where(part => part.M == "filter")
+                    .Select(part => $"“{part.HasText}”") ?? [])),
+            var kind => ($"await Expect({Element()}){Break}.{kind switch
+            {
+                "hidden" => "ToBeHiddenAsync()",
+                "text" => Shows(code => $"ToHaveTextAsync({code})", code => $"ToContainTextAsync({code})"),
+                "contains" => Shows(code => $"ToContainTextAsync({code})", code => $"ToContainTextAsync({code})"),
+                "value" => Shows(code => $"ToHaveValueAsync({code})", code => $"ToHaveValueAsync(new Regex(Regex.Escape({code})))"),
+                "checked" => "ToBeCheckedAsync()",
+                "unchecked" => "Not.ToBeCheckedAsync()",
+                "enabled" => "ToBeEnabledAsync()",
+                "disabled" => "ToBeDisabledAsync()",
+                _ => "ToBeVisibleAsync()",
+            }};", kind switch
+            {
+                "hidden" => "is gone",
+                "text" => $"has text “{expected}”",
+                "contains" => $"contains “{expected}”",
+                "value" => $"has value “{expected}”",
+                "checked" or "unchecked" or "enabled" or "disabled" => kind,
+                _ => "shows",
+            }),
+        };
+        _step.Add(line, problem, mark: ChosenCheck);
+        Expect(new Expectation(check.Id, said, Auto: false)
+        {
+            Of = check.Check is "url" or "row" ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(check.Group ?? check.Target)),
+        });
+    }
+
+    // The element a check is of, every item it is one of, or its row by the cells chosen, as the recorder found it
+    // alone. A name or text in it reads the values typed before from their settings. Of a row's cells, one that is only a
+    // record's number, which changes from run to run, is left out, and the words around one are kept.
+    private string Located(CapturedAction check, CapturedTarget? target, ref string? problem)
+    {
+        var candidate = LocatorPolicy.Choose(target);
+        problem = LocatorPolicy.Problem(candidate);
+        if (candidate is null) return $"{PageOf(check)}.Locator(\"body\")";
+        if (candidate.Kind == "generator") return Render(candidate, check);
+        var codes = new Dictionary<LocatorPart, string>();
+        var parts = new List<LocatorPart>();
+        foreach (var part in candidate.Parts)
+        {
+            var text = part.M == "filter" ? part.HasText : part is { M: "role", Regex: null } ? part.Name : null;
+            var code = text is null ? null : check.Check == "row" && part.M == "filter" ? Expected(text).Code : Linked(text);
+            if (code is not null) codes[part] = code;
+            if (code is not null || check.Check != "row" || part.M != "filter") parts.Add(part);
+        }
+
+        return Render(new CapturedCandidate { Kind = candidate.Kind, Parts = parts }, check, part => codes.GetValueOrDefault(part));
+    }
+
+    private static string CountOf(string value) => int.TryParse(value, out var count) ? CSharp.Number(count) : "0";
+
+    // The text a check expects as C#, with what it shows of the values read before read from their settings; when a
+    // number is left in it, only the words around the numbers (Partial). Null when nothing but numbers is left.
+    private (string? Code, bool Partial) Expected(string text)
+    {
+        var pieces = Pieces(text);
+        if (!pieces.Where(piece => piece.Code is null).Any(piece => piece.Text.Any(char.IsDigit))) return (Code(pieces), false);
+        return WordsAroundNumbers(pieces) is { } words ? (Code(words), true) : (null, false);
+    }
+
     // ── Locators ─────────────────────────────────────────────────────────────────────────────────────────────────
 
     // The action's element. One the step uses twice is a local, and so is a row the step finds two elements in; each is
@@ -634,20 +835,24 @@ internal sealed partial class FlowWriter
 
     private string Render(CapturedCandidate candidate, CapturedAction source, Func<LocatorPart, string?>? nameOf = null)
     {
-        if (candidate.Kind == "generator") return LocatorPolicy.RenderGenerated(_step.Scope.Page, candidate);
+        if (candidate.Kind == "generator") return LocatorPolicy.RenderGenerated(PageOf(source), candidate);
         var (root, parts) = Rooted(candidate, source);
         return LocatorPolicy.Render(root, parts, nameOf, Break);
     }
 
-    // Found in the step's own dialog: from the dialog the step is given.
+    // Found in the step's own dialog: from the dialog the step is given; in the dialog the step opened, as a check after
+    // it is, from its variable.
     private (string Root, List<LocatorPart> Parts) Rooted(CapturedCandidate candidate, CapturedAction source)
     {
         var scope = _step.Scope;
         var parts = candidate.Parts;
-        return parts is [{ M: "role", Role: "dialog" }, ..] && scope.Dialog is not null && source.Dialog?.Title == scope.Dialog
-            ? (scope.Root, parts[1..])
-            : (scope.Page, parts);
+        if (parts is not [{ M: "role", Role: "dialog" }, ..] || source.Dialog?.Title is not { } title) return (PageOf(source), parts);
+        if (scope.Dialog is not null && title == scope.Dialog) return (scope.Root, parts[1..]);
+        return _step.Opened is { } opened && opened.Title == title ? (opened.Variable, parts[1..]) : (PageOf(source), parts);
     }
+
+    // The page an action or a check is on: the step's, or a pop-up or tab it opened.
+    private string PageOf(CapturedAction source) => source.Page == _step.Scope.Alias ? _step.Scope.Page : source.Page;
 
     // A radio is found by the option's name or value and a row by its key, all read from the settings; in a loop, a name
     // with the item's value in it reads the item.
@@ -657,7 +862,7 @@ internal sealed partial class FlowWriter
         if (part.M == "css" && action.Locator?.Kind == "nameValue" && action.Value is { Text: { } value } radio
             && part.Css is { } css && css.EndsWith(LocatorPolicy.CssValue(value), StringComparison.Ordinal))
             return $"$\"{CSharp.Escape(css[..^LocatorPolicy.CssValue(value).Length], true)}[value='{{{Setting(radio)}}}']\"";
-        if (part.M == "filter" && part.HasText is { } shown && _step.LoopValues.Count > 0) return ItemIn(shown);
+        if (part.M == "filter" && part.HasText is { } shown) return Linked(shown);
         if (part.M != "role" || part.Name is null) return null;
         if (action.Source.Widget == "radio" && action.Value is { } choice && part.Role == "radio" && part.Name == choice.Text)
             return Setting(choice);
@@ -667,13 +872,14 @@ internal sealed partial class FlowWriter
             return $"$\"{CSharp.Escape(part.Name[..at], true)}{{{Setting(rowKey)}}}{CSharp.Escape(part.Name[(at + key.Length)..], true)}\"";
         }
 
-        return _step.LoopValues.Count > 0 ? ItemIn(part.Name) : null;
+        return Linked(part.Name);
     }
 
-    // The text with the loop's item values in it read from the item, or null when it has none.
-    private string? ItemIn(string text)
+    // The text with the loop's item values in it read from the item, and the values typed before from their settings;
+    // null when it has none.
+    private string? Linked(string text)
     {
-        var pieces = Pieces(text, ItemValues(), settings: false);
+        var pieces = Pieces(text, ItemValues(), _typed);
         return pieces.Any(piece => piece.Code is not null) ? Code(pieces) : null;
     }
 
@@ -688,7 +894,18 @@ internal sealed partial class FlowWriter
             return item;
         }
 
-        return FromSettings(setting);
+        if (setting.DateFormat is not null) return DateOf(setting);
+        return setting.Unique ? $"Unique({FromSettings(setting)})" : FromSettings(setting);
+    }
+
+    // A date relative to the day the flow runs, as the property of the flow that types it.
+    private string DateOf(Setting setting)
+    {
+        _step.UsesFlow = true;
+        if (_dates.TryGetValue(setting, out var member)) return member;
+        var taken = new HashSet<string>(_dates.Values.Concat(["Configuration", "BaseUrl", "Context", "Item", "ItemIndex",
+            "Unique", "RunAsync", "FileToUpload", "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
+        return _dates[setting] = Unique(RelativeDate.Member(setting.Name), taken);
     }
 
     private string FromSettings(Setting setting)
@@ -699,22 +916,23 @@ internal sealed partial class FlowWriter
 
     // A value as the text a field is filled with: a number in the invariant culture, as YAML writes it.
     private string Text(Setting? setting) =>
-        setting?.IsNumber == true ? $"{Setting(setting)}.ToString(CultureInfo.InvariantCulture)" : Setting(setting);
+        setting is { IsNumber: true, DateFormat: null } ? $"{Setting(setting)}.ToString(CultureInfo.InvariantCulture)" : Setting(setting);
 
-    // A text as pieces: what it says, and the recorded values in it with the C# that reads them.
-    private List<(string Text, string? Code)> Pieces(string text) => Pieces(text, ItemValues(), settings: true);
+    // A text as pieces: what it says, and the values read so far in it with the C# that reads them.
+    private List<(string Text, string? Code)> Pieces(string text) => Pieces(text, ItemValues(), _seen);
 
     // The loop's item values long enough to be told in a text, with the C# that reads each.
     private IEnumerable<(string Text, string Code)> ItemValues() =>
         _step.LoopValues.Where(value => value.Key.Text is { Length: >= 3 }).Select(value => (value.Key.Text!, value.Value));
 
-    private List<(string Text, string? Code)> Pieces(string text, IEnumerable<(string Text, string Code)> items, bool settings)
+    private List<(string Text, string? Code)> Pieces(string text, IEnumerable<(string Text, string Code)> items,
+        IEnumerable<Setting> settings)
     {
         var known = items.Select(item => (item.Text, Code: item.Code, Setting: (Setting?)null)).ToList();
-        if (settings)
-            known.AddRange(_plan.Settings
-                .Where(setting => setting is { Type: "string", Text: { Length: >= 3 } value } && value.Trim().Length > 0)
-                .Select(setting => (setting.Text!, Code: "", Setting: (Setting?)setting)));
+        known.AddRange(settings
+            .Where(setting => (setting.Type == "string" || setting.DateFormat is not null)
+                              && setting.Text is { Length: >= 3 } value && value.Trim().Length > 0)
+            .Select(setting => (setting.Text!, Code: "", Setting: (Setting?)setting)));
         var pieces = new List<(string Text, string? Code, Setting? Setting)> { (text, null, null) };
         foreach (var value in known.OrderByDescending(value => value.Text.Length))
             pieces = [.. pieces.SelectMany(piece => piece.Code is not null ? [piece] : Split(piece.Text, value))];
@@ -836,14 +1054,15 @@ internal sealed partial class FlowWriter
             var first = lineNumber + 1;
             for (var index = 0; index < wrapped.Count; index++)
             {
-                var mark = line.Auto && index == wrapped.Count - 1 ? AutoCheck : "";
+                var mark = index == wrapped.Count - 1 ? line.Mark : "";
                 Append(wrapped[index] + mark, index == 0 ? line.Check : null, line.Actions);
             }
 
             if (line.Actions.Count > 0) statements.Add(new ActionStatement(new LineSpan(first, lineNumber), line.Actions));
         }
 
-        var all = _run.Concat(_methods.SelectMany(method => method.Body)).Select(line => line.Text).ToList();
+        var dates = DateMembers().ToList();
+        var all = _run.Concat(_methods.SelectMany(method => method.Body)).Select(line => line.Text).Concat(dates).ToList();
         var usesUpload = all.Any(text => text.Contains("FileToUpload(", StringComparison.Ordinal));
         if (all.Any(text => text.Contains("CultureInfo.", StringComparison.Ordinal))) Append("using System.Globalization;");
         if (all.Any(text => text.Contains("Regex(", StringComparison.Ordinal))) Append("using System.Text.RegularExpressions;");
@@ -887,6 +1106,7 @@ internal sealed partial class FlowWriter
             stepLines[step.Name] = new LineSpan(first, lineNumber);
         }
 
+        foreach (var line in dates) Append(line);
         if (usesUpload)
         {
             Append("");
@@ -901,7 +1121,30 @@ internal sealed partial class FlowWriter
         return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
         {
             ActionLines = actionLines, StepLines = stepLines, Statements = statements,
+            Expects = _expects.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<Expectation>)pair.Value),
         };
+    }
+
+    // Each date the flow types relative to the day it runs: as many days from today as its setting says, in the format
+    // it was typed in.
+    private IEnumerable<string> DateMembers()
+    {
+        foreach (var (setting, member) in _dates)
+        {
+            yield return "";
+            var summary = $"The date <see cref=\"{_plan.ClassName}Config.{setting.Name}\"/> days from today, as it was typed.";
+            if (8 + summary.Length + 19 <= MaxWidth) yield return $"    /// <summary>{summary}</summary>";
+            else
+            {
+                yield return "    /// <summary>";
+                foreach (var text in WordWrap(summary, "    /// ")) yield return text;
+                yield return "    /// </summary>";
+            }
+
+            yield return $"    private string {member} =>";
+            yield return $"        DateTime.Today.AddDays(Configuration.{setting.Name}).ToString({CSharp.Literal(setting.DateFormat!)}, " +
+                         "CultureInfo.InvariantCulture);";
+        }
     }
 
     // The settings record, in the order of the steps; a long one in groups, each named after the step that reads it.
@@ -977,10 +1220,10 @@ internal sealed partial class FlowWriter
     private static string Default(Setting setting, string type) => type switch
     {
         "bool" => CSharp.Bool(setting.Flag == true),
-        "int" => setting.Text ?? "0",
-        "decimal" when setting.Text?.Contains('.', StringComparison.Ordinal) == true => setting.Text + "m",
-        "decimal" => setting.Text ?? "0",
-        _ => CSharp.Literal(setting.Text ?? ""),
+        "int" => setting.Value ?? "0",
+        "decimal" when setting.Value?.Contains('.', StringComparison.Ordinal) == true => setting.Value + "m",
+        "decimal" => setting.Value ?? "0",
+        _ => CSharp.Literal(setting.Value ?? ""),
     };
 
     // The statement on lines of at most MaxWidth, broken where it may break, each next line indented once more.

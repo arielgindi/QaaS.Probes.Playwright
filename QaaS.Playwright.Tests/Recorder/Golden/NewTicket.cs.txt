@@ -1,0 +1,61 @@
+using System.Globalization;
+using Microsoft.Playwright;
+using QaaS.Playwright;
+using static Microsoft.Playwright.Assertions;
+
+namespace Flows;
+
+/// <summary>
+/// Recorded on http://127.0.0.1:5776/tickets. Run it in a PlaywrightFlowProbe with <c>Flows: [NewTicket]</c>; each case
+/// sets its values under <c>FlowConfiguration:NewTicket</c>.
+/// </summary>
+public sealed class NewTicket : BasePlaywrightFlow<NewTicketConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        var dialog = await OpenNewTicketAsync(page);
+        await FillNewTicketAsync(dialog);
+        await SaveTicketAsync(dialog);
+    }
+
+    /// <summary>Opens the "New ticket" dialog.</summary>
+    private static async Task<ILocator> OpenNewTicketAsync(IPage page)
+    {
+        await page.GetByTestId("new-ticket").ClickAsync();
+        var dialog = page.GetByRole(AriaRole.Dialog, new() { Name = "New ticket" });
+        await Expect(dialog).ToBeVisibleAsync(); // auto check
+        return dialog;
+    }
+
+    /// <summary>Fills in the title, due date and priority.</summary>
+    private async Task FillNewTicketAsync(ILocator dialog)
+    {
+        await dialog.Locator("[name='title']").FillAsync(Unique(Configuration.Title));
+        await dialog.Locator("[name='dueDate']").FillAsync(DueDate);
+        await dialog.Locator("[name='priority']")
+            .SelectOptionAsync(new SelectOptionValue { Label = Configuration.Priority });
+    }
+
+    /// <summary>Clicks "Create", which closes the dialog and shows "Ticket ... created: ...".</summary>
+    private async Task SaveTicketAsync(ILocator dialog)
+    {
+        await dialog.GetByRole(AriaRole.Button, new() { Name = "Create", Exact = true }).ClickAsync();
+        await Expect(dialog.Page.GetByRole(AriaRole.Alert)
+            .Filter(new() { HasText = $"created: {Unique(Configuration.Title)}" })).ToBeVisibleAsync(); // auto check
+        await Expect(dialog.Page.GetByRole(AriaRole.Row).Filter(new() { HasText = Unique(Configuration.Title) })
+            .Filter(new() { HasText = DueDate }).Filter(new() { HasText = Configuration.Priority }))
+            .Not.ToHaveCountAsync(0); // check
+    }
+
+    /// <summary>The date <see cref="NewTicketConfig.DueInDays"/> days from today, as it was typed.</summary>
+    private string DueDate =>
+        DateTime.Today.AddDays(Configuration.DueInDays).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+}
+
+/// <summary>The values <see cref="NewTicket"/> recorded; each case can set its own.</summary>
+public sealed record NewTicketConfig
+{
+    public string Title { get; init; } = "Printer offline";
+    public int DueInDays { get; init; } = 3;
+    public string Priority { get; init; } = "Normal";
+}

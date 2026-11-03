@@ -7,7 +7,8 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// Names each step after what a person does in it: <c>OpenBookAppointmentAsync</c>, <c>FillBookAppointmentAsync</c>,
 /// <c>SaveChangesAsync</c>, <c>AssignTicketAsync</c> for a row's "Assign" button, <c>AddLinesAsync</c> for a loop. A
 /// dialog is named by its title when that is English, else by the id of the button that opened it, else by the flow's
-/// own name. Each step also gets a sentence that says what it does, for its doc comment.
+/// own name. A name the person gave a step in the panel wins over all of these. Each step also gets a sentence that says
+/// what it does, for its doc comment.
 /// </summary>
 internal static partial class StepNamer
 {
@@ -33,6 +34,7 @@ internal static partial class StepNamer
     {
         var subjects = new Dictionary<string, string>();
         var used = new HashSet<string>(StringComparer.Ordinal) { "RunAsync", "FileToUpload" };
+        var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
 
         string DialogSubject(string title, CapturedDialog? info)
@@ -63,6 +65,8 @@ internal static partial class StepNamer
                 name = "Open" + DialogSubject(opened.Title, opened);
             else if (step.OpensPage is not null)
                 name = verb is null ? "OpenPage" : verb.StartsWith("Open", StringComparison.Ordinal) ? verb : "Open" + verb;
+            else if (step.Actions.All(action => action.Kind == "expect"))
+                name = "Check" + (step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog) : PageSubject(last.Source.Url) ?? "Page");
             else
             {
                 var subject = step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog)
@@ -74,12 +78,27 @@ internal static partial class StepNamer
                     : "Use" + subject;
             }
 
+            // A name the person gave is theirs; another step's own name gives way to it.
+            var own = GivenName(step);
+            if (own is not null) name = own[..^"Async".Length];
             var unique = name + "Async";
-            for (var copy = 2; !used.Add(unique); copy++) unique = $"{name}{copy}Async";
+            for (var copy = 2; (own is null && given.Contains(unique)) || !used.Add(unique); copy++) unique = $"{name}{copy}Async";
             step.Name = unique;
             step.Summary = Summary(step, plan);
         }
     }
+
+    /// <summary>
+    /// The method name the person gave the step, kept by its first action that has one, e.g. <c>SaveTicketAsync</c>:
+    /// in PascalCase, ending with <c>Async</c>. Null when they gave none.
+    /// </summary>
+    public static string? GivenName(Step step) =>
+        step.Actions.Select(action => MethodName(action.Source.Edit?.Step)).FirstOrDefault(name => name is not null);
+
+    /// <summary>The text as a step's method name, <c>save ticket</c> giving <c>SaveTicketAsync</c>; null when it has no letter.</summary>
+    public static string? MethodName(string? text) =>
+        CSharp.Pascal(text) is not { } name || !name.Any(char.IsLetter) ? null
+        : name.EndsWith("Async", StringComparison.Ordinal) && name.Length > 5 ? name : name + "Async";
 
     /// <summary>
     /// The text of the element clicked, as a person reads it, without <paramref name="without"/> (a record's key in
@@ -196,8 +215,12 @@ internal static partial class StepNamer
         private IEnumerable<string> Phrases(IEnumerable<PlannedAction> actions)
         {
             var filled = new List<PlannedAction>();
+            var checking = false;
             foreach (var action in actions)
             {
+                // Checks one after the other are said once.
+                if (action.Kind == "expect" && checking) continue;
+                checking = action.Kind == "expect";
                 if (action.Value is not null || action.Kind == "upload")
                 {
                     filled.Add(action);
@@ -212,6 +235,7 @@ internal static partial class StepNamer
                     "press" => $"presses {action.Source.Key ?? "Enter"}",
                     "navigate" => $"goes to {Address(action.Source.Url) ?? "an address"}",
                     "drag" => "drags and drops",
+                    "expect" => "checks what the page shows",
                     _ => action.Kind,
                 };
             }
@@ -228,8 +252,10 @@ internal static partial class StepNamer
                 return $"{kind}s {Join([.. boxes], " and ")}";
             }
 
-            var fields = filled.Select(action => action.Kind == "upload" ? "file" : Human(action.Value!.Name)).Distinct()
-                .ToList();
+            // A date typed relative to today is the date still.
+            var fields = filled.Select(action => action.Kind == "upload" ? "file"
+                    : Human(action.Value!.DateFormat is null ? action.Value.Name : RelativeDate.Member(action.Value.Name)))
+                .Distinct().ToList();
             return $"fills in the {Join(fields, " and ")}";
         }
 
@@ -293,8 +319,8 @@ internal static partial class StepNamer
     public static string Human(string name) =>
         string.Join(' ', WordOf().Matches(name).Select(word => word.Value.ToLowerInvariant()));
 
-    // The address as the flow checks it: its path, with a record's id in it as [id], as any id matches there.
-    private static string? Route(string? url)
+    /// <summary>The address as the flow checks it: its path, with a record's id in it as [id], as any id matches there.</summary>
+    public static string? Route(string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
         var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment : uri.AbsolutePath;

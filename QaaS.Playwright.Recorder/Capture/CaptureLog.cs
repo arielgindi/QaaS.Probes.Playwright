@@ -7,7 +7,8 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// Collects what the capture script reports from every page, and what Playwright sees itself (navigations, pop-ups,
 /// browser dialogs), then ties each change of the page to the action that caused it. While paused it collects nothing,
 /// and what happened meanwhile is no action's doing. Made from a recording it continues, it starts with that one's
-/// actions, and adds what is recorded after them. Safe to call from any thread.
+/// actions, and adds what is recorded after them. It also keeps the person's changes in the panel, each of which
+/// <see cref="Undo"/> takes back, newest first, in turn with the actions recorded. Safe to call from any thread.
 /// </summary>
 internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 {
@@ -30,7 +31,10 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     private readonly HashSet<string> _removed = [];
     private readonly Dictionary<string, int?> _chosen = [];
     private readonly Dictionary<string, ElementDescription> _retargeted = [];
+    private readonly Dictionary<string, ActionEdit> _edits = [];
+    private readonly List<Change> _changes = [];
     private readonly List<(long From, long To)> _pauses = [];
+    private bool? _autoChecks = from?.AutoChecks;
     private long _sequence;
     private long _version;
     private bool _paused = paused;
@@ -182,6 +186,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     {
         lock (_gate)
         {
+            Remember("Act on the element it acted on before", Restore(_retargeted, actionId), Restore(_chosen, actionId));
             _retargeted[actionId] = Copy(element);
             // A choice among the other element's locators means nothing for this one's.
             _chosen.Remove(actionId);
@@ -203,6 +208,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
             action.T = at > 0 ? _actions[at - 1].T : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _actions.Insert(at, action);
             for (var index = at; index < _actions.Count; index++) _indexById[_actions[index].Id] = index;
+            Remember($"Remove the {action.Kind} added", () => _removed.Add(action.Id));
         }
 
         Changed();
@@ -214,10 +220,18 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         lock (_gate) return _actions.LastOrDefault()?.Page;
     }
 
-    /// <summary>Leaves actions out of the recording, with what they caused, as if they had not been done.</summary>
-    public void Remove(IEnumerable<string> actionIds)
+    /// <summary>
+    /// Leaves actions out of the recording, with what they caused, as if they had not been done. A deletion
+    /// (<paramref name="undo"/> says how it reads) can be undone; the last step undone cannot.
+    /// </summary>
+    public void Remove(IReadOnlyCollection<string> actionIds, string? undo = null)
     {
-        lock (_gate) _removed.UnionWith(actionIds);
+        lock (_gate)
+        {
+            var removed = actionIds.Where(_removed.Add).ToList();
+            if (undo is not null) Remember(undo, () => _removed.ExceptWith(removed));
+        }
+
         Changed();
     }
 
@@ -227,7 +241,71 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     /// </summary>
     public void Choose(string actionId, int? candidate)
     {
-        lock (_gate) _chosen[actionId] = candidate;
+        lock (_gate)
+        {
+            Remember("Use the locator chosen before", Restore(_chosen, actionId));
+            _chosen[actionId] = candidate;
+        }
+
+        Changed();
+    }
+
+    /// <summary>Changes what the person changed about the action; <paramref name="undo"/> says how undoing it reads.</summary>
+    public void Edit(string actionId, string undo, Action<ActionEdit> change)
+    {
+        lock (_gate)
+        {
+            Remember(undo, Restore(_edits, actionId));
+            // A recording continued comes with its edits.
+            var known = _edits.GetValueOrDefault(actionId)
+                        ?? (_indexById.TryGetValue(actionId, out var index) ? _actions[index].Edit : null);
+            var edit = known is null ? new ActionEdit() : Copy(known);
+            change(edit);
+            _edits[actionId] = edit;
+        }
+
+        Changed();
+    }
+
+    /// <summary>Turns every auto check on or off, as <c>--no-auto-checks</c> does; null leaves it to the command line.</summary>
+    public void AutoChecks(bool? on)
+    {
+        lock (_gate)
+        {
+            var before = _autoChecks;
+            Remember(on == false ? "Turn the auto checks on" : "Turn the auto checks off", () => _autoChecks = before);
+            _autoChecks = on;
+        }
+
+        Changed();
+    }
+
+    /// <summary>
+    /// What <see cref="Undo"/> takes back, as the panel says it: the person's last change, or else the last step (null
+    /// when the recording has none).
+    /// </summary>
+    public string? NextUndo(bool hasSteps)
+    {
+        lock (_gate) return LastChange() is { } change ? change.Undo : hasSteps ? "Remove the last step" : null;
+    }
+
+    /// <summary>
+    /// Takes back the person's last change in the panel, or, when an action was recorded since, leaves
+    /// <paramref name="lastStep"/> (the last step and what led to it) out of the recording.
+    /// </summary>
+    public void Undo(IReadOnlyCollection<string> lastStep)
+    {
+        lock (_gate)
+        {
+            if (LastChange() is { } change)
+            {
+                _changes.Remove(change);
+                change.Restore();
+            }
+            else
+                _removed.UnionWith(lastStep);
+        }
+
         Changed();
     }
 
@@ -257,6 +335,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
                 if (_retargeted.TryGetValue(action.Id, out var retargeted)) Retarget(action, retargeted);
                 if (_chosen.TryGetValue(action.Id, out var chosen) && action.Element is { } element)
                     element.Chosen = chosen;
+                if (_edits.TryGetValue(action.Id, out var edit)) action.Edit = Copy(edit);
             }
 
             var byId = actions.ToDictionary(action => action.Id);
@@ -270,11 +349,39 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 
             actions.RemoveAll(action => _removed.Contains(action.Id));
 
-            return new Recording(startUrl, actions) { NotRecorded = notRecorded.Count > 0 ? notRecorded : null };
+            return new Recording(startUrl, actions)
+            {
+                NotRecorded = notRecorded.Count > 0 ? notRecorded : null, AutoChecks = _autoChecks,
+            };
         }
     }
 
     private void Changed() => Interlocked.Increment(ref _version);
+
+    // A change of the person's, newer than every action recorded: one recorded since is undone first.
+    private Change? LastChange()
+    {
+        var change = _changes.LastOrDefault();
+        var lastAction = _actions.Where(action => !_removed.Contains(action.Id)).Select(action => action.T).DefaultIfEmpty().Max();
+        return change is not null && change.At >= lastAction ? change : null;
+    }
+
+    private void Remember(string undo, params Action[] restore) =>
+        _changes.Add(new Change(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), undo, () =>
+        {
+            foreach (var step in restore) step();
+        }));
+
+    // Puts the entry back as it is now: the value, or none.
+    private static Action Restore<T>(Dictionary<string, T> values, string key)
+    {
+        var had = values.TryGetValue(key, out var before);
+        return () =>
+        {
+            if (had) values[key] = before!;
+            else values.Remove(key);
+        };
+    }
 
     private void AddPageEvent(string kind, string page, string? detail, long at)
     {
@@ -348,11 +455,11 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     // any page. An address the person went to is an action of its own, and so is a tab they opened. The app's own
     // navigations (a redirect on load, a sign-in round trip, a slow save) are left out: they happen again when the
     // flow runs, and replaying them would go to a stale address. Nothing is caused across a pause, nor by an action
-    // added in the panel.
+    // added in the panel, nor by a check.
     private static void Attribute(PageEvent pageEvent, List<CapturedAction> actions, List<string> notRecorded,
         List<(long From, long To)> pauses)
     {
-        bool CouldCause(CapturedAction action) => !action.Added
+        bool CouldCause(CapturedAction action) => !action.Added && action.Kind != "expect"
                                                   && !pauses.Any(pause => action.T <= pause.From && pause.From <= pageEvent.At);
         var cause = pageEvent.ByThePerson || pageEvent.Resumed
             ? null
@@ -409,6 +516,9 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 
     private sealed record NavigationRequest(string Page, long Sequence, Task<bool> ByThePerson);
 
+    /// <summary>A change the person made in the panel: when, how undoing it reads, and what undoes it.</summary>
+    private sealed record Change(long At, string Undo, Action Restore);
+
     // The capture script's message: an action, or an effect of one.
     private sealed class Message
     {
@@ -438,6 +548,8 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         public long? SinceAction { get; set; }
         public string? Text { get; set; }
         public int? AlertCount { get; set; }
+        public string? Check { get; set; }
+        public CapturedTarget? Group { get; set; }
 
         public CapturedAction ToAction(string page)
         {
@@ -447,7 +559,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
                 Id = Id!, T = T, Kind = Kind ?? "", Page = page, Widget = Widget, Value = Value, Raw = Raw, Final = Final,
                 Picked = Picked, Checked = Checked, Key = Key, OnPage = OnPage, Files = Files, Url = Url, Dialog = Dialog,
                 OpenDialogs = OpenDialogs, Target = target, Field = Field, Option = Option, To = To, HoverMenu = HoverMenu,
-                Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
+                Check = Check, Group = Group, Equivalents = target == Target ? Equivalents : [Target!, .. Equivalents!.Where(other => other != target)],
             };
         }
 

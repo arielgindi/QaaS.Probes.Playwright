@@ -114,6 +114,70 @@ public class TestRunTests
     }
 
     [Test]
+    public async Task ChecksChosenInTheApp_AndEditsInThePanel_AreInTheCode_AndTheTestPassesWithThem()
+    {
+        using var site = TestSite.Start();
+        var session = await StartAsync($"{site.Url}/helpdesk");
+        try
+        {
+            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", session.Options.Url]));
+            var app = session.Page;
+            var view = app.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
+            var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
+            await app.GetByTestId("new-ticket").ClickAsync();
+            await Expect(code).ToContainTextAsync("ToBeVisibleAsync");
+            await app.Locator("[name='title']").FillAsync("Printer jammed");
+            await app.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
+            await Expect(code).ToContainTextAsync("ToBeHiddenAsync");
+
+            // F6, then a click picks what to check, and Enter adds the check the chooser offers first.
+            await app.Keyboard.PressAsync("F6");
+            await app.GetByText("Ticket TCK-1043 created").ClickAsync();
+            await app.Keyboard.PressAsync("Enter");
+            await Expect(code).ToContainTextAsync("""ToContainTextAsync("created"); // check""");
+            await view.GetByRole(AriaRole.Button, new() { Name = "Check something in the app" }).ClickAsync();
+            await app.GetByRole(AriaRole.Row, new() { Name = "TCK-1042" }).GetByRole(AriaRole.Button).ClickAsync();
+            await app.Keyboard.PressAsync("Enter");
+            await Expect(code).ToContainTextAsync("""ToHaveTextAsync("Assign to me"); // check""");
+
+            await view.GetByRole(AriaRole.List, new() { Name = "Checks" }).GetByRole(AriaRole.Listitem)
+                .Filter(new() { HasText = "dialog closes" }).GetByRole(AriaRole.Button, new() { Name = "Drop this auto check" }).ClickAsync();
+            await view.GetByRole(AriaRole.Button).Filter(new() { HasText = "Printer jammed" }).ClickAsync();
+            await view.GetByRole(AriaRole.Checkbox, new() { Name = "Unique per run" }).ClickAsync();
+            await Expect(code).ToContainTextAsync("FillAsync(Unique(Configuration.Title))");
+            // A deletion undone leaves the other edits as they were.
+            await view.Keyboard.PressAsync("Delete");
+            await Expect(code).Not.ToContainTextAsync("FillAsync");
+            await view.Keyboard.PressAsync("Control+z");
+            await Expect(code).ToContainTextAsync("FillAsync(Unique(Configuration.Title))");
+
+            await view.GetByRole(AriaRole.Button, new() { Name = "Test the flow" }).ClickAsync();
+            await Expect(view.GetByRole(AriaRole.Status, new() { Name = "Test run" })).ToContainTextAsync("Passed", new() { Timeout = 60_000 });
+
+            var report = panel.Tester.Report!;
+            var recording = session.Build();
+            var again = FlowCodeGenerator.Generate(Recording.FromJson(recording.ToJson()), "NewTicket", "Flows");
+            Assert.Multiple(() =>
+            {
+                Assert.That(report.Outcome, Is.EqualTo(TestOutcome.Passed), report.Failure?.Headline ?? report.Problem);
+                Assert.That(report.Code, Does.Not.Contain("ToBeHiddenAsync"), "the auto check dropped");
+                Assert.That(site.Tickets, Is.Empty);
+                Assert.That(recording.Actions.Where(action => action.Kind != "expect").Select(action => action.Target?.Text),
+                    Is.EqualTo(new[] { "New ticket", "Title", "Create ticket" }), "a click in check mode is no action");
+                Assert.That(recording.Actions.Where(action => action.Kind == "expect").Select(action => action.Check),
+                    Is.EqualTo(new[] { "text", "text" }));
+                Assert.That(again.Code, Is.EqualTo(FlowCodeGenerator.Generate(recording, "NewTicket", "Flows").Code),
+                    "the edits and checks are kept in the recording's JSON");
+            });
+            await Expect(app.GetByText("assigned to you")).ToHaveCountAsync(0);
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
+    }
+
+    [Test]
     public async Task Continue_ReplaysInTheRecordedWindow_RecordsNothingMeanwhile_AndGoesOnAfterTheStepsThatPassed()
     {
         using var site = TestSite.Start();

@@ -6,7 +6,8 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// with Playwright's own engine (its console API, which a driver in debug mode "console" installs), the dialog it is
 /// in, the value a field settled on, and what the page did a moment later. Through <c>__qaasControl</c> it learns
 /// whether to record (F8 pauses), and hands over the page's elements frozen (F4); <c>window.__qaasRecorder</c> answers
-/// the recorder's panel about the page's elements.
+/// the recorder's panel about the page's elements. In check mode (F6) a click picks an element to check instead, and
+/// a chooser in the overlay reports the check the person chose as an action of its own.
 /// </summary>
 internal static class CaptureScript
 {
@@ -20,7 +21,8 @@ internal static class CaptureScript
           // QaaS recorder capture script. Runs in every document of the recording, before the page's own scripts. Its
           // listeners are capture-phase and passive: they never prevent or stop an event, so the page behaves exactly as for a
           // person. Each action is described when the pointer goes down, before the page reacts to it, and reported to the
-          // recorder through window.__qaasRecord as JSON.
+          // recorder through window.__qaasRecord as JSON. Only in check mode (F6), which the person turns on to pick what to
+          // check, are clicks and keys kept from the page.
           if (window.__qaasCaptureInstalled || window !== window.top) return;
           window.__qaasCaptureInstalled = true;
 
@@ -46,13 +48,16 @@ internal static class CaptureScript
           // flow runs, or 'testing' while the panel tests the flow in a window of its own. The recorder decides, and
           // tells each page; a page that loads asks.
           let state = 'recording';
-          const recording = () => state === 'recording';
+          // In check mode a click picks what to check: nothing the person does is an action, while what the page does
+          // still belongs to the action before.
+          let checking = false;
+          const recording = () => state === 'recording' && !checking;
           // The recorder's bindings are called without waiting for an answer, which it gives through
           // window.__qaasRecorder: another driver attached to the browser answers each call it does not know with an error.
           const call = (binding, message) => safe(() => {
             Promise.resolve(window[binding]?.(JSON.stringify(message))).catch(() => { /* answered elsewhere, or gone */ });
           });
-          const send = (message) => { if (recording()) call('__qaasRecord', message); };
+          const send = (message) => { if (state === 'recording') call('__qaasRecord', message); };
           const control = (message) => call('__qaasControl', message);
           const safe = (work, fallback) => {
             try { return work(); } catch { return fallback; }
@@ -713,7 +718,74 @@ internal static class CaptureScript
             .state.shown { display: flex; }
             .state::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: #fbbf24; }
             .state.note::before { border-radius: 50%; background: #60a5fa; }
-            .state span { color: #a1a1aa; font-weight: 400; }`;
+            .state span { color: #a1a1aa; font-weight: 400; }
+            .box.check { border-color: #16a34a; background: rgba(22, 163, 74, .12); }
+            .chooser, .bar { --canvas: #f7f8fa; --panel: #ffffff; --raised: #f2f4f7; --line: #e3e6eb; --strong: #d3d8df;
+              --fg: #16181d; --muted: #5a626e; --faint: #8a919c; --accent: #5157e6; --ok: #17824f;
+              position: fixed; box-sizing: border-box; pointer-events: auto; direction: ltr; text-align: left;
+              color: var(--fg); background: var(--panel); border: 1px solid var(--strong);
+              font: 13px/1.45 Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+              box-shadow: 0 14px 36px rgba(15, 18, 28, .22), 0 2px 6px rgba(15, 18, 28, .14); }
+            @media (prefers-color-scheme: dark) {
+              .chooser, .bar { --canvas: #0c0d10; --panel: #181b20; --raised: #22262c; --line: #2a2f36; --strong: #3a4049;
+                --fg: #e8eaed; --muted: #9aa1ab; --faint: #6c737e; --accent: #7c82ff; --ok: #4cc38a;
+                box-shadow: 0 14px 36px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .04); }
+            }
+            .bar { display: none; top: 12px; left: 50%; transform: translateX(-50%); align-items: center; gap: 10px;
+              padding: 5px 6px 5px 12px; border-radius: 999px; white-space: nowrap; font-size: 12.5px; }
+            .bar.shown { display: flex; }
+            .bar b { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+            .bar b::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+              box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
+            .bar .hint { color: var(--muted); }
+            .chooser button, .bar button { font: inherit; color: inherit; cursor: pointer; }
+            .bar .url { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--strong);
+              background: var(--raised); font-size: 12px; font-weight: 500; }
+            .bar .url:hover { border-color: var(--faint); }
+            kbd { display: inline-block; padding: 0 5px; border-radius: 4px; border: 1px solid var(--strong);
+              background: var(--canvas); color: var(--muted); font: 500 10.5px/16px inherit; }
+            .chooser { width: 348px; max-width: calc(100vw - 16px); border-radius: 12px; overflow: hidden; }
+            .chooser .head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 9px;
+              border-bottom: 1px solid var(--line); }
+            .chooser .badge { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 1px 8px 1px 6px;
+              border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--ok);
+              background: color-mix(in oklab, var(--ok) 14%, transparent); }
+            .chooser .badge svg { width: 12px; height: 12px; }
+            .chooser .what { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+              color: var(--muted); font: 11.5px/1.4 ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace; }
+            .chooser .options { padding: 4px; max-height: 296px; overflow-y: auto; }
+            .chooser .option { display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 8px;
+              border: 0; border-radius: 8px; background: transparent; text-align: left; }
+            .chooser .option:hover { background: var(--raised); }
+            .chooser .option.on { background: color-mix(in oklab, var(--accent) 13%, transparent); }
+            .chooser .radio { display: grid; place-items: center; flex: none; width: 14px; height: 14px; box-sizing: border-box;
+              border-radius: 50%; border: 1.5px solid var(--strong); }
+            .chooser .on .radio { border-color: var(--accent); background: var(--accent); }
+            .chooser .on .radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+            .chooser .name { flex: none; font-weight: 500; }
+            .chooser .value { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+              text-align: right; color: var(--muted); font-size: 12px; unicode-bidi: plaintext; }
+            .chooser .now { flex: none; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line);
+              color: var(--faint); font-size: 10.5px; line-height: 16px; }
+            .chooser .field { padding: 6px 12px 2px; }
+            .chooser .field input { width: 100%; height: 30px; box-sizing: border-box; padding: 0 9px; border-radius: 8px;
+              border: 1px solid var(--strong); background: var(--canvas); color: var(--fg); font: inherit; outline: none;
+              unicode-bidi: plaintext; }
+            .chooser .field input:focus { border-color: var(--accent);
+              box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent); }
+            .chooser .cells { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 12px 2px; }
+            .chooser .cell { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 9px;
+              border-radius: 999px; border: 1px solid var(--strong); background: transparent; color: var(--muted);
+              font-size: 12px; unicode-bidi: plaintext; }
+            .chooser .cell.on { border-color: color-mix(in oklab, var(--accent) 55%, transparent); color: var(--fg);
+              background: color-mix(in oklab, var(--accent) 12%, transparent); }
+            .chooser .foot { display: flex; align-items: center; gap: 6px; padding: 9px 10px 10px 12px; color: var(--faint);
+              font-size: 11.5px; }
+            .chooser .add { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; height: 28px;
+              padding: 0 10px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px;
+              font-weight: 600; }
+            .chooser .add kbd { border: 0; background: rgba(255, 255, 255, .2); color: #fff; }
+            .chooser .add:disabled { opacity: .45; cursor: default; }`;
           // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
           let overlayOn = true;
@@ -741,9 +813,12 @@ internal static class CaptureScript
             };
             const box = part(root, 'box');
             const label = part(root, 'label');
-            view = { host, box, label, pick: part(label, 'pick'), locator: part(label, 'locator'),
+            view = { host, root, box, label, pick: part(label, 'pick'), locator: part(label, 'locator'),
               problem: part(label, 'problem'), reasons: part(label, 'reasons'), note: part(label, 'note'),
-              state: part(root, 'state') };
+              state: part(root, 'state'), bar: part(root, 'bar') };
+            // What is done in the chooser and the bar stays in them: the page sees none of it.
+            for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'keydown', 'keyup', 'input'])
+              root.addEventListener(type, (event) => event.stopPropagation());
             document.documentElement.appendChild(host);
             return view;
           }
@@ -773,6 +848,7 @@ internal static class CaptureScript
           }
           function applyState(next) {
             if (next === state || !['recording', 'paused', 'login', 'testing'].includes(next)) return;
+            if (next !== 'recording') stopChecking();
             state = next;
             if (!recording()) {
               flushTyping();
@@ -788,14 +864,15 @@ internal static class CaptureScript
           // The box over the element, and the label below it, or above it when there is no room below.
           function drawOverlay() {
             const element = hover?.boxed ?? hover?.shown;
-            if (!overlayOn || !element?.isConnected) { hideOverlay(); return; }
+            if (!(overlayOn || checking) || !element?.isConnected) { hideOverlay(); return; }
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
             const { box, label } = overlayView();
             box.classList.toggle('picked', !!hover.picked);
+            box.classList.toggle('check', checking);
             Object.assign(box.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
               width: `${rect.width}px`, height: `${rect.height}px` });
-            if (!hover.answer) { label.style.display = 'none'; return; }
+            if (!hover.answer || chooser) { label.style.display = 'none'; return; }
             label.style.display = 'block';
             const size = label.getBoundingClientRect();
             const below = rect.bottom + 4;
@@ -812,15 +889,15 @@ internal static class CaptureScript
             line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
             line(parts.problem, answer.problem);
             line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
-            line(parts.note, answer.note);
+            line(parts.note, checking ? 'click to check it  ·  Esc leaves check mode' : answer.note);
           }
 
           const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
           const hoverOver = (hit) => {
-            const element = retarget(hit);
-            return { hit, element, picked: null, shown: element.closest('[role=option]') ?? element, boxed: null, answer: null,
-              at: 0 };
+            const element = checking ? checkTarget(hit) : retarget(hit);
+            return { hit, element, picked: null, shown: checking ? element : element.closest('[role=option]') ?? element,
+              boxed: null, answer: null, at: 0 };
           };
 
           // The element picked with the Alt+arrows, while the pointer is still on what it was picked from.
@@ -857,13 +934,14 @@ internal static class CaptureScript
           function explain() {
             if (explaining && now() - explaining.at < 3000) { explainAgain = true; return; }
             const state = hover;
-            if (!overlayOn || !recording() || !state?.shown.isConnected || typeof window.__qaasExplain !== 'function') return;
+            if (!(overlayOn && recording()) && !checking || !state?.shown.isConnected
+              || typeof window.__qaasExplain !== 'function') return;
             state.at = now();
             const { shown, picked } = state;
             const option = !picked && shown !== state.element;
             const { target } = describe(shown, picked ? { interactive: true } : option ? { pageLevel: true, noRow: true } : {});
             const widget = widgetOf(shown);
-            const others = picked || option || widget ? [] : equivalentsOf(state.hit, shown);
+            const others = picked || option || widget || checking ? [] : equivalentsOf(state.hit, shown);
             const equivalents = describeEquivalents(others, target);
             explaining = { seq: ++explainSeq, at: now(), state, shown, picked, others };
             call('__qaasExplain', { seq: explaining.seq, target, equivalents, byName: widget === 'radio' });
@@ -877,13 +955,14 @@ internal static class CaptureScript
               state.answer = JSON.parse(reply);
               state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
               fillLabel(state.answer, picked);
+              if (chooser?.element === shown && state.answer.locator) chooser.what.textContent = state.answer.locator;
               drawOverlay();
             }
             if (explainAgain) { explainAgain = false; scheduleExplain(); }
           }
 
           addEventListener('pointermove', (event) => safe(() => {
-            if (!event.isTrusted || !overlayOn || !recording()) return;
+            if (!event.isTrusted || chooser || !(overlayOn && recording()) && !checking) return;
             const hit = deepTarget(event);
             if (hit === hover?.hit) {
               // The page may have changed under a pointer at rest.
@@ -913,10 +992,334 @@ internal static class CaptureScript
               control({ type: 'pause' });
             } else if (event.key === 'F4' && !event.altKey && !event.repeat && state !== 'login') {
               freeze();
-            } else if (overlayOn && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+            } else if ((overlayOn || checking) && !chooser && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
               pick(event.key === 'ArrowUp' ? 1 : -1);
             }
           }), { capture: true, passive: true });
+
+          // ---------------------------------------------------------------------------------------------- check mode
+          // F6, or Check in the recorder's panel, turns check mode on: the box follows the pointer as for a click, in
+          // green, and a click picks the element instead of reaching the page. A chooser then offers the checks that fit
+          // it, the likeliest chosen: its text, a field's value, a checkbox's state, how many of a repeated item there are,
+          // a table row by its cells, whether it shows or is enabled, or the page's address. Enter adds the check, Esc
+          // goes back to picking, and Esc again leaves check mode. The check is reported as an action of its own, which
+          // the flow makes after the action before it. Clicks and keys meant for the chooser never reach the page.
+          const FIELDS = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset])' +
+            ':not([type=image]):not([type=file]):not([type=hidden]), textarea, select';
+          const CONTROLS = 'button, input, select, textarea, a[href], [role=button], [role=checkbox], [role=radio], ' +
+            '[role=switch], [role=tab], [role=menuitem], [role=option], [role=combobox], [role=textbox], [aria-disabled]';
+          const ITEM_ROLES = ['listitem', 'row', 'option', 'article', 'treeitem', 'menuitem', 'tab'];
+          // A tick, drawn without markup, which a page's Trusted Types would refuse.
+          function tick() {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            const path = svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+            path.setAttribute('d', 'M5 12.5l4.5 4.5L19 7.5');
+            for (const [name, value] of [['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '2.6'],
+              ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]) path.setAttribute(name, value);
+            return svg;
+          }
+          let chooser = null;
+
+          // What a check is of: the control around what the pointer is on, else that element itself, as text is checked
+          // where it is.
+          const checkTarget = (hit) => {
+            const control = hit.closest(INTERACTIVE);
+            return control && !control.matches(CONTAINERS) ? control : hit;
+          };
+          const textOf = (element) => normalizeValue(normalize(element.innerText ?? element.textContent ?? ''));
+          const isChecked = (element) => element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
+          const isDisabled = (element) => element.disabled === true || element.getAttribute('aria-disabled') === 'true';
+          // A class a framework did not generate, which items of a list share.
+          const stableClass = (element, other) => [...element.classList].find((name) => other.classList.contains(name) &&
+            !/^(css|jss|sc|emotion|styled)-/i.test(name) && !/\d{3,}/.test(name));
+          const alike = (a, b) => a.tagName === b.tagName && roleOf(a) === roleOf(b) &&
+            (['LI', 'TR', 'OPTION'].includes(a.tagName) || ITEM_ROLES.includes(roleOf(a)) || !!stableClass(a, b));
+
+          // The items the element is one of, the nearest that repeats, and the locators that find them all: by the id or
+          // test id of what holds them, or by their role.
+          function itemsOf(element) {
+            for (let item = element, depth = 0; item && item !== document.body && depth < 6; item = item.parentElement, depth++) {
+              const parent = item.parentElement;
+              const items = parent ? [...parent.children].filter((child) => alike(child, item) && visible(child)) : [];
+              if (items.length < 2) continue;
+              const dialog = dialogOf(item);
+              const scope = scopeOf(item, dialog ? describeDialog(dialog) : null, dialog);
+              const role = item.getAttribute('role');
+              const other = items.find((child) => child !== item);
+              const one = role ? `[role=${quote(role)}]` : ['LI', 'TR', 'OPTION'].includes(item.tagName)
+                ? item.tagName.toLowerCase() : `${item.tagName.toLowerCase()}.${CSS.escape(stableClass(item, other) ?? '')}`;
+              const candidates = [];
+              const add = (kind, parts, value) => {
+                const found = matches([...scope, ...parts]);
+                candidates.push({ kind, parts: [...scope, ...parts], count: found ? found.length : -1, value,
+                  matches: !!found && found.length === items.length && items.every((each) => found.includes(each)) });
+              };
+              let path = one;
+              for (let holder = parent, up = 0; holder && holder !== document.body && up < 4; holder = holder.parentElement, up++) {
+                if (holder.id) add('id', [{ m: 'css', css: `[id=${quote(holder.id)}] > ${path}` }], holder.id);
+                const testId = holder.getAttribute(TEST_ID);
+                if (testId) add('testid', [{ m: 'testid', value: testId }, { m: 'css', css: `:scope > ${path}` }], testId);
+                path = `${holder.tagName.toLowerCase()} > ${path}`;
+              }
+              if (ITEM_ROLES.includes(roleOf(item)) && roleOf(item) !== 'row') add('role', [{ m: 'role', role: roleOf(item) }]);
+              return candidates.some((candidate) => candidate.matches)
+                ? { count: items.length, isItem: item === element, group: { tag: item.tagName.toLowerCase(), candidates } }
+                : null;
+            }
+            return null;
+          }
+
+          // The cells of the table row the element is in, as the person may choose them to find the row by.
+          function cellsOf(element) {
+            const row = element.closest('tr, [role=row]');
+            if (!row || row.querySelector('th[scope=col], [role=columnheader]')) return null;
+            const cells = [...row.querySelectorAll(':scope > td, :scope > th, :scope > [role=cell], :scope > [role=gridcell]')]
+              .map(textOf).filter((text) => text && text.length <= 80);
+            return cells.length ? { row, cells: [...new Set(cells)].map((text) => ({ text, on: true })) } : null;
+          }
+
+          // The checks that fit the element, and the one it most likely needs: a checkbox's state, a field's value, the
+          // count of a repeated item, else its text.
+          function kindsFor(element) {
+            const kinds = [];
+            const add = (kind, name, extra = {}) => kinds.push({ kind, name, ...extra });
+            const toggle = element.matches(TOGGLES);
+            const field = !toggle && element.matches(FIELDS);
+            const text = field ? '' : textOf(element);
+            if (field) add('value', 'Has value', { value: normalizeValue(element.value ?? ''), edit: true });
+            if (text) {
+              add('text', 'Has text', { value: text, edit: true });
+              add('contains', 'Contains text', { value: text, edit: true });
+            }
+            if (toggle) {
+              add('checked', 'Checked', { now: isChecked(element) });
+              add('unchecked', 'Unchecked', { now: !isChecked(element) });
+            }
+            const items = itemsOf(element);
+            if (items) add('count', 'Count', { value: String(items.count), edit: true, group: items.group });
+            const cells = cellsOf(element);
+            if (cells) add('row', 'Row exists with', { cells });
+            add('visible', 'Visible');
+            add('hidden', 'Gone', { hint: 'hidden or removed' });
+            if (element.matches(CONTROLS)) {
+              add('enabled', 'Enabled', { now: !isDisabled(element) });
+              add('disabled', 'Disabled', { now: isDisabled(element) });
+            }
+            add('url', 'URL is', { value: location.href, shown: location.pathname + location.search + location.hash });
+            const likely = toggle ? (isChecked(element) ? 'checked' : 'unchecked') : field ? 'value'
+              : items?.isItem ? 'count' : text ? 'text' : 'visible';
+            return { kinds, index: Math.max(0, kinds.findIndex((option) => option.kind === likely)) };
+          }
+
+          function startChecking() {
+            if (checking) return;
+            if (state !== 'recording') {
+              showPill(state === 'paused' ? 'Recording paused' : 'Not now', state === 'paused' ? 'F8 resumes, then F6 checks' : 'the recording is busy', true);
+              return;
+            }
+            flushTyping();
+            pending = null;
+            checking = true;
+            hover = null;
+            hideOverlay();
+            const { bar } = overlayView();
+            bar.replaceChildren();
+            const title = bar.appendChild(document.createElement('b'));
+            title.textContent = 'Check mode';
+            const hint = bar.appendChild(document.createElement('span'));
+            hint.className = 'hint';
+            hint.textContent = 'Click what the flow should check';
+            const url = bar.appendChild(document.createElement('button'));
+            url.className = 'url';
+            url.type = 'button';
+            url.textContent = 'URL is…';
+            url.addEventListener('click', () => safe(() => openChooser(null)));
+            bar.appendChild(document.createElement('kbd')).textContent = 'Esc';
+            bar.classList.add('shown');
+            control({ type: 'checking', on: true });
+          }
+
+          function stopChecking() {
+            if (!checking) return;
+            closeChooser();
+            checking = false;
+            hover = null;
+            hideOverlay();
+            view?.bar.classList.remove('shown');
+            control({ type: 'checking', on: false });
+          }
+
+          // The chooser, beside the element, or under the bar for the address.
+          function openChooser(element) {
+            closeChooser();
+            const { kinds, index } = element ? kindsFor(element) : { kinds: [{ kind: 'url', name: 'URL is', value: location.href,
+              shown: location.pathname + location.search + location.hash }], index: 0 };
+            const box = overlayView().root.appendChild(document.createElement('div'));
+            box.className = 'chooser';
+            box.setAttribute('role', 'dialog');
+            box.setAttribute('aria-label', 'Check');
+            chooser = { element, kinds, index, box };
+            renderChooser();
+            const rect = element?.getBoundingClientRect() ?? { left: innerWidth / 2 - 174, right: innerWidth / 2 + 174, top: 0, bottom: 44 };
+            // Below the element, else above it, else beside it, where it covers none of it.
+            const size = box.getBoundingClientRect();
+            const fit = (top, left) => ({ top: Math.min(Math.max(8, top), innerHeight - size.height - 8),
+              left: Math.min(Math.max(8, left), innerWidth - size.width - 8) });
+            const place = rect.bottom + 8 + size.height <= innerHeight - 8 ? fit(rect.bottom + 8, rect.left)
+              : rect.top - size.height - 8 >= 8 ? fit(rect.top - size.height - 8, rect.left)
+              : rect.right + 12 + size.width <= innerWidth - 8 ? fit(rect.top, rect.right + 12)
+              : fit(rect.top, rect.left - size.width - 12);
+            Object.assign(box.style, { left: `${place.left}px`, top: `${place.top}px` });
+            drawOverlay();
+          }
+
+          function closeChooser() {
+            if (!chooser) return;
+            chooser.box.remove();
+            chooser = null;
+            drawOverlay();
+          }
+
+          function renderChooser() {
+            const { box, kinds, index, element } = chooser;
+            const option = kinds[index];
+            const make = (parent, tag, name, text) => {
+              const node = parent.appendChild(document.createElement(tag));
+              if (name) node.className = name;
+              if (text !== undefined) node.textContent = text;
+              return node;
+            };
+            box.replaceChildren();
+            const head = make(box, 'div', 'head');
+            const badge = make(head, 'span', 'badge');
+            badge.append(tick(), 'Check');
+            chooser.what = make(head, 'span', 'what', element ? (hover?.answer?.locator ?? tagOf(element)) : 'this page');
+            const list = make(box, 'div', 'options');
+            list.setAttribute('role', 'listbox');
+            kinds.forEach((each, at) => {
+              const row = make(list, 'button', `option${at === index ? ' on' : ''}`);
+              row.type = 'button';
+              row.setAttribute('role', 'option');
+              row.setAttribute('aria-selected', String(at === index));
+              make(row, 'span', 'radio');
+              make(row, 'span', 'name', each.name);
+              make(row, 'span', 'value', each.kind === 'row' ? `${each.cells.cells.filter((cell) => cell.on).length} cells`
+                : each.shown ?? (each.value === undefined ? each.hint ?? '' : each.kind === 'count' ? each.value : `“${each.value}”`));
+              if (each.now) make(row, 'span', 'now', 'now');
+              row.addEventListener('click', () => safe(() => { chooser.index = at; renderChooser(); }));
+              row.addEventListener('dblclick', () => safe(acceptCheck));
+            });
+            if (option.edit) {
+              const field = make(make(box, 'div', 'field'), 'input');
+              field.value = option.value;
+              field.setAttribute('aria-label', option.name);
+              if (option.kind === 'count') field.inputMode = 'numeric';
+              field.addEventListener('input', () => { option.value = field.value; });
+              chooser.field = field;
+            } else chooser.field = null;
+            if (option.kind === 'row') {
+              const cells = make(box, 'div', 'cells');
+              for (const cell of option.cells.cells) {
+                const chip = make(cells, 'button', `cell${cell.on ? ' on' : ''}`, cell.text);
+                chip.type = 'button';
+                chip.setAttribute('aria-pressed', String(cell.on));
+                chip.addEventListener('click', () => safe(() => { cell.on = !cell.on; renderChooser(); }));
+              }
+            }
+            const foot = make(box, 'div', 'foot');
+            make(foot, 'kbd', null, '↑↓');
+            make(foot, 'span', null, 'choose');
+            make(foot, 'kbd', null, 'Esc');
+            make(foot, 'span', null, 'back');
+            const add = make(foot, 'button', 'add', 'Add check');
+            add.type = 'button';
+            add.disabled = option.kind === 'row' && !option.cells.cells.some((cell) => cell.on);
+            make(add, 'kbd', null, '↵');
+            add.addEventListener('click', () => safe(acceptCheck));
+          }
+
+          // The check, as an action: the element as a click on it would be located, what to expect of it, and for a count
+          // or a row, the locators that find them.
+          function acceptCheck() {
+            const { element, kinds, index } = chooser;
+            const option = kinds[index];
+            const value = chooser.field?.value ?? option.value;
+            if (option.kind === 'count' && !/^\d+$/.test(value ?? '')) return;
+            let group = option.group;
+            let described = element && option.kind !== 'url' ? describe(element) : {};
+            if (option.kind === 'row') {
+              const { row, cells } = option.cells;
+              const chosen = cells.filter((cell) => cell.on).map((cell) => cell.text);
+              if (!chosen.length) return;
+              described = describe(row, { noRow: true });
+              const dialog = dialogOf(row);
+              const parts = [...scopeOf(row, described.dialog, dialog), { m: 'role', role: 'row' },
+                ...chosen.map((text) => ({ m: 'filter', hasText: text }))];
+              const found = matches(parts);
+              group = { candidates: [{ kind: 'row', parts, count: found ? found.length : -1, matches: !!found && found.includes(row) }] };
+            }
+            record({ ...described, id: newId(), t: now(), kind: 'expect', check: option.kind, value, group,
+              url: location.href });
+            const what = option.kind === 'url' ? 'the address' : option.name.toLowerCase();
+            stopChecking();
+            showPill('Check added', what, true);
+          }
+
+          // In check mode, a click picks what to check, and nothing reaches the page but the pointer's moves; keys go to
+          // the chooser while it is open.
+          for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu']) {
+            addEventListener(type, (event) => safe(() => {
+              if (!checking || !event.isTrusted || event.composedPath()[0] === view?.host) return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              if (type !== 'click' || event.button !== 0) return;
+              const hit = deepTarget(event);
+              if (!hit || hit === document.body || hit === document.documentElement) return;
+              const picked = hover?.hit === hit ? hover.picked ?? hover.element : checkTarget(hit);
+              if (hover?.hit !== hit) {
+                hover = { ...hoverOver(hit), element: picked, shown: picked };
+                drawOverlay();
+              }
+              if (!hover.answer) scheduleExplain();
+              // Once the browser has undone what the click would have changed, such as a checkbox's state.
+              setTimeout(() => safe(() => openChooser(picked)), 0);
+            }), { capture: true });
+          }
+
+          addEventListener('keydown', (event) => safe(() => {
+            if (!event.isTrusted) return;
+            const handled = () => { event.preventDefault(); event.stopImmediatePropagation(); };
+            if (event.key === 'F6' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+              // Chrome would move the focus to its address bar.
+              handled();
+              if (!event.repeat) checking ? stopChecking() : startChecking();
+              return;
+            }
+            if (!checking) return;
+            if (event.key === 'Escape') {
+              handled();
+              if (chooser) closeChooser(); else stopChecking();
+              return;
+            }
+            if (!chooser) return;
+            if (event.key === 'Enter') { handled(); acceptCheck(); return; }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              handled();
+              chooser.index = (chooser.index + (event.key === 'ArrowDown' ? 1 : chooser.kinds.length - 1)) % chooser.kinds.length;
+              renderChooser();
+              return;
+            }
+            // Typing into the chooser's field; the page sees none of it.
+            if (document.activeElement === view.host) { event.stopImmediatePropagation(); return; }
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            handled();
+            // A key typed at the chooser starts its value afresh.
+            if (event.key.length === 1 && chooser.field) {
+              chooser.field.focus();
+              chooser.field.value = chooser.kinds[chooser.index].value = event.key;
+            }
+          }), { capture: true });
 
           // ------------------------------------------------------------------------------------------------ keyboard
           const activeElement = () => {
@@ -1167,6 +1570,7 @@ internal static class CaptureScript
               case 'describe': return JSON.stringify(describeNode(command.id));
               case 'selector': return selectorOf(command.id);
               case 'watch': watch(!!command.on); return null;
+              case 'check': command.on ? startChecking() : stopChecking(); return null;
               default: return null;
             }
           }, null) });

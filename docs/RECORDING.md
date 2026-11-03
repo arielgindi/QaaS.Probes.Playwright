@@ -71,6 +71,7 @@ not in frames, which are not recorded.
 
 | Key, in the browser | Does |
 |---------------------|------|
+| `F6` | Checks something on the page: the next click picks an element, then you choose the check (see [Checking what the page shows](#checking-what-the-page-shows)). |
 | `F8` | Pauses or resumes the recording (see [Pausing](#pausing)). |
 | `F4` | Freezes the page's elements for the panel's [Elements view](#the-elements-view), e.g. with a menu open. |
 | `F9` | Hides or shows the overlay. Hidden, the recorder records as it would without it. |
@@ -110,7 +111,8 @@ While you record, the recording is written to `~/.qaas/recordings/` after every 
 so two projects' `LoginFlow`s do not meet, written whole or not at all, readable by you only (on Windows, as the
 folder allows), in the format `--keep-recording` writes. It never holds a password you typed, as the console never
 shows one, nor what you typed into a field whose setting is named as a secret (password, secret, token, API key,
-pwd), as a test run hides those. Once the flow is saved, the file stays, marked saved, for
+pwd), as a test run hides those, nor a value you gave such a setting in the panel. It keeps your checks and your
+edits in the panel, so a recording recovered or continued has them too. Once the flow is saved, the file stays, marked saved, for
 [continuing](#continuing-a-flow) the flow; the newest 30 are kept.
 
 When the recorder starts and finds a recording that did not end in a save (the recorder crashed or was stopped with
@@ -214,21 +216,26 @@ A tab that opened while paused is opened the same way. When the app is on the sa
 Beside the recorded window, the recorder opens its panel: the flow exactly as it will be saved, written as you work.
 
 - **Steps**, on the left: a card for each action, under the step (method) it is part of, with the locator it uses,
-  what it caused (a dialog opened, the address changed to `/tickets/[id]`, an alert), and in amber what to check by
-  hand.
+  what it caused (a dialog opened, the address changed to `/tickets/[id]`, an alert), the checks the flow makes after
+  it, and in amber what to check by hand.
 - **The code**, in the middle, or the YAML of its values, or the page's [Elements](#the-elements-view) (**Code |
   YAML | Elements** at the top). The selected step's lines are marked, and a line to check by hand has a warning
   beside its number. Click a line to select its step.
 - **The inspector**, on the right: every locator the recorder found for the selected step's element, each with what it
   found when you acted (`✓ 1 match`, `✗ 3 matches`, `✗ generated id`). Point at one to see in the app what it finds;
   click one to use it instead, and the code changes at once. **Use the recorder's choice** goes back to its own. Below
-  them, the values the step records as settings.
+  them, the values the step records as settings, which you can [change](#editing-the-steps).
 
 | In the panel | Does |
 |---|---|
 | Point at a step or a locator | Highlights in the recorded window what it finds |
 | ↑ / ↓ | Selects the step before or after |
-| **Undo**, Ctrl+Z | Leaves the last step out of the flow; the app stays as it is |
+| **Undo**, Ctrl+Z | Takes back your last change in the panel, or else leaves the last step out of the flow; the app stays as it is. Its tooltip says which |
+| **Check**, F6 | [Checks something](#checking-what-the-page-shows) in the app: the next click there picks an element |
+| **Auto checks**, above the steps | Turns every [auto check](#what-each-action-expects) on or off, as `--no-auto-checks` |
+| ✕ on a check | Drops that auto check, or deletes a check you chose; ↺ brings a dropped one back |
+| The trash on a step, Delete | Deletes the action from the flow, with what led to it and its checks |
+| A step's name, a setting's name or value | [Changes it](#editing-the-steps) in place |
 | The flow's name, at the top | Renames the flow; a name it cannot have is refused, with why |
 | **Pause** / **Resume**, F8 | Pauses or resumes the recording, as `F8` in the recorded window does |
 | **Test**, Ctrl+Enter or F5 | [Tests the flow](#testing-the-flow) recorded so far, as it will be saved, in a window of its own |
@@ -242,6 +249,66 @@ and it needs no network or port. Closing it does not end the recording; closing 
 the system's light or dark theme, and the sun or moon at the top switches it. On a screen with no room beside the
 recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
 part: move it to another screen, or snap it aside. `--no-panel` records without it.
+
+### Checking what the page shows
+
+The recorder checks what each action did by itself ([auto checks](#what-each-action-expects)); to check something
+else, press `F6` in the app, or **Check** in the panel. The box over the element under the pointer turns green, and a
+bar at the top says `Check mode`. A click there does nothing in the app: it picks the element (`Alt+↑` picks the one
+around it), and a chooser opens beside it with the checks that fit, the likeliest one chosen:
+
+| Check | Offered for | Is written |
+|---|---|---|
+| Has text, Contains text | an element with text (chosen first) | `ToHaveTextAsync("…")`, `ToContainTextAsync("…")` |
+| Has value | a field (chosen first) | `ToHaveValueAsync("…")` |
+| Checked, Unchecked | a checkbox, radio or switch (its state now chosen first) | `ToBeCheckedAsync()`, `Not.ToBeCheckedAsync()` |
+| Count | an item of a list, a table row (chosen first for the item itself) | `ToHaveCountAsync(3)` on the locator of them all, by the id or test id of what holds them |
+| Row exists with | an element in a table row: you choose its cells | `Not.ToHaveCountAsync(0)` on the row by those cells |
+| Visible, Gone | any element | `ToBeVisibleAsync()`, `ToBeHiddenAsync()` |
+| Enabled, Disabled | a control | `ToBeEnabledAsync()`, `ToBeDisabledAsync()` |
+| URL is | the page (also **URL is…** in the bar, without an element) | `ToHaveURLAsync(new Regex(…))`, ids in the path matched as any |
+
+`↑`/`↓` choose, typing changes the text, value or count expected, Enter adds the check, `Esc` goes back to picking and
+`Esc` again leaves check mode. Nothing you do in check mode reaches the app, or is recorded as an action. A check goes
+after the last action recorded, in its step, marked `// check`, and is listed on that action's card:
+
+```csharp
+        await dialog.GetByRole(AriaRole.Button, new() { Name = "Create", Exact = true }).ClickAsync();
+        await Expect(dialog.Page.GetByRole(AriaRole.Row).Filter(new() { HasText = Unique(Configuration.Title) })
+            .Filter(new() { HasText = DueDate }).Filter(new() { HasText = Configuration.Priority }))
+            .Not.ToHaveCountAsync(0); // check
+```
+
+The element is found as a click on it would be. A value typed or chosen before reads its setting, so each case checks
+its own. A number that is no recorded value, such as a new record's id, changes from run to run: a text with one is
+checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043 created"), as a message is, and a
+row's cell that is only one is left out. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
+
+### Editing the steps
+
+Everything you change here is kept in the recording, so the flow is planned again with it as you go on, and a
+recording [continued](#continuing-a-flow) or kept with `--keep-recording` has it. **Undo** takes back each change in
+turn, newest first, and a step recorded after it before it.
+
+- **Delete an action**: the trash on its card, or Delete. What only led to it (opening a select) and the checks after
+  it go with it. A bar at the bottom offers **Undo**.
+- **Rename a step**: click its method name above its cards. Empty gives it back the recorder's name.
+- **Change a value or a setting's name**: click either in the inspector. The default and the YAML change; text on the
+  page that showed the value recorded reads the setting still. A value you changed shows the one recorded, with **Use
+  it** to go back. In a loop, only the values of its list change.
+- **Unique per run**: for a value typed that must not repeat, such as a new record's name, the flow appends its run's
+  stamp: `FillAsync(Unique(Configuration.Title))` types `Printer offline 1103-142501-k7q`, and every later locator,
+  text or check that shows the value reads the same stamped one. `Unique` is a method of `BasePlaywrightFlow`: the
+  stamp is the time the run first asked for it and three random characters, the same for the whole run.
+- **A date relative to today**: a date typed within a year of the day you record it, as `06/11/2026` or `2026-11-06`,
+  is offered as days from today ("3 days after the day it was recorded", **Type it as 3 days from today**); it never
+  changes by itself. The setting becomes the days (`DueInDays: 3`), and a property of the flow types the date in the
+  format it was typed in:
+
+  ```csharp
+      private string DueDate =>
+          DateTime.Today.AddDays(Configuration.DueInDays).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+  ```
 
 ### Testing the flow
 
@@ -390,8 +457,9 @@ FlowConfiguration:
   field's name ends with, as it holds the option's text (`maintenanceTypeId` gives `MaintenanceType`). Two settings of
   one name are told apart by what they are for (`TicketToAssign`, `TicketToClose`), else by a number. A checkbox is a
   `bool`, a number field an `int` or a `decimal`; the rest are text. A record of more than five settings is grouped by
-  the step that reads them. Text on the page that shows a recorded value, like a row's key or a message, reads the
-  setting too, so each case finds its own row.
+  the step that reads them. Text on the page that shows a recorded value, like a row's key, a message or a check,
+  reads the setting too, so each case finds its own row; so does a later locator with a value you typed in it, like
+  the link to the ticket you just named.
 - **Locals.** A locator a step uses twice is a local named after its field or its text (`maintenanceType`,
   `addLineButton`); a row two elements are in, after its key's column (`orderRow`).
 - **The first navigation is left out**: the probe opens `BaseUrl` itself, so the same flow runs in every environment.
@@ -470,8 +538,10 @@ outside the dialog, so they come from `dialog.Page`.
 
 ### What each action expects
 
-Each check the recorder adds is an `Expect` right after the action, marked `// auto check`, so you can spot and delete
-one you do not want; `--no-auto-checks` writes none.
+Each check the recorder adds is an `Expect` right after the action, marked `// auto check`, and listed on the action's
+card in the panel, where its ✕ drops it; a check dropped stays dropped, as the recording keeps it. `--no-auto-checks`,
+or the **Auto checks** switch above the steps, writes none. Checks you [choose](#checking-what-the-page-shows)
+yourself follow them.
 
 - A choice: the field shows it (`ToHaveTextAsync` for a select, `ToHaveValueAsync` for an autocomplete, which is typed
   into first).

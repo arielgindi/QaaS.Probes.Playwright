@@ -17,9 +17,10 @@ internal sealed record KeptRecording(Recording Recording, DateTime Changed, stri
 /// be continued. While recording, it is written after every change as <c>&lt;Flow&gt;-&lt;key&gt;.unsaved.json</c>, the
 /// key telling the folder the flow is saved in, so two projects' flows of one name do not meet; once the flow is saved,
 /// as <c>&lt;Flow&gt;-&lt;key&gt;.json</c>, of which the newest 30 are kept. Each file is the recording as
-/// <c>--keep-recording</c> writes it, with the flow it is of, written atomically and for its owner's eyes only, without
-/// the values the recorder hides: a password typed, which the console never shows, and a value typed into a field whose
-/// setting is named as a secret (password, secret, token, API key, pwd), which a test run hides.
+/// <c>--keep-recording</c> writes it, with the flow it is of and the person's checks and edits, written atomically and
+/// for its owner's eyes only, without the values the recorder hides: a password typed, which the console never shows,
+/// and a value typed into a field whose setting is named as a secret (password, secret, token, API key, pwd), or that
+/// the person named so, which a test run hides; a default the person gave such a setting neither.
 /// </summary>
 internal sealed class Autosave
 {
@@ -192,7 +193,12 @@ internal sealed class Autosave
     private static Recording Stored(Recording recording, RecordRequest request)
     {
         var copy = Recording.FromJson(recording.ToJson());
-        foreach (var action in copy.Actions.Where(HoldsSecret)) (action.Value, action.Raw) = (null, null);
+        foreach (var action in copy.Actions.Where(HoldsSecret))
+        {
+            (action.Value, action.Raw) = (null, null);
+            if (action.Edit?.Values?.GetValueOrDefault("value") is { } edit) edit.Value = null;
+        }
+
         return copy with
         {
             Autosave = new AutosavedFlow(request.ClassName, Path.GetFullPath(request.OutputDir), request.AutoChecks,
@@ -202,7 +208,8 @@ internal sealed class Autosave
 
     private static bool HoldsSecret(CapturedAction action) =>
         action.Kind == "fill"
-        && (action.Element?.Type == "password" || Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element)));
+        && (action.Element?.Type == "password" || Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element))
+            || action.Edit?.Values?.GetValueOrDefault("value")?.Name is { } named && Secrets.IsSecretKey(named));
 
     private static string PathOf(string folder, string flow, bool saved)
     {
