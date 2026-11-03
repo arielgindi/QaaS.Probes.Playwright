@@ -12,14 +12,46 @@ namespace QaaS.Playwright.Recorder;
 internal sealed record SavedFlow(string CodePath, string YamlPath, string? RecordingPath = null);
 
 /// <summary>
-/// Records a flow in Chrome and saves it as a C# flow class with the YAML of its values. <see cref="Autosave"/> keeps the
-/// recording as it changes, and once it is saved, to continue it: its steps replay in the recorded window, and what is
-/// recorded then comes after them.
+/// Records a flow in Chrome and saves it as a C# flow class with the YAML of its values. A recording kept by
+/// <see cref="Autosave"/> can be saved later, or continued: its steps replay in the recorded window, and what is recorded
+/// then comes after them.
 /// </summary>
 internal static class FlowRecorder
 {
     /// <summary>Returns the process exit code: 0 when a flow was saved.</summary>
     public static int Record(RecordRequest request) => RecordAsync(request).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Offers each recording that did not end in a save, newest first: saves it now, without a browser; continues it,
+    /// returning the request to; or discards it. Null when none is to continue.
+    /// </summary>
+    /// <exception cref="OperationCanceledException">The input ended.</exception>
+    public static RecordRequest? OfferNotSaved()
+    {
+        foreach (var (recording, changed, path) in Autosave.NotSaved())
+        {
+            var flow = recording.Autosave!;
+            var request = new RecordRequest(flow.Flow, recording.StartUrl, flow.Folder)
+            {
+                AutoChecks = flow.AutoChecks, Login = flow.Login, Replaces = flow.Replaces,
+            };
+            switch (ConsoleUi.Choose($"Found an unsaved recording of {flow.Flow} ({ActionsIn(recording, flow.Flow)}, " +
+                                     $"{ConsoleUi.Ago(changed)})", ["Save it now", "Continue recording", "Discard"]))
+            {
+                case 0:
+                    SaveAsync(request, recording, new Autosave()).GetAwaiter().GetResult();
+                    break;
+                case 1:
+                    return request with { Continue = true };
+                default:
+                    File.Delete(path);
+                    ConsoleUi.Info($"Discarded the recording of {flow.Flow}.");
+                    break;
+            }
+        }
+
+        return null;
+    }
 
     private static async Task<int> RecordAsync(RecordRequest request)
     {
