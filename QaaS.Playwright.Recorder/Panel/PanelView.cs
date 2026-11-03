@@ -134,7 +134,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, string status, string? error)
     {
         var plan = FlowPlanner.Plan(recording, request.ClassName);
-        var flow = FlowWriter.Write(plan, namespaceName);
+        var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
             [.. step.Actions.Select(action => Describe(action, flow))])).ToList();
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");

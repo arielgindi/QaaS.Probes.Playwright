@@ -1,15 +1,33 @@
+using System.Text.RegularExpressions;
 using QaaS.Playwright.Recorder.Capture;
 
 namespace QaaS.Playwright.Recorder.Generation;
 
 /// <summary>
 /// Names each step after what a person does in it: <c>OpenBookAppointmentAsync</c>, <c>FillBookAppointmentAsync</c>,
-/// <c>SaveChangesAsync</c>. A dialog is named by its title when that is English, else by the id of the button that
-/// opened it, else by the flow's own name.
+/// <c>SaveChangesAsync</c>, <c>AssignTicketAsync</c> for a row's "Assign" button, <c>AddLinesAsync</c> for a loop. A
+/// dialog is named by its title when that is English, else by the id of the button that opened it, else by the flow's
+/// own name. Each step also gets a sentence that says what it does, for its doc comment.
 /// </summary>
-internal static class StepNamer
+internal static partial class StepNamer
 {
     private static readonly string[] ElementSuffixes = ["Button", "Btn", "Link", "MenuItem", "Item", "Tab"];
+
+    // What a link's or a tab's text starts with when it says what it does, rather than where it goes.
+    private static readonly HashSet<string> Verbs =
+    [
+        "Open", "Go", "View", "Show", "Back", "Next", "Previous", "Add", "Create", "New", "Edit", "Delete", "Remove", "Save",
+        "Submit", "Cancel", "Close", "Search", "Send", "Assign", "Archive", "Log", "Sign", "Download", "Upload", "Export",
+        "Import", "Print", "Apply", "Confirm", "Approve", "Reject", "Select", "Choose", "Clear", "Reset", "Refresh", "Update",
+        "Start", "Stop", "Continue", "Finish", "Book", "Schedule", "Pay", "Buy", "Find", "Filter", "Sort", "Copy", "Move",
+        "Share", "Invite", "Accept", "Decline", "Enable", "Disable", "Run", "Load", "Return",
+    ];
+
+    // Words a label may end with once the record's key is taken out of it: "Actions for HL-775-ZE" gives "Actions".
+    private static readonly string[] Dangling = ["for", "of", "to", "in", "on", "at", "with", "by", "from", "#"];
+
+    // A summary fits on one line: "    /// <summary>" and "</summary>" around it.
+    private const int SummaryWidth = FlowWriter.MaxWidth - 27;
 
     public static void Name(FlowPlan plan)
     {
@@ -33,52 +51,96 @@ internal static class StepNamer
             return subject;
         }
 
-        for (var index = 0; index < plan.Steps.Count; index++)
+        foreach (var step in plan.Steps)
         {
-            var step = plan.Steps[index];
             var last = step.Actions[^1];
             var verb = Verb(last);
             var hasValues = step.Actions.Any(action => action.Value is not null || action.Kind == "upload");
             string name;
-            if (step.Opens is { } opened)
+            if (step.Loop is { } loop)
+                name = LoopName(step, loop);
+            else if (step.Opens is { } opened)
                 name = "Open" + DialogSubject(opened.Title, opened);
             else if (step.OpensPage is not null)
-                name = "Open" + (verb ?? "Page");
-            else if (step.Dialog is { } title)
-            {
-                var subject = DialogSubject(title, last.Source.Dialog);
-                name = hasValues ? "Fill" + subject
-                    : last.Has("dialogClosed") ? verb ?? "Submit" + subject
-                    : verb ?? "Use" + subject;
-            }
+                name = verb is null ? "OpenPage" : verb.StartsWith("Open", StringComparison.Ordinal) ? verb : "Open" + verb;
             else
             {
-                var subject = PageSubject(last.Source.Url) ?? plan.ClassName;
-                name = hasValues ? "Fill" + subject
-                    : last.Has("urlChanged") ? verb ?? "Leave" + subject
-                    : verb ?? "Use" + subject;
+                var subject = step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog)
+                    : PageSubject(last.Source.Url) ?? plan.ClassName;
+                name = verb is not null && (step.Ended || !hasValues) ? verb
+                    : last.Kind == "navigate" ? "Open" + (PageSubject(last.Source.Url) ?? "Page")
+                    : hasValues ? "Fill" + subject
+                    : last.Has("dialogClosed") ? "Submit" + subject
+                    : "Use" + subject;
             }
 
             var unique = name + "Async";
             for (var copy = 2; !used.Add(unique); copy++) unique = $"{name}{copy}Async";
             step.Name = unique;
+            step.Summary = Summary(step, plan);
         }
     }
 
-    // What the clicked element says, when it is English: "Save changes" gives SaveChanges.
+    /// <summary>
+    /// The text of the element clicked, as a person reads it, without <paramref name="without"/> (a record's key in
+    /// it): "Assign TCK-1041" gives "Assign". Null when nothing is left.
+    /// </summary>
+    public static string? Label(PlannedAction action, string? without = null)
+    {
+        var text = action.Source.Target?.Text;
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (without is { Length: > 0 }) text = text.Replace(without, " ", StringComparison.Ordinal);
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        while (words.Count > 0
+               && (Dangling.Contains(words[^1], StringComparer.OrdinalIgnoreCase) || !words[^1].Any(char.IsLetterOrDigit)))
+            words.RemoveAt(words.Count - 1);
+        var label = string.Join(' ', words).Trim(' ', ':', '-', ',', '(');
+        return label.Any(char.IsLetter) ? label : null;
+    }
+
+    // What the clicked element says, when it is English: "Save changes" gives SaveChanges, a link "Orders" OpenOrders,
+    // the "Assign" button of a ticket's row AssignTicket. Else its id or test id: "save-btn" gives Save.
     private static string? Verb(PlannedAction action)
     {
-        if (action.Kind is not ("click" or "dblclick" or "press")) return null;
-        var text = action.Kind == "press" ? null : action.Source.Target?.Text;
-        return text is { Length: <= 40 } && CSharp.IsAsciiText(text) && !text.Any(char.IsDigit) ? CSharp.Pascal(text) : null;
+        if (action.Kind is not ("click" or "dblclick")) return null;
+        var target = action.Source.Target;
+        var label = Label(action, without: action.RowKey?.Text);
+        var verb = label is { Length: <= 40 } && CSharp.IsAsciiText(label) && !label.Any(char.IsDigit) ? CSharp.Pascal(label)
+            : Stem(target);
+        if (verb is null) return null;
+        if (target?.Role is "link" or "tab" && !Verbs.Contains(FirstWord(verb))) verb = "Open" + verb;
+        if (action.RowKey is not null && CSharp.Pascal(target?.Row?.Header) is { } header
+                                      && !verb.Contains(header, StringComparison.Ordinal))
+            verb += header;
+        return verb;
     }
+
+    private static string LoopName(Step step, Loop loop)
+    {
+        var last = step.Actions[loop.Length - 1];
+        var label = last.Kind is "click" or "dblclick" && Label(last) is { } text && CSharp.IsAsciiText(text)
+                    && !text.Any(char.IsDigit)
+            ? CSharp.Pascal(text)
+            : null;
+        if (loop.List is not { } list)
+            return label is null ? "Repeat" : LoopFinder.Plural(label);
+        if (label is null) return (last.Kind == "press" ? "Enter" : "Fill") + list.Name;
+        var verb = FirstWord(label);
+        return label.Length > verb.Length ? verb + LoopFinder.Plural(label[verb.Length..]) : label + list.Name;
+    }
+
+    private static string FirstWord(string pascal) => FirstWordOf().Match(pascal).Value;
 
     // The button that opened the dialog, by its id or test id: "bookAppointmentButton" gives BookAppointment.
     private static string? OpenerStem(FlowPlan plan, string title)
     {
         var opener = plan.Steps.SelectMany(step => step.Actions).FirstOrDefault(action =>
             action.Effects.Any(effect => effect.Kind == "dialogOpened" && effect.Dialog?.Title == title));
-        var target = opener?.Source.Target;
+        return Stem(opener?.Source.Target);
+    }
+
+    private static string? Stem(CapturedTarget? target)
+    {
         var id = new[] { target?.Id, target?.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
         var stem = CSharp.Pascal(id);
         if (stem is null) return null;
@@ -96,4 +158,161 @@ internal static class StepNamer
             .LastOrDefault(part => !part.Any(char.IsDigit) && CSharp.IsAsciiText(part));
         return CSharp.Pascal(segment);
     }
+
+    // ── What a step does ─────────────────────────────────────────────────────────────────────────────────────────
+
+    // The first that fits on one line: in full, then with what the page showed said shorter, then without it.
+    private static string Summary(Step step, FlowPlan plan)
+    {
+        var values = plan.Settings.Concat(step.Actions.SelectMany(action => action.Values.Append(action.RowKey)))
+            .Select(setting => setting?.Text).OfType<string>().Where(text => text.Length >= 2)
+            .Distinct().OrderByDescending(text => text.Length).ToList();
+        var full = new Describer(step, values, plan.StartUrl, Short: false).Describe(outcome: true);
+        if (full.Length <= SummaryWidth) return full;
+        var shorter = new Describer(step, values, plan.StartUrl, Short: true);
+        return shorter.Describe(outcome: true) is { Length: <= SummaryWidth } said ? said : shorter.Describe(outcome: false);
+    }
+
+    private sealed record Describer(Step Step, IReadOnlyList<string> Values, string StartUrl, bool Short)
+    {
+        public string Describe(bool outcome)
+        {
+            var step = Step;
+            if (step.Opens is { } opened) return $"Opens the {Quote(opened.Title) ?? "new"} dialog.";
+            var last = step.Actions[^1];
+            if (last.Kind == "newTab")
+                return Address(last.Source.Url) is { } address ? $"Opens a new tab at {address}." : "Opens a new tab.";
+            if (step.Loop is { List: { } list } loop)
+                return Sentence($"for each of the {Human(list.Name)}, {Join(Phrases(step.Actions.Take(loop.Length)))}");
+            if (step.Loop is { Count: { } count } repeated)
+                return Sentence($"{Join(Phrases(step.Actions.Take(repeated.Length)))} {count.Name} times");
+            var said = Join(Phrases(step.Actions));
+            if (step.OpensPage is not null) return Sentence($"{said}, which opens a pop-up");
+            return Sentence(said + (outcome ? Outcome(last) : ""));
+        }
+
+        // What the actions do, values filled in one after the other said at once: "fills in the title and priority",
+        // or "checks "Urgent"" when they are checkboxes only.
+        private IEnumerable<string> Phrases(IEnumerable<PlannedAction> actions)
+        {
+            var filled = new List<PlannedAction>();
+            foreach (var action in actions)
+            {
+                if (action.Value is not null || action.Kind == "upload")
+                {
+                    filled.Add(action);
+                    continue;
+                }
+
+                if (filled.Count > 0) yield return Fills(filled);
+                filled.Clear();
+                yield return action.Kind switch
+                {
+                    "click" or "dblclick" => Clicks(action),
+                    "press" => $"presses {action.Source.Key ?? "Enter"}",
+                    "navigate" => $"goes to {Address(action.Source.Url) ?? "an address"}",
+                    "drag" => "drags and drops",
+                    _ => action.Kind,
+                };
+            }
+
+            if (filled.Count > 0) yield return Fills(filled);
+        }
+
+        private string Fills(List<PlannedAction> filled)
+        {
+            if (filled.Select(action => action.Kind).Distinct().ToList() is [var kind and ("check" or "uncheck")]
+                && filled.All(action => action.Source.Widget != "radio"))
+            {
+                var boxes = filled.Select(action => Quote(action.Source.Target?.Text) ?? Human(action.Value!.Name)).Distinct();
+                return $"{kind}s {Join([.. boxes], " and ")}";
+            }
+
+            var fields = filled.Select(action => action.Kind == "upload" ? "file" : Human(action.Value!.Name)).Distinct()
+                .ToList();
+            return $"fills in the {Join(fields, " and ")}";
+        }
+
+        private string Clicks(PlannedAction action)
+        {
+            var target = action.Source.Target;
+            var label = Quote(target?.Text ?? target?.Label);
+            if (label is null) return $"clicks the {target?.Role ?? "element"}";
+            var inRow = !Short && action.RowKey is { Text: { } key }
+                               && target?.Text?.Contains(key, StringComparison.Ordinal) == false
+                               && CSharp.IsAsciiText(target.Row?.Header)
+                ? $" in the {target.Row!.Header!.ToLowerInvariant()}'s row"
+                : "";
+            return $"clicks {label}{inRow}";
+        }
+
+        private string Outcome(PlannedAction action)
+        {
+            var results = new List<string>();
+            var closed = action.Effects.Where(effect => effect.Kind == "dialogClosed").Select(effect => effect.Dialog?.Title);
+            foreach (var title in closed.Distinct())
+                results.Add(title == Step.Dialog ? "closes the dialog" : $"closes {Quote(title) ?? "a dialog"}");
+            if (action.Effects.LastOrDefault(effect => effect.Kind == "urlChanged")?.Url is { } url && Route(url) is { } route)
+                results.Add($"goes to {route}");
+            if (action.Effects.FirstOrDefault(effect => effect is { Kind: "alert", Text.Length: > 0 }) is { } alert)
+                results.Add(Short || Quote(alert.Text) is not { Length: <= 40 } said ? "shows an alert" : $"shows {said}");
+            if (results.Count > 0) return $", which {Join(results, " and ")}";
+            return action.Has("busy") ? " and waits for it to load" : "";
+        }
+
+        // An address the person went to: its path on the site recorded, else all of it.
+        private string? Address(string? url) =>
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) && Uri.TryCreate(StartUrl, UriKind.Absolute, out var start)
+                                                              && uri.Authority != start.Authority
+                ? url
+                : Route(url);
+
+        // The text in quotes, each recorded value and number in it as "...", as they change from case to case.
+        private string? Quote(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            foreach (var value in Values) text = text.Replace(value, "\u0001", StringComparison.Ordinal);
+            text = NumberWord().Replace(text, "\u0001");
+            text = Placeholders().Replace(text, "...").Trim();
+            return text.Trim('.', ' ').Length == 0 ? null : $"\"{text}\"";
+        }
+    }
+
+    private static string Sentence(string text) => char.ToUpperInvariant(text[0]) + text[1..] + ".";
+
+    private static string Join(IEnumerable<string> phrases)
+    {
+        var list = phrases.ToList();
+        return list.Count <= 1 ? string.Concat(list) : string.Join(", ", list[..^1]) + ", then " + list[^1];
+    }
+
+    private static string Join(List<string> items, string last) =>
+        items.Count <= 1 ? string.Concat(items) : string.Join(", ", items[..^1]) + $" {last.Trim()} " + items[^1];
+
+    /// <summary>A setting's name as words: EstimateHours gives "estimate hours".</summary>
+    public static string Human(string name) =>
+        string.Join(' ', WordOf().Matches(name).Select(word => word.Value.ToLowerInvariant()));
+
+    // The address as the flow checks it: its path, with a record's id in it as [id], as any id matches there.
+    private static string? Route(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
+        var route = uri.Fragment.StartsWith("#/", StringComparison.Ordinal) ? uri.AbsolutePath + uri.Fragment : uri.AbsolutePath;
+        return string.Join('/', route.Split('/').Select(segment =>
+            segment.Any(char.IsDigit) || (segment.Length > 12 && UnstableId.IsGuidLike(segment))
+                ? "[id]"
+                : Uri.UnescapeDataString(segment)));
+    }
+
+    [GeneratedRegex("^[A-Z][a-z0-9]*")]
+    private static partial Regex FirstWordOf();
+
+    [GeneratedRegex("[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+")]
+    private static partial Regex WordOf();
+
+    [GeneratedRegex(@"[^\s\u0001]*\d[^\s\u0001]*")]
+    private static partial Regex NumberWord();
+
+    [GeneratedRegex(@"\u0001(?:[\s\u0001]*\u0001)?")]
+    private static partial Regex Placeholders();
 }

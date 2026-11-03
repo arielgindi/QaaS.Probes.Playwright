@@ -118,6 +118,40 @@ public class RecordingSessionTests
         });
     }
 
+    [Test]
+    public async Task ABusyIndicatorThatCameAndWent_IsWaitedFor_AndOneThatStays_IsNot()
+    {
+        // A spinner as MUI's CircularProgress, while "Refresh" loads; "Upload" leaves its progress bar on the page.
+        await using var session = await StartAsync("""
+            <button id="refresh" onclick="busy(400)">Refresh</button> <button id="upload" onclick="busy(0)">Upload</button>
+            <script>
+              function busy(ms) {
+                const spinner = document.body.appendChild(document.createElement('span'));
+                spinner.setAttribute('role', 'progressbar');
+                spinner.style.cssText = 'display: inline-block; width: 40px; height: 40px';
+                if (ms) setTimeout(() => spinner.remove(), ms);
+              }
+            </script>
+            """);
+        var page = session.Page;
+
+        await page.Locator("#refresh").ClickAsync();
+        await Task.Delay(1000);
+        await page.Locator("#upload").ClickAsync();
+        await Task.Delay(1000);
+        var recording = await session.StopAsync();
+
+        var code = FlowCodeGenerator.Generate(recording, "Busy", "Flows").Code;
+        Assert.Multiple(() =>
+        {
+            Assert.That(recording.Actions.Select(action => action.Effects.Any(effect => effect.Kind == "busy")),
+                Is.EqualTo(new[] { true, false }));
+            Assert.That(code.Split('\n').Count(line => line.Contains("ToHaveCountAsync(0", StringComparison.Ordinal)), Is.EqualTo(1));
+            Assert.That(code, Does.Contain(
+                "await Expect(page.GetByRole(AriaRole.Progressbar)).ToHaveCountAsync(0, new() { Timeout = 30_000 });"));
+        });
+    }
+
     private static async Task UntilAsync(Func<bool> condition)
     {
         for (var wait = 0; wait < 50 && !condition(); wait++) await Task.Delay(100);

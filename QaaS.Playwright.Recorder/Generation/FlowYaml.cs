@@ -15,17 +15,39 @@ internal static class FlowYaml
         if (settings.Count == 0) return yaml.Append(" {}\n").ToString();
         yaml.Append('\n');
         foreach (var setting in settings)
-            yaml.Append($"    {setting.Name}: {Scalar(setting)}\n");
+        {
+            if (setting.Items is not { } items)
+            {
+                yaml.Append($"    {setting.Name}: {Scalar(setting)}\n");
+                continue;
+            }
+
+            // A loop's list, an item per line; a record's fields under its dash.
+            yaml.Append($"    {setting.Name}:{(items.Count == 0 ? " []" : "")}\n");
+            foreach (var item in items)
+            {
+                if (setting.ItemType is null)
+                {
+                    yaml.Append($"      - {Scalar(item[0])}\n");
+                    continue;
+                }
+
+                for (var index = 0; index < item.Count; index++)
+                    yaml.Append($"      {(index == 0 ? "- " : "  ")}{setting.Fields![index].Name}: {Scalar(item[index])}\n");
+            }
+        }
+
         return yaml.ToString();
     }
 
     /// <summary>
-    /// A value as YAML: a flag as <c>true</c> or <c>false</c>, text in single quotes, so that no text reads as a number,
-    /// a date or a flag; text with a line break or another control character in double quotes, escaped.
+    /// A value as YAML: a flag as <c>true</c> or <c>false</c>, a number as it is, text in single quotes, so that no text
+    /// reads as a number, a date or a flag; text with a line break or another control character in double quotes, escaped.
     /// </summary>
     public static string Scalar(Setting setting)
     {
         if (setting.Flag is { } flag) return flag ? "true" : "false";
+        if (setting.IsNumber && setting.Text is { } number) return number;
         var text = setting.Text ?? "";
         if (!text.Any(char.IsControl)) return $"'{text.Replace("'", "''", StringComparison.Ordinal)}'";
         var escaped = new StringBuilder("\"");

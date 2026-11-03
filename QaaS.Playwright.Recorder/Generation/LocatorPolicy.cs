@@ -99,10 +99,16 @@ internal static partial class LocatorPolicy
 
     /// <summary>
     /// The locator as C#, from <paramref name="root"/> (<c>page</c>, <c>dialog</c>, ...). A part's name, text or CSS can
-    /// be replaced by an expression, e.g. <c>Configuration.VisitType</c>.
+    /// be replaced by an expression, e.g. <c>Configuration.VisitType</c>. <paramref name="breakBefore"/> goes before each
+    /// call, where a long line may break.
     /// </summary>
-    public static string Render(string root, IEnumerable<LocatorPart> parts, Func<LocatorPart, string?>? nameOf = null) =>
-        root + string.Concat(parts.Select(part => "." + RenderPart(part, nameOf?.Invoke(part))));
+    public static string Render(string root, IEnumerable<LocatorPart> parts, Func<LocatorPart, string?>? nameOf = null,
+        string breakBefore = "") =>
+        root + string.Concat(parts.Select(part => breakBefore + "." + RenderPart(part, nameOf?.Invoke(part))));
+
+    /// <summary>An attribute's value as the capture script quotes it in CSS: <c>[value='x']</c>.</summary>
+    public static string CssValue(string value) =>
+        $"[value='{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal)}']";
 
     public static string RenderGenerated(string root, CapturedCandidate generated) => $"{root}.{generated.Csharp}";
 
