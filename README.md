@@ -36,7 +36,7 @@ one failed, with a screenshot.
 2. **Reference the library** from the test project:
 
    ```xml
-   <PackageReference Include="QaaS.Playwright" Version="1.2.0" />
+   <PackageReference Include="QaaS.Playwright" Version="1.2.1" />
    ```
 
    Also add `<WarningsAsErrors>CS4014</WarningsAsErrors>`: a flow that forgets to `await` a Playwright call then
@@ -112,3 +112,14 @@ dotnet test
 
 The tests run the real probe and assertion against a headless Chrome they start themselves and a small web app
 served in-process, and check the code the recorder writes. The Chrome tests are skipped when Chrome is not installed.
+
+To build against your own package feed, add a `NuGet.config` for it and, for versions the feed has instead of the ones
+pinned in `Directory.Packages.props`, a `Directory.Packages.Local.props` beside it:
+
+```xml
+<Project>
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.Playwright" Version="1.50.0" />
+  </ItemGroup>
+</Project>
+```

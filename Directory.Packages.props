@@ -23,4 +23,8 @@
     <PackageVersion Include="coverlet.collector" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- Local overrides, not part of this repository: a Directory.Packages.Local.props beside this file can change
+       versions for your own package feed, e.g. <PackageVersion Update="Microsoft.Playwright" Version="1.50.0" />. -->
+  <Import Project="Directory.Packages.Local.props" Condition="Exists('Directory.Packages.Local.props')" />
+
 </Project>

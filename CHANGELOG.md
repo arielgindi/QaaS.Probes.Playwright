@@ -2,6 +2,12 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.2.1
+
+- A `Directory.Packages.Local.props` beside `Directory.Packages.props`, if there is one, changes package versions, e.g.
+  to those of your own feed, without editing the repository's files.
+- Builds with several package sources configured (NU1507 no longer fails the build).
+
 ## 1.2.0
 
 - While recording, a box follows the pointer over the element a click records, labelled with the locator the flow
