@@ -36,12 +36,15 @@ internal enum RecordingState
 
     /// <summary>A login flow is running: nothing it does is recorded.</summary>
     LoggingIn,
+
+    /// <summary>The flow is being tested in a window of its own: nothing is recorded until the test ends.</summary>
+    Testing,
 }
 
 /// <summary>
 /// A recording in progress: Chrome with the capture script in every page, and the log of what the person does. It ends
 /// when the person closes the browser's last window, or when <see cref="StopAsync"/> is called (Enter in the console).
-/// The person can pause it (F8, or the panel), and freeze the page's elements for the panel (F4).
+/// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), and test the flow so far.
 /// </summary>
 internal sealed class RecordingSession : IAsyncDisposable
 {
@@ -64,6 +67,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     private readonly Lock _gate = new();
     private Recording? _result;
     private RecordingState _state;
+    private RecordingState _beforeTest;
 
     private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
@@ -81,6 +85,9 @@ internal sealed class RecordingSession : IAsyncDisposable
     public IPage Page { get; private set; } = null!;
 
     public CaptureLog Log { get; }
+
+    /// <summary>How the browser was opened: the URL, and the login it started from.</summary>
+    public RecordingOptions Options => _options;
 
     /// <summary>Completes when the person closed the browser.</summary>
     public Task Closed => _closed.Task;
@@ -177,12 +184,15 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>The recording so far, as <see cref="StopAsync"/> would return it.</summary>
     public Recording Build() => Log.Build(_options.Url) with { After = _options.LoginFlow };
 
-    /// <summary>Pauses a recording that records, and resumes one that is paused; returns the state it went to.</summary>
+    /// <summary>
+    /// Pauses a recording that records, and resumes one that is paused; returns the state it went to. While the login
+    /// flow runs or the flow is tested, it stays as it is.
+    /// </summary>
     public RecordingState TogglePause() => State switch
     {
         RecordingState.Recording => Pause(),
         RecordingState.Paused => Resume(),
-        var loggingIn => loggingIn,
+        var other => other,
     };
 
     /// <summary>
@@ -219,6 +229,41 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
 
         return Announce(RecordingState.Recording);
+    }
+
+    /// <summary>
+    /// Stops recording while the flow is tested in a window of its own, as a pause does, so nothing the person does in
+    /// the app meanwhile is recorded either. Returns false while the login flow runs, or a test already does.
+    /// </summary>
+    public bool BeginTest()
+    {
+        lock (_gate)
+        {
+            if (_state is RecordingState.LoggingIn or RecordingState.Testing) return false;
+            _beforeTest = _state;
+            Log.Pause(Now());
+            _state = RecordingState.Testing;
+        }
+
+        Announce(RecordingState.Testing);
+        return true;
+    }
+
+    /// <summary>
+    /// Goes back to what the recording did before the test: records again, as after a pause, or stays paused.
+    /// </summary>
+    public RecordingState EndTest()
+    {
+        RecordingState state;
+        lock (_gate)
+        {
+            if (_state != RecordingState.Testing) return _state;
+            if (_beforeTest == RecordingState.Recording)
+                Log.Resume([.. _aliases.Where(pair => !pair.Key.IsClosed).Select(pair => (pair.Value, pair.Key.Url))], Now());
+            state = _state = _beforeTest;
+        }
+
+        return Announce(state);
     }
 
     /// <summary>The open page of the recording named <paramref name="alias"/> (<c>page</c>, <c>page1</c>, ...), or null.</summary>
@@ -384,6 +429,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     {
         RecordingState.Paused => "paused",
         RecordingState.LoggingIn => "login",
+        RecordingState.Testing => "testing",
         _ => "recording",
     };
 
@@ -465,7 +511,8 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
     }
 
-    private static ViewportSize Viewport(string widthComma) =>
+    /// <summary>The viewport of <see cref="BrowserDefaults.RecorderViewport"/>'s <c>W,H</c>.</summary>
+    public static ViewportSize Viewport(string widthComma) =>
         widthComma.Split(',') is [var width, var height]
             ? new ViewportSize
             {
