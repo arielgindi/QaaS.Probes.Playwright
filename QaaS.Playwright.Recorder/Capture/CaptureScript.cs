@@ -501,22 +501,31 @@ internal static class CaptureScript
             return variants;
           }
 
-          // A row of a table and the text that tells it apart from the others: the first cell, preferring one with a digit,
-          // whose text no other row has.
+          // A row of a table and the text that tells it apart from the others: its key, the first cell whose text no other
+          // row has, by what a key is: a reference of letters and digits (TCK-1040, 50SKLO, TradeCode 99), then a number in
+          // a column of ids, then a name; never what changes from load to load or the flow may edit, a price, a date or a
+          // time, a count or a percentage, unless nothing else tells the row apart.
+          const VOLATILE = /^[-+]?\p{Sc}|\p{Sc}\s*[-+]?\d|^[A-Z]{1,3}\$|^[-+]?\d+([.,]\d+)*\s*%?$|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\d{1,2}:\d{2}|^(true|false|yes|no)$/iu;
+          const keyRank = (text, header) => VOLATILE.test(text) ? (/^\d+$/.test(text) && /\b(id|no|nr|number|code|ref|#)\b|^#$/i.test(header) ? 1 : 3)
+            : /\p{L}/u.test(text) && /\d/.test(text) && text.split(/\s+/).length <= 3 ? 0
+            : /\p{L}/u.test(text) ? 2 : 3;
           function rowOf(element) {
             const row = element.closest('tr, [role=row]');
             if (!row || row.querySelector('th[scope=col], [role=columnheader]')) return null;
             const cells = [...row.querySelectorAll(':scope > td, :scope > th, :scope > [role=cell], :scope > [role=gridcell]')];
             const texts = cells.map((cell) => clean(cell.innerText || cell.textContent));
-            const table = row.closest('table, [role=grid], [role=table], [role=treegrid]');
-            const headers = table ? [...table.querySelectorAll('th[scope=col], [role=columnheader], thead th')] : [];
-            const order = texts.map((text, index) => ({ text, index }))
+            // A grid's headers may be in a table of their own, above its rows' (Kendo's).
+            const tables = [row.closest('table, [role=grid], [role=table], [role=treegrid]'), row.closest('[role=grid], [role=table], [role=treegrid]')];
+            const headers = tables.filter(Boolean).map((table) => [...table.querySelectorAll('th[scope=col], [role=columnheader], thead th')])
+              .find((found) => found.length) ?? [];
+            const header = (index) => headers[index] ? shownText(headers[index]) : '';
+            const order = texts.map((text, index) => ({ text, index, rank: keyRank(text, header(index)) }))
               .filter(({ text }) => text.length >= 2 && text.length <= 40)
-              .sort((a, b) => Number(/\d/.test(b.text)) - Number(/\d/.test(a.text)) || a.index - b.index);
+              .sort((a, b) => a.rank - b.rank || a.index - b.index);
             for (const { text, index } of order) {
               const found = matches([{ m: 'role', role: 'row' }, { m: 'filter', hasText: text }]);
               if (found?.length === 1 && found[0] === row)
-                return { key: text, header: headers[index] ? shownText(headers[index]) : '', element: row };
+                return { key: text, header: header(index), element: row };
             }
             return { key: null, header: null, element: row };
           }

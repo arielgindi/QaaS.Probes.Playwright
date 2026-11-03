@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
@@ -330,6 +331,7 @@ public class RealSiteRecordingTests
         var customers = Read("ReactAdminCustomers");
         foreach (var typed in customers.Actions.Where(action => action.Target?.Type == "password")) (typed.Value, typed.Raw) = ("demo", "demo");
         var customersFlow = FlowCodeGenerator.Generate(customers, "CustomersFilterEdit", "Flows");
+        var widgets = FlowCodeGenerator.Generate(Read("KendoWidgets"), "KendoWidgets", "Flows");
 
         Assert.Multiple(() =>
         {
@@ -340,6 +342,10 @@ public class RealSiteRecordingTests
                 "the YAML reads it from the environment");
             Assert.That((customers.LogsIn, Read("ReactAdminOrders").LogsIn), Is.EqualTo((true, false)),
                 "a recording that logs in first is replayed, tested and continued signed out, as it was recorded");
+            Assert.That(Regex.Count(widgets.Code, @"page\.Dialog \+= AcceptBrowserDialog;"), Is.EqualTo(1),
+                "two deletes each confirmed in the browser: one handler accepts both, as a second would accept the same dialog again");
+            Assert.That(widgets.Code, Does.Contain("page.Dialog -= AcceptBrowserDialog;").And.Not.Contain("browserDialog.AcceptAsync()"),
+                "and the flow has it once however often it runs on the page");
         });
     }
 

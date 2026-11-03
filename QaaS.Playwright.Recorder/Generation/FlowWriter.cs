@@ -106,6 +106,10 @@ internal sealed partial class FlowWriter
     private readonly Dictionary<string, List<Expectation>> _expects = [];
     private readonly HashSet<Setting> _settings;
 
+    // The method that accepts a browser dialog, and the pages that have it as their handler so far.
+    private const string AcceptBrowserDialog = "AcceptBrowserDialog";
+    private HashSet<string> _acceptsDialogs = [];
+
     // The settings read so far, in order; those typed, which a later locator may show. Each step is written twice from
     // the same ones.
     private List<Setting> _seen = [];
@@ -205,10 +209,10 @@ internal sealed partial class FlowWriter
             ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
             : new Scope(step.Page, step.Page, null, step.Page);
 
-        var (seen, typed) = (_seen.ToList(), _typed.ToList());
+        var (seen, typed, accepts) = (_seen.ToList(), _typed.ToList(), _acceptsDialogs.ToHashSet());
         _step = new StepState(scope, counted: null);
         WriteBody(step, last: false);
-        (_seen, _typed) = (seen, typed);
+        (_seen, _typed, _acceptsDialogs) = (seen, typed, accepts);
         _step = new StepState(scope, _step);
         WriteBody(step, last: true);
 
@@ -370,9 +374,16 @@ internal sealed partial class FlowWriter
     {
         var source = action.Source;
         var scope = _step.Scope;
-        if (action.Has("jsDialog"))
-            _step.Add($"{scope.Page}.Dialog += (_, browserDialog) => browserDialog.AcceptAsync();",
-                "a browser dialog (alert or confirm) showed here: the flow accepts it; dismiss it where you did");
+        // A browser dialog is accepted by one handler a page has once, however often it shows: a second one would accept
+        // the same dialog again, which throws. Before a loop whose rounds show one.
+        if (action.Has("jsDialog") && _acceptsDialogs.Add(source.Page))
+        {
+            var lines = _step.Depth > 0 ? _step.BeforeLoop : _step.Lines;
+            lines.Add(new Line($"{scope.Page}.Dialog -= {AcceptBrowserDialog};") { Actions = _step.Actions.Take(1).ToList() });
+            lines.Add(new Line($"{scope.Page}.Dialog += {AcceptBrowserDialog};",
+                "a browser dialog (alert or confirm) showed here: the flow accepts each one from here on; dismiss it where you did")
+                { Actions = _step.Actions.Take(1).ToList() });
+        }
 
         var problem = source.HoverMenu == true
             ? "the menu it is in opened on hover: hover what opens it first (HoverAsync)"
@@ -990,7 +1001,7 @@ internal sealed partial class FlowWriter
         _step.UsesFlow = true;
         if (_dates.TryGetValue(setting, out var member)) return member;
         var taken = new HashSet<string>(_dates.Values.Concat(["Configuration", "BaseUrl", "Context", "Item", "ItemIndex",
-            "Unique", "RunAsync", "FileToUpload", "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
+            "Unique", "RunAsync", "FileToUpload", AcceptBrowserDialog, "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
         return _dates[setting] = Unique(RelativeDate.Member(setting.Name), taken);
     }
 
@@ -1193,6 +1204,13 @@ internal sealed partial class FlowWriter
         }
 
         foreach (var line in dates) Append(line);
+        if (_acceptsDialogs.Count > 0)
+        {
+            Append("");
+            Append("    // A browser dialog (an alert, a confirm) the flow accepts, as you did.");
+            Append($"    private static void {AcceptBrowserDialog}(object? sender, IDialog dialog) => _ = dialog.AcceptAsync();");
+        }
+
         if (usesUpload)
         {
             Append("");

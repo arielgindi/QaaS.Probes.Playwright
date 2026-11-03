@@ -1,0 +1,6124 @@
+{
+  "startUrl": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+  "actions": [
+    {
+      "id": "hgclr4-1",
+      "t": 1793740277748,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasText = \"Components / DropDownList /\" }).Nth(1)",
+            "selector": "div >> internal:has-text=\"Components / DropDownList /\"i >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "hgclr4-1",
+          "sinceAction": 11,
+          "t": 1793740277759
+        }
+      ]
+    },
+    {
+      "id": "hgclr4-2",
+      "t": 1793740278145,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Components / DropDownList / Overview Kendo UI for jQuery DropDownList Overview\")",
+            "selector": "internal:text=\"Components / DropDownList / Overview Kendo UI for jQuery DropDownList Overview\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "hgclr4-2",
+          "sinceAction": 7,
+          "t": 1793740278152
+        }
+      ]
+    },
+    {
+      "id": "hgclr4-3",
+      "t": 1793740285343,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "",
+        "groupLabel": "Find restaurants in your area",
+        "placeholder": "Please select city...",
+        "section": "Time to order food",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Find restaurants in your area"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Find restaurants in your area"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "span",
+          "id": "11884d56-9050-4717-abba-93d133837380",
+          "text": "Please select city...",
+          "groupLabel": "Find restaurants in your area",
+          "section": "Time to order food",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='11884d56-9050-4717-abba-93d133837380']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "11884d56-9050-4717-abba-93d133837380"
+            },
+            {
+              "kind": "group",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "div.kd-header-core"
+                },
+                {
+                  "m": "has",
+                  "text": "Find restaurants in your area"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "Find restaurants in your area"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='demo-runner']"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "demo-runner"
+            },
+            {
+              "kind": "text",
+              "parts": [
+                {
+                  "m": "text",
+                  "text": "Please select city..."
+                }
+              ],
+              "count": 2,
+              "text": "Please select city..."
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"[id=\\\"\\\\31 1884d56-9050-4717-abba-93d133837380\\\"]\")",
+              "selector": "[id=\"\\31 1884d56-9050-4717-abba-93d133837380\"]"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "hgclr4-3",
+          "sinceAction": 19,
+          "t": 1793740285362
+        }
+      ]
+    },
+    {
+      "id": "hgclr4-4",
+      "t": 1793740291700,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "searchbox",
+        "type": "text",
+        "text": "Filter",
+        "placeholder": "Filter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "searchbox",
+                "name": "Filter",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Filter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Searchbox, new() { Name = \"Filter\" })",
+            "selector": "internal:role=searchbox[name=\"Filter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "hgclr4-5",
+      "t": 1793740293102,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "",
+        "groupLabel": "Find restaurants in your area",
+        "placeholder": "Please select city...",
+        "section": "Time to order food",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Find restaurants in your area"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Find restaurants in your area"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "span",
+          "id": "11884d56-9050-4717-abba-93d133837380",
+          "text": "Please select city...",
+          "groupLabel": "Find restaurants in your area",
+          "section": "Time to order food",
+          "interactive": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='11884d56-9050-4717-abba-93d133837380']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "11884d56-9050-4717-abba-93d133837380"
+            },
+            {
+              "kind": "group",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "div.kd-header-core"
+                },
+                {
+                  "m": "has",
+                  "text": "Find restaurants in your area"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "Find restaurants in your area"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='demo-runner']"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "demo-runner"
+            },
+            {
+              "kind": "text",
+              "parts": [
+                {
+                  "m": "text",
+                  "text": "Please select city..."
+                }
+              ],
+              "count": 2,
+              "text": "Please select city..."
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "Locator(\"[id=\\\"\\\\31 1884d56-9050-4717-abba-93d133837380\\\"]\")",
+              "selector": "[id=\"\\31 1884d56-9050-4717-abba-93d133837380\"]"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "hgclr4-5",
+          "sinceAction": 15,
+          "t": 1793740293117
+        }
+      ]
+    },
+    {
+      "id": "hgclr4-6",
+      "t": 1793740294103,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Ber",
+      "raw": "Ber",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "searchbox",
+        "type": "text",
+        "text": "Filter",
+        "placeholder": "Filter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "searchbox",
+                "name": "Filter",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Filter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Searchbox, new() { Name = \"Filter\" })",
+            "selector": "internal:role=searchbox[name=\"Filter\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "hgclr4-7",
+      "t": 1793740309728,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "Berlin",
+      "url": "https://demos.telerik.com/kendo-ui/dropdownlist/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "",
+        "groupLabel": "Find restaurants in your area",
+        "placeholder": "Please select city...",
+        "section": "Time to order food",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Find restaurants in your area"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Find restaurants in your area"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "field": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "",
+        "groupLabel": "Find restaurants in your area",
+        "placeholder": "Please select city...",
+        "section": "Time to order food",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Find restaurants in your area"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Find restaurants in your area"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "id": "fb29aa82-646d-4789-9fc1-2cb6e2eab9e7",
+        "text": "Berlin",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='fb29aa82-646d-4789-9fc1-2cb6e2eab9e7']"
+              }
+            ],
+            "count": 2,
+            "value": "fb29aa82-646d-4789-9fc1-2cb6e2eab9e7"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Berlin",
+                "exact": true
+              }
+            ],
+            "text": "Berlin"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Berlin"
+              }
+            ],
+            "text": "Berlin"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='kd-place-chooser_listbox']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Berlin"
+              }
+            ],
+            "value": "kd-place-chooser_listbox"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='kd-place-chooser-list']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Berlin"
+              }
+            ],
+            "value": "kd-place-chooser-list"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"li\").Filter(new() { HasText = \"Berlin\" })",
+            "selector": "li >> internal:has-text=\"Berlin\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "hgclr4-7",
+          "sinceAction": 15,
+          "t": 1793740309743
+        },
+        {
+          "kind": "settled",
+          "actionId": "hgclr4-7",
+          "sinceAction": 152,
+          "t": 1793740309880,
+          "value": "Berlin",
+          "raw": "Berlin",
+          "multi": false
+        }
+      ]
+    },
+    {
+      "id": "ljhsme-1",
+      "t": 1793740327174,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Bask",
+      "raw": "Bask",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "Please select your favourite sport...",
+        "placeholder": "Please select your favourite sport...",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select your favourite sport..."
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Please select your favourite\" })",
+            "selector": "internal:role=combobox[name=\"Please select your favourite\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ljhsme-2",
+      "t": 1793740343127,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"Components / MultiSelect / Overview Kendo UI for jQuery MultiSelect Overview .a\")",
+            "selector": "internal:text=\"Components / MultiSelect / Overview Kendo UI for jQuery MultiSelect Overview .a\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ljhsme-2",
+          "sinceAction": 2,
+          "t": 1793740343129
+        }
+      ]
+    },
+    {
+      "id": "ljhsme-3",
+      "t": 1793740353034,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Basketball",
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "Please select your favourite sport...",
+        "placeholder": "Please select your favourite sport...",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select your favourite sport..."
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Please select your favourite\" })",
+            "selector": "internal:role=combobox[name=\"Please select your favourite\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "Please select your favourite sport...",
+        "placeholder": "Please select your favourite sport...",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select your favourite sport..."
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Please select your favourite\" })",
+            "selector": "internal:role=combobox[name=\"Please select your favourite\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Basketball",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Basketball"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='multiselect_listbox']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "multiselect_listbox"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='multiselect-list']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "multiselect-list"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Basketball\" })",
+            "selector": "internal:role=option[name=\"Basketball\"i]"
+          }
+        ]
+      },
+      "opener": "ljhsme-2",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ljhsme-3",
+          "sinceAction": 12,
+          "t": 1793740353046
+        },
+        {
+          "kind": "settled",
+          "actionId": "ljhsme-3",
+          "sinceAction": 151,
+          "t": 1793740353185,
+          "value": "",
+          "raw": "",
+          "multi": true
+        }
+      ]
+    },
+    {
+      "id": "ljhsme-4",
+      "t": 1793740362673,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Cycling",
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "Basketball",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "Basketball",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Cycling",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Cycling",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Cycling"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='multiselect_listbox']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Cycling",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "multiselect_listbox"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='multiselect-list']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Cycling",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "multiselect-list"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Cycling\" })",
+            "selector": "internal:role=option[name=\"Cycling\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ljhsme-4",
+          "sinceAction": 9,
+          "t": 1793740362682
+        },
+        {
+          "kind": "settled",
+          "actionId": "ljhsme-4",
+          "sinceAction": 101,
+          "t": 1793740362774,
+          "value": "",
+          "raw": "",
+          "multi": true
+        }
+      ]
+    },
+    {
+      "id": "ljhsme-5",
+      "t": 1793740369017,
+      "kind": "choose",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Basketball",
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "BasketballCycling",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "field": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "BasketballCycling",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "option": {
+        "tag": "div",
+        "role": "option",
+        "text": "Basketball",
+        "label": "multiselect_taglist listbox",
+        "section": "Hobbies",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Basketball"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball"
+              }
+            ],
+            "count": 2,
+            "text": "Basketball"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "listbox",
+                "name": "multiselect_taglist listbox",
+                "exact": true
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Basketball"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='multiselect_taglist']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "multiselect_taglist"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Basketball",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"multiselect_taglist listbox\").GetByRole(AriaRole.Option, new() { Name = \"Basketball\" })",
+            "selector": "internal:label=\"multiselect_taglist listbox\"i >> internal:role=option[name=\"Basketball\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ljhsme-5",
+          "sinceAction": 10,
+          "t": 1793740369027
+        },
+        {
+          "kind": "settled",
+          "actionId": "ljhsme-5",
+          "sinceAction": 51,
+          "t": 1793740369068,
+          "value": "",
+          "raw": "",
+          "multi": true
+        }
+      ]
+    },
+    {
+      "id": "ljhsme-6",
+      "t": 1793740370049,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "Cycling",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ljhsme-7",
+      "t": 1793740389860,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Foot",
+      "raw": "Foot",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "Please select your favourite sport...",
+        "placeholder": "Please select your favourite sport...",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select your favourite sport..."
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Please select your favourite\" })",
+            "selector": "internal:role=combobox[name=\"Please select your favourite\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ljhsme-8",
+      "t": 1793740390797,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "Please select your favourite sport...",
+        "placeholder": "Please select your favourite sport...",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Please select your favourite sport..."
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Please select your favourite sport...",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Please select your favourite\" })",
+            "selector": "internal:role=combobox[name=\"Please select your favourite\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ljhsme-9",
+      "t": 1793740391779,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "Ten",
+      "raw": "Ten",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "Football",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "ljhsme-10",
+      "t": 1793740392649,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://demos.telerik.com/kendo-ui/multiselect/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "text": "",
+        "placeholder": "Football",
+        "section": "Hobbies",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "pbedlk-1",
+      "t": 1793740415584,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Select date",
+        "section": "Schedule Your Visit",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Select date"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Schedule Your Visit"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Schedule Your Visit"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Select date\" })",
+            "selector": "internal:role=button[name=\"Select date\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pbedlk-1",
+          "sinceAction": 29,
+          "t": 1793740415613
+        }
+      ]
+    },
+    {
+      "id": "pbedlk-3",
+      "t": 1793740425777,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "button",
+        "id": "43c98ab6-e76e-4e75-b0ca-0b8177ce1c75",
+        "text": "Navigate to parent view: 2026",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='43c98ab6-e76e-4e75-b0ca-0b8177ce1c75']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "43c98ab6-e76e-4e75-b0ca-0b8177ce1c75"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Navigate to parent view: 2026",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Navigate to parent view: 2026"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='datepicker_dateview']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Navigate to parent view: 2026",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "datepicker_dateview"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "title",
+                "text": "Navigate to decade view"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Navigate to decade view"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Navigate to parent view:\" })",
+            "selector": "internal:role=button[name=\"Navigate to parent view:\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pbedlk-3",
+          "sinceAction": 7,
+          "t": 1793740425784
+        }
+      ]
+    },
+    {
+      "id": "pbedlk-4",
+      "t": 1793740431052,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "text": "",
+        "interactive": true,
+        "row": {
+          "key": "2024",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='datepicker_dateview']"
+              },
+              {
+                "m": "css",
+                "css": "span.k-link"
+              }
+            ],
+            "count": 10,
+            "value": "datepicker_dateview"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"2024\")",
+            "selector": "internal:text=\"2024\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pbedlk-4",
+          "sinceAction": 6,
+          "t": 1793740431058
+        }
+      ]
+    },
+    {
+      "id": "pbedlk-5",
+      "t": 1793740435482,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "text": "March",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Jan",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "td.k-calendar-td"
+              },
+              {
+                "m": "filter",
+                "hasText": "Mar"
+              },
+              {
+                "m": "css",
+                "css": "span.k-link"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Mar"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='datepicker_dateview']"
+              },
+              {
+                "m": "css",
+                "css": "span.k-link"
+              }
+            ],
+            "count": 12,
+            "value": "datepicker_dateview"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Mar"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Mar"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"March\")",
+            "selector": "internal:label=\"March\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "pbedlk-5",
+          "sinceAction": 9,
+          "t": 1793740435491
+        }
+      ]
+    },
+    {
+      "id": "pbedlk-2",
+      "t": 1793740420544,
+      "kind": "fill",
+      "page": "page",
+      "widget": "date",
+      "value": "3/14/2024",
+      "raw": "3/14/2024",
+      "final": true,
+      "picked": true,
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "datepicker",
+        "text": "Select date",
+        "groupLabel": "Select Appointment Date",
+        "section": "Schedule Your Visit",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='datepicker']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "datepicker"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Select date"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Select Appointment Date"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Select Appointment Date"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Select date\" })",
+            "selector": "internal:role=combobox[name=\"Select date\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "pbedlk-6",
+      "t": 1793740449500,
+      "kind": "fill",
+      "page": "page",
+      "widget": "autocomplete",
+      "value": "12/5/2025",
+      "raw": "12/5/2025",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/datepicker/index",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "text",
+        "id": "datepicker",
+        "text": "Select date",
+        "groupLabel": "Select Appointment Date",
+        "section": "Schedule Your Visit",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='datepicker']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "datepicker"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Select date"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.kd-header-core"
+              },
+              {
+                "m": "has",
+                "text": "Select Appointment Date"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Select Appointment Date"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Select date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Select date\" })",
+            "selector": "internal:role=combobox[name=\"Select date\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8c224g-1",
+      "t": 1793740468484,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Edit",
+        "section": "jQuery Grid Popup Editing",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "$19.00",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit",
+                "exact": true
+              }
+            ],
+            "count": 20,
+            "text": "Edit"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit"
+              }
+            ],
+            "count": 20,
+            "text": "Edit"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "$19.00"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Edit"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "jQuery Grid Popup Editing"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit"
+              }
+            ],
+            "count": 20,
+            "text": "jQuery Grid Popup Editing"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='f6003ccd-b1ec-4092-89a8-2b66644a4ee4']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit"
+              }
+            ],
+            "count": 20,
+            "value": "f6003ccd-b1ec-4092-89a8-2b66644a4ee4"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Edit"
+              }
+            ],
+            "count": 20,
+            "value": "grid"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Chang $19.00 17 false Edit\" }).GetByRole(AriaRole.Button).First",
+            "selector": "internal:role=row[name=\"Chang $19.00 17 false Edit\"i] >> internal:role=button >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-1",
+          "sinceAction": 9,
+          "t": 1793740468493
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "8c224g-1",
+          "sinceAction": 72,
+          "t": 1793740468556,
+          "dialog": {
+            "title": "Edit",
+            "raw": "Edit",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "8c224g-2",
+      "t": 1793740474964,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "25.5",
+      "raw": "25.5",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "text",
+        "id": "UnitPrice",
+        "name": "UnitPrice",
+        "text": "Unit Price",
+        "label": "Unit Price",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='UnitPrice']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitPrice"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='UnitPrice']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitPrice"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Unit Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Unit Price"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Unit Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Unit Price"
+              }
+            ],
+            "count": 2,
+            "hidden": 1,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Unit Price\" })",
+            "selector": "internal:role=spinbutton[name=\"Unit Price\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8c224g-3",
+      "t": 1793740476242,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "text",
+        "id": "UnitsInStock",
+        "name": "UnitsInStock",
+        "text": "Units In Stock",
+        "label": "Units In Stock",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='UnitsInStock']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitsInStock"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='UnitsInStock']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitsInStock"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Units In Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Units In Stock"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Units In Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Units In Stock"
+              }
+            ],
+            "count": 2,
+            "hidden": 1,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Units In Stock\" })",
+            "selector": "internal:role=spinbutton[name=\"Units In Stock\"i]"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "8c224g-3",
+          "sinceAction": 323,
+          "t": 1793740476466,
+          "dialog": {
+            "title": "Edit",
+            "raw": "Edit",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "8c224g-4",
+      "t": 1793740482941,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Add",
+        "section": "jQuery Grid Popup Editing",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Add"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "jQuery Grid Popup Editing"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "jQuery Grid Popup Editing"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Add\" })",
+            "selector": "internal:role=button[name=\"Add\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-4",
+          "sinceAction": 10,
+          "t": 1793740482951
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "8c224g-4",
+          "sinceAction": 77,
+          "t": 1793740483018,
+          "dialog": {
+            "title": "Edit",
+            "raw": "Edit",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "8c224g-5",
+      "t": 1793740495604,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Test Teaa",
+      "raw": "Test Teaa",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "ProductName",
+        "name": "ProductName",
+        "text": "Product Name",
+        "label": "Product Name",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='ProductName']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "ProductName"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='ProductName']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "ProductName"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Product Name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Product Name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Product Name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Product Name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Product Name"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Product Name"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Product Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Product Name\" })",
+            "selector": "internal:role=textbox[name=\"Product Name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8c224g-6",
+      "t": 1793740496426,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "12.5",
+      "raw": "12.5",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "text",
+        "id": "UnitPrice",
+        "name": "UnitPrice",
+        "text": "Unit Price",
+        "label": "Unit Price",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='UnitPrice']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitPrice"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='UnitPrice']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitPrice"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Unit Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Unit Price"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Unit Price",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Unit Price"
+              }
+            ],
+            "count": 2,
+            "hidden": 1,
+            "text": "Unit Price"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Unit Price\" })",
+            "selector": "internal:role=spinbutton[name=\"Unit Price\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8c224g-7",
+      "t": 1793740497018,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "7",
+      "raw": "7",
+      "final": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "type": "text",
+        "id": "UnitsInStock",
+        "name": "UnitsInStock",
+        "text": "Units In Stock",
+        "label": "Units In Stock",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='UnitsInStock']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitsInStock"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='UnitsInStock']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "UnitsInStock"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Units In Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Units In Stock"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "Units In Stock",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Units In Stock"
+              }
+            ],
+            "count": 2,
+            "hidden": 1,
+            "text": "Units In Stock"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"Units In Stock\" })",
+            "selector": "internal:role=spinbutton[name=\"Units In Stock\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8c224g-8",
+      "t": 1793740497481,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "Discontinued",
+        "name": "Discontinued",
+        "value": "on",
+        "text": "Discontinued",
+        "label": "Discontinued",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued'][value='on']"
+              }
+            ],
+            "value": "Discontinued"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Discontinued"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Discontinued"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Discontinued\" })",
+            "selector": "internal:role=checkbox[name=\"Discontinued\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-8",
+          "sinceAction": 1,
+          "t": 1793740497482
+        }
+      ]
+    },
+    {
+      "id": "8c224g-9",
+      "t": 1793740502390,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": false,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "Discontinued",
+        "name": "Discontinued",
+        "value": "on",
+        "text": "Discontinued",
+        "label": "Discontinued",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued'][value='on']"
+              }
+            ],
+            "value": "Discontinued"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Discontinued"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Discontinued"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Discontinued\" })",
+            "selector": "internal:role=checkbox[name=\"Discontinued\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-9",
+          "sinceAction": 1,
+          "t": 1793740502391
+        }
+      ]
+    },
+    {
+      "id": "8c224g-10",
+      "t": 1793740502532,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "Discontinued",
+        "name": "Discontinued",
+        "value": "on",
+        "text": "Discontinued",
+        "label": "Discontinued",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "nameValue",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[name='Discontinued'][value='on']"
+              }
+            ],
+            "value": "Discontinued"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "[id='Discontinued']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "Discontinued"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "css",
+                "css": "div.k-form-field"
+              },
+              {
+                "m": "filter",
+                "hasText": "Discontinued"
+              },
+              {
+                "m": "role",
+                "role": "checkbox",
+                "name": "Discontinued",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "title",
+                "text": "Discontinued"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Discontinued"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Checkbox, new() { Name = \"Discontinued\" })",
+            "selector": "internal:role=checkbox[name=\"Discontinued\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-10",
+          "sinceAction": 1,
+          "t": 1793740502533
+        }
+      ]
+    },
+    {
+      "id": "8c224g-11",
+      "t": 1793740503578,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "dialog": {
+        "title": "Edit",
+        "raw": "Edit",
+        "titleMatches": true
+      },
+      "openDialogs": [
+        "Privacy",
+        "Edit"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Save",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "Edit"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-11",
+          "sinceAction": 1,
+          "t": 1793740503579
+        },
+        {
+          "kind": "alert",
+          "actionId": "8c224g-11",
+          "sinceAction": 36,
+          "t": 1793740503614,
+          "text": "Loading...",
+          "alertCount": 1
+        },
+        {
+          "kind": "dialogClosed",
+          "actionId": "8c224g-11",
+          "sinceAction": 191,
+          "t": 1793740503769,
+          "dialog": {
+            "title": "Edit",
+            "raw": "Edit",
+            "titleMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "8c224g-12",
+      "t": 1793740510537,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Delete",
+        "section": "jQuery Grid Popup Editing",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "$23.25",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete",
+                "exact": true
+              }
+            ],
+            "count": 20,
+            "text": "Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "text": "Delete"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "$23.25"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Delete"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "jQuery Grid Popup Editing"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "text": "jQuery Grid Popup Editing"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='f6003ccd-b1ec-4092-89a8-2b66644a4ee4']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "value": "f6003ccd-b1ec-4092-89a8-2b66644a4ee4"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "value": "grid"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Tofu $23.25 35 false Edit\" }).GetByRole(AriaRole.Button).Nth(1)",
+            "selector": "internal:role=row[name=\"Tofu $23.25 35 false Edit\"i] >> internal:role=button >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-12",
+          "sinceAction": 9,
+          "t": 1793740510546
+        },
+        {
+          "kind": "jsDialog",
+          "actionId": "8c224g-12",
+          "t": 1793740510561,
+          "text": "Are you sure you want to delete this record?",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "8c224g-13",
+      "t": 1793740524290,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/editing-popup",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Delete",
+        "section": "jQuery Grid Popup Editing",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "$23.25",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete",
+                "exact": true
+              }
+            ],
+            "count": 20,
+            "text": "Delete"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "text": "Delete"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "$23.25"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Delete"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.container"
+              },
+              {
+                "m": "has",
+                "text": "jQuery Grid Popup Editing"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "text": "jQuery Grid Popup Editing"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='f6003ccd-b1ec-4092-89a8-2b66644a4ee4']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "value": "f6003ccd-b1ec-4092-89a8-2b66644a4ee4"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Delete"
+              }
+            ],
+            "count": 20,
+            "value": "grid"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Tofu $23.25 35 false Edit\" }).GetByRole(AriaRole.Button).Nth(1)",
+            "selector": "internal:role=row[name=\"Tofu $23.25 35 false Edit\"i] >> internal:role=button >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8c224g-13",
+          "sinceAction": 9,
+          "t": 1793740524299
+        },
+        {
+          "kind": "jsDialog",
+          "actionId": "8c224g-13",
+          "t": 1793740524310,
+          "text": "Are you sure you want to delete this record?",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-1",
+      "t": 1793740544876,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "th.k-table-th"
+              },
+              {
+                "m": "filter",
+                "hasText": "City"
+              },
+              {
+                "m": "role",
+                "role": "link"
+              }
+            ],
+            "text": "City"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "link"
+              }
+            ],
+            "value": "grid"
+          },
+          {
+            "kind": "title",
+            "parts": [
+              {
+                "m": "title",
+                "text": "City filter column settings"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "City filter column settings"
+          },
+          {
+            "kind": "structure",
+            "parts": [
+              {
+                "m": "role",
+                "role": "columnheader"
+              },
+              {
+                "m": "role",
+                "role": "link"
+              }
+            ]
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"City filter column settings\")",
+            "selector": "internal:attr=[title=\"City filter column settings\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-1",
+          "sinceAction": 27,
+          "t": 1793740544903
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-2",
+      "t": 1793740550136,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "Value",
+        "placeholder": "--Select Value--",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Value",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Value"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Value\" })",
+            "selector": "internal:role=combobox[name=\"Value\"i]"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "span",
+          "id": "848aa296-b93e-4112-8c18-03ce015aa8ee",
+          "text": "--Select Value--",
+          "interactive": true,
+          "item": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='848aa296-b93e-4112-8c18-03ce015aa8ee']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "848aa296-b93e-4112-8c18-03ce015aa8ee"
+            },
+            {
+              "kind": "item",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "span.k-picker"
+                },
+                {
+                  "m": "filter",
+                  "hasText": "--Select Value--"
+                },
+                {
+                  "m": "css",
+                  "css": "span.k-input-inner"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "--Select Value--"
+            },
+            {
+              "kind": "text",
+              "parts": [
+                {
+                  "m": "text",
+                  "text": "--Select Value--"
+                }
+              ],
+              "count": 2,
+              "text": "--Select Value--"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Value\" }).Locator(\"span\").First",
+              "selector": "internal:role=combobox[name=\"Value\"i] >> span >> nth=0"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-2",
+          "sinceAction": 1,
+          "t": 1793740550137
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-3",
+      "t": 1793740555550,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "Seattle",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "Value",
+        "placeholder": "--Select Value--",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Value",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Value"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Value\" })",
+            "selector": "internal:role=combobox[name=\"Value\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "span",
+        "role": "combobox",
+        "text": "Value",
+        "placeholder": "--Select Value--",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Value",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Value"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Value\" })",
+            "selector": "internal:role=combobox[name=\"Value\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Seattle",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Seattle",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Seattle"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Seattle"
+              }
+            ],
+            "count": 2,
+            "text": "Seattle"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='ecad3a06-9f5f-44c7-9cab-80a881d02842_listbox']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Seattle"
+              }
+            ],
+            "count": 2,
+            "value": "ecad3a06-9f5f-44c7-9cab-80a881d02842_listbox"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='ecad3a06-9f5f-44c7-9cab-80a881d02842-list']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Seattle"
+              }
+            ],
+            "count": 2,
+            "value": "ecad3a06-9f5f-44c7-9cab-80a881d02842-list"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Seattle\" }).First",
+            "selector": "internal:role=option[name=\"Seattle\"i] >> nth=0"
+          }
+        ]
+      },
+      "opener": "ga3mbz-2",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-3",
+          "sinceAction": 9,
+          "t": 1793740555559
+        },
+        {
+          "kind": "settled",
+          "actionId": "ga3mbz-3",
+          "sinceAction": 51,
+          "t": 1793740555601,
+          "value": "Seattle",
+          "raw": "Seattle",
+          "multi": false
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-4",
+      "t": 1793740556860,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Filter",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Filter",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Filter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Filter\" })",
+            "selector": "internal:role=button[name=\"Filter\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-4",
+          "sinceAction": 1,
+          "t": 1793740556861
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-5",
+      "t": 1793740563274,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "Name City Title Birth Date",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Name City Title Birth Date"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Name City Title Birth Date\" })",
+            "selector": "internal:role=row[name=\"Name City Title Birth Date\"i]"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "th",
+          "role": "columnheader",
+          "id": "7e2729e5-50ce-4d58-85e3-a5bd34e578cd",
+          "text": "Name",
+          "section": "jQuery Grid Filter Menu Customization",
+          "interactive": true,
+          "item": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='7e2729e5-50ce-4d58-85e3-a5bd34e578cd']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "7e2729e5-50ce-4d58-85e3-a5bd34e578cd"
+            },
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "Name"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='grid']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "grid"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='example']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "example"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"Name\" })",
+              "selector": "internal:role=columnheader[name=\"Name\"i]"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-5",
+          "sinceAction": 7,
+          "t": 1793740563281
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-6",
+      "t": 1793740564727,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "Name City Title Birth Date",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Name City Title Birth Date"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Name City Title Birth Date\" })",
+            "selector": "internal:role=row[name=\"Name City Title Birth Date\"i]"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "th",
+          "role": "columnheader",
+          "id": "7e2729e5-50ce-4d58-85e3-a5bd34e578cd",
+          "text": "Name",
+          "section": "jQuery Grid Filter Menu Customization",
+          "interactive": true,
+          "item": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='7e2729e5-50ce-4d58-85e3-a5bd34e578cd']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "7e2729e5-50ce-4d58-85e3-a5bd34e578cd"
+            },
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "Name"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='grid']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "grid"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='example']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Name",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "example"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"Name\" })",
+              "selector": "internal:role=columnheader[name=\"Name\"i]"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-6",
+          "sinceAction": 11,
+          "t": 1793740564738
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-7",
+      "t": 1793740566121,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "Name City Title Birth Date",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Name City Title Birth Date"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "row",
+                "name": "Name City Title Birth Date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Name City Title Birth Date\" })",
+            "selector": "internal:role=row[name=\"Name City Title Birth Date\"i]"
+          }
+        ]
+      },
+      "equivalents": [
+        {
+          "tag": "th",
+          "role": "columnheader",
+          "id": "cd2d1608-141f-422a-816a-52cb80b25d85",
+          "text": "Title",
+          "section": "jQuery Grid Filter Menu Customization",
+          "interactive": true,
+          "item": true,
+          "candidates": [
+            {
+              "kind": "id",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='cd2d1608-141f-422a-816a-52cb80b25d85']"
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "cd2d1608-141f-422a-816a-52cb80b25d85"
+            },
+            {
+              "kind": "role",
+              "parts": [
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Title",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "text": "Title"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='grid']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Title",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "grid"
+            },
+            {
+              "kind": "within",
+              "parts": [
+                {
+                  "m": "css",
+                  "css": "[id='example']"
+                },
+                {
+                  "m": "role",
+                  "role": "columnheader",
+                  "name": "Title",
+                  "exact": true
+                }
+              ],
+              "count": 1,
+              "matches": true,
+              "value": "example"
+            },
+            {
+              "kind": "generator",
+              "parts": [],
+              "count": 1,
+              "matches": true,
+              "csharp": "GetByRole(AriaRole.Columnheader, new() { Name = \"Title\" })",
+              "selector": "internal:role=columnheader[name=\"Title\"i]"
+            }
+          ]
+        }
+      ],
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-7",
+          "sinceAction": 7,
+          "t": 1793740566128
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-8",
+      "t": 1793740574015,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "td",
+        "role": "gridcell",
+        "text": "Robert King",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Robert King",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Robert King",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Robert King"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Robert King"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Robert King",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Robert King"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Robert King",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Robert King",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Gridcell, new() { Name = \"Robert King\" })",
+            "selector": "internal:role=gridcell[name=\"Robert King\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-8",
+          "sinceAction": 15,
+          "t": 1793740574030
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-9",
+      "t": 1793740598067,
+      "kind": "expect",
+      "page": "page",
+      "value": "Seattle",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "td",
+        "role": "gridcell",
+        "text": "Seattle",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Robert King",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Seattle",
+                "exact": true
+              }
+            ],
+            "count": 12,
+            "text": "Seattle"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Seattle"
+              }
+            ],
+            "count": 12,
+            "text": "Seattle"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Robert King"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Seattle",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Seattle"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Seattle"
+              }
+            ],
+            "count": 12,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "Seattle"
+              }
+            ],
+            "count": 12,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"Robert King Seattle Chief\" }).GetByRole(AriaRole.Gridcell).Nth(1)",
+            "selector": "internal:role=row[name=\"Robert King Seattle Chief\"i] >> internal:role=gridcell >> nth=1"
+          }
+        ]
+      },
+      "effects": [],
+      "check": "text"
+    },
+    {
+      "id": "ga3mbz-10",
+      "t": 1793740604474,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "h1",
+        "role": "heading",
+        "text": "jQuery Grid Filter Menu Customization",
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "heading",
+                "name": "jQuery Grid Filter Menu Customization",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "jQuery Grid Filter Menu Customization"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Heading, new() { Name = \"jQuery Grid Filter Menu\" })",
+            "selector": "internal:role=heading[name=\"jQuery Grid Filter Menu\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-10",
+          "sinceAction": 42,
+          "t": 1793740604516
+        }
+      ]
+    },
+    {
+      "id": "ga3mbz-11",
+      "t": 1793740613919,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/grid/filter-menu-customization",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "td",
+        "role": "gridcell",
+        "text": "08/30/1993 00:00 AM",
+        "section": "jQuery Grid Filter Menu Customization",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "Robert King",
+          "header": ""
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "08/30/1993 00:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "08/30/1993 00:00 AM"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "08/30/1993 00:00 AM"
+              }
+            ],
+            "count": 2,
+            "text": "08/30/1993 00:00 AM"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "Robert King"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "08/30/1993 00:00 AM",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "08/30/1993 00:00 AM"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='grid']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "08/30/1993 00:00 AM"
+              }
+            ],
+            "count": 2,
+            "value": "grid"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "gridcell",
+                "name": "08/30/1993 00:00 AM"
+              }
+            ],
+            "count": 2,
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Gridcell, new() { Name = \"/30/1993 00:00 AM\" }).First",
+            "selector": "internal:role=gridcell[name=\"/30/1993 00:00 AM\"i] >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "ga3mbz-11",
+          "sinceAction": 10,
+          "t": 1793740613929
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-1",
+      "t": 1793740703551,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "_8091eef4-c49a-404c-956f-fd56d0dd5799",
+        "value": "on",
+        "text": "",
+        "groupLabel": "My Documents",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='_8091eef4-c49a-404c-956f-fd56d0dd5799']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_8091eef4-c49a-404c-956f-fd56d0dd5799"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "has",
+                "text": "My Documents"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "My Documents"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Kendo UI Project"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "Kendo UI Project"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview']"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "value": "treeview"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Treeitem, new() { Name = \"Kendo UI Project\" }).Locator(\"input[type=\\\"checkbox\\\"]\").First",
+            "selector": "internal:role=treeitem[name=\"Kendo UI Project\"i] >> input[type=\"checkbox\"] >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-1",
+          "sinceAction": 1,
+          "t": 1793740703552
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-2",
+      "t": 1793740704867,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "_9b2b62df-ea3e-49b5-8306-da4a5e9117d1",
+        "value": "on",
+        "text": "",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='_9b2b62df-ea3e-49b5-8306-da4a5e9117d1']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_9b2b62df-ea3e-49b5-8306-da4a5e9117d1"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview']"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "value": "treeview"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "value": "example"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"[id=\\\"_9b2b62df-ea3e-49b5-8306-da4a5e9117d1\\\"]\")",
+            "selector": "[id=\"_9b2b62df-ea3e-49b5-8306-da4a5e9117d1\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-2",
+          "sinceAction": 0,
+          "t": 1793740704867
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-3",
+      "t": 1793740711839,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "span",
+        "text": "",
+        "groupLabel": "My Documents",
+        "section": "Check nodes",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "has",
+                "text": "My Documents"
+              },
+              {
+                "m": "css",
+                "css": "span.k-treeview-toggle"
+              }
+            ],
+            "count": 4,
+            "text": "My Documents"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Kendo UI Project"
+              },
+              {
+                "m": "css",
+                "css": "span.k-treeview-toggle"
+              }
+            ],
+            "count": 4,
+            "text": "Kendo UI Project"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview_tv_active']"
+              },
+              {
+                "m": "css",
+                "css": "span.k-treeview-toggle"
+              }
+            ],
+            "count": 4,
+            "value": "treeview_tv_active"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview']"
+              },
+              {
+                "m": "css",
+                "css": "span.k-treeview-toggle"
+              }
+            ],
+            "count": 4,
+            "value": "treeview"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#treeview_tv_active > ul > li > span > .k-treeview-toggle\").First",
+            "selector": "#treeview_tv_active > ul > li > span > .k-treeview-toggle >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-3",
+          "sinceAction": 1,
+          "t": 1793740711840
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-4",
+      "t": 1793740713395,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": false,
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "_0939ce2c-3471-4777-a364-cfa3d962976f",
+        "value": "on",
+        "text": "",
+        "groupLabel": "Reports",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='_0939ce2c-3471-4777-a364-cfa3d962976f']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_0939ce2c-3471-4777-a364-cfa3d962976f"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "has",
+                "text": "Reports"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "Reports"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "February.pdf"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "February.pdf"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Treeitem, new() { Name = \"February.pdf\" }).Locator(\"input[type=\\\"checkbox\\\"]\")",
+            "selector": "internal:role=treeitem[name=\"February.pdf\"i] >> input[type=\"checkbox\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-4",
+          "sinceAction": 1,
+          "t": 1793740713396
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-5",
+      "t": 1793740714788,
+      "kind": "check",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": true,
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "_0939ce2c-3471-4777-a364-cfa3d962976f",
+        "value": "on",
+        "text": "",
+        "groupLabel": "Reports",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='_0939ce2c-3471-4777-a364-cfa3d962976f']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_0939ce2c-3471-4777-a364-cfa3d962976f"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "has",
+                "text": "Reports"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "Reports"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "February.pdf"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "February.pdf"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview_tv_active']"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "value": "treeview_tv_active"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Treeitem, new() { Name = \"February.pdf\" }).Locator(\"input[type=\\\"checkbox\\\"]\")",
+            "selector": "internal:role=treeitem[name=\"February.pdf\"i] >> input[type=\"checkbox\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-5",
+          "sinceAction": 1,
+          "t": 1793740714789
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-6",
+      "t": 1793740716197,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "checkbox",
+      "checked": false,
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "checkbox",
+        "type": "checkbox",
+        "id": "_d628aec0-6bf6-4903-b6aa-661e4915cfe2",
+        "value": "on",
+        "text": "",
+        "groupLabel": "February.pdf",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='_d628aec0-6bf6-4903-b6aa-661e4915cfe2']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_d628aec0-6bf6-4903-b6aa-661e4915cfe2"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "ul.k-treeview-group"
+              },
+              {
+                "m": "has",
+                "text": "February.pdf"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "February.pdf"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.k-treeview-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "March.pdf"
+              },
+              {
+                "m": "role",
+                "role": "checkbox"
+              }
+            ],
+            "text": "March.pdf"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Treeitem, new() { Name = \"March.pdf\" }).Locator(\"input[type=\\\"checkbox\\\"]\")",
+            "selector": "internal:role=treeitem[name=\"March.pdf\"i] >> input[type=\"checkbox\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-6",
+          "sinceAction": 1,
+          "t": 1793740716198
+        }
+      ]
+    },
+    {
+      "id": "l15i7o-7",
+      "t": 1793740717442,
+      "kind": "click",
+      "page": "page",
+      "url": "https://demos.telerik.com/kendo-ui/treeview/checkboxes",
+      "openDialogs": [
+        "Privacy"
+      ],
+      "target": {
+        "tag": "div",
+        "id": "treeview",
+        "text": "",
+        "section": "Check nodes",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='treeview']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "treeview"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='example']"
+              },
+              {
+                "m": "css",
+                "css": "div.k-treeview"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "example"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='demo-runner']"
+              },
+              {
+                "m": "css",
+                "css": "div.k-treeview"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "demo-runner"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#treeview\")",
+            "selector": "#treeview"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "l15i7o-7",
+          "sinceAction": 1,
+          "t": 1793740717443
+        }
+      ]
+    }
+  ]
+}
