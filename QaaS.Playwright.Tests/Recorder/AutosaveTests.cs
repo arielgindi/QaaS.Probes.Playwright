@@ -45,7 +45,7 @@ public class AutosaveTests
         recording = recording with { AutoChecks = false };
         // Two projects, each with a Login flow.
         var shop = new RecordRequest("Login", recording.StartUrl, Path.Combine(_folder, "shop", "Flows"));
-        var crm = shop with { OutputDir = Path.Combine(_folder, "crm", "Flows") };
+        var crm = shop with { OutputDir = Path.Combine(_folder, "crm", "Flows"), KeepRecording = true };
 
         await new Autosave().WriteAsync(recording, shop);
         await new Autosave().WriteAsync(recording, crm);
@@ -65,6 +65,8 @@ public class AutosaveTests
         {
             Assert.That(notSaved.Select(found => found.Recording.Autosave!.Folder), Is.EquivalentTo(new[] { shop.OutputDir, crm.OutputDir }),
                 "one file per folder and flow, and the broken one skipped");
+            Assert.That(notSaved.Single(found => found.Recording.Autosave!.Folder == crm.OutputDir).Recording.Autosave!.KeepRecording, Is.True,
+                "a recording recovered keeps its raw recording beside the flow, as --keep-recording asked");
             Assert.That(written, Has.Count.EqualTo(2), "the shop's saved, the CRM's not yet");
             foreach (var file in written)
             {

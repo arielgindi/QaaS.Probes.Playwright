@@ -161,7 +161,14 @@ Ctrl+C, or the flow could not be saved), it asks, before anything else:
   ? Choose 1, 2 or 3 (1) ›
 ```
 
-**Save it now** writes the flow and its YAML, as a save at the end of the recording would, without opening Chrome;
+An end nobody asked for never goes unsaid: an error the recorder did not expect, Chrome or its driver going away, or a
+signal from outside (`kill`, a closed terminal: SIGTERM, SIGHUP, SIGQUIT) writes the recording as it is then, prints
+`× The recorder was stopped from outside (SIGTERM). The recording is kept: ...` and writes what happened, with its
+stack, to `~/.qaas/recorder-error.log`. Only `kill -9` ends it with nothing said, as no program sees that one; the
+autosave of half a second before it is offered then.
+
+**Save it now** writes the flow and its YAML, and the raw recording when it was recorded with `--keep-recording`, as a
+save at the end of the recording would, without opening Chrome;
 **Continue recording** goes on from it as `--continue` does; **Discard** deletes it. Then the recorder does what you
 started it for. A file it cannot read is skipped with a warning. A flow saved from it types an empty password, as the
 recording holds none: the recorder says which setting to set in its YAML.

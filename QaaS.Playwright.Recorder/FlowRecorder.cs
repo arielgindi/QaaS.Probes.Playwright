@@ -33,7 +33,7 @@ internal static class FlowRecorder
             var flow = recording.Autosave!;
             var request = new RecordRequest(flow.Flow, recording.StartUrl, flow.Folder)
             {
-                AutoChecks = flow.AutoChecks, Login = flow.Login, Replaces = flow.Replaces,
+                AutoChecks = flow.AutoChecks, Login = flow.Login, Replaces = flow.Replaces, KeepRecording = flow.KeepRecording,
             };
             switch (ConsoleUi.Choose($"Found an unsaved recording of {flow.Flow} ({ActionsIn(recording, flow.Flow)}, " +
                                      $"{ConsoleUi.Ago(changed)})", ["Save it now", "Continue recording", "Discard"]))
@@ -61,6 +61,10 @@ internal static class FlowRecorder
             : $"{ActionsIn(continued.Recording, request.ClassName)}, recorded {ConsoleUi.Ago(continued.Changed)}");
         var autosave = new Autosave(continued?.Recording, request);
         Recording recording;
+        RecordingSession? recorded = null;
+        RecorderPanel? shown = null;
+        // An end nobody asked for, an error or a signal from outside, keeps the recording as it is then.
+        using var keeping = CrashReport.Keeping(() => recorded is { } now ? autosave.WriteAsync(now.Build(), shown?.Request ?? request) : Task.CompletedTask);
         try
         {
             // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login; so does a flow
@@ -78,7 +82,8 @@ internal static class FlowRecorder
                 else if (news is FrozenElements frozen) ConsoleUi.Froze(frozen);
                 else ConsoleUi.Captured(news);
             });
-            var panel = request.Panel ? await OpenPanelAsync(session, request) : null;
+            recorded = session;
+            var panel = shown = request.Panel ? await OpenPanelAsync(session, request) : null;
             using var stopWatching = new CancellationTokenSource();
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
             var loginFailure = request.Login is not null ? await LogInAsync(session, request) : null;
@@ -115,9 +120,24 @@ internal static class FlowRecorder
             await watching;
             if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
         }
-        catch (PlaywrightException failure)
+        catch (PlaywrightException failure) when (recorded?.Log.Build("").Actions.Count is not > 0)
         {
             ConsoleUi.Error($"Could not record: {failure.Message.Split('\n')[0]}");
+            return 1;
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            // Chrome or its driver went away, or a recorder bug: what was recorded is kept, to save or continue it next time.
+            try
+            {
+                await autosave.WriteAsync(recorded!.Log.Build(request.Url), request);
+            }
+            catch (Exception notKept) when (notKept is not OutOfMemoryException)
+            {
+                // The autosave so far stays.
+            }
+
+            CrashReport.Report(failure);
             return 1;
         }
 

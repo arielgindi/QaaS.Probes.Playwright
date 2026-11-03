@@ -29,6 +29,7 @@ public static class Program
         }
 
         ConsoleUi.CancelOnCtrlC();
+        CrashReport.Install();
         RecordRequest request;
         // The login flow last used in this folder is used again, unless the command says otherwise; else the one the
         // tests run first, found, asked about once and remembered.
