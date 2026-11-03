@@ -518,7 +518,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return new PanelAction(source.Id, source.Kind)
         {
             Widget = source.Widget,
-            Element = element is null ? null : element.Text ?? element.Label ?? element.Name ?? element.Id ?? element.Tag,
+            Element = element is null ? null : Names.Human(element) ?? element.Name ?? element.Id ?? element.Tag,
             Value = ValueOf(source),
             Locator = LocatorPolicy.Describe(action.Locator),
             Page = source.Page,
@@ -581,7 +581,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         return new PanelAction(action.Id, action.Kind)
         {
             Widget = action.Widget, Page = action.Page, Value = ValueOf(action),
-            Element = element is null ? null : element.Text ?? element.Label ?? element.Name ?? element.Id ?? element.Tag,
+            Element = element is null ? null : Names.Human(element) ?? element.Name ?? element.Id ?? element.Tag,
             Locator = LocatorPolicy.Describe(chosen), Candidates = CandidatesOf(candidates), Picked = IndexOf(candidates, chosen),
             Auto = IndexOf(candidates, chosen), Effects = [.. action.Effects.Select(EffectOf).OfType<PanelEffect>().Distinct()],
         };

@@ -31,6 +31,7 @@ internal static partial class LocatorPolicy
     public static CapturedCandidate? Choose(CapturedTarget? target, bool byName = false)
     {
         if (target is null) return null;
+        byName |= IsNumberedToggle(target);
         if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
         // A field named only by its placeholder's example of a value (yyyy-dd-mm) is found by its group instead.
         var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)
@@ -77,6 +78,7 @@ internal static partial class LocatorPolicy
     public static IReadOnlyList<string> WhyNot(CapturedTarget target, CapturedCandidate? chosen, bool byName = false)
     {
         var reasons = new List<string>();
+        byName |= IsNumberedToggle(target);
         foreach (var kind in (byName ? [.. ByName, .. Order] : Order).Distinct())
         {
             if (chosen is { Matches: true } && chosen.Kind == kind) break;

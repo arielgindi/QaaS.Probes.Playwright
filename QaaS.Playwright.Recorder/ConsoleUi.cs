@@ -285,6 +285,10 @@ internal static class ConsoleUi
                     t.WriteLine(line);
                     foreach (var check in ChecksOf(action))
                         Status(t, new string(' ', StepIndent), t.Glyph("▲", "!"), Tone.Warning, check, Tone.Warning);
+                    // Kept as done; but a person may not know what Enter does there.
+                    if (action is { Kind: "press", Key: "Enter", OnPage: not true } && action.Element is { } field && Noise.IsTextField(field))
+                        t.WriteLine(t.Line([new Span(new string(' ', StepIndent)), new Span(t.Glyph("└", "`-") + " ", Tone.Dim),
+                            new Span("Enter in a form's field may send the form, as a Submit does", Tone.Dim)]));
                     break;
                 case CapturedEffect effect when EffectLine(t, effect) is { } effectLine:
                     t.WriteLine(effectLine);
@@ -365,6 +369,7 @@ internal static class ConsoleUi
             }
 
             if (flow.Checks.Count > 0) ChecksSection(t, saved.CodePath, flow.Checks);
+            if (flow.Suggestions.Count > 0) SuggestionsSection(t, flow.Suggestions);
             NextSection(t, request, flow);
         }
     }
@@ -382,6 +387,20 @@ internal static class ConsoleUi
             var place = Terminal.Clean(places[index]);
             t.WriteLine(Margin + Margin + t.Paint(place, Tone.Warning)
                         + new string(' ', placeWidth - Terminal.WidthOf(place) + 2) + lines[0]);
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', indent) + more);
+        }
+    }
+
+    // What the recorder suggested and the person left in: each in a line, to do by hand in the flow, or in the panel of
+    // a recording continued.
+    private static void SuggestionsSection(Terminal t, IReadOnlyList<Suggestion> suggestions)
+    {
+        Section(t, "Suggested", (t.Glyph("◇", "*"), Tone.Accent));
+        var indent = Margin.Length * 2 + 2;
+        foreach (var suggestion in suggestions)
+        {
+            var lines = Terminal.Wrap(Terminal.Clean($"{suggestion.Text} ({suggestion.Apply.ToLowerInvariant()})"), Math.Max(30, t.Width - 1 - indent)).ToList();
+            t.WriteLine(Margin + Margin + t.Paint(t.Glyph("◇", "*"), Tone.Accent) + " " + lines[0]);
             foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', indent) + more);
         }
     }
@@ -423,9 +442,8 @@ internal static class ConsoleUi
 
         var element = action.Element;
         var locator = element is null ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(element, byName: action.Widget == "radio"));
-        var name = Terminal.Clean(element?.Text) is { Length: > 0 } text ? text
-            : Terminal.Clean(element?.Label) is { Length: > 0 } label ? label
-            : null;
+        // As a person names it: its label, or the one beside it, never a placeholder's example of a value.
+        var name = Terminal.Clean(Names.Human(element)) is { Length: > 0 } text ? text : null;
         if (name is null)
         {
             // An element without a name is known by its locator.

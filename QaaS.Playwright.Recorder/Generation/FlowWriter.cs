@@ -39,6 +39,9 @@ internal sealed record GeneratedFlow(string Code, string Yaml, IReadOnlyList<Che
     /// <summary>The settings that hold a secret, which the YAML reads from the environment.</summary>
     public IReadOnlyList<Setting> Secrets { get; init; } = [];
 
+    /// <summary>What the recorder suggested leaving out, which the person did not apply in the panel.</summary>
+    public IReadOnlyList<Suggestion> Suggestions { get; init; } = [];
+
     /// <summary>
     /// The lines written for each recorded action, by the action's id. An action a loop repeats has the lines of the
     /// loop's body that do it, as every repeat of it has.
@@ -1194,7 +1197,7 @@ internal sealed partial class FlowWriter
         return new GeneratedFlow(code.ToString(), FlowYaml.Write(className, _plan.Settings), checks)
         {
             Values = FlowYaml.Write(className, _plan.Settings, secrets: true),
-            Secrets = [.. _plan.Settings.Where(setting => setting.Secret)],
+            Secrets = [.. _plan.Settings.Where(setting => setting.Secret)], Suggestions = _plan.Suggestions,
             ActionLines = actionLines, StepLines = stepLines, Statements = statements,
             Expects = _expects.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<Expectation>)pair.Value),
         };
