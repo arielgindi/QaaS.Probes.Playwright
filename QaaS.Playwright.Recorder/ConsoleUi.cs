@@ -259,7 +259,9 @@ internal static class ConsoleUi
         lock (Gate)
         {
             Volatile.Write(ref _recording, false);
-            var settings = flow.Yaml.Split('\n').Count(line => line.StartsWith("    ", StringComparison.Ordinal));
+            // A setting is a line of the flow's block; a list's items are under it, further in.
+            var settings = flow.Yaml.Split('\n')
+                .Count(line => line.StartsWith("    ", StringComparison.Ordinal) && line[4] != ' ');
             var counts = new[]
                 {
                     Count(flow.ActionLines.Count, "action"), Count(flow.StepLines.Count, "step"),

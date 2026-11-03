@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using QaaS.Playwright.Recorder.Capture;
 
 namespace QaaS.Playwright.Recorder.Generation;
@@ -5,12 +7,21 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// <summary>
 /// Turns a recording into a <see cref="FlowPlan"/>: drops what is only the way to an action (opening a Select, focusing a
 /// field), joins what belongs together (the text typed into an Autocomplete and the option then chosen), gives each
-/// recorded value a setting, and splits the actions into steps where a dialog opens or closes or the page changes.
+/// recorded value a setting, splits the actions into steps where a dialog opens or closes or the page changes, folds
+/// what was done again and again into a loop, and ends a step where the page showed the result of an action.
 /// </summary>
-internal static class FlowPlanner
+internal static partial class FlowPlanner
 {
     private static readonly HashSet<string> Boundaries = ["dialogOpened", "dialogClosed", "urlChanged", "popup"];
     private static readonly HashSet<string> ValueKinds = ["fill", "choose", "check", "uncheck", "upload"];
+
+    // Members every record has, which a setting must not hide.
+    private static readonly string[] RecordMembers =
+        ["Equals", "GetHashCode", "ToString", "GetType", "EqualityContract", "Deconstruct", "PrintMembers", "Finalize"];
+
+    // A step of the values the person filled in keeps the click that sends them when it has this many at most, as a
+    // search box or a login does.
+    private const int ValuesKeptWithTheirClick = 2;
 
     public static FlowPlan Plan(Recording recording, string className)
     {
@@ -18,8 +29,11 @@ internal static class FlowPlanner
         plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
         var actions = Clean(recording.Actions.Select(Prepare).ToList());
         PlaceInDialogs(actions);
-        AssignSettings(actions, plan.Settings);
+        AssignSettings(actions);
         SplitIntoSteps(actions, plan);
+        LoopFinder.Fold(plan);
+        SplitAtResults(plan);
+        CollectSettings(plan);
         StepNamer.Name(plan);
         return plan;
     }
@@ -135,67 +149,88 @@ internal static class FlowPlanner
         action.Effects.RemoveAll(effect => effect.Kind is "dialogOpened" or "dialogClosed" && titles.Contains(effect.Dialog?.Title));
     }
 
-    // Every value the person typed, chose or checked becomes a setting, named after the field's path.
-    private static void AssignSettings(List<PlannedAction> actions, List<Setting> settings)
+    // Every value the person typed, chose or checked becomes a setting, named after the field's path; the names are
+    // told apart once the flow's settings are known (CollectSettings).
+    private static void AssignSettings(List<PlannedAction> actions)
     {
-        Setting Add(string name, string? text, bool? flag = null)
-        {
-            var unique = name;
-            for (var copy = 2; settings.Any(setting => setting.Name == unique); copy++) unique = $"{name}{copy}";
-            var setting = new Setting(unique, text, flag);
-            settings.Add(setting);
-            return setting;
-        }
-
+        var created = new List<Setting>();
         foreach (var action in actions)
         {
             var source = action.Source;
             var field = source.Kind == "choose" ? source.Field ?? source.Target : source.Target;
             var name = SettingName(field);
+            var qualified = action.Dialog is { } dialog && CSharp.IsAsciiText(dialog) && !dialog.Any(char.IsDigit)
+                            && CSharp.Pascal(dialog) is { } subject
+                ? subject + name
+                : null;
             switch (action.Kind)
             {
                 case "fill":
-                    action.Value = Add(name, source.Value ?? "");
+                    action.Value = Typed(name, source.Value ?? "", field, qualified);
                     break;
                 case "check" or "uncheck" when source.Widget == "radio":
-                    action.Value = Add(name, action.Locator?.Kind == "nameValue" ? field?.Value : field?.Text);
+                    action.Value = new Setting(name, action.Locator?.Kind == "nameValue" ? field?.Value : field?.Text)
+                        { Qualified = qualified };
                     break;
                 case "check" or "uncheck":
-                    action.Value = Add(name, null, action.Kind == "check");
+                    action.Value = new Setting(name, null, action.Kind == "check") { Qualified = qualified };
                     break;
                 case "choose":
-                    AssignChoice(action, name, Add);
+                    AssignChoice(action, ChoiceName(name), qualified is null ? null : ChoiceName(qualified));
                     break;
             }
 
+            created.AddRange(action.Values);
             if (action.Locator?.Kind == "row" || NameHoldsRowKey(action))
             {
-                // Actions on one row read one setting.
+                // Actions on one row read one setting, as does a value typed before that the row shows.
                 var key = source.Target!.Row!.Key;
                 var header = CSharp.Pascal(source.Target.Row.Header) ?? "RowKey";
-                action.RowKey = settings.FirstOrDefault(setting => setting.Text == key && setting.Name.StartsWith(header,
-                    StringComparison.Ordinal)) ?? Add(header, key);
+                var verb = CSharp.Pascal(StepNamer.Label(action, without: key));
+                action.RowKey = created.FirstOrDefault(setting => setting.Text == key
+                                                                  && setting.Name.StartsWith(header, StringComparison.Ordinal));
+                if (action.RowKey is null)
+                {
+                    action.RowKey = new Setting(header, key) { Qualified = verb is null ? null : $"{header}To{verb}" };
+                    created.Add(action.RowKey);
+                }
             }
         }
     }
 
-    private static void AssignChoice(PlannedAction action, string name, Func<string, string?, bool?, Setting> add)
+    // A number field's value as a number, when it is one that reads back the same.
+    private static Setting Typed(string name, string text, CapturedTarget? field, string? qualified)
+    {
+        var type = field?.Type != "number" ? "string"
+            : WholeNumber().IsMatch(text) && int.TryParse(text, CultureInfo.InvariantCulture, out _) ? "int"
+            : DecimalNumber().IsMatch(text) ? "decimal"
+            : "string";
+        return new Setting(name, text) { Type = type, Qualified = qualified };
+    }
+
+    // A choice holds the option's text, not the id a form keeps for it: maintenanceTypeId gives MaintenanceType.
+    private static string ChoiceName(string name) =>
+        name.Length > 2 && name.EndsWith("Id", StringComparison.Ordinal) && char.IsLower(name[^3]) ? name[..^2] : name;
+
+    private static void AssignChoice(PlannedAction action, string name, string? qualified)
     {
         var source = action.Source;
         var option = source.Value ?? "";
         var settled = source.Effects.FirstOrDefault(effect => effect.Kind == "settled");
+        Setting Add(string suffix, string text) =>
+            new(name + suffix, text) { Qualified = qualified is null ? null : qualified + suffix };
         if (source.Widget == "autocomplete")
         {
             var shown = settled?.Raw is { } raw ? Bidi.Strip(raw) : option;
-            if (action.Search is not null) action.SearchValue = add(name + "Search", action.Search, null);
-            action.Value = add(name, shown, null);
-            if (shown != option) action.OptionValue = add(name + "Option", option, null);
+            if (action.Search is not null) action.SearchValue = Add("Search", action.Search);
+            action.Value = Add("", shown);
+            if (shown != option) action.OptionValue = Add("Option", option);
             return;
         }
 
-        action.Value = add(name, option, null);
+        action.Value = Add("", option);
         if (source.Widget == "select" && settled?.Value is { } text && text != option)
-            action.ShownValue = add(name + "Shown", text, null);
+            action.ShownValue = Add("Shown", text);
     }
 
     public static bool NameHoldsRowKey(PlannedAction action) =>
@@ -236,15 +271,35 @@ internal static class FlowPlanner
         }
 
         if (current is not null) plan.Steps.Add(current);
+    }
 
-        // What the person filled in and the click that saves it are two steps, as a person tells them; so are the
-        // values and the clicks that open a dialog (a row's menu, then its item).
+    // A click the page answered with a message or a wait ends a step too: it did what the person set out to do. What
+    // the person filled in and the click that sends it are then two steps, as a person tells them, unless they are one
+    // or two values, as a search or a login; so are the values and the clicks that open a dialog (a row's menu, then
+    // its item).
+    private static void SplitAtResults(FlowPlan plan)
+    {
         for (var index = 0; index < plan.Steps.Count; index++)
         {
             var step = plan.Steps[index];
+            if (step.Loop is not null) continue;
+            var result = step.Actions.FindIndex(action => action.Kind is "click" or "dblclick" or "press"
+                                                          && action.Effects.Any(effect => effect.Kind is "alert" or "busy"));
+            if (result >= 0 && result < step.Actions.Count - 1)
+            {
+                var after = new Step { Page = step.Page, Dialog = step.Dialog, Ended = step.Ended };
+                after.Actions.AddRange(step.Actions.Skip(result + 1));
+                step.Actions.RemoveRange(result + 1, step.Actions.Count - result - 1);
+                plan.Steps.Insert(index + 1, after);
+            }
+
+            step.Ended |= result >= 0;
             var lastValue = step.Actions.FindLastIndex(action => ValueKinds.Contains(action.Kind));
             if (!step.Ended || lastValue < 0 || lastValue == step.Actions.Count - 1) continue;
             var opens = step.Actions[^1].Effects.Any(effect => effect.Kind is "dialogOpened" or "popup");
+            if (!opens && lastValue == step.Actions.Count - 2
+                && step.Actions.Count(action => ValueKinds.Contains(action.Kind)) <= ValuesKeptWithTheirClick)
+                continue;
             var from = opens ? lastValue + 1 : step.Actions.Count - 1;
             var rest = new Step { Page = step.Page, Dialog = step.Dialog, Ended = true };
             rest.Actions.AddRange(step.Actions.Skip(from));
@@ -261,4 +316,54 @@ internal static class FlowPlanner
                 : last.Effects.FirstOrDefault(effect => effect.Kind == "popup")?.Page;
         }
     }
+
+    /// <summary>Each setting with the step that reads it first, in the order of the steps.</summary>
+    public static IEnumerable<(Step Step, Setting Setting)> SettingsByStep(FlowPlan plan)
+    {
+        var seen = new HashSet<Setting>();
+        foreach (var step in plan.Steps)
+        {
+            var repeat = step.Actions.Take(step.Loop?.Length ?? 0).ToList();
+            var read = step.Loop is { } loop
+                ? new[] { loop.List, loop.Count }.Concat(repeat
+                    .Where(action => !LoopFinder.RowFromValue(action, repeat)).Select(action => action.RowKey))
+                : step.Actions.SelectMany(action => action.Values.Append(action.RowKey));
+            foreach (var setting in read.OfType<Setting>())
+                if (seen.Add(setting)) yield return (step, setting);
+        }
+    }
+
+    // The settings in the order of the steps, each with a name of its own: settings of one name are told apart by what
+    // they are for (TicketToAssign, TicketToClose) when that tells them all apart, else by a number.
+    private static void CollectSettings(FlowPlan plan)
+    {
+        plan.Settings.AddRange(SettingsByStep(plan).Select(read => read.Setting));
+        var taken = new HashSet<string>(RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
+        foreach (var list in plan.Settings.Where(setting => setting.ItemType is not null))
+            list.ItemType = Unique(list.ItemType!, taken);
+        var named = plan.Settings.GroupBy(setting => setting.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var group in named.Where(group => group.Count() > 1))
+        {
+            var qualified = group.Select(setting => setting.Qualified).ToList();
+            var tellApart = qualified.All(name => name is not null)
+                            && qualified.Distinct(StringComparer.OrdinalIgnoreCase).Count() == qualified.Count;
+            if (tellApart)
+                foreach (var setting in group) setting.Name = setting.Qualified!;
+        }
+
+        foreach (var setting in plan.Settings) setting.Name = Unique(setting.Name, taken);
+    }
+
+    private static string Unique(string name, HashSet<string> taken)
+    {
+        var unique = name;
+        for (var copy = 2; !taken.Add(unique); copy++) unique = $"{name}{copy}";
+        return unique;
+    }
+
+    [GeneratedRegex(@"^-?(0|[1-9][0-9]{0,8})$")]
+    private static partial Regex WholeNumber();
+
+    [GeneratedRegex(@"^-?(0|[1-9][0-9]{0,14})\.[0-9]{1,10}$")]
+    private static partial Regex DecimalNumber();
 }

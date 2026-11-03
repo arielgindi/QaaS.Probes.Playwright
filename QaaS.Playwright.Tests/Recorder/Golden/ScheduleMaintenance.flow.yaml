@@ -3,7 +3,7 @@
 FlowConfiguration:
   ScheduleMaintenance:
     PlateNumber: 'HL-775-ZE'
-    MaintenanceTypeId: 'Brake inspection'
+    MaintenanceType: 'Brake inspection'
     DueDate: '03/11/2026'
     Priority: 'High'
     Notes: 'Brakes squeak'
