@@ -24,6 +24,12 @@ internal sealed record RecordingOptions(string Url)
     /// and the recording starts on the page the login left. Null to record at once.
     /// </summary>
     public string? LoginFlow { get; init; }
+
+    /// <summary>
+    /// A recording this one goes on from: its actions come first, and are replayed after the login flow, as in a test
+    /// (<see cref="RecordingState.Testing"/>), before anything is recorded. Null to record anew.
+    /// </summary>
+    public Recording? Continues { get; init; }
 }
 
 /// <summary>Whether what the person does is recorded.</summary>
@@ -77,8 +83,11 @@ internal sealed class RecordingSession : IAsyncDisposable
         _context = context;
         _options = options;
         _onNews = onNews;
-        _state = options.LoginFlow is null ? RecordingState.Recording : RecordingState.LoggingIn;
-        Log = new CaptureLog(paused: options.LoginFlow is not null);
+        _state = options.LoginFlow is not null ? RecordingState.LoggingIn
+            : options.Continues is not null ? RecordingState.Testing
+            : RecordingState.Recording;
+        _beforeTest = RecordingState.Recording;
+        Log = new CaptureLog(paused: _state != RecordingState.Recording, options.Continues);
     }
 
     /// <summary>The page the recording started on; tests drive it, and a login flow runs on it.</summary>
@@ -147,14 +156,21 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>
     /// Runs the login flow on <see cref="Page"/>, which <paramref name="logIn"/> does and returns why it failed, or null.
-    /// The recording then starts on the page it left, or stays paused with why, for the person to log in by hand.
+    /// The recording then starts on the page it left, or stays paused with why, for the person to log in by hand. A
+    /// recording that continues another goes on to replay it (<see cref="EndTest"/> ends that).
     /// </summary>
     public async Task<string?> LogInAsync(Func<IPage, Task<string?>> logIn)
     {
         var failure = await logIn(Page);
         await AttachConsoleApiAsync();
-        if (failure is null) Resume();
-        else Pause($"{_options.LoginFlow} failed: {failure}");
+        if (failure is not null) Pause($"{_options.LoginFlow} failed: {failure}");
+        else if (_options.Continues is null) Resume();
+        else
+        {
+            lock (_gate) _state = RecordingState.Testing;
+            Announce(RecordingState.Testing);
+        }
+
         return failure;
     }
 

@@ -33,7 +33,8 @@ internal sealed record TestOptions
 /// FlowRunner, which set its pages up, time it out, hide its secrets and shoot its failure. The recording is paused
 /// meanwhile. Each action is told as it begins, passes or fails, and a run can stop after an action ("Run to here"), or
 /// be stopped. One run at a time. The context is opened by the recording's own connection to Chrome: another one would
-/// reset the emulation of every page it attaches to, the recorded one's among them, e.g. its colour scheme.
+/// reset the emulation of every page it attaches to, the recorded one's among them, e.g. its colour scheme. A replay
+/// runs the flow so far in the recorded window itself instead, for a recording that continues another to go on there.
 /// </summary>
 internal sealed class FlowTester(RecordingSession session, TestOptions? options = null) : IAsyncDisposable
 {
@@ -64,14 +65,25 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     /// is in the report.
     /// </summary>
     public Task<TestReport> RunAsync(RecordRequest request, string namespaceName, string? upTo = null, bool slowMotion = false,
-        IPage? front = null)
+        IPage? front = null) => Start(request, namespaceName, upTo, slowMotion, front, replay: false);
+
+    /// <summary>
+    /// Replays the flow so far, as a test runs it but on the recorded page itself, from where it is: the recording
+    /// continues another (<see cref="RecordingOptions.Continues"/>), and goes on where its actions leave the app. The
+    /// session is in its Testing state from its start, and stays in it: its caller ends it. It never throws.
+    /// </summary>
+    public Task<TestReport> ReplayAsync(RecordRequest request, string namespaceName) =>
+        Start(request, namespaceName, null, false, null, replay: true);
+
+    private Task<TestReport> Start(RecordRequest request, string namespaceName, string? upTo, bool slowMotion, IPage? front,
+        bool replay)
     {
         lock (_gate)
         {
             if (_running is { IsCompleted: false } running) return running;
             _stop?.Dispose();
             var stop = _stop = new CancellationTokenSource();
-            return _running = Task.Run(() => RunOnceAsync(request, namespaceName, upTo, slowMotion, front, stop.Token));
+            return _running = Task.Run(() => RunOnceAsync(request, namespaceName, upTo, slowMotion, front, replay, stop.Token));
         }
     }
 
@@ -106,7 +118,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     }
 
     private async Task<TestReport> RunOnceAsync(RecordRequest request, string namespaceName, string? upTo, bool slowMotion,
-        IPage? front, CancellationToken stop)
+        IPage? front, bool replay, CancellationToken stop)
     {
         var recording = session.Build();
         var plan = FlowPlanner.Plan(recording, request.ClassName);
@@ -117,11 +129,12 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         var report = new TestReport(Interlocked.Increment(ref _runs), request.ClassName, flow.Code, order)
         {
             UpTo = upTo is not null && order.Contains(upTo) ? upTo : null, SlowMotion = slowMotion,
-            Login = request.Login?.Flow, Started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Login = replay ? null : request.Login?.Flow, Started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Replay = replay,
         };
         if (order.Count == 0)
             return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Record a step first: there is nothing to test yet." });
-        if (!session.BeginTest())
+        if (!replay && !session.BeginTest())
             return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Wait for the login flow: the flow can be tested once the recording starts." });
 
         Publish(report);
@@ -136,7 +149,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         }
         finally
         {
-            session.EndTest();
+            if (!replay) session.EndTest();
         }
 
         report = Publish(report with { Phase = TestPhase.Done });
@@ -184,13 +197,18 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         if (stop.IsCancellationRequested) return report with { Outcome = TestOutcome.Stopped };
 
         var timer = Stopwatch.StartNew();
-        await using var run = await BrowserSession.OpenAsync(browser, config, log);
-        await using var closing = stop.Register(() => _ = CloseAsync(run.Page.Context));
-        await PanelWindow.PlaceOverAsync(session.Page, run.Page);
+        // A replay goes on in the recorded window, after the login the recording ran, and is stopped between statements.
+        var replay = report.Replay;
+        await using var run = replay
+            ? await BrowserSession.OnPageAsync(session.Page, config, log)
+            : await BrowserSession.OpenAsync(browser, config, log);
+        await using var closing = stop.Register(() => { if (!replay) _ = CloseAsync(run.Page.Context); });
+        if (!replay) await PanelWindow.PlaceOverAsync(session.Page, run.Page);
         if (front is not null) await BringToFrontAsync(front);
 
         var steps = new Steps(report.Actions, flow.Statements, report.Total - 1);
-        report = await RunFlowsAsync(report, flow, built, request.Login, flowConfiguration, secrets, log, config, run, steps, stop);
+        report = await RunFlowsAsync(report, flow, built, replay ? null : request.Login, flowConfiguration, secrets, log, config,
+            run, steps, stop);
         return report with { Steps = steps.Snapshot(), Ms = timer.ElapsedMilliseconds, Warnings = log.Warnings };
     }
 
@@ -203,7 +221,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         string? inLogin = null;
         try
         {
-            await run.OpenBaseUrlAsync(config.BaseUrl);
+            if (!report.Replay) await run.OpenBaseUrlAsync(config.BaseUrl);
             if (login is not null)
             {
                 report = Publish(report with { Phase = TestPhase.LoggingIn });

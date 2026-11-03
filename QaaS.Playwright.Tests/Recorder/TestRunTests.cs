@@ -113,10 +113,71 @@ public class TestRunTests
         }
     }
 
+    [Test]
+    public async Task Continue_ReplaysInTheRecordedWindow_RecordsNothingMeanwhile_AndGoesOnAfterTheStepsThatPassed()
+    {
+        using var site = TestSite.Start();
+        var actions = 0;
+        var first = await StartAsync($"{site.Url}/helpdesk", news => { if (news is CapturedAction) Interlocked.Increment(ref actions); });
+        Recording recorded;
+        try
+        {
+            var app = first.Page;
+            await app.GetByTestId("new-ticket").ClickAsync();
+            await app.Locator("[name='title']").FillAsync("Printer jammed");
+            // A button the app shows this once, which the replay does not find.
+            await app.EvaluateAsync("() => form.insertAdjacentHTML('beforeend', '<button id=\"later\">Later</button>')");
+            await app.Locator("#later").ClickAsync();
+            for (var wait = 0; wait < 50 && Volatile.Read(ref actions) < 3; wait++) await Task.Delay(100);
+        }
+        finally
+        {
+            recorded = await first.StopAsync();
+        }
+
+        var session = await StartAsync(recorded.StartUrl, continues: recorded);
+        Recording continued;
+        TestReport report;
+        IReadOnlyList<string> notReplayed;
+        RecordingState whileReplaying;
+        int windows;
+        try
+        {
+            await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 1000 });
+            whileReplaying = session.State;
+            report = await tester.ReplayAsync(RecordRequest.Parse(["record", "new-ticket", recorded.StartUrl]), "Flows");
+            // As the person keeps recording from where it stopped.
+            notReplayed = report.NotReplayed(session.Build());
+            session.Log.Remove(notReplayed);
+            session.EndTest();
+            await session.Page.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
+            for (var wait = 0; wait < 50 && session.Build().Actions.Count < 3; wait++) await Task.Delay(100);
+            windows = session.Page.Context.Browser!.Contexts.Sum(context => context.Pages.Count);
+        }
+        finally
+        {
+            continued = await session.StopAsync();
+        }
+
+        var code = FlowCodeGenerator.Generate(continued, "NewTicket", "Flows").Code;
+        Assert.Multiple(() =>
+        {
+            Assert.That(whileReplaying, Is.EqualTo(RecordingState.Testing), "nothing is recorded while it replays");
+            Assert.That(report.Outcome, Is.EqualTo(TestOutcome.Failed), report.Problem);
+            Assert.That(report.Failure?.Action, Is.EqualTo(recorded.Actions[2].Id));
+            Assert.That(notReplayed, Is.EqualTo(new[] { recorded.Actions[2].Id }));
+            Assert.That(windows, Is.EqualTo(1), "it replays in the recorded window");
+            Assert.That(continued.Actions.Select(action => action.Target?.Text),
+                Is.EqualTo(new[] { "New ticket", "Title", "Create ticket" }), "what was replayed is not recorded again");
+            Assert.That(continued.Actions.Take(2).Select(action => action.Id), Is.EqualTo(recorded.Actions.Take(2).Select(action => action.Id)));
+            Assert.That(code, Does.Contain("FillAsync(Configuration.Title)").And.Contain("Name = \"Create ticket\""));
+        });
+    }
+
     // Never the person's own login.
-    private static Task<RecordingSession> StartAsync(string url, Action<object>? onNews = null) =>
+    private static Task<RecordingSession> StartAsync(string url, Action<object>? onNews = null, Recording? continues = null) =>
         RecordingSession.StartAsync(new RecordingOptions(url)
         {
-            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"], Continues = continues,
         }, onNews ?? (_ => { }));
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { isGoing, useNow } from '../test';
 import { cls, detailOf, effectLabel, subjectOf, verbOf } from '../text';
-import type { Action, Effect, Status, Step, TestFailure, TestRun, TestStep } from '../types';
+import type { Action, Effect, PanelState, Status, Step, TestFailure, TestRun, TestStep } from '../types';
 import { Icon, type IconName, kindIcon } from './icons';
 import { PaneHeader } from './PaneHeader';
 import { FailureDetails, Spinner, StepStatus } from './TestRun';
@@ -14,6 +14,8 @@ interface Props {
   status: Status;
   /** The test run going on, or the last one. */
   test?: TestRun;
+  /** The recording this one continues, whose last action a divider follows. */
+  continued?: PanelState['continued'];
   /** The flow's file, e.g. NewTicket.cs, which a failure's line is of. */
   file: string;
   /** Whether "Run to here" can start: no test runs, and the recording is not saving or logging in. */
@@ -25,7 +27,7 @@ interface Props {
 }
 
 /** The steps of the flow, each a method, with a card per action, and how each went in the last test run. */
-export function Timeline({ steps, count, notes, selected, status, test, file, canRun, onSelect, onHover, onRunTo, onEnlarge }: Props) {
+export function Timeline({ steps, count, notes, selected, status, test, continued, file, canRun, onSelect, onHover, onRunTo, onEnlarge }: Props) {
   const list = useRef<HTMLDivElement>(null);
   const now = useNow(isGoing(test), 100);
   const running = test && Object.entries(test.steps).find(([, step]) => step.state === 'running')?.[0];
@@ -62,7 +64,7 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
                 {test && <StepMark actions={step.actions} test={test} />}
               </div>
               <ol class="relative space-y-1 before:absolute before:top-4 before:bottom-4 before:left-[22px] before:w-px before:bg-line-strong">
-                {step.actions.map((action) => (
+                {step.actions.flatMap((action) => [
                   <Card
                     key={action.id}
                     action={action}
@@ -76,8 +78,9 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
                     onHover={onHover}
                     onRunTo={onRunTo}
                     onEnlarge={onEnlarge}
-                  />
-                ))}
+                  />,
+                  action.id === continued?.after && <Continued key="continued" label={continued.label} />,
+                ])}
               </ol>
             </div>
           ))
@@ -105,6 +108,17 @@ export function Timeline({ steps, count, notes, selected, status, test, file, ca
         )}
       </div>
     </section>
+  );
+}
+
+// Where the recording continued ends, and what is recorded now begins.
+function Continued({ label }: { label: string }) {
+  return (
+    <li role="separator" class="flex items-center gap-2 py-1.5 pl-2 text-[11px] text-info">
+      <span class="flex-1 border-t border-dashed border-info/50" />
+      {label}
+      <span class="flex-1 border-t border-dashed border-info/50" />
+    </li>
   );
 }
 
