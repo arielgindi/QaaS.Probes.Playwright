@@ -82,6 +82,12 @@ internal sealed class CapturedAction
     /// <summary>For a choice, the option clicked.</summary>
     public CapturedTarget? Option { get; set; }
 
+    /// <summary>
+    /// For a choice, the click just before it that only opened its list, on the field or on what holds it, by its id:
+    /// the flow opens the list as the choice is written.
+    /// </summary>
+    public string? Opener { get; set; }
+
     /// <summary>For a drag, the element it was dropped on.</summary>
     public CapturedTarget? To { get; set; }
 

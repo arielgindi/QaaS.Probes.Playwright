@@ -462,13 +462,17 @@ internal sealed partial class FlowWriter
                     ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue)});"
                     : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
-                // In a loop, a check stays only when it reads the loop's item.
-                if (_autoChecks && (_step.Depth == 0 || _step.LoopValues.ContainsKey(action.ShownValue ?? action.Value!)))
+                // In a loop, a check stays only when it reads the loop's item. A field that showed nothing of the choice,
+                // such as an input under the text that shows it, is not checked; an input that holds it, by its value.
+                var settled = source.Effects.FirstOrDefault(effect => effect.Kind == "settled");
+                var byValue = source.Widget == "autocomplete" || source.Field?.Tag == "input";
+                if (_autoChecks && settled is not { Value: null or "" }
+                    && (_step.Depth == 0 || _step.LoopValues.ContainsKey(action.ShownValue ?? action.Value!)))
                 {
                     var field = Locate(action, ref problem);
-                    AddCheck("shows", $"shows “{(action.ShownValue ?? action.Value)!.Value}”", source.Widget == "select"
-                        ? $"await Expect({field}){Break}.ToHaveTextAsync({Setting(action.ShownValue ?? action.Value)});"
-                        : $"await Expect({field}){Break}.ToHaveValueAsync({Setting(action.Value)});");
+                    AddCheck("shows", $"shows “{(action.ShownValue ?? action.Value)!.Value}”", byValue
+                        ? $"await Expect({field}){Break}.ToHaveValueAsync({Setting(action.Value)});"
+                        : $"await Expect({field}){Break}.ToHaveTextAsync({Setting(action.ShownValue ?? action.Value)});");
                 }
 
                 break;

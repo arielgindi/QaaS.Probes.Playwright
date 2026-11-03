@@ -75,10 +75,17 @@ internal static partial class FlowPlanner
                 case "click" when widget == "select-open":
                 // The arrow that opens an Autocomplete's list, when an option of it is chosen next.
                 case "click" when widget == "autocomplete-button" && ChoiceFollows(actions, index, action.Source.Field):
-                // A click beside every control, e.g. to leave a field, that changed nothing.
+                // A click beside every control, e.g. to leave a field, that changed nothing; or on a native select, whose
+                // choice the flow makes without opening it.
                 case "click" or "dblclick" when action.Source.Target is not { Interactive: true } && noEffect:
+                case "click" when action.Source.Target?.Tag == "select" && noEffect:
                 case "press" when action.Source.Key == "Escape" && noEffect:
                     continue;
+                // The click that opened the list of the choice next, which the flow makes as it writes the choice.
+                case "choose" when last is { Kind: "click" } && last.Source.Id == action.Source.Opener
+                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)):
+                    kept.RemoveAt(kept.Count - 1);
+                    break;
                 case "choose" when widget == "autocomplete" && last is { Kind: "fill" } && last.Key == action.Key:
                     action.Search = last.Source.Value;
                     action.Effects.InsertRange(0, last.Effects);
@@ -242,7 +249,7 @@ internal static partial class FlowPlanner
             new(name + suffix, text) { Qualified = qualified is null ? null : qualified + suffix };
         if (source.Widget == "autocomplete")
         {
-            var shown = settled?.Raw is { } raw ? Bidi.Strip(raw) : option;
+            var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
             if (action.Search is not null) action.SearchValue = Add("Search", action.Search);
             action.Value = Add("", shown);
             if (shown != option) action.OptionValue = Add("Option", option);
@@ -250,7 +257,7 @@ internal static partial class FlowPlanner
         }
 
         action.Value = Add("", option);
-        if (source.Widget == "select" && settled?.Value is { } text && text != option)
+        if (source.Widget == "select" && settled?.Value is { Length: > 0 } text && text != option && source.Field?.Tag != "input")
             action.ShownValue = Add("Shown", text);
     }
 

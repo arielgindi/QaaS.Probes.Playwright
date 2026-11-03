@@ -377,7 +377,7 @@ internal static class CaptureScript
             : null;
 
           function dialogOf(element) {
-            for (let dialog = element.closest(DIALOGS); dialog; dialog = dialog.parentElement?.closest(DIALOGS))
+            for (let dialog = closestUp(element, DIALOGS); dialog; dialog = upFrom(dialog) && closestUp(upFrom(dialog), DIALOGS))
               if (!dialog.matches(PICKER)) return dialog;
             return null;
           }
@@ -562,9 +562,14 @@ internal static class CaptureScript
           // -------------------------------------------------------------------------------------------------- actions
           let lastAction = null;
           const remember = (id) => { lastAction = { id, t: now() }; };
+          let lastRecorded = null;
           function record(action) {
             send({ type: 'action', url: location.href, ...action });
+            if (recording()) lastRecorded = action.id;
           }
+          // The click just before a choice that only opened its list: on the field, or on what holds it or is in it.
+          const openerOf = (field) => lastClick && lastRecorded === lastClick.record.id && now() - lastClick.t < 60000 &&
+            (containsDeep(lastClick.element, field) || containsDeep(field, lastClick.element)) ? lastClick.record.id : null;
           function effect(kind, data, actionId) {
             send({ type: 'effect', kind, t: now(), actionId: actionId ?? lastAction?.id ?? null,
               sinceAction: lastAction ? now() - lastAction.t : null, ...data });
@@ -638,9 +643,15 @@ internal static class CaptureScript
           // The field a listbox belongs to: what controls it, in the listbox's own document or shadow root.
           const ownerOf = (listbox) => {
             const selector = `[aria-controls="${CSS.escape(listbox.id)}"], [aria-owns="${CSS.escape(listbox.id)}"]`;
-            const owners = [...new Set([...listbox.getRootNode().querySelectorAll(selector), ...document.querySelectorAll(selector)])]
-              .filter((owner) => !containsDeep(listbox, owner) && owner.getAttribute('role') !== 'searchbox');
-            return owners.find((owner) => owner.matches('[role=combobox], [aria-haspopup], select, input')) ?? owners[0] ?? null;
+            const owners = !listbox.id ? []
+              : [...new Set([...listbox.getRootNode().querySelectorAll(selector), ...document.querySelectorAll(selector)])]
+                .filter((owner) => !containsDeep(listbox, owner) && owner.getAttribute('role') !== 'searchbox');
+            const owner = owners.find((each) => each.matches('[role=combobox], [aria-haspopup], select, input')) ?? owners[0];
+            if (owner) return owner;
+            // Else the one trigger of a listbox that says it is open, as MUI's Select before it was a combobox.
+            const open = [...new Set([...listbox.getRootNode().querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]'),
+              ...document.querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]')])].filter((each) => !containsDeep(listbox, each));
+            return open.length === 1 ? open[0] : null;
           };
 
           function draftFor(hit) {
@@ -655,7 +666,7 @@ internal static class CaptureScript
             const option = closestUp(element, '[role=option]');
             if (option) {
               const listbox = closestUp(option, '[role=listbox]');
-              const owner = listbox?.id ? ownerOf(listbox) : null;
+              const owner = listbox ? ownerOf(listbox) : null;
               const info = describe(option, { pageLevel: true, noRow: true });
               // A Select's menu hides the rest of the page from assistive technology, so the field is described as it was
               // when its menu opened.
@@ -689,7 +700,7 @@ internal static class CaptureScript
               return;
             }
             if (draft.kind === 'choose') {
-              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text });
+              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text, opener: owner ? openerOf(owner) : null });
               if (owner) settleChoice(state.id, owner, listbox);
               return;
             }
@@ -1520,7 +1531,7 @@ internal static class CaptureScript
               const labels = [...element.selectedOptions].map((option) => clean(option.label || option.textContent));
               const info = describe(element);
               record({ ...info, id, t: now(), kind: 'choose', widget: 'native', field: info.target, value: labels.join(', '),
-                values: labels });
+                values: labels, opener: openerOf(element) });
             }
           }), true);
 
