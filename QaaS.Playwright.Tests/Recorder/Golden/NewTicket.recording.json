@@ -1,0 +1,522 @@
+{
+  "startUrl": "http://127.0.0.1:5776/tickets",
+  "actions": [
+    {
+      "id": "2d8mpu-1",
+      "t": 1793711113010,
+      "kind": "click",
+      "page": "page",
+      "url": "http://127.0.0.1:5776/tickets",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "testId": "new-ticket",
+        "text": "New ticket",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "testid",
+            "parts": [
+              {
+                "m": "testid",
+                "value": "new-ticket"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-ticket"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "New ticket",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New ticket"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTestId(\"new-ticket\")",
+            "selector": "internal:testid=[data-testid=\"new-ticket\"s]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "actionId": "2d8mpu-1",
+          "sinceAction": 81,
+          "t": 1793711113091,
+          "dialog": {
+            "title": "New ticket",
+            "raw": "New ticket",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "2d8mpu-2",
+      "t": 1793711113392,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Printer offline",
+      "raw": "Printer offline",
+      "final": true,
+      "url": "http://127.0.0.1:5776/tickets",
+      "dialog": {
+        "title": "New ticket",
+        "raw": "New ticket",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New ticket"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "title",
+        "text": "Title",
+        "label": "Title",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "css",
+                "css": "[name='title']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "title"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Title",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Title"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Title\" })",
+            "selector": "internal:role=textbox[name=\"Title\"i]"
+          }
+        ]
+      },
+      "effects": [],
+      "edit": {
+        "values": {
+          "value": {
+            "unique": true
+          }
+        }
+      }
+    },
+    {
+      "id": "2d8mpu-3",
+      "t": 1793711113399,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "06/11/2026",
+      "raw": "06/11/2026",
+      "final": true,
+      "url": "http://127.0.0.1:5776/tickets",
+      "dialog": {
+        "title": "New ticket",
+        "raw": "New ticket",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New ticket"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "dueDate",
+        "text": "Due date",
+        "label": "Due date",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "css",
+                "css": "[name='dueDate']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "dueDate"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Due date",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Due date"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Due date\" })",
+            "selector": "internal:role=textbox[name=\"Due date\"i]"
+          }
+        ]
+      },
+      "effects": [],
+      "edit": {
+        "values": {
+          "value": {
+            "value": "3",
+            "dateFormat": "dd/MM/yyyy"
+          }
+        }
+      }
+    },
+    {
+      "id": "2d8mpu-4",
+      "t": 1793711113408,
+      "kind": "choose",
+      "page": "page",
+      "widget": "native",
+      "value": "High",
+      "url": "http://127.0.0.1:5776/tickets",
+      "dialog": {
+        "title": "New ticket",
+        "raw": "New ticket",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New ticket"
+      ],
+      "target": {
+        "tag": "select",
+        "role": "combobox",
+        "name": "priority",
+        "text": "Priority",
+        "label": "Priority LowNormalHigh",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "css",
+                "css": "[name='priority']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "priority"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Priority",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Priority"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"Priority LowNormalHigh\")",
+            "selector": "internal:label=\"Priority LowNormalHigh\"i"
+          }
+        ]
+      },
+      "field": {
+        "tag": "select",
+        "role": "combobox",
+        "name": "priority",
+        "text": "Priority",
+        "label": "Priority LowNormalHigh",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "css",
+                "css": "[name='priority']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "priority"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Priority",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Priority"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByLabel(\"Priority LowNormalHigh\")",
+            "selector": "internal:label=\"Priority LowNormalHigh\"i"
+          }
+        ]
+      },
+      "effects": [],
+      "edit": {
+        "values": {
+          "value": {
+            "value": "Normal"
+          }
+        }
+      }
+    },
+    {
+      "id": "2d8mpu-5",
+      "t": 1793711113721,
+      "kind": "click",
+      "page": "page",
+      "url": "http://127.0.0.1:5776/tickets",
+      "dialog": {
+        "title": "New ticket",
+        "raw": "New ticket",
+        "titleMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "New ticket"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Create",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "dialog",
+                "name": "New ticket"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Create",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Create"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Create\" })",
+            "selector": "internal:role=button[name=\"Create\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "2d8mpu-5",
+          "sinceAction": 68,
+          "t": 1793711113789,
+          "dialog": {
+            "title": "New ticket",
+            "raw": "New ticket",
+            "titleMatches": true,
+            "unnamedMatches": true
+          }
+        },
+        {
+          "kind": "alert",
+          "actionId": "2d8mpu-5",
+          "sinceAction": 69,
+          "t": 1793711113790,
+          "text": "Ticket TCK-1043 created: Printer offline",
+          "alertCount": 1
+        }
+      ],
+      "edit": {
+        "step": "SaveTicketAsync",
+        "dropped": [
+          "closed:New ticket"
+        ]
+      }
+    },
+    {
+      "id": "2d8mpu-6",
+      "t": 1793711117152,
+      "kind": "expect",
+      "page": "page",
+      "url": "http://127.0.0.1:5776/tickets",
+      "openDialogs": [],
+      "target": {
+        "tag": "tr",
+        "role": "row",
+        "text": "TCK-1043 Printer offline 06/11/2026 High",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row",
+                "name": "TCK-1043 Printer offline 06/11/2026 High",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "TCK-1043 Printer offline 06/11/2026 High"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TCK-1043 Printer offline 06/\" })",
+            "selector": "internal:role=row[name=\"TCK-1043 Printer offline 06/\"i]"
+          }
+        ]
+      },
+      "effects": [],
+      "check": "row",
+      "group": {
+        "tag": "",
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1043"
+              },
+              {
+                "m": "filter",
+                "hasText": "Printer offline"
+              },
+              {
+                "m": "filter",
+                "hasText": "06/11/2026"
+              },
+              {
+                "m": "filter",
+                "hasText": "High"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# The values recorded in NewTicket. Put this block under the ProbeConfiguration of the probe
+# that runs the flow, and change the values for each case.
+FlowConfiguration:
+  NewTicket:
+    Title: 'Printer offline'
+    DueInDays: 3
+    Priority: 'Normal'
