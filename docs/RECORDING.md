@@ -316,10 +316,14 @@ turn, newest first, and a step recorded after it before it.
 whether it works and where it fails, before you save it.
 
 - **It runs the code that will be saved**, with or without auto checks as it will be saved. The code the panel shows is
-  built as your test project builds it, with the
-  .NET SDK, in a temporary folder only you can read, against the recorder's own QaaS.Playwright and Playwright: nothing
-  is restored, so no package feed is needed. A test of code that has not changed uses the same build again. Each run
-  loads the build afresh, and unloads it after.
+  built as your test project builds it, in a temporary folder only you can read, against the recorder's own
+  QaaS.Playwright and Playwright: nothing is restored, so no package feed is needed. It is compiled by the .NET SDK's own
+  C# compiler, with the references, options and implicit usings `dotnet build` gives a project, through the compiler's
+  server, without starting MSBuild, which takes most of a build's time. As the panel opens, the recorder compiles the
+  flow once in the background, at a low priority, so the server is ready and the first test builds as fast as the next,
+  in a fraction of a second. When that compiler or the reference assemblies are not found, or it fails for another
+  reason than the flow's code, the flow is built with `dotnet build` instead, which takes a few seconds or more. A test
+  of code that has not changed uses the same build again. Each run loads the build afresh, and unloads it after.
 - **It runs as the probe runs it**, in a window of its own over the recorded one: a browser context of its own in the
   recorder's Chrome, `BaseUrl` the page you started on, your [login flow](#logging-in-first) first when you record with
   one (as `SetupFlows`), else the login the recording started from (`~/.qaas/auth.json`), and the recorded values as
@@ -330,20 +334,23 @@ whether it works and where it fails, before you save it.
   recorded window says `Testing the flow`; the recorded window is left as it is. Then the recording goes on as before
   the test, or stays paused if it was.
 
-While it runs, a bar under the top bar says which step runs, with the time, and each step on the left gets a spinner,
-then a ✓ with how long it took. When a step fails, the bar says which, the step turns red and opens on why, as the
+Until the first step runs, a bar under the top bar says what is going on, with its time so far: `Building the flow…`,
+`Opening a browser window…`, `Opening the start page…`, then `Logging in…` with your login flow. Then it says which step
+runs, with the time, and each step on the left gets a spinner, then a ✓ with how long it took. When a step fails, the bar says which, the step turns red and opens on why, as the
 probe reports it: what it waited for, on which page and on which line, the screenshot of the page then (click it to
 see it whole), what the recorder listed to check by hand there, and Playwright's call log. The steps after it show
 `Not run`. In the code, the statement running is marked as it runs, each step's lines green once it passed, and the
 line that failed in red. A [loop](#repeated-actions)'s line runs once for each item: it is marked as each repeat runs
 it, each repeat's step on the left gets its own ✓, a failure is told at the repeat it happened in, and the line turns
-green once every repeat of it passed. The console prints the result too:
+green once every repeat of it passed. The console prints the result too, and how long each part of the run took, so a
+slow one shows:
 
 ```text
   › Testing NewTicket…
   × NewTicket failed at step 4 of 6, line 34, after 31.8 s.
     4 ▼ choose  Category → Software           [name='category']
         └ Timeout 30000ms exceeded (waiting for Locator("[name='category']")) on https://helpdesk.example/helpdesk
+    build 0.2 s · window 0.6 s · start page 1.1 s · run 31.2 s
 ```
 
 The result stays until you test again or dismiss it; once you change the flow, it is marked `Changed since`.
