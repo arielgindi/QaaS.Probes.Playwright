@@ -241,8 +241,41 @@ internal static class CaptureScript
           const isMuiSelect = (element) => element.getAttribute('role') === 'combobox' && element.tagName !== 'INPUT' &&
             !!element.parentElement?.querySelector(':scope > input[name]');
           const selectInput = (element) => element.parentElement?.querySelector(':scope > input[name]');
-          const isAutocomplete = (element) => element.tagName === 'INPUT' && element.getAttribute('role') === 'combobox';
+          const isAutocomplete = (element) => element.tagName === 'INPUT' && element.getAttribute('role') === 'combobox' &&
+            !element.readOnly;
           const controlOfLabel = (label) => label.control ?? label.querySelector(TOGGLES);
+
+          // An element's parent as the page shows it: the slot it is shown in, else its parent, and out of a shadow root,
+          // its host.
+          const upFrom = (element) => element.assignedSlot ?? element.parentElement ??
+            (element.parentNode instanceof ShadowRoot ? element.parentNode.host : null);
+          const closestUp = (element, selector) => {
+            for (let node = element; node; node = upFrom(node)) if (node.matches(selector)) return node;
+            return null;
+          };
+          const containsDeep = (ancestor, element) => {
+            for (let node = element; node; node = upFrom(node)) if (node === ancestor) return true;
+            return false;
+          };
+
+          // A click handler the page keeps on the element, which a framework runs from one listener of its own (event
+          // delegation), so the element has no onclick attribute: React's props, and the onclick it sets on an element
+          // with onClick, Vue's invokers, jQuery's record of what it bound. Read, never called.
+          const CLICK_PROPS = ['onClick', 'onMouseDown', 'onMouseUp', 'onPointerDown', 'onPointerUp', 'onDoubleClick'];
+          const VUE_CLICKS = ['onClick', 'onMousedown', 'onMouseup', 'onPointerdown', 'onPointerup'];
+          function hasClickHandler(element) {
+            if (element.hasAttribute('onclick') || typeof element.onclick === 'function' ||
+                typeof element.onmousedown === 'function') return true;
+            for (const key of Object.keys(element)) {
+              const value = element[key];
+              if (!value || typeof value !== 'object') continue;
+              if (key.startsWith('__reactProps$') || key.startsWith('__reactEventHandlers$')) {
+                if (CLICK_PROPS.some((prop) => typeof value[prop] === 'function')) return true;
+              } else if (key === '_vei' && VUE_CLICKS.some((prop) => value[prop])) return true;
+            }
+            const events = safe(() => window.jQuery?._data?.(element, 'events'), null);
+            return !!events && ['click', 'mousedown', 'mouseup'].some((type) => events[type]?.length > 0);
+          }
 
           // What looks clickable without being a control: the pointer turns into a hand over it and not over its parent, it
           // has an onclick attribute, or the Tab key stops on it. A focusable area that scrolls is for the keyboard.
@@ -251,27 +284,61 @@ internal static class CaptureScript
             if (element.hasAttribute('onclick')) return true;
             const style = styleOf(element);
             if (!style) return false;
-            if (style.cursor === 'pointer' && styleOf(element.parentElement)?.cursor !== 'pointer') return true;
+            const parent = upFrom(element);
+            if (style.cursor === 'pointer' && (!parent || styleOf(parent)?.cursor !== 'pointer')) return true;
             if (!element.hasAttribute('tabindex') || element.tabIndex < 0 || element.matches(DIALOGS)) return false;
             return !(/auto|scroll/.test(style.overflowX + style.overflowY) &&
               (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth));
           }
 
+          // An item of a list of options, as its tag, role or class say, or as it handles clicks or looks clickable.
+          const OPTION_CLASS = /option|item|card|tile|choice|result|slide|entry/i;
+          const itemLike = (element) => ['LI', 'OPTION', 'TR'].includes(element.tagName) || element.hasAttribute('role') ||
+            OPTION_CLASS.test(element.getAttribute('class') ?? '') || hasClickHandler(element) || looksClickable(element);
+          // Two of a kind: the same tag and role, and a class in common, or none at all.
+          const sameKind = (a, b) => a.tagName === b.tagName && a.getAttribute('role') === b.getAttribute('role') &&
+            ((a.classList.length === 0 && b.classList.length === 0) || [...a.classList].some((name) => b.classList.contains(name)));
+          // The element holds other items like the one the pointer is in, each with words: a list of options.
+          const holdsSeveral = (element, item) => itemLike(item) &&
+            [...(element.tagName === 'SLOT' ? element.assignedElements() : element.children)].some((other) =>
+              other !== item && sameKind(other, item) && visible(other) && hasLetters(other.textContent ?? ''));
+          const controlsIn = (element) => element.querySelectorAll(INTERACTIVE).length;
+
+          // What retarget found by a handler of the page's or as an item of a list, which a person acts on.
+          const actionable = new WeakSet();
+
           // The element a person meant: the control around what the pointer hit (for a label of a checkbox, radio or
-          // switch, the control itself), else the outermost element below the next row or cell that looks clickable, else
+          // switch, the control itself), out of shadow roots; else, below the next row, cell or dialog, the nearest element
+          // that handles clicks (one with no more than one control in it), else the outermost one that looks clickable,
+          // never above an item of a list of options: that item, when the list or what holds it handles the click; else
           // the row or cell, else what was hit.
           function retarget(hit) {
-            const interactive = hit.closest(INTERACTIVE);
+            const interactive = closestUp(hit, INTERACTIVE);
             const label = hit.closest('label');
             if (label && (!interactive || interactive.contains(label))) {
               const control = controlOfLabel(label);
               if (control) return control;
             }
             if (interactive && !interactive.matches(CONTAINERS)) return interactive;
+            let handled = null;
             let clickable = null;
-            for (let node = hit; node && node !== interactive; node = node.parentElement)
+            let item = null;
+            for (let node = hit, from = null; node && node !== interactive; from = node, node = upFrom(node)) {
+              if (node === document.body || node === document.documentElement || node.matches(DIALOGS)) break;
+              if (from && !item && holdsSeveral(node, from)) {
+                if (handled || clickable) break;
+                item = from;
+              }
+              const handles = hasClickHandler(node);
+              if (item) {
+                if (handles || looksClickable(node)) { actionable.add(item); return item; }
+                continue;
+              }
+              if (!handled && handles && controlsIn(node) <= 1) handled = node;
               if (looksClickable(node)) clickable = node;
-            return clickable ?? interactive ?? hit;
+            }
+            if (handled) actionable.add(handled);
+            return handled ?? clickable ?? item ?? interactive ?? hit;
           }
 
           // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
@@ -288,7 +355,7 @@ internal static class CaptureScript
           // only Playwright's own locator finds the target.
           function equivalentsOf(hit, element) {
             const found = [];
-            if (element.contains(hit)) for (let node = hit; node !== element; node = node.parentElement) found.unshift(node);
+            if (containsDeep(element, hit)) for (let node = hit; node !== element; node = upFrom(node)) found.unshift(node);
             for (let child = onlyChild(element); child; child = onlyChild(child)) if (!found.includes(child)) found.push(child);
             return found.filter((node) => node.id || node.getAttribute(TEST_ID));
           }
@@ -472,7 +539,7 @@ internal static class CaptureScript
               label: clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
               interactive: options.interactive ??
-                (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element)),
+                (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,
               candidates,
             };
@@ -564,6 +631,14 @@ internal static class CaptureScript
           let lastEnter = 0;
           let lastPointer = 0;
 
+          // The field a listbox belongs to: what controls it, in the listbox's own document or shadow root.
+          const ownerOf = (listbox) => {
+            const selector = `[aria-controls="${CSS.escape(listbox.id)}"], [aria-owns="${CSS.escape(listbox.id)}"]`;
+            const owners = [...new Set([...listbox.getRootNode().querySelectorAll(selector), ...document.querySelectorAll(selector)])]
+              .filter((owner) => !containsDeep(listbox, owner) && owner.getAttribute('role') !== 'searchbox');
+            return owners.find((owner) => owner.matches('[role=combobox], [aria-haspopup], select, input')) ?? owners[0] ?? null;
+          };
+
           function draftFor(hit) {
             const picked = pickedFor(hit);
             const element = picked ?? retarget(hit);
@@ -573,15 +648,15 @@ internal static class CaptureScript
             if (fileInput) return { ignore: 'file chooser' };
             if (isTextual(element) && !element.readOnly) return { ignore: 'focus', element };
             const toggle = element.matches(TOGGLES) ? element : null;
-            const option = element.closest('[role=option]');
+            const option = closestUp(element, '[role=option]');
             if (option) {
-              const listbox = option.closest('[role=listbox]');
-              const owner = listbox?.id ? document.querySelector(`[aria-controls="${CSS.escape(listbox.id)}"]`) : null;
+              const listbox = closestUp(option, '[role=listbox]');
+              const owner = listbox?.id ? ownerOf(listbox) : null;
               const info = describe(option, { pageLevel: true, noRow: true });
               // A Select's menu hides the rest of the page from assistive technology, so the field is described as it was
               // when its menu opened.
               const ownerInfo = !owner ? null : opened?.element === owner ? opened.info : describe(owner);
-              return { element: option, owner, kind: 'choose',
+              return { element: option, owner, listbox, kind: 'choose',
                 widget: !owner ? 'option' : isAutocomplete(owner) ? 'autocomplete' : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
                 hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')) };
@@ -603,7 +678,7 @@ internal static class CaptureScript
             if (!state || state.done) return;
             state.done = true;
             const { draft } = state;
-            const { element, adornmentField, owner, ignore, ...rest } = draft;
+            const { element, adornmentField, owner, listbox, ignore, ...rest } = draft;
             if (draft.kind === 'toggle') {
               const checked = element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
               record({ ...rest, id: state.id, t: state.t, kind: checked ? 'check' : draft.widget === 'radio' ? 'check' : 'uncheck', checked, via });
@@ -611,7 +686,7 @@ internal static class CaptureScript
             }
             if (draft.kind === 'choose') {
               record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text });
-              if (owner) settleChoice(state.id, owner, draft.option);
+              if (owner) settleChoice(state.id, owner, listbox);
               return;
             }
             if (adornmentField) {
@@ -635,14 +710,13 @@ internal static class CaptureScript
           }
 
           // The field shows the choice once its list has closed.
-          function settleChoice(id, owner, option) {
+          function settleChoice(id, owner, listbox) {
             const started = now();
             const poll = setInterval(() => safe(() => {
-              const listbox = document.getElementById(owner.getAttribute('aria-controls') || '');
-              const open = listbox && visible(listbox);
+              const open = listbox?.isConnected && visible(listbox);
               if (open && now() - started < 1500) return;
               clearInterval(poll);
-              const shown = isAutocomplete(owner) || owner.tagName === 'SELECT' ? owner.value : owner.innerText || owner.textContent;
+              const shown = owner.tagName === 'INPUT' || owner.tagName === 'SELECT' ? owner.value : owner.innerText || owner.textContent;
               effect('settled', { value: normalizeValue(normalize(shown)), raw: shown, closed: !open }, id);
             }), 50);
           }
@@ -667,7 +741,7 @@ internal static class CaptureScript
               pending = null;
               state.done = true;
               const drop = deepTarget(event);
-              const { element, adornmentField, owner, ...rest } = state.draft;
+              const { element, adornmentField, owner, listbox, ...rest } = state.draft;
               record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
               return;
             }
@@ -682,7 +756,7 @@ internal static class CaptureScript
             const state = pending;
             pending = null;
             state.done = true;
-            const { element, adornmentField, owner, ...rest } = state.draft;
+            const { element, adornmentField, owner, listbox, ...rest } = state.draft;
             record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: null });
           }), true);
 
@@ -932,7 +1006,7 @@ internal static class CaptureScript
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
           const hoverOver = (hit) => {
             const element = checking ? checkTarget(hit) : retarget(hit);
-            return { hit, element, picked: null, shown: checking ? element : element.closest('[role=option]') ?? element,
+            return { hit, element, picked: null, shown: checking ? element : closestUp(element, '[role=option]') ?? element,
               boxed: null, answer: null, at: 0 };
           };
 
@@ -954,7 +1028,7 @@ internal static class CaptureScript
             if (index === state.index || index < 0) return;
             state.index = index;
             state.picked = state.chain[index] === state.element ? null : state.chain[index];
-            state.shown = state.picked ?? state.element.closest('[role=option]') ?? state.element;
+            state.shown = state.picked ?? closestUp(state.element, '[role=option]') ?? state.element;
             state.boxed = null;
             state.answer = null;
             drawOverlay();
@@ -1075,7 +1149,7 @@ internal static class CaptureScript
           // What a check is of: the control around what the pointer is on, else that element itself, as text is checked
           // where it is.
           const checkTarget = (hit) => {
-            const control = hit.closest(INTERACTIVE);
+            const control = closestUp(hit, INTERACTIVE);
             return control && !control.matches(CONTAINERS) ? control : hit;
           };
           const textOf = (element) => normalizeValue(normalize(element.innerText ?? element.textContent ?? ''));

@@ -61,6 +61,18 @@
       }
     });
 
+  // jQuery's own record of the handlers it bound, which jQuery plugins such as Select2 and Chosen bind theirs with.
+  const bound = new WeakMap();
+  window.jQuery = {
+    _data: (element, name) => (name === 'events' ? bound.get(element) : undefined),
+  };
+  const on = (element, type, handler) => {
+    const events = bound.get(element) ?? {};
+    (events[type] ??= []).push({ type, handler });
+    bound.set(element, events);
+    element.addEventListener(type, handler);
+  };
+
   // ------------------------------------------------------------------------------------------------- the page
   const C = {
     page: css('page', 'font: 14px/1.5 system-ui, sans-serif; color: #1f2328; margin: 0; padding: 24px;'),
@@ -442,14 +454,14 @@
         selection.setAttribute('aria-expanded', 'false');
         selection.removeAttribute('aria-owns');
       };
-      selection.addEventListener('mousedown', (event) => {
+      on(selection, 'mousedown', (event) => {
         event.preventDefault();
         if (dropdown) { close(); return; }
         const results = h('ul', { class: 'select2-results__options', role: 'listbox', id: 'select2-shipping-results', 'aria-expanded': 'true', 'aria-hidden': 'false' },
           labels.map((label) => h('li', { class: `select2-results__option select2-results__option--selectable${label === rendered.textContent ? ' select2-results__option--highlighted' : ''}`,
             id: `select2-shipping-result-${seed}-${label.toLowerCase()}`, role: 'option', 'aria-selected': String(label === rendered.textContent),
             'data-select2-id': `select2-data-${seed}-${label.toLowerCase()}` }, label)));
-        results.addEventListener('mouseup', (up) => {
+        on(results, 'mouseup', (up) => {
           const option = up.target.closest('.select2-results__option--selectable');
           if (!option) return;
           rendered.textContent = option.textContent;
@@ -487,13 +499,13 @@
       const container = h('div', { class: 'chosen-container chosen-container-single', title: '', id: 'shipping_chosen' },
         h('a', { class: 'chosen-single' }, shown, h('div', {}, h('b', {}))),
         h('div', { class: 'chosen-drop' }, h('div', { class: 'chosen-search' }, h('input', { class: 'chosen-search-input', type: 'text', autocomplete: 'off' })), results));
-      container.addEventListener('mousedown', (event) => {
+      on(container, 'mousedown', (event) => {
         if (event.target.closest('.chosen-drop')) return;
         event.preventDefault();
         container.classList.toggle('chosen-with-drop');
         container.classList.toggle('chosen-container-active');
       });
-      results.addEventListener('mouseup', (event) => {
+      on(results, 'mouseup', (event) => {
         const result = event.target.closest('li.active-result');
         if (!result) return;
         shown.textContent = result.textContent;
