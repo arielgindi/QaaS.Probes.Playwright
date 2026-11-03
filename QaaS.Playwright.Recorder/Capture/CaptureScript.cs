@@ -966,9 +966,13 @@ internal static class CaptureScript
           }), true);
 
           // ----------------------------------------------------------------------------------------------- effects
-          // What the page shows changes a moment after an action: a dialog opens or closes, an alert appears.
+          // What the page shows changes a moment after an action: a dialog opens or closes, an alert appears, a busy
+          // indicator (a progress bar, as MUI's CircularProgress and LinearProgress are, or aria-busy) comes and goes.
           const hoverMenus = new WeakSet();
-          let shown = { dialogs: new Map(), alerts: new Map(), menus: new Set() };
+          const BUSY = '[role=progressbar], [aria-busy=true]';
+          const busyKind = (element) => element.matches('[role=progressbar]') ? 'progressbar' : 'ariaBusy';
+          const busySince = new WeakMap();
+          let shown = { dialogs: new Map(), alerts: new Map(), menus: new Set(), busy: new Set() };
           function snapshot() {
             const dialogs = new Map();
             for (const dialog of openDialogs()) dialogs.set(dialog, null);
@@ -976,7 +980,8 @@ internal static class CaptureScript
             for (const alert of document.querySelectorAll('[role=alert]'))
               if (visible(alert)) alerts.set(alert, normalize(alert.innerText || alert.textContent));
             const menus = new Set([...document.querySelectorAll('[role=menu]')].filter(visible));
-            return { dialogs, alerts, menus };
+            const busy = new Set([...document.querySelectorAll(BUSY)].filter(visible));
+            return { dialogs, alerts, menus, busy };
           }
           setInterval(() => safe(() => {
             if (!document.body) return;
@@ -994,6 +999,18 @@ internal static class CaptureScript
               if (shown.alerts.get(alert) !== text && text) effect('alert', { text: normalizeValue(text), alertCount });
             for (const menu of next.menus)
               if (!shown.menus.has(menu) && now() - lastPointer > 1000) hoverMenus.add(menu);
+            // An indicator that came up after an action is its doing, once none of its kind is left.
+            for (const element of next.busy)
+              if (!shown.busy.has(element) && lastAction && now() - lastAction.t <= 5000)
+                busySince.set(element, { actionId: lastAction.id, sinceAction: now() - lastAction.t });
+            for (const element of shown.busy) {
+              const seen = busySince.get(element);
+              if (next.busy.has(element) || !seen) continue;
+              busySince.delete(element);
+              const kind = busyKind(element);
+              if (![...next.busy].some((other) => busyKind(other) === kind))
+                effect('busy', { value: kind, sinceAction: seen.sinceAction }, seen.actionId);
+            }
             shown = next;
           }), 100);
 

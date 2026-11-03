@@ -11,6 +11,7 @@ qaas-playwright record login-flow https://my-app.com             # the same, wit
 qaas-playwright record login-flow https://my-app.com --output-dir UiFlows
 qaas-playwright record login-flow https://my-app.com --keep-recording    # also saves the raw recording
 qaas-playwright record login-flow https://my-app.com --no-panel          # without the panel beside the browser
+qaas-playwright record login-flow https://my-app.com --no-auto-checks    # without the Expect after each action
 qaas-playwright record new-order https://my-app.com --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll
 ```
 
@@ -267,37 +268,43 @@ public sealed class ScheduleMaintenance : BasePlaywrightFlow<ScheduleMaintenance
         await ScheduleAsync(dialog);
     }
 
+    /// <summary>Opens the "Schedule maintenance" dialog.</summary>
     private async Task<ILocator> OpenScheduleMaintenanceAsync(IPage page)
     {
-        await page.GetByRole(AriaRole.Button, new() { Name = $"Actions for {Configuration.PlateNumber}", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = $"Actions for {Configuration.PlateNumber}", Exact = true })
+            .ClickAsync();
         await page.GetByRole(AriaRole.Menuitem, new() { Name = "Schedule maintenance", Exact = true }).ClickAsync();
         var dialog = page.GetByRole(AriaRole.Dialog, new() { Name = "Schedule maintenance" });
-        await Expect(dialog).ToBeVisibleAsync();
+        await Expect(dialog).ToBeVisibleAsync(); // auto check
         return dialog;
     }
 
+    /// <summary>Fills in the maintenance type, due date and priority.</summary>
     private async Task FillScheduleMaintenanceAsync(ILocator dialog)
     {
-        var maintenanceTypeId = dialog.Locator("[id='maintenanceTypeId']");
-        await maintenanceTypeId.ClickAsync();
-        await dialog.Page.GetByRole(AriaRole.Option, new() { Name = Configuration.MaintenanceTypeId, Exact = true }).ClickAsync();
-        await Expect(maintenanceTypeId).ToHaveTextAsync(Configuration.MaintenanceTypeId);
+        var maintenanceType = dialog.Locator("[id='maintenanceTypeId']");
+        await maintenanceType.ClickAsync();
+        await dialog.Page.GetByRole(AriaRole.Option, new() { Name = Configuration.MaintenanceType, Exact = true })
+            .ClickAsync();
+        await Expect(maintenanceType).ToHaveTextAsync(Configuration.MaintenanceType); // auto check
         await dialog.Locator("[name='dueDate']").FillAsync(Configuration.DueDate);
         await dialog.GetByRole(AriaRole.Radio, new() { Name = Configuration.Priority, Exact = true }).CheckAsync();
     }
 
+    /// <summary>Clicks "Schedule", which closes the dialog and shows "Maintenance scheduled for ...".</summary>
     private async Task ScheduleAsync(ILocator dialog)
     {
         await dialog.GetByRole(AriaRole.Button, new() { Name = "Schedule", Exact = true }).ClickAsync();
-        await Expect(dialog).ToBeHiddenAsync(new() { Timeout = 30000 });
-        await Expect(dialog.Page.GetByRole(AriaRole.Alert).Filter(new() { HasText = $"Maintenance scheduled for {Configuration.PlateNumber}" })).ToBeVisibleAsync();
+        await Expect(dialog).ToBeHiddenAsync(new() { Timeout = 30_000 }); // auto check
+        await Expect(dialog.Page.GetByRole(AriaRole.Alert)
+            .Filter(new() { HasText = $"Maintenance scheduled for {Configuration.PlateNumber}" })).ToBeVisibleAsync(); // auto check
     }
 }
 
 public sealed record ScheduleMaintenanceConfig
 {
     public string PlateNumber { get; init; } = "HL-775-ZE";
-    public string MaintenanceTypeId { get; init; } = "Brake inspection";
+    public string MaintenanceType { get; init; } = "Brake inspection";
     public string DueDate { get; init; } = "03/11/2026";
     public string Priority { get; init; } = "High";
 }
@@ -307,23 +314,69 @@ public sealed record ScheduleMaintenanceConfig
 FlowConfiguration:
   ScheduleMaintenance:
     PlateNumber: 'HL-775-ZE'
-    MaintenanceTypeId: 'Brake inspection'
+    MaintenanceType: 'Brake inspection'
     DueDate: '03/11/2026'
     Priority: 'High'
 ```
 
-- **Steps.** `RunAsync` calls one method per step. A step ends where a dialog opens or closes, the address changes,
-  or a pop-up opens. The step that opens a dialog checks that it shows and returns it; the steps in it work inside it.
+- **Steps.** `RunAsync` calls one method per step, each with a line that says what it does. A step ends where a dialog
+  opens or closes, the address changes, a pop-up opens, or the page answers a click with a message or a busy
+  indicator. What you filled in and the click that sends it are two steps (`FillScheduleMaintenanceAsync`,
+  `ScheduleAsync`), unless it is one or two values, as a search box or a login is (`SearchAsync`). The step that opens
+  a dialog checks that it shows and returns it; the steps in it work inside it. A step is named after what you clicked
+  (`AssignTicketAsync` for the "Assign" button of a ticket's row, `OpenOrdersAsync` for a link "Orders"), else after the
+  dialog or the page, else after the button's id or test id.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
   value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
-  (`employee.firstName` gives `EmployeeFirstName`), else its id, test id or English label. Text on the page that
-  shows a recorded value, like a row's key or a message, reads the setting too, so each case finds its own row.
+  (`employee.firstName` gives `EmployeeFirstName`), else its id, test id or English label; a choice drops the `Id` its
+  field's name ends with, as it holds the option's text (`maintenanceTypeId` gives `MaintenanceType`). Two settings of
+  one name are told apart by what they are for (`TicketToAssign`, `TicketToClose`), else by a number. A checkbox is a
+  `bool`, a number field an `int` or a `decimal`; the rest are text. A record of more than five settings is grouped by
+  the step that reads them. Text on the page that shows a recorded value, like a row's key or a message, reads the
+  setting too, so each case finds its own row.
+- **Locals.** A locator a step uses twice is a local named after its field or its text (`maintenanceType`,
+  `addLineButton`); a row two elements are in, after its key's column (`orderRow`).
 - **The first navigation is left out**: the probe opens `BaseUrl` itself, so the same flow runs in every environment.
   A page you open by its address later (typed in the address bar, or a bookmark) is opened from `BaseUrl`
   (`$"{BaseUrl}/orders"`), and so is a tab you open with an address. Addresses the app goes to by itself are left out,
   as it goes there again when the flow runs: a redirect when the page loads, a sign-in round trip, the app's router,
   or a save that takes longer than 5 seconds to move on.
+
+### Repeated actions
+
+What you do three times or more in a row, the same kinds of actions on the same elements with only the values you type
+or choose changing, becomes a step that loops over a list setting with the values you recorded:
+
+```csharp
+    /// <summary>For each of the new tasks, fills in the new task, then presses Enter.</summary>
+    private async Task EnterNewTasksAsync(IPage page)
+    {
+        var newTask = page.Locator("[id='new-task']");
+        foreach (var task in Configuration.NewTasks)
+        {
+            await newTask.FillAsync(task);
+            await newTask.PressAsync("Enter");
+        }
+    }
+```
+
+```yaml
+    NewTasks:
+      - 'Buy milk'
+      - 'Pay the electricity bill'
+      - 'Book a dentist appointment'
+```
+
+- A repeat that types several values loops over records: `foreach (var line in Configuration.Lines)` with
+  `line.Product` and `line.Quantity`, from `Lines: [{ Product: 'Desk lamp', Quantity: 2 }, ...]`. A repeat that types
+  nothing, such as clicking "Add empty line" three times, is a `for` loop over a count setting (`EmptyLineCount: 3`).
+- A locator with the repeat's own value in it, like the row of the item just added, is built from the loop's item.
+- In the loop, a check stays only when it reads the item, such as a message naming it; a message every repeat showed
+  alike is checked once after the loop. The recorder adds no other check after a loop: it did not see where the values
+  went, and a check of the last value's text would fail on a page that still shows it from an earlier run.
+- Repeats that differ in anything else, another element or an action more, stay as recorded, each value a setting of
+  its own; so do two repeats.
 
 ### Which element a click records
 
@@ -360,14 +413,29 @@ outside the dialog, so they come from `dialog.Page`.
 
 ### What each action expects
 
+Each check the recorder adds is an `Expect` right after the action, marked `// auto check`, so you can spot and delete
+one you do not want; `--no-auto-checks` writes none.
+
 - A choice: the field shows it (`ToHaveTextAsync` for a select, `ToHaveValueAsync` for an autocomplete, which is typed
   into first).
 - A tab: `ToHaveAttributeAsync("aria-selected", "true")`.
 - A click that opened a dialog: the dialog is visible. One that closed it: `ToBeHiddenAsync`, with 30 seconds for the
   save behind it.
-- A message that appeared (`role="alert"`): visible, with its text.
+- A message that appeared (`role="alert"`): visible, with its text. A number in it that is no recorded value, such as a
+  new record's, is left out: the message is found by the words around it, those that name a recorded value first
+  (`created: {Configuration.Title}` for "Ticket TCK-1043 created: Printer offline").
 - A new address: `ToHaveURLAsync`, with ids in the path matched as any value. In an app that routes by the fragment
-  (`#/orders/5`), the route is checked the same way.
+  (`#/orders/5`), the route is checked the same way. Not when the action also opened a dialog or selected a tab, or
+  closed its dialog and showed a message: those say it better.
+
+A busy indicator that came up within 5 seconds of an action and went away again is waited for after it, for up to 30
+seconds: a progress bar (`role="progressbar"`, as MUI's `CircularProgress` and `LinearProgress` are, also inside a
+loading backdrop), or an element with `aria-busy="true"`. One that stayed on the page, such as an upload's progress, is
+not. This is a wait, not a check, so `--no-auto-checks` keeps it:
+
+```csharp
+await Expect(page.GetByRole(AriaRole.Progressbar)).ToHaveCountAsync(0, new() { Timeout = 30_000 });
+```
 
 The flow never clicks through JavaScript, sleeps, checks styles, asks `IsVisibleAsync`, picks the `Nth` or `First`
 match, or catches exceptions: what the page should do is expected, and a run fails where it does not.

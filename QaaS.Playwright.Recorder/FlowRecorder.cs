@@ -59,7 +59,8 @@ internal static class FlowRecorder
             return 1;
         }
 
-        var flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir));
+        var flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir),
+            request.AutoChecks);
         SavedFlow saved;
         try
         {

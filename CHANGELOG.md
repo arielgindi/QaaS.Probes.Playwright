@@ -4,6 +4,22 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- The recorder writes cleaner flows. Each step method has a one-line summary of what it does, and is named after what
+  was clicked (`AssignTicketAsync` for a row's "Assign" button); a step ends where the page answered a click with a
+  message or a busy indicator, and a search or a login of one or two values stays one step with its click. A locator
+  used twice, or a row two elements are in, is a local; long statements break between calls at 120 columns; the class
+  comment says where it was recorded and how to run it.
+- Actions repeated three times or more, differing only in the values typed or chosen, become a loop over a list setting
+  (`foreach (var task in Configuration.NewTasks)`), a list of records for repeats of several values, or a count for
+  repeats of none. Anything else that differs leaves them as recorded.
+- A busy indicator that came up after an action and went away (`role="progressbar"`, as MUI's progress components are,
+  or `aria-busy="true"`) is waited for after it, without a sleep.
+- Checks are more precise: each is marked `// auto check`; an address is not checked when a dialog, a tab or a closed
+  dialog with a message says the same; a message with a new record's number in it is found by the words around it.
+  `--no-auto-checks` writes a flow with none, keeping the waits.
+- Settings read better: a choice drops its field's `Id` (`MaintenanceType`), settings of one name are told apart by
+  what they are for (`TicketToAssign`, `TicketToClose`), number fields are `int` or `decimal`, and a long record is
+  grouped by step.
 - The recorder's panel tests the flow recorded so far: **Test** (`Ctrl+Enter` or `F5` in the panel) builds the code
   exactly as it will be saved, with the .NET SDK and without restoring anything, and runs it as the probe does, in a
   browser context and window of its own in the recorder's Chrome: from the page the recording started on, after the

@@ -63,6 +63,7 @@ internal static class ConsoleUi
             ($"--output-dir {t.Paint("<dir>", Tone.Dim)}", "Saves the flow in <dir> instead of ./Flows"),
             ("--keep-recording", "Also saves the raw recording, with every locator tried"),
             ("--no-panel", "Records without the panel beside the browser"),
+            ("--no-auto-checks", "Writes no Expect of what each action did; waits stay"),
             ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with a flow of your tests, e.g. LoginFlow"),
             ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The built test project that holds it"),
             ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "Its settings, if it has any"),
@@ -261,7 +262,9 @@ internal static class ConsoleUi
         lock (Gate)
         {
             Volatile.Write(ref _recording, false);
-            var settings = flow.Yaml.Split('\n').Count(line => line.StartsWith("    ", StringComparison.Ordinal));
+            // A setting is a line of the flow's block; a list's items are under it, further in.
+            var settings = flow.Yaml.Split('\n')
+                .Count(line => line.StartsWith("    ", StringComparison.Ordinal) && line[4] != ' ');
             var counts = new[]
                 {
                     Count(flow.ActionLines.Count, "action"), Count(flow.StepLines.Count, "step"),

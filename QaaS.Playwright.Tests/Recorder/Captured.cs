@@ -47,6 +47,9 @@ internal static class Captured
 
     public static CapturedEffect UrlChanged(string url) => new() { Kind = "urlChanged", Url = url, Page = "page" };
 
+    /// <summary>A busy indicator came up and went away: <c>progressbar</c> or <c>ariaBusy</c>.</summary>
+    public static CapturedEffect Busy(string kind = "progressbar") => new() { Kind = "busy", Value = kind };
+
     public static Recording Recording(params CapturedAction[] actions) => new("https://app.test/start", actions);
 
     private static CapturedCandidate Candidate(string kind, int count, List<LocatorPart> parts, string? value = null,
