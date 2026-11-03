@@ -105,9 +105,11 @@ internal static partial class FlowPlanner
                     continue;
                 // The click that opened the list of the choice next, which the flow makes as it writes the choice: by the
                 // capture script's word, or a click on the field itself.
+                // Not for an option of no role, whose field may be no element to click (antd's hidden input): the click
+                // that opened its list stays, and the flow chooses in the list it opened.
                 case "choose" when last is { Kind: "click" } && (last.Source.Id == action.Source.Opener || last.Key == action.Key
                                                                    || OpensItsField(last, action))
-                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)):
+                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)) && action.Source.OptionCss is null:
                     kept.RemoveAt(kept.Count - 1);
                     if (kept.LastOrDefault() is { Kind: "fill" } typed && typed.Key == action.Key && widget == "autocomplete")
                         TakeSearch(action, typed, kept);

@@ -532,9 +532,11 @@ internal sealed partial class FlowWriter
         {
             case "select" or "autocomplete":
                 // What the person typed to find the option, the flow types too, then chooses the option by its own text.
-                _step.Add(source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null)
-                    ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});"
-                    : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
+                if (source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null))
+                    _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});", problem);
+                // An option of no role is chosen in the list the click before it opened.
+                else if (source.OptionCss is null)
+                    _step.Add($"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
                 ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
                 // In a loop, a check stays only when it reads the loop's item. A field that showed nothing of the choice,

@@ -49,7 +49,7 @@ public class PickerRecordingTests
                 await person.ClickAsync(page.Locator("[class*='-singleValue']"));
                 await person.ClickAsync(page.Locator("[id$='-option-1']"));
             }),
-        new("antd-select", "ChooseExpressAsync", """Page.GetByText("Express", new() { Exact = true }).ClickAsync()""", async (person, page) =>
+        new("antd-select", "ChooseShippingAsync", """.GetByText(Configuration.Shipping, new() { Exact = true })""", async (person, page) =>
         {
             await person.ClickAsync(page.Locator(".ant-select-selection-item"));
             await person.ClickAsync(page.Locator(".ant-select-item-option-content").Filter(new() { HasText = "Express" }));
