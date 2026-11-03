@@ -2,6 +2,11 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- `ENV=local` or `Headless: false` runs in the Chrome on this machine again, as in earlier versions: the run uses
+  `http://localhost:9222`, starting a Chrome with a window there if none answers, instead of a remote `BrowserUrl`.
+
 ## 1.2.1
 
 - A `Directory.Packages.Local.props` beside `Directory.Packages.props`, if there is one, changes package versions, e.g.

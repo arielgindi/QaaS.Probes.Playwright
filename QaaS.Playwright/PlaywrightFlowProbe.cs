@@ -24,9 +24,6 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     private const string SessionNameBaggageKey = "qaas.probe.session-name";
     private const string ProbeNameBaggageKey = "qaas.probe.probe-name";
 
-    // Earlier versions picked the browser by the ENV variable; a suite that still sets it may expect another browser.
-    private static readonly string[] RetiredEnvBrowsers = ["local", "cluster", "remote"];
-
     private IConfiguration _flowConfiguration = null!;
     private List<string> _configurationProblems = [];
 
@@ -78,9 +75,6 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
         var logger = new WarningRecorder(Context, sessionName, secrets);
         if (sessionName is null)
             logger.LogWarning("Probe is running outside a session; its flow results are recorded as unscoped.");
-        var env = Environment.GetEnvironmentVariable("ENV")?.Trim();
-        if (env is not null && RetiredEnvBrowsers.Contains(env, StringComparer.OrdinalIgnoreCase))
-            logger.LogWarning("ENV is {Env}, but ENV no longer selects the browser; BrowserUrl does.", env);
 
         string[] setupFlows = Configuration.SetupFlows ?? [], flows = Configuration.Flows ?? [];
         var stopwatch = Stopwatch.StartNew();

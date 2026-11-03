@@ -32,8 +32,8 @@ public sealed class PlaywrightFlowConfig
     public int Parallelism { get; set; } = 1;
 
     /// <summary>
-    /// Whether nobody is watching. True blocks images and fonts for speed; false slows each action down (see SlowMo)
-    /// so a person can follow. Whether Chrome shows a window depends only on how Chrome was started.
+    /// Whether nobody is watching. True blocks images and fonts for speed; false runs in a Chrome on this machine (as
+    /// <c>ENV=local</c> does) and slows each action down (see SlowMo) so a person can follow.
     /// </summary>
     public bool Headless { get; set; } = true;
 
@@ -90,7 +90,8 @@ public sealed class PlaywrightFlowConfig
     /// <summary>
     /// The CDP endpoint of the Chrome to run in, e.g. <c>http://localhost:9222</c> or a Browserless address such as
     /// <c>ws://browserless:3000?token=...</c>. Unset: <c>http://localhost:9222</c>. When it is on this machine and
-    /// nothing answers there, the probe starts Chrome.
+    /// nothing answers there, the probe starts Chrome. With <c>ENV=local</c> or <c>Headless: false</c> a remote one is
+    /// replaced by <c>http://localhost:9222</c>.
     /// </summary>
     public string? BrowserUrl { get; set; }
 
