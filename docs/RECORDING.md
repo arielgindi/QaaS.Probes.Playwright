@@ -183,8 +183,10 @@ goes on from where they left the app: what you do is added after them, numbered 
   from there, without the steps from the failed one on (you record them again), or stop, which keeps the flow as it
   is. When the login flow fails, nothing is replayed, and the recorder stops.
 - **Saving regenerates the whole flow** and replaces `NewTicket.cs` and its YAML, unless you changed the `.cs` since it
-  was recorded: then the flow continued is saved beside it, as a re-recording is, and the recorder says so when it
-  starts.
+  was recorded, or you kept recording without steps that did not replay: then the flow stays as it is, the flow
+  continued is saved beside it as `NewTicket.recorded.txt`, as a re-recording is, and the recorder says so.
+- **A flow that logs in itself**, its first actions typing a password, was recorded signed out: it is replayed, and
+  tested, signed out too, never from the login the recorder saved for its Chrome, which would skip its login page.
 - **The recording** is the recorder's own copy in `~/.qaas/recordings/`, or `NewTicket.recording.json` beside the flow
   (`--keep-recording`), whichever is newer. A flow recorded with an older version, on another machine, or before the
   last 30 saved has none: the recorder says so. Record with `--keep-recording` to continue a flow anywhere.

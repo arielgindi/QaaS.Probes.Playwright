@@ -295,6 +295,8 @@ public class RealSiteRecordingTests
                 "a password the user name equals is the password's setting");
             Assert.That(customersFlow.Yaml, Does.Contain("Username: 'demo'").And.Contain("Password: '${PASSWORD}'").And.Not.Contain("Password: 'demo'"),
                 "the YAML reads it from the environment");
+            Assert.That((customers.LogsIn, Read("ReactAdminOrders").LogsIn), Is.EqualTo((true, false)),
+                "a recording that logs in first is replayed, tested and continued signed out, as it was recorded");
         });
     }
 

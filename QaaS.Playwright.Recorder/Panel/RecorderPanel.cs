@@ -119,6 +119,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     /// <summary>The flow's test runs, started from the panel.</summary>
     public FlowTester Tester => _tester;
 
+    /// <summary>Saving writes beside the flow's file rather than replacing it: a flow continued left steps out.</summary>
+    public void KeepFlowFile() => Request = Request with { Replaces = null };
+
     /// <summary>Says <paramref name="banner"/> about the replay of the recording continued, under the top bar; null, nothing.</summary>
     public void ShowBanner(string? banner)
     {

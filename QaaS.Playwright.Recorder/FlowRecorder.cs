@@ -63,10 +63,12 @@ internal static class FlowRecorder
         Recording recording;
         try
         {
-            // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login.
+            // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login; so does a flow
+            // continued that logs in itself, as it was recorded signed out.
             var options = (request.Login is { } login
                 ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoadStorageStatePath = null }
                 : new RecordingOptions(request.Url)) with { Continues = continued?.Recording };
+            if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
             var session = await RecordingSession.StartAsync(options, news =>
             {
@@ -81,7 +83,17 @@ internal static class FlowRecorder
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
             var loginFailure = request.Login is not null ? await LogInAsync(session, request) : null;
             Volatile.Write(ref loggingIn, false);
-            if (continued is not null && !await ReplayAsync(session, panel, request, loginFailure))
+            var replayed = continued is null ? Replayed.All : await ReplayAsync(session, panel, request, loginFailure);
+            if (replayed == Replayed.LeftOut)
+            {
+                // The steps left out are still the flow's: it stays as it is, and what is recorded now is saved beside it.
+                request = LeftOut(request);
+                panel?.KeepFlowFile();
+                ConsoleUi.Warning($"{Path.GetFileName(request.CodePath)} stays as it is: saving writes the flow continued without " +
+                                  $"those steps beside it, as {Path.GetFileName(Path.ChangeExtension(request.CodePath, ".recorded.txt"))}, to merge by hand.");
+            }
+
+            if (replayed == Replayed.Stopped)
             {
                 await stopWatching.CancelAsync();
                 await watching;
@@ -222,13 +234,21 @@ internal static class FlowRecorder
         return kept;
     }
 
+    /// <summary>
+    /// The request of a flow continued without the steps that did not replay: saving never replaces the flow, which has
+    /// them still, but writes beside it, as for a flow changed by hand.
+    /// </summary>
+    internal static RecordRequest LeftOut(RecordRequest request) => request with { Replaces = null };
+
+    private enum Replayed { All, LeftOut, Stopped }
+
     // The steps of the recording continued replay in the recorded window, as a test runs them. When they cannot, or the
     // login flow before them failed, the person keeps recording from where they stopped, without the steps from there
-    // on, or stops. Returns false to stop.
-    private static async Task<bool> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
+    // on, or stops.
+    private static async Task<Replayed> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
         string? loginFailure)
     {
-        if (loginFailure is not null) return false;
+        if (loginFailure is not null) return Replayed.Stopped;
         var tester = panel?.Tester ?? new FlowTester(session);
         TestReport report;
         try
@@ -259,14 +279,14 @@ internal static class FlowRecorder
                 choice = 1;
             }
 
-            if (choice == 1) return false;
+            if (choice == 1) return Replayed.Stopped;
             session.Log.Remove(notReplayed);
         }
 
         panel?.ShowBanner(null);
         ConsoleUi.NumberAfter(session.Build());
         session.EndTest();
-        return true;
+        return report.Outcome == TestOutcome.Passed ? Replayed.All : Replayed.LeftOut;
     }
 
     // The login flow runs on the page the recording opened on the URL, before anything is recorded. When it fails, or the

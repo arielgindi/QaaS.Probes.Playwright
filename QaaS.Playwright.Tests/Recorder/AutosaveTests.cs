@@ -104,6 +104,10 @@ public class AutosaveTests
         var replaced = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(start.Code) }, whole);
         File.AppendAllText(created.CodePath, "// Changed by hand.\n");
         var beside = FlowRecorder.Save(byName with { Replaces = Autosave.Hash(whole.Code) }, start);
+        // Continued without the steps that did not replay, as when the app was signed in already: the flow keeps them.
+        var posters = byName with { ClassName = "Posters" };
+        var recorded = FlowRecorder.Save(posters, whole);
+        var leftOut = FlowRecorder.Save(FlowRecorder.LeftOut(posters with { Replaces = Autosave.Hash(whole.Code) }), start);
 
         Assert.Multiple(() =>
         {
@@ -112,6 +116,8 @@ public class AutosaveTests
             Assert.That(replaced, Is.EqualTo(created), "the flow continued is replaced");
             Assert.That(beside.CodePath, Does.EndWith("ScheduleMaintenance.recorded.txt"), "a flow changed by hand never is");
             Assert.That(File.ReadAllText(created.CodePath), Is.EqualTo(whole.Code + "// Changed by hand.\n"));
+            Assert.That((Path.GetFileName(leftOut.CodePath), File.ReadAllText(recorded.CodePath)), Is.EqualTo(("Posters.recorded.txt", whole.Code)),
+                "a flow continued without steps is saved beside the flow, which keeps them");
         });
     }
 
