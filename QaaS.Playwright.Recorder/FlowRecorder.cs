@@ -10,7 +10,10 @@ namespace QaaS.Playwright.Recorder;
 /// <summary>The flow's saved files: its class, its recorded values, and the raw recording when it was kept.</summary>
 internal sealed record SavedFlow(string CodePath, string YamlPath, string? RecordingPath = null);
 
-/// <summary>Records a flow in Chrome and saves it as a C# flow class with the YAML of its values.</summary>
+/// <summary>
+/// Records a flow in Chrome and saves it as a C# flow class with the YAML of its values. <see cref="Autosave"/> keeps the
+/// recording as it changes, and once it is saved.
+/// </summary>
 internal static class FlowRecorder
 {
     /// <summary>Returns the process exit code: 0 when a flow was saved.</summary>
@@ -19,6 +22,7 @@ internal static class FlowRecorder
     private static async Task<int> RecordAsync(RecordRequest request)
     {
         ConsoleUi.Recording(request);
+        var autosave = new Autosave();
         Recording recording;
         try
         {
@@ -35,6 +39,8 @@ internal static class FlowRecorder
                 else ConsoleUi.Captured(news);
             });
             var panel = request.Panel ? await OpenPanelAsync(session, request) : null;
+            using var stopWatching = new CancellationTokenSource();
+            var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
             if (request.Login is not null) await LogInAsync(session, request);
             Volatile.Write(ref loggingIn, false);
             await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), panel?.SaveRequested ?? session.Closed);
@@ -45,6 +51,8 @@ internal static class FlowRecorder
             }
 
             recording = await session.StopAsync();
+            await stopWatching.CancelAsync();
+            await watching;
             if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
         }
         catch (PlaywrightException failure)
@@ -55,10 +63,19 @@ internal static class FlowRecorder
 
         if (recording.Actions.Count == 0)
         {
+            autosave.Forget();
             ConsoleUi.Error("No actions recorded. Interact with the page before closing.");
             return 1;
         }
 
+        // On disk as it ended, in case saving it fails.
+        await autosave.WriteAsync(recording, request);
+        return await SaveAsync(request, recording, autosave);
+    }
+
+    // Writes the flow and its values, says what was saved, and keeps the recording to continue it. Returns the exit code.
+    private static async Task<int> SaveAsync(RecordRequest request, Recording recording, Autosave autosave)
+    {
         var flow = FlowCodeGenerator.Generate(recording, request.ClassName, ProjectNamespace.Of(request.OutputDir),
             request.AutoChecks);
         SavedFlow saved;
@@ -68,7 +85,7 @@ internal static class FlowRecorder
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            // Recording it again would take as long as the first time.
+            // Recording it again would take as long as the first time; the recorder offers it again when it starts.
             var kept = Path.Combine(Path.GetTempPath(), $"{request.ClassName}-{Guid.NewGuid():N}.cs.txt");
             await File.WriteAllTextAsync(kept, flow.Code + "\n/*\n" + flow.Yaml + "*/\n");
             ConsoleUi.Error($"Could not save the flow: {failure.Message}\n  The recorded flow is kept in {kept}");
@@ -76,7 +93,11 @@ internal static class FlowRecorder
         }
 
         if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
+        await autosave.SavedAsync(recording, request, saved, flow.Code);
         ConsoleUi.Saved(request, saved, flow);
+        if (Autosave.Unkept(recording, request.ClassName) is [_, ..] unkept)
+            ConsoleUi.Warning($"The recorder keeps no password in its copy of a recording: set {string.Join(", ", unkept)} " +
+                              $"in {Path.GetFileName(saved.YamlPath)}.");
         if (request.Login is { } after) ConsoleUi.RunAfter(after.Flow);
         return 0;
     }

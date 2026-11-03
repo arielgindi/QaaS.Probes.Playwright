@@ -32,6 +32,15 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     public bool LoginRemembered { get; init; }
 
     /// <summary>
+    /// The flow file saving replaces, by its <see cref="Autosave.Hash"/>: the flow continued, or the one the person chose
+    /// to overwrite. When the file changed since, or this is null, saving keeps it, as it keeps any other.
+    /// </summary>
+    public string? Replaces { get; init; }
+
+    /// <summary>The flow's class file.</summary>
+    public string CodePath => Path.Combine(OutputDir, $"{ClassName}.cs");
+
+    /// <summary>
     /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording] [--no-panel] [--no-auto-checks]
     /// [--login Flow --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options
     /// anywhere. What the login options leave out comes from <paramref name="remembered"/>, the login last used here.
