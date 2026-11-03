@@ -75,6 +75,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     public Task<TestReport> ReplayAsync(RecordRequest request, string namespaceName) =>
         Start(request, namespaceName, null, false, null, replay: true);
 
+    /// <summary>
+    /// Has the compiler ready for the first test, in the background, by compiling the flow as recorded so far once
+    /// (<see cref="FlowBuild.WarmUp"/>).
+    /// </summary>
+    public Task WarmUp(RecordRequest request) =>
+        FlowBuild.WarmUp(() => FlowCodeGenerator.Generate(session.Build(), request.ClassName, "Flows", request.AutoChecks));
+
     private Task<TestReport> Start(RecordRequest request, string namespaceName, string? upTo, bool slowMotion, IPage? front,
         bool replay)
     {

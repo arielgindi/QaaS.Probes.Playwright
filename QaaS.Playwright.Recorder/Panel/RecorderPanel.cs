@@ -99,6 +99,8 @@ internal sealed class RecorderPanel : IAsyncDisposable
             session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             panel._worker = Task.Run(panel.RunAsync);
+            // In the background, so the first test compiles as fast as the next.
+            _ = panel._tester.WarmUp(request);
             return panel;
         }
         catch

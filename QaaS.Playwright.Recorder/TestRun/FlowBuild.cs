@@ -85,6 +85,8 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
 
     // Found once in the process: the compiler and the references do not change while it runs.
     private static readonly Lazy<Task<Compiler?>> Toolchain = new(FindCompilerAsync);
+    private static readonly Lock WarmUpGate = new();
+    private static Task? _warmUp;
 
     private readonly Dictionary<string, BuiltFlow> _built = [];
     private bool _direct = direct;
@@ -115,6 +117,31 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
         }
 
         return _built[key] = built;
+    }
+
+    /// <summary>
+    /// Compiles the flow <paramref name="flow"/> gives once in the process, in the background, quietly and at a low
+    /// priority, and keeps nothing of it: the compiler's server starts and reads the references, and the compiler's
+    /// files are read once, so the first test compiles as fast as the next. Only a head start: whatever fails, a test
+    /// says why.
+    /// </summary>
+    public static Task WarmUp(Func<GeneratedFlow> flow)
+    {
+        lock (WarmUpGate)
+            return _warmUp ??= Task.Run(async () =>
+            {
+                try
+                {
+                    using var build = new FlowBuild();
+                    var folder = await build.PrepareAsync(CancellationToken.None);
+                    await File.WriteAllTextAsync(Path.Combine(folder, "Flow.cs"), Instrument(flow()));
+                    await CompileAsync(folder, Path.Combine(folder, "out", "warm-up"), quiet: true, CancellationToken.None);
+                }
+                catch (Exception failure) when (failure is not OutOfMemoryException)
+                {
+                    // A test builds it again, and says what is wrong.
+                }
+            });
     }
 
     /// <summary>Writes the flow's settings, its recorded values, for the run to read as the probe reads its YAML.</summary>
