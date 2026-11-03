@@ -360,6 +360,7 @@ internal sealed partial class FlowWriter
                 }
                 else
                 {
+                    ScrollTo(source);
                     _step.Add($"await {Locate(action, ref problem)}{Break}.{method}();", problem);
                     // In a loop, a check stays only when it reads the loop's item.
                     if (_autoChecks && _step.Depth == 0 && action.Has("tabSelected"))
@@ -465,6 +466,7 @@ internal sealed partial class FlowWriter
                 _step.Add(source.Widget == "autocomplete" && action.SearchValue is not null
                     ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue)});"
                     : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
+                ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
                 // In a loop, a check stays only when it reads the loop's item. A field that showed nothing of the choice,
                 // such as an input under the text that shows it, is not checked; an input that holds it, by its value.
@@ -488,9 +490,19 @@ internal sealed partial class FlowWriter
                 break;
             }
             default:
+                ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
                 break;
         }
+    }
+
+    // A list that renders only the items in sight is scrolled as far as the person scrolled it, so the item is there.
+    private void ScrollTo(CapturedAction source)
+    {
+        if (source.Scrolled is not { List: { } list, Top: > 0 } scrolled || LocatorPolicy.Choose(list) is not { } found) return;
+        _step.Add($"await {Render(found, source)}{Break}.HoverAsync();");
+        _step.Add($"await {_step.Scope.Page}.Mouse.WheelAsync(0, {scrolled.Top});",
+            "a list that shows only the items in sight: the flow scrolls it as far as you did; check that this reaches the item");
     }
 
     // What the action changed: the dialog it closed, the address it went to (unless a stronger check says the same),

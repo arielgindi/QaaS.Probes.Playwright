@@ -88,6 +88,12 @@ internal sealed class CapturedAction
     /// </summary>
     public string? Opener { get; set; }
 
+    /// <summary>
+    /// The list the element was in, scrolled to it, which renders only the items in sight (a virtualised list): the flow
+    /// scrolls it as far first.
+    /// </summary>
+    public CapturedScroll? Scrolled { get; set; }
+
     /// <summary>For a drag, the element it was dropped on.</summary>
     public CapturedTarget? To { get; set; }
 
@@ -195,6 +201,15 @@ internal sealed class CapturedTarget
 
     /// <summary>The candidate the person chose in the recorder's panel, by its index; null leaves it to the policy.</summary>
     public int? Chosen { get; set; }
+}
+
+/// <summary>A list scrolled to an element, which renders only the items in sight.</summary>
+internal sealed class CapturedScroll
+{
+    /// <summary>How far down it was scrolled, in pixels.</summary>
+    public int Top { get; set; }
+
+    public CapturedTarget? List { get; set; }
 }
 
 /// <summary>The table row an element is in, and the text that tells the row apart from the others.</summary>

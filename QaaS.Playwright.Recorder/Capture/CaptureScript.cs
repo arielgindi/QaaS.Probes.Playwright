@@ -768,7 +768,7 @@ internal static class CaptureScript
               return { element: option, owner, listbox, kind: 'choose',
                 widget: !owner ? 'option' : isAutocomplete(owner) ? 'autocomplete' : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
-                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')) };
+                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')), scrolled: scrolledList(option) };
             }
             // An element the person picked is what they act on, whatever it is.
             const info = describe(element, picked ? { interactive: true } : {});
@@ -780,7 +780,22 @@ internal static class CaptureScript
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
               ...(equivalents.length ? { equivalents } : {}),
               adornmentField: element.tagName === 'BUTTON' ? fieldOfAdornment(element) : null,
-              hoverMenu: hoverMenus.has(element.closest('[role=menu]')) };
+              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
+          }
+
+          // A list that renders only what is in sight, scrolled to the element: what the flow scrolls first, as far. It says
+          // it has more options than it shows (aria-setsize), or what it shows is far shorter than what it scrolls.
+          function scrolledList(element) {
+            for (let list = upFrom(element); list && list !== document.body; list = upFrom(list)) {
+              const style = styleOf(list);
+              if (!style || !/auto|scroll/.test(style.overflowY) || list.scrollTop <= 0) continue;
+              const items = [...list.querySelectorAll('[role=option], [role=row], [role=listitem], [role=treeitem], li')];
+              const said = Number(closestUp(element, '[aria-setsize]')?.getAttribute('aria-setsize') ?? 0);
+              const shown = items.reduce((sum, item) => sum + item.getBoundingClientRect().height, 0);
+              if (!items.length || (said <= items.length && shown > list.scrollHeight * 0.6)) return null;
+              return { top: Math.round(list.scrollTop), list: describe(list, { interactive: true }).target };
+            }
+            return null;
           }
 
           function finish(state, via) {
