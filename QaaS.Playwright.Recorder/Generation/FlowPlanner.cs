@@ -24,6 +24,8 @@ internal static partial class FlowPlanner
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
 
+    private const string MuiSelectId = "mui-component-select-";
+
     public static FlowPlan Plan(Recording recording, string className)
     {
         var plan = new FlowPlan
@@ -187,10 +189,12 @@ internal static partial class FlowPlanner
             var source = action.Source;
             var field = source.Kind == "choose" ? source.Field ?? source.Target : source.Target;
             var name = SettingName(field);
-            var qualified = action.Dialog is { } dialog && CSharp.IsAsciiText(dialog) && !dialog.Any(char.IsDigit)
-                            && CSharp.Pascal(dialog) is { } subject
-                ? subject + name
+            var subject = action.Dialog is { } dialog && CSharp.IsAsciiText(dialog) && !dialog.Any(char.IsDigit)
+                ? CSharp.Pascal(dialog)
                 : null;
+            var qualified = subject is null ? null : subject + name;
+            // A choice whose field says nothing of what it is for is named after its dialog: what the Shipping dialog chooses.
+            if (source.Kind == "choose" && name == "Value" && subject is not null) (name, qualified) = (subject, null);
             switch (action.Kind)
             {
                 case "fill":
@@ -271,7 +275,11 @@ internal static partial class FlowPlanner
         if (field is null) return "Value";
         var select = field.Candidates.FirstOrDefault(candidate => candidate.Kind == "select")?.Value;
         var groupMember = field.Role == "checkbox" && field.Candidates.Any(candidate => candidate is { Kind: "name", Count: > 1 });
-        var path = new[] { select, field.Name, field.Id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
+        // MUI names a Select's box after its field: mui-component-select-shipping.
+        var id = field.Id is { } own && own.StartsWith(MuiSelectId, StringComparison.Ordinal) && own.Length > MuiSelectId.Length
+            ? own[MuiSelectId.Length..]
+            : field.Id;
+        var path = new[] { select, field.Name, id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
         var name = CSharp.Pascal(path) ?? (CSharp.IsAsciiText(field.Label) ? CSharp.Pascal(field.Label) : null)
                    ?? (CSharp.IsAsciiText(field.Text) ? CSharp.Pascal(field.Text) : null) ?? "Value";
         if (groupMember && path == field.Name)

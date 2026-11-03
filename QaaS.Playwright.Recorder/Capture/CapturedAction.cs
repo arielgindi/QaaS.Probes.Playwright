@@ -186,6 +186,10 @@ internal sealed class CapturedTarget
 
     public string? Label { get; set; }
     public bool Interactive { get; set; }
+
+    /// <summary>One of a list of like items, or in one: an option, a card among cards, a link of a menu.</summary>
+    public bool? Item { get; set; }
+
     public CapturedRow? Row { get; set; }
     public List<CapturedCandidate> Candidates { get; set; } = [];
 

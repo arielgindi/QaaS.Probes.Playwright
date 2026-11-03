@@ -546,6 +546,19 @@ internal static class CaptureScript
               matches: found?.length === 1 && inside(found[0]), text: label.text };
           }
 
+          // An option's label is its list's: "Pickup point" for one of its pickup points.
+          const listLabel = (element, role) => {
+            const listbox = role === 'option' ? closestUp(element, '[role=listbox]') : null;
+            return listbox ? clean(accessibleName(listbox)) : '';
+          };
+
+          // One of a list of options, or in one, as a carousel's tile is in the wrappers of its slide.
+          const isItem = (element) => {
+            for (let item = element, depth = 0; item && depth < 3; item = upFrom(item), depth++)
+              if (upFrom(item) && holdsSeveral(upFrom(item), item)) return true;
+            return false;
+          };
+
           // Every way to find the element, each checked against the page as it is now. The recorder picks one.
           function describeTarget(element, dialog, dialogInfo, options = {}) {
             const scope = options.pageLevel ? [] : scopeOf(element, dialogInfo, dialog);
@@ -576,7 +589,8 @@ internal static class CaptureScript
                 const { text, ...part } = variant;
                 const found = candidate('role', scope, [{ m: 'role', role, ...part }], element, { text: text ?? variant.name });
                 candidates.push(found);
-                roleText ??= text ?? variant.name;
+                // A field found by its role alone is named by nothing it shows.
+                roleText ??= text ?? variant.name ?? '';
                 if (found.matches) break;
               }
               if (role === 'radio' || role === 'checkbox') {
@@ -605,21 +619,26 @@ internal static class CaptureScript
                 candidates.push(candidate('role', scope, [{ m: 'role', role: 'listbox', name: listName, exact: true },
                   { m: 'role', role: 'option', name, exact: true }], element, { text: name }));
             }
+            let labelText = null;
             if (!role || !NAME_FROM_CONTENT.has(role)) {
               const text = labelCandidate(element, scope);
               if (text) candidates.push(text);
+              labelText = text?.text ?? null;
             }
             const generated = safe(() => engine()?.generateLocator(element, 'csharp'), null);
             if (generated) candidates.push({ kind: 'generator', csharp: generated, selector: safe(() => engine().selector(element), null), count: 1, matches: true });
             return {
               tag: tag.toLowerCase(), role, type: element.getAttribute('type'), id: element.id || null,
               name: nameAttribute, testId, value: element.matches('input[type=radio], input[type=checkbox]') ? element.value : null,
-              text: roleText ?? clean(accessibleName(element)),
-              label: clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref)).map((ref) => ref.textContent).join(' ')) ||
+              text: roleText ?? (clean(accessibleName(element)) || labelText || ''),
+              label: listLabel(element, role) ||
+                clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref)).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
               interactive: options.interactive ??
                 (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,
+              // One of a list of options, or in one: a card, a menu's link.
+              item: isItem(element) || undefined,
               candidates,
             };
           }
