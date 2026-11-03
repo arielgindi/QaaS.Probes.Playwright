@@ -17,18 +17,26 @@ qaas-playwright record new-order https://my-app.com --login LoginFlow --login-as
 Run it in your test project's folder: the flow is saved in `Flows/` there, in the project's namespace. From a clone
 of this repository, `dotnet run --project QaaS.Playwright.Recorder -- record ...` does the same.
 
-Work through the site. Each action is printed as it is recorded, with what it caused:
+Work through the site. Each action is printed as it is recorded: its number, what you did, the element's name and
+the value, then dimmer the locator the flow will use, and under it what the page did:
 
 ```text
-  ✓ click button "Actions for HL-775-ZE"
-  ✓ click menuitem "Schedule maintenance"
-      ↳ dialog opened: Schedule maintenance
-  ✓ choose [id='maintenanceTypeId'] → Brake inspection
-  ✓ fill [name='dueDate'] = 03/11/2026
-  ✓ click button "Schedule"
-      ↳ dialog closed: Schedule maintenance
-      ↳ alert: Maintenance scheduled for HL-775-ZE
+    1 • click   Actions for HL-775-ZE         button "Actions for HL-775-ZE"
+    2 • click   Schedule maintenance          menuitem "Schedule maintenance"
+        └ opened dialog  Schedule maintenance
+    3 ▼ choose  Maintenance type → Brake inspection  [id='maintenanceTypeId']
+    4 ≡ fill    Due date = 03/11/2026         [name='dueDate']
+    5 ■ check   High                          radio "High"
+    6 ≡ fill    Notes = Brakes squeak         [name='notes']
+    7 • click   Schedule                      button "Schedule"
+        └ alert  Maintenance scheduled for HL-775-ZE
+        └ closed dialog  Schedule maintenance
 ```
+
+A step to [check by hand](#what-to-check-by-hand) gets an amber `▲` line under it, saying why. Passwords show as
+`••••••••`. Long names and locators are cut to the console's width, and right-to-left names keep their place in the
+line. The console is coloured when it is a terminal; `NO_COLOR` turns colours off and `FORCE_COLOR` on (e.g. for a CI
+log), and a console that cannot show the glyphs gets ASCII ones.
 
 ### What a click records
 
@@ -75,8 +83,9 @@ and closes the very menu being frozen, so freezing is on `F4`.)
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
 recorder saves two files: `Flows/LoginFlow.cs`
-(the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints the YAML
-to run the flow, with the page you started on as `BaseUrl`.
+(the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints a
+summary: the files it wrote, how many actions, steps and settings the flow has, each line to check by hand as
+`Flows/LoginFlow.cs:42` with why, and the YAML to run the flow, with the page you started on as `BaseUrl`.
 
 - Your login is kept between recordings in `~/.qaas/auth.json`, so you log in once. It is saved when the recording
   ends, also when you closed the window. When it cannot be written (the folder is read-only, or the file is open
@@ -88,7 +97,8 @@ to run the flow, with the page you started on as `BaseUrl`.
 - The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
   (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
-  Windows device (`nul`, `com1`), or one too long for a file name.
+  Windows device (`nul`, `com1`), or one too long for a file name. Asked for the name, the recorder says why and asks
+  again; so it does for a URL that is not http(s). Ctrl+C at a question stops without recording.
 
 ### Logging in first
 

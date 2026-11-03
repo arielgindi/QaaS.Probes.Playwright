@@ -80,22 +80,41 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         };
     }
 
-    /// <summary>Asks for the page, the flow's name and the folder, and for a login flow to run first.</summary>
+    /// <summary>
+    /// Asks for the page, the flow's name and the folder, again until each answer is valid, and for a login flow to run
+    /// first.
+    /// </summary>
+    /// <exception cref="OperationCanceledException">The input ended before all were given.</exception>
     public static RecordRequest Ask(LoginFlow? remembered = null)
     {
-        ConsoleUi.Info("Let's record a browser flow.\n");
-        var url = ConsoleUi.Ask("What website do you want to record?", "");
-        EnsureHttpUrl(url);
-        var name = ConsoleUi.Ask("Give this flow a name", "my-flow");
-        var request = Create(name, url, ConsoleUi.Ask("Where to save it?", DefaultOutputDir));
-        var flow = ConsoleUi.Ask("Log in first with a flow of your tests? Its class name, or none", remembered?.Flow ?? "none");
+        ConsoleUi.Intro("Let's record a browser flow.");
+        var url = ConsoleUi.Ask("URL to start on", "", answer => answer.Length == 0
+            ? "Type the address of the page to start on, e.g. https://my-app.com/login"
+            : Refusal(() => EnsureHttpUrl(answer)));
+        var name = ConsoleUi.Ask("Flow name", "my-flow", answer => Refusal(() => Create(answer, url, DefaultOutputDir)));
+        var request = Create(name, url, ConsoleUi.Ask("Save in folder", DefaultOutputDir));
+        var flow = ConsoleUi.Ask("Log in first with a flow of your tests (its class name, or none)", remembered?.Flow ?? "none");
         if (flow.Equals("none", StringComparison.OrdinalIgnoreCase)) return request;
-        var assembly = ConsoleUi.Ask("Your test project's built .dll, e.g. bin/Debug/net10.0/MyTests.dll", remembered?.Assembly ?? "");
+        var assembly = ConsoleUi.Ask("Test project's built .dll, e.g. bin/Debug/net10.0/MyTests.dll", remembered?.Assembly ?? "",
+            answer => Refusal(() => CheckedLogin(flow, answer, null)));
         var settings = ConsoleUi.Ask("Its settings in a YAML file, or none", remembered?.Settings ?? "none");
         return request with
         {
             Login = CheckedLogin(flow, assembly, settings.Equals("none", StringComparison.OrdinalIgnoreCase) ? null : settings),
         };
+    }
+
+    private static string? Refusal(Action check)
+    {
+        try
+        {
+            check();
+            return null;
+        }
+        catch (ArgumentException refused)
+        {
+            return ConsoleUi.Reason(refused);
+        }
     }
 
     /// <summary>The same request for a flow named <paramref name="name"/>, checked as a new name is.</summary>

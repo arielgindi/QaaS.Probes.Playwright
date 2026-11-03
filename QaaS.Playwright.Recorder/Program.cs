@@ -1,4 +1,3 @@
-using System.Reflection;
 using QaaS.Playwright.Recorder.Login;
 
 namespace QaaS.Playwright.Recorder;
@@ -10,21 +9,25 @@ namespace QaaS.Playwright.Recorder;
 /// </summary>
 public static class Program
 {
+    // What a shell returns for a program stopped by Ctrl+C.
+    private const int Cancelled = 130;
+
     public static int Main(string[] args)
     {
-        switch (args)
+        if (args is ["--version"] or ["-v"])
         {
-            case ["--version"]:
-                Console.WriteLine(Version);
-                return 0;
-            case ["--help"] or ["-h"] or ["help"]:
-                ConsoleUi.Header();
-                ConsoleUi.Usage();
-                ConsoleUi.LoginUsage();
-                return 0;
+            ConsoleUi.PrintVersion();
+            return 0;
         }
 
         ConsoleUi.Header();
+        if (args is ["help"] || args.Any(arg => arg is "--help" or "-h"))
+        {
+            ConsoleUi.Usage();
+            return 0;
+        }
+
+        ConsoleUi.CancelOnCtrlC();
         RecordRequest request;
         // The login flow last used in this folder is used again, unless the command says otherwise.
         var projectFolder = Environment.CurrentDirectory;
@@ -35,17 +38,17 @@ public static class Program
         }
         catch (ArgumentException invalid)
         {
-            ConsoleUi.Error(invalid.Message);
-            ConsoleUi.Usage();
-            ConsoleUi.LoginUsage();
+            ConsoleUi.Error(ConsoleUi.Reason(invalid));
+            ConsoleUi.UsageHint();
             return 1;
+        }
+        catch (OperationCanceledException)
+        {
+            ConsoleUi.Cancelled();
+            return Cancelled;
         }
 
         if (RememberedLogin.Remember(projectFolder, request.Login) is { } notRemembered) ConsoleUi.Warning(notRemembered);
         return FlowRecorder.Record(request);
     }
-
-    private static string Version =>
-        typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            .Split('+')[0] ?? "unknown";
 }

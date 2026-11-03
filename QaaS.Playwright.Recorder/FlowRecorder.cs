@@ -19,7 +19,6 @@ internal static class FlowRecorder
     private static async Task<int> RecordAsync(RecordRequest request)
     {
         ConsoleUi.Recording(request);
-        ConsoleUi.RecorderKeys();
         Recording recording;
         try
         {

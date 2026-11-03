@@ -22,6 +22,12 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   Playwright's debug mode, which waits forever.
 - `ENV=local` or `Headless: false` runs in the Chrome on this machine again, as in earlier versions: the run uses
   `http://localhost:9222`, starting a Chrome with a window there if none answers, instead of a remote `BrowserUrl`.
+- The recorder's console has a new look: a compact header with the keys, one line per step with the element's name,
+  the value and its locator, cut to the console's width and with right-to-left names in place, what to check by hand
+  in amber as you record, and a summary of the files, the counts, each line to check and the next steps. The questions
+  say what is wrong with an answer and ask again, Ctrl+C stops politely, `--help` has sections and examples, and errors
+  go to the standard error. Colours turn off when the output is redirected or `NO_COLOR` is set, glyphs fall back to
+  ASCII where the console cannot show them, and `FORCE_COLOR` turns colours on.
 
 ## 1.2.1
 
