@@ -4,6 +4,19 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- The panel's **Elements** view works as a browser's developer tools do. `Ctrl+Shift+C`, in the app or the panel,
+  picks an element in the app: a box names what is under the pointer, the tree opens to it, and a click picks it
+  without clicking it or recording anything, a menu that closes on blur still open. Pointing at a row boxes its element
+  in the app and scrolls to it. Rows read as the element does: its role (`tr` is a `row`), accessible name and text,
+  dimmed, and for a wrapper the start of the text inside it. Search finds by text, id, CSS or `role=button[name="Save"]`,
+  picks the first match, steps with Enter and Shift+Enter, and boxes every match in the app. **Interactive only** leaves
+  out the wrappers a person does not act on, a `⋯` where they were. A dialog, menu or list that opens is named above the
+  tree, to go to it. The keys move through the tree, Enter makes the step marked in the inspector, and typing searches.
+  Each step the element can become, **Use for**, **Add click**, **Add fill** and the new **Add check**, shows the lines
+  it writes and how many elements its locator finds before you make it. A step added goes where the next action goes,
+  so also into a part recorded again. The tree draws only the rows in view, and shows shadow roots and same-origin
+  frames.
+
 - **Re-record** a step or an action in the panel, or **Record after this**: the recorded window goes back to the start
   of the flow and replays it up to there, as **Test** runs it, nothing recorded meanwhile; then what you do goes in
   place of the part, or after it, and the steps after it stay. `F2` (**Done**) keeps it, and `Esc` in the panel keeps
