@@ -37,7 +37,7 @@ one failed, with a screenshot.
 2. **Reference the library** from the test project:
 
    ```xml
-   <PackageReference Include="QaaS.Playwright" Version="1.2.1" />
+   <PackageReference Include="QaaS.Playwright" Version="1.3.0" />
    ```
 
    Also add `<WarningsAsErrors>CS4014</WarningsAsErrors>`: a flow that forgets to `await` a Playwright call then

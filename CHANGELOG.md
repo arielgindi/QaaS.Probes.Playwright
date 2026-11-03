@@ -2,7 +2,7 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 1.3.0
 
 - The recorder can log in first with a login flow of your tests: `--login LoginFlow --login-assembly
   bin/Debug/net10.0/MyTests.dll [--login-settings Flows/LoginFlow.flow.yaml]`. The flow runs as the probe runs a setup

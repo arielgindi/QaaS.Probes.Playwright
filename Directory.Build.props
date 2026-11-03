@@ -29,7 +29,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>qaas;playwright;browser;e2e;testing;probe;recorder</PackageTags>
     <PackageReleaseNotes>https://github.com/arielgindi/QaaS.Probes.Playwright/blob/master/CHANGELOG.md</PackageReleaseNotes>
-    <VersionPrefix>1.2.1</VersionPrefix>
+    <VersionPrefix>1.3.0</VersionPrefix>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
