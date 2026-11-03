@@ -227,6 +227,10 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             case "delete" when command.Action is { } id && _shown is { } shown:
                 _session.Log.Remove(shown.Sources.GetValueOrDefault(id) ?? [id], $"Restore {Called(shown, id)}");
                 break;
+            // A suggestion applied: what it leaves out, with what only led to it, in one change Undo takes back.
+            case "applySuggestion" when command.Key is { } key && _shown?.Suggestions.FirstOrDefault(found => found.Suggestion.Key == key) is ({ } applied, { } leftOut):
+                _session.Log.Remove(leftOut, applied.Drop.Count == 1 ? "Bring back what the suggestion left out" : $"Bring back the {applied.Drop.Count} actions the suggestion left out");
+                break;
             case "renameStep" when command.Action is { } id:
                 var method = StepNamer.MethodName(command.Name);
                 if (method is null && !string.IsNullOrWhiteSpace(command.Name)) Refuse("A step's name needs a letter.");

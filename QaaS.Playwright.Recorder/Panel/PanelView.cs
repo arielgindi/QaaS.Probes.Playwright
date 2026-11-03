@@ -171,7 +171,13 @@ internal sealed record PanelAction(string Id, string Kind)
 
     /// <summary>For an action tried that the flow would leave out: why.</summary>
     public string? Omitted { get; init; }
+
+    /// <summary>What the recorder suggests leaving out of the flow around the action, one click each.</summary>
+    public IReadOnlyList<PanelSuggestion> Suggestions { get; init; } = [];
 }
+
+/// <summary>A suggestion, as the panel shows it on the cards of the actions it is about: what it says, and its button.</summary>
+internal sealed record PanelSuggestion(string Key, string Text, string Apply);
 
 /// <summary>An element picked in the Elements view, located as a recorded action's element is.</summary>
 internal sealed record PanelElement(int Node, string Page)
@@ -379,6 +385,9 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Sources { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>What the recorder suggests leaving out, each with every recorded action applying it leaves out.</summary>
+    public IReadOnlyList<(Suggestion Suggestion, IReadOnlyList<string> Drop)> Suggestions { get; init; } = [];
+
     /// <summary>Plans and writes the recording as the recorder saves it, and describes it for the panel.</summary>
     /// <param name="recording">The recording so far.</param>
     /// <param name="request">The flow's name and folder.</param>
@@ -392,7 +401,11 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         var plan = FlowPlanner.Plan(recording, request.ClassName);
         var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
-            [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null))])).ToList();
+            [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null) with
+            {
+                Suggestions = [.. plan.Suggestions.Where(suggestion => suggestion.On.Contains(action.Source.Id))
+                    .Select(suggestion => new PanelSuggestion(suggestion.Key, suggestion.Text, suggestion.Apply))],
+            })])).ToList();
         var target = Path.Combine(request.OutputDir, $"{request.ClassName}.cs");
         var view = new PanelView(request.ClassName, target, status, flow.Code, flow.Yaml, steps, flow.Checks, error)
         {
@@ -406,6 +419,9 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         {
             Undo = fresh is { Count: > 0 } ? FreshUndo(recording, planned, fresh, sources) : UndoOf(recording, planned),
             Sources = sources, Recording = recording, Steps = plan.Steps,
+            // Applying one leaves out what only led to its actions too, as deleting them does.
+            Suggestions = [.. plan.Suggestions.Select(suggestion => (suggestion,
+                (IReadOnlyList<string>)[.. suggestion.Drop.SelectMany(id => sources.GetValueOrDefault(id) ?? [id]).Distinct()]))],
         };
     }
 

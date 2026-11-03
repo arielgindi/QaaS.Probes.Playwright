@@ -373,6 +373,11 @@ export function App() {
           onDelete={remove}
           onRenameStep={(action, name) => send({ type: 'renameStep', action, name })}
           onDropCheck={(action, key, drop) => send({ type: 'dropCheck', action, key, drop })}
+          onApplySuggestion={(key) => {
+            if (saving) return;
+            send({ type: 'applySuggestion', key });
+            toast({ text: 'Left out what the suggestion said', icon: 'trash', action: { label: 'Undo', icon: 'undo', run: () => send({ type: 'undo' }) } });
+          }}
           onAutoChecks={(on) => send({ type: 'autoChecks', on })}
           rerecord={part}
           tried={state.tried}
