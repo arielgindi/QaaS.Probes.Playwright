@@ -3,8 +3,10 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// <summary>
 /// The script the recorder installs in every page it records. It watches what the person does, without changing
 /// it, and reports each action through the binding <c>__qaasRecord</c>: every way to find the element, each checked
-/// with Playwright's own engine (its console API, present in debug mode "console"), the dialog it is in, the value a
-/// field settled on, and what the page did a moment later.
+/// with Playwright's own engine (its console API, which a driver in debug mode "console" installs), the dialog it is
+/// in, the value a field settled on, and what the page did a moment later. Through <c>__qaasControl</c> it learns
+/// whether to record (F8 pauses), and hands over the page's elements frozen (F4); <c>window.__qaasRecorder</c> answers
+/// the recorder's panel about the page's elements.
 /// </summary>
 internal static class CaptureScript
 {
@@ -40,9 +42,17 @@ internal static class CaptureScript
           const page = Math.random().toString(36).slice(2, 8);
           let counter = 0;
 
-          const send = (message) => {
-            try { window.__qaasRecord?.(JSON.stringify(message)); } catch { /* the recorder is gone */ }
-          };
+          // Whether the person's actions are recorded: 'recording', 'paused' (F8, or the panel), or 'login' while a login
+          // flow runs. The recorder decides, and tells each page; a page that loads asks.
+          let state = 'recording';
+          const recording = () => state === 'recording';
+          // The recorder's bindings are called without waiting for an answer, which it gives through
+          // window.__qaasRecorder: another driver attached to the browser answers each call it does not know with an error.
+          const call = (binding, message) => safe(() => {
+            Promise.resolve(window[binding]?.(JSON.stringify(message))).catch(() => { /* answered elsewhere, or gone */ });
+          });
+          const send = (message) => { if (recording()) call('__qaasRecord', message); };
+          const control = (message) => call('__qaasControl', message);
           const safe = (work, fallback) => {
             try { return work(); } catch { return fallback; }
           };
@@ -464,7 +474,7 @@ internal static class CaptureScript
           }
 
           addEventListener('input', (event) => safe(() => {
-            if (!event.isTrusted) return;
+            if (!event.isTrusted || !recording()) return;
             const element = deepTarget(event);
             if (!element || !isTextual(element)) return;
             let entry = typing.get(element);
@@ -599,6 +609,7 @@ internal static class CaptureScript
           addEventListener('pointerdown', (event) => safe(() => {
             if (!event.isTrusted || event.button !== 0) return;
             lastPointer = now();
+            if (!recording()) { pending = null; return; }
             flushTyping();
             const hit = deepTarget(event);
             if (!hit) return;
@@ -653,7 +664,7 @@ internal static class CaptureScript
               return;
             }
             // A click from the keyboard (Enter or Space on a button, Space on a checkbox).
-            if (event.detail !== 0 || now() - lastPointer < 400 || now() - lastEnter < 150) return;
+            if (!recording() || event.detail !== 0 || now() - lastPointer < 400 || now() - lastEnter < 150) return;
             const draft = draftFor(target);
             if (draft.ignore) return;
             const keyboard = { id: newId(), t: now(), draft, hit: target, detail: 0 };
@@ -675,7 +686,8 @@ internal static class CaptureScript
           // drawn in a closed shadow root, which neither the page nor Playwright's selectors see; it never takes the pointer
           // or the focus, and takes no room. F9 hides or shows it. While it shows, Alt+Up picks the element around the one in
           // the box and Alt+Down goes back toward the element under the pointer; a click then records the element picked.
-          // Moving to another element drops the pick.
+          // Moving to another element drops the pick. While the recording is paused, a pill at the top says so instead,
+          // and while a login flow runs, nothing shows.
           const OVERLAY_CSS = `
             :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
               left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
@@ -691,7 +703,16 @@ internal static class CaptureScript
             .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
             .locator { font-size: 12px; font-weight: 600; color: #fff; }
             .pick, .problem { color: #fbbf24; }
-            .reasons, .note { color: #a1a1aa; }`;
+            .reasons, .note { color: #a1a1aa; }
+            .state { position: fixed; display: none; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box;
+              align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; pointer-events: none;
+              background: rgba(24, 24, 27, .94); color: #f4f4f5; direction: ltr; white-space: nowrap;
+              font: 500 12px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+              box-shadow: 0 4px 14px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .18); }
+            .state.shown { display: flex; }
+            .state::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: #fbbf24; }
+            .state.note::before { border-radius: 50%; background: #60a5fa; }
+            .state span { color: #a1a1aa; font-weight: 400; }`;
           // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
           let overlayOn = true;
@@ -699,9 +720,10 @@ internal static class CaptureScript
           // What the pointer is over: the element hit, the one a click there targets, the one picked instead with the
           // Alt+arrows, the one described, the one the recorder records it on (boxed), and the recorder's answer.
           let hover = null;
-          let explaining = false;
+          let explaining = null;
           let explainAgain = false;
           let explainTimer = 0;
+          let explainSeq = 0;
 
           function overlayView() {
             if (view?.host.isConnected) return view;
@@ -719,7 +741,8 @@ internal static class CaptureScript
             const box = part(root, 'box');
             const label = part(root, 'label');
             view = { host, box, label, pick: part(label, 'pick'), locator: part(label, 'locator'),
-              problem: part(label, 'problem'), reasons: part(label, 'reasons'), note: part(label, 'note') };
+              problem: part(label, 'problem'), reasons: part(label, 'reasons'), note: part(label, 'note'),
+              state: part(root, 'state') };
             document.documentElement.appendChild(host);
             return view;
           }
@@ -728,6 +751,36 @@ internal static class CaptureScript
             if (!view) return;
             view.box.style.display = 'none';
             view.label.style.display = 'none';
+          }
+
+          // The pill at the top: the recording is paused, or, for a moment, what a key did.
+          let pillTimer = 0;
+          function showPill(text, hint, note) {
+            clearTimeout(pillTimer);
+            const { state: pill } = overlayView();
+            pill.className = `state shown${note ? ' note' : ''}`;
+            pill.textContent = text;
+            const span = pill.appendChild(document.createElement('span'));
+            span.textContent = hint;
+            if (note) pillTimer = setTimeout(() => safe(showState), 2500);
+          }
+          function showState() {
+            clearTimeout(pillTimer);
+            if (state === 'paused') showPill('Recording paused', 'F8 resumes');
+            else if (view) view.state.className = 'state';
+          }
+          function applyState(next) {
+            if (next === state || !['recording', 'paused', 'login'].includes(next)) return;
+            state = next;
+            if (!recording()) {
+              flushTyping();
+              // What the page does next is no earlier action's doing.
+              pending = null;
+              lastAction = null;
+              hover = null;
+              hideOverlay();
+            }
+            showState();
           }
 
           // The box over the element, and the label below it, or above it when there is no room below.
@@ -797,12 +850,12 @@ internal static class CaptureScript
             if (!explainTimer) explainTimer = setTimeout(() => { explainTimer = 0; safe(explain); }, 80);
           }
 
-          // Asks the recorder what a click on the element records: one question at a time, about the latest element.
+          // Asks the recorder what a click on the element records: one question at a time, about the latest element. The
+          // answer comes through window.__qaasRecorder, as explained().
           function explain() {
-            if (explaining) { explainAgain = true; return; }
+            if (explaining && now() - explaining.at < 3000) { explainAgain = true; return; }
             const state = hover;
-            if (!overlayOn || !state?.shown.isConnected || typeof window.__qaasExplain !== 'function') return;
-            explaining = true;
+            if (!overlayOn || !recording() || !state?.shown.isConnected || typeof window.__qaasExplain !== 'function') return;
             state.at = now();
             const { shown, picked } = state;
             const option = !picked && shown !== state.element;
@@ -810,23 +863,25 @@ internal static class CaptureScript
             const widget = widgetOf(shown);
             const others = picked || option || widget ? [] : equivalentsOf(state.hit, shown);
             const equivalents = describeEquivalents(others, target);
-            Promise.resolve(window.__qaasExplain(JSON.stringify({ target, equivalents, byName: widget === 'radio' })))
-              .then((reply) => safe(() => {
-                if (hover !== state || state.shown !== shown || !reply) return;
-                state.answer = JSON.parse(reply);
-                state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
-                fillLabel(state.answer, picked);
-                drawOverlay();
-              }))
-              .catch(() => { /* the recorder is gone */ })
-              .finally(() => {
-                explaining = false;
-                if (explainAgain) { explainAgain = false; scheduleExplain(); }
-              });
+            explaining = { seq: ++explainSeq, at: now(), state, shown, picked, others };
+            call('__qaasExplain', { seq: explaining.seq, target, equivalents, byName: widget === 'radio' });
+          }
+          function explained(seq, reply) {
+            const asked = explaining;
+            if (!asked || asked.seq !== seq) return;
+            explaining = null;
+            const { state, shown, picked, others } = asked;
+            if (hover === state && state.shown === shown && reply) {
+              state.answer = JSON.parse(reply);
+              state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
+              fillLabel(state.answer, picked);
+              drawOverlay();
+            }
+            if (explainAgain) { explainAgain = false; scheduleExplain(); }
           }
 
           addEventListener('pointermove', (event) => safe(() => {
-            if (!event.isTrusted || !overlayOn) return;
+            if (!event.isTrusted || !overlayOn || !recording()) return;
             const hit = deepTarget(event);
             if (hit === hover?.hit) {
               // The page may have changed under a pointer at rest.
@@ -850,6 +905,12 @@ internal static class CaptureScript
               overlayOn = !overlayOn;
               hover = null;
               hideOverlay();
+            } else if (event.key === 'F8' && !event.altKey && !event.repeat && state !== 'login') {
+              // What is being typed belongs before the pause.
+              flushTyping();
+              control({ type: 'pause' });
+            } else if (event.key === 'F4' && !event.altKey && !event.repeat && state !== 'login') {
+              freeze();
             } else if (overlayOn && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
               pick(event.key === 'ArrowUp' ? 1 : -1);
             }
@@ -862,7 +923,7 @@ internal static class CaptureScript
             return element;
           };
           addEventListener('keydown', (event) => safe(() => {
-            if (!event.isTrusted || (event.key !== 'Enter' && event.key !== 'Escape')) return;
+            if (!event.isTrusted || !recording() || (event.key !== 'Enter' && event.key !== 'Escape')) return;
             const element = activeElement();
             if (event.key === 'Enter' && element?.matches?.('[role=option]')) {
               flushTyping();
@@ -883,7 +944,7 @@ internal static class CaptureScript
 
           // ---------------------------------------------------------------------------------------- selects and files
           addEventListener('change', (event) => safe(() => {
-            if (!event.isTrusted) return;
+            if (!event.isTrusted || !recording()) return;
             const element = deepTarget(event);
             if (!element) return;
             if (element.matches('input[type=file]')) {
@@ -933,6 +994,163 @@ internal static class CaptureScript
               if (!shown.menus.has(menu) && now() - lastPointer > 1000) hoverMenus.add(menu);
             shown = next;
           }), 100);
+
+          // ------------------------------------------------------------------------------------------------ elements
+          // The page's elements for the panel's Elements view, as a tree the panel loads a level at a time: each element by
+          // an id of its own, with what tells it apart (tag, id, classes, role, test id, name, its own text). The recorder
+          // locates an element the panel picks with describe(), as it locates a recorded action's. F4 freezes the tree, with
+          // how to locate each element a click may act on, for a menu that closes as soon as the focus leaves the app.
+          const SKIPPED = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'LINK', 'META', 'QAAS-RECORDER-OVERLAY']);
+          const TRANSIENT = '[role=menu], [role=listbox], [role=tree], [role=dialog], [role=alertdialog], [role=tooltip], ' +
+            '[popover], [aria-modal=true]';
+          const MAX_FROZEN = 15000;
+          const DESCRIBE_BUDGET_MS = 1500;
+          const nodeIds = new WeakMap();
+          const nodesById = new Map();
+          let lastNode = 0;
+          let frozen = new Map();
+          const nodeId = (node) => {
+            let id = nodeIds.get(node);
+            if (!id) {
+              id = ++lastNode;
+              nodeIds.set(node, id);
+              nodesById.set(id, new WeakRef(node));
+            }
+            return id;
+          };
+          const nodeById = (id) => nodesById.get(id)?.deref() ?? null;
+          // An element's children, its open shadow root first; a shadow root's children.
+          const childrenOf = (node) => [
+            ...(node.nodeType === 1 && node.shadowRoot ? [node.shadowRoot] : []),
+            ...[...node.children].filter((child) => !SKIPPED.has(child.tagName)),
+          ];
+          const parentOf = (node) => node.nodeType === 11 ? node.host
+            : node.parentNode?.nodeType === 11 ? node.parentNode : node.parentElement;
+          const ownText = (element) => normalize([...element.childNodes].filter((child) => child.nodeType === 3)
+            .map((child) => child.textContent).join(' ')).replace(BIDI, '');
+          function summary(node) {
+            const parent = node === document.body ? null : parentOf(node);
+            const common = { id: nodeId(node), parent: parent ? nodeId(parent) : undefined, count: childrenOf(node).length };
+            if (node.nodeType === 11) return { ...common, tag: '#shadow-root' };
+            const attribute = (name) => node.getAttribute(name) || undefined;
+            const text = ownText(node);
+            return {
+              ...common, tag: node.tagName.toLowerCase(), elementId: node.id || undefined, classes: attribute('class'),
+              role: attribute('role'), testId: attribute(TEST_ID), name: attribute('name'), type: attribute('type'),
+              label: attribute('aria-label') ?? attribute('placeholder'), text: text ? text.slice(0, 120) : undefined,
+              hidden: !visible(node) || undefined, fillable: isTextual(node) || undefined,
+            };
+          }
+          // The nodes, with each parent's children, for the panel to merge into its tree.
+          function tree(parents) {
+            const nodes = new Map();
+            const children = {};
+            for (const parent of parents) {
+              nodes.set(parent, summary(parent));
+              const list = childrenOf(parent);
+              children[nodeId(parent)] = list.map(nodeId);
+              for (const child of list) nodes.set(child, summary(child));
+            }
+            return { root: nodeId(document.body), nodes: [...nodes.values()], children };
+          }
+          // The elements below the body, in document order, open shadow roots included.
+          function* everyElement(from) {
+            for (const child of childrenOf(from)) {
+              if (child.nodeType === 1) yield child;
+              yield* everyElement(child);
+            }
+          }
+          // By CSS selector, or by text in its id, test id, name, label or own text.
+          function search(query) {
+            const text = normalize(query).toLowerCase();
+            if (!text) return { ...tree([document.body]), matches: [] };
+            const bySelector = new Set(safe(() => [...document.querySelectorAll(query)], []));
+            const found = [];
+            for (const element of everyElement(document.body)) {
+              const values = [element.id, element.getAttribute(TEST_ID), element.getAttribute('name'),
+                element.getAttribute('aria-label'), element.getAttribute('placeholder'), ownText(element)];
+              if (bySelector.has(element) || values.some((value) => value && value.toLowerCase().includes(text))) found.push(element);
+              if (found.length >= 200) break;
+            }
+            // Every element on the way to each match, with its children, for the panel to open the tree to it.
+            const ancestors = new Set();
+            for (const element of found)
+              for (let node = parentOf(element); node && node !== document.body && !ancestors.has(node); node = parentOf(node))
+                ancestors.add(node);
+            return { ...tree([document.body, ...ancestors]), matches: found.map(nodeId) };
+          }
+          // How a click on the element would locate it, while it is on the page.
+          function describeNode(id) {
+            const element = nodeById(id) ?? frozen.get(id);
+            if (!element?.isConnected || element.nodeType !== 1) return null;
+            return { description: describe(element, { interactive: true }), fillable: isTextual(element), visible: visible(element) };
+          }
+          function freeze() {
+            const started = now();
+            const kept = new Map();
+            const nodes = [];
+            const children = {};
+            const walk = (node) => {
+              if (nodes.length >= MAX_FROZEN) return;
+              const id = nodeId(node);
+              kept.set(id, node);
+              nodes.push(summary(node));
+              const list = childrenOf(node);
+              children[id] = list.map(nodeId);
+              for (const child of list) walk(child);
+            };
+            walk(document.body);
+            frozen = kept;
+            // What a click may act on and shows, in a menu, a list or a dialog first, then the latest in the page, where a
+            // portal puts them; as many as there is time for.
+            const targets = [...kept.values()]
+              .filter((node) => node.nodeType === 1 && node !== document.body && visible(node) && safe(() => retarget(node) === node, false))
+              .reverse()
+              .map((node) => ({ node, transient: !!node.closest(TRANSIENT) }))
+              .sort((a, b) => Number(b.transient) - Number(a.transient));
+            const described = {};
+            for (const { node } of targets) {
+              if (now() - started > DESCRIBE_BUDGET_MS) break;
+              const description = safe(() => describe(node, { interactive: true }), null);
+              if (description) described[nodeId(node)] = description;
+            }
+            control({ type: 'freeze', described,
+              tree: { root: nodeId(document.body), nodes, children, truncated: nodes.length >= MAX_FROZEN || undefined } });
+            showPill('Elements frozen', 'pick them in the panel', true);
+          }
+          // The panel follows the page as it changes, once it settles.
+          let watcher = null;
+          let changedTimer = 0;
+          function watch(on) {
+            watcher?.disconnect();
+            watcher = null;
+            if (!on || !document.body) return;
+            watcher = new MutationObserver(() => {
+              clearTimeout(changedTimer);
+              changedTimer = setTimeout(() => control({ type: 'changed' }), 600);
+            });
+            watcher.observe(document.body, { childList: true, subtree: true, attributes: true,
+              attributeFilter: ['id', 'class', 'role', 'hidden', 'aria-hidden', 'aria-label', 'name', TEST_ID] });
+          }
+          const selectorOf = (id) => {
+            const node = nodeById(id);
+            return node?.isConnected && node.nodeType === 1 ? safe(() => engine()?.selector(node) ?? null, null) : null;
+          };
+          // The recorder's calls, each answered as JSON. Not enumerable, and not writable by the page.
+          Object.defineProperty(window, '__qaasRecorder', { value: (command) => safe(() => {
+            switch (command?.op) {
+              case 'state': applyState(command.state); return null;
+              case 'explained': explained(command.seq, command.label); return null;
+              case 'tree': return JSON.stringify(tree([document.body,
+                ...(command.ids ?? []).map(nodeById).filter((node) => node?.isConnected && node !== document.body)]));
+              case 'search': return JSON.stringify(search(command.query ?? ''));
+              case 'describe': return JSON.stringify(describeNode(command.id));
+              case 'selector': return selectorOf(command.id);
+              case 'watch': watch(!!command.on); return null;
+              default: return null;
+            }
+          }, null) });
+          control({ type: 'state' });
         })();
         """;
 }

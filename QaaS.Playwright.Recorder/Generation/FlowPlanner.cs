@@ -14,7 +14,7 @@ internal static class FlowPlanner
 
     public static FlowPlan Plan(Recording recording, string className)
     {
-        var plan = new FlowPlan { ClassName = className, StartUrl = recording.StartUrl };
+        var plan = new FlowPlan { ClassName = className, StartUrl = recording.StartUrl, After = recording.After };
         plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
         var actions = Clean(recording.Actions.Select(Prepare).ToList());
         PlaceInDialogs(actions);

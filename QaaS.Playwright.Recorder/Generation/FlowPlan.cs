@@ -7,6 +7,9 @@ internal sealed class FlowPlan
 {
     public required string ClassName { get; init; }
     public required string StartUrl { get; init; }
+
+    /// <summary>The flow the recording started after, which a probe must run before it.</summary>
+    public string? After { get; init; }
     public List<Step> Steps { get; } = [];
     public List<Setting> Settings { get; } = [];
 

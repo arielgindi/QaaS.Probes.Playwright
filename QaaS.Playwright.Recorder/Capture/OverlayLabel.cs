@@ -29,8 +29,21 @@ internal static class OverlayLabel
         return JsonSerializer.Serialize(answer, Recording.Json);
     }
 
+    /// <summary>
+    /// The capture script's call that shows the label: <see cref="For"/> the question, with the number the script asked
+    /// it under, as it gets no answer from the binding itself.
+    /// </summary>
+    public static object Reply(string json) => new
+    {
+        op = "explained",
+        seq = JsonSerializer.Deserialize<Question>(json, Recording.Json)?.Seq ?? 0,
+        label = For(json),
+    };
+
     private sealed class Question
     {
+        public long Seq { get; set; }
+
         public CapturedTarget? Target { get; set; }
 
         /// <summary>Elements the same click hits, which the click may be located by instead.</summary>

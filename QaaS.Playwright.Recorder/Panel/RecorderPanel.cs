@@ -188,7 +188,7 @@ internal sealed class RecorderPanel : IAsyncDisposable
         try
         {
             _namespace ??= ProjectNamespace.Of(Request.OutputDir);
-            _shown = PanelSnapshot.Of(_session.Log.Build(Request.Url), Request, _namespace, _saving, _error);
+            _shown = PanelSnapshot.Of(_session.Build(), Request, _namespace, _saving, _error);
         }
         catch (Exception failure)
         {
