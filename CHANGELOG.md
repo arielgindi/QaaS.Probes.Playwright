@@ -2,8 +2,13 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
-## 2.1.0
+## 2.0.1
 
+- Fixed: the recorder stopped with a NullReferenceException writing a flow whose first step is in a dialog no recorded
+  step opened, such as one open when the recording started, or after deleting the click that opened it; and then at
+  every start, offering that recording.
+- A recording the recorder cannot write no longer stops it: it is still offered when the recorder starts, and saving it
+  says why and keeps it.
 - **Choices in dialogs are recorded as you meant them.** A click on the title or the badge of a card, a tile or a
   carousel's slide is recorded on the card, the element the app's own click handler is on (React's, Vue's or jQuery's,
   which leave no attribute), never on the text in it or on the list of all the cards, and is kept in the flow though
@@ -64,14 +69,6 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 - Until the first step runs, the panel's test bar says what is going on, with its time so far: building the flow,
   opening the browser window, opening the start page, logging in. The console prints how long each part took after
   each test, e.g. `build 0.2 s · window 0.6 s · start page 1.1 s · run 4.3 s`.
-
-## 2.0.1
-
-- Fixed: the recorder stopped with a NullReferenceException writing a flow whose first step is in a dialog no recorded
-  step opened, such as one open when the recording started, or after deleting the click that opened it; and then at
-  every start, offering that recording.
-- A recording the recorder cannot write no longer stops it: it is still offered when the recorder starts, and saving it
-  says why and keeps it.
 
 ## 2.0.0
 
