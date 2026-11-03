@@ -658,7 +658,15 @@ internal sealed partial class FlowWriter
         if (dialog.TitleMatches) return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(dialog.Title)} }})", null);
         if (dialog is { RawMatches: true, Raw: { } raw })
             return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(raw)}, Exact = true }})", null);
+        // A dialog with no name, by the heading it shows: only it has an element of that text.
+        var byHeading = dialog.Heading is { } heading
+            ? LocatorPolicy.Render(page, [new LocatorPart { M = "role", Role = "dialog", Heading = heading }],
+                _ => Code(Pieces(heading)), Break)
+            : null;
+        if (byHeading is not null && dialog.HeadingMatches) return (byHeading, null);
         if (dialog.UnnamedMatches) return ($"{page}.{role})", null);
+        if (byHeading is not null) return (byHeading, "this dialog's heading did not find it alone when recorded");
+        if (dialog.Title.Length == 0) return ($"{page}.{role})", "this dialog has no title, and another dialog was open too");
         return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(dialog.Title)} }})",
             "this dialog's title did not find it alone when recorded");
     }

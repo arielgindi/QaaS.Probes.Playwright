@@ -215,12 +215,14 @@ internal static class CaptureScript
               if (part.m === 'css') locator = locator.locator(part.css);
               else if (part.m === 'testid') locator = locator.getByTestId(part.value);
               else if (part.m === 'filter') locator = locator.filter({ hasText: part.hasText });
+              else if (part.m === 'text') locator = locator.getByText(part.text, { exact: true });
               else if (part.m === 'role') {
                 const options = {};
                 if (part.regex !== undefined) options.name = new RegExp(part.regex);
                 else if (part.name !== undefined) options.name = part.name;
                 if (part.exact) options.exact = true;
                 locator = locator.getByRole(part.role, options);
+                if (part.heading !== undefined) locator = locator.filter({ has: engine().getByText(part.heading, { exact: true }) });
               }
             }
             return locator;
@@ -310,21 +312,48 @@ internal static class CaptureScript
           }
           const openDialogs = () => [...document.querySelectorAll(DIALOGS)].filter((dialog) => !dialog.matches(PICKER) &&
             visible(dialog));
+          const hasLetters = (text) => /\p{L}{2}/u.test(text);
+
+          // The title a dialog shows when nothing names it, as a hand-made modal often does: its heading, else what is
+          // styled as its title, else its first words. The person reads it as the dialog's title; the flow finds the
+          // dialog by it, and names its steps after it.
+          function headingOf(dialog) {
+            const own = (element) => element.closest(DIALOGS) === dialog && visible(element);
+            const fits = (text) => text.length <= 60 && hasLetters(text);
+            for (const selector of ['h1, h2, h3, h4, h5, h6, [role=heading]', '[class*=title i], [class*=heading i], [class*=header i]'])
+              for (const element of dialog.querySelectorAll(selector)) {
+                const text = own(element) ? clean(element.innerText ?? element.textContent) : '';
+                if (text && fits(text)) return text;
+              }
+            const walker = document.createTreeWalker(dialog, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+              const text = clean(node.textContent);
+              if (text && node.parentElement && own(node.parentElement)) return fits(text) ? text : null;
+            }
+            return null;
+          }
+
+          // A dialog by its accessible name; one that has none by the heading it shows.
+          const dialogTitle = (dialog) => clean(accessibleName(dialog)) || headingOf(dialog) || '';
 
           function describeDialog(dialog) {
             const raw = normalize(accessibleName(dialog));
-            const title = clean(raw);
-            const prefix = beforeDigits(title);
+            const named = clean(raw);
+            const heading = named ? null : headingOf(dialog);
+            const title = named || heading || '';
+            const prefix = beforeDigits(named);
             const count = (name) => name ? (matches([{ m: 'role', role: 'dialog', name }])?.length ?? -1) : -1;
-            const hits = (name) => { const found = matches([{ m: 'role', role: 'dialog', name }]); return !!found && found.length === 1 && found[0] === dialog; };
+            const finds = (parts) => { const found = matches(parts); return !!found && found.length === 1 && found[0] === dialog; };
+            const hits = (name) => finds([{ m: 'role', role: 'dialog', name }]);
             return {
               title, raw,
-              titleMatches: !!title && hits(title),
-              prefix: prefix !== title ? prefix : null,
-              prefixMatches: !!prefix && prefix !== title && hits(prefix),
-              rawMatches: raw !== title && hits(raw),
+              titleMatches: !!named && hits(named),
+              prefix: prefix !== named ? prefix : null,
+              prefixMatches: !!prefix && prefix !== named && hits(prefix),
+              rawMatches: raw !== named && hits(raw),
+              ...(heading ? { heading, headingMatches: finds([{ m: 'role', role: 'dialog', heading }]) } : {}),
               unnamedMatches: (matches([{ m: 'role', role: 'dialog' }])?.length ?? 0) === 1,
-              count: count(title),
+              count: count(named),
             };
           }
 
@@ -334,6 +363,7 @@ internal static class CaptureScript
             if (dialogInfo.titleMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.title }];
             if (dialogInfo.prefixMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.prefix }];
             if (dialogInfo.rawMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.raw, exact: true }];
+            if (dialogInfo.headingMatches) return [{ m: 'role', role: 'dialog', heading: dialogInfo.heading }];
             if (dialogInfo.unnamedMatches) return [{ m: 'role', role: 'dialog' }];
             return [];
           }
@@ -453,7 +483,7 @@ internal static class CaptureScript
             const dialogInfo = dialog ? describeDialog(dialog) : null;
             return {
               dialog: dialogInfo,
-              openDialogs: openDialogs().map((open) => clean(accessibleName(open))),
+              openDialogs: openDialogs().map(dialogTitle),
               target: describeTarget(element, dialog, dialogInfo, extra),
             };
           }

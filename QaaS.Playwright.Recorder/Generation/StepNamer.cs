@@ -37,8 +37,11 @@ internal static partial class StepNamer
         var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
 
-        string DialogSubject(string title, CapturedDialog? info)
+        // A dialog without a title of any kind is told apart by the button that opened it, as every such dialog has the
+        // same empty title.
+        string DialogSubject(string title, CapturedDialog? info, PlannedAction? opener = null)
         {
+            if (title.Length == 0 && opener is not null && OpenerSubject(opener) is { } own) return own;
             if (subjects.TryGetValue(title, out var known)) return known;
             var titleWords = info?.Prefix is { Length: > 0 } prefix ? prefix : title;
             var subject = (CSharp.IsAsciiText(titleWords) ? CSharp.Pascal(titleWords) : null) ?? OpenerStem(plan, title);
@@ -62,7 +65,7 @@ internal static partial class StepNamer
             if (step.Loop is { } loop)
                 name = LoopName(step, loop);
             else if (step.Opens is { } opened)
-                name = "Open" + DialogSubject(opened.Title, opened);
+                name = "Open" + DialogSubject(opened.Title, opened, last);
             else if (step.OpensPage is not null)
                 name = verb is null ? "OpenPage" : verb.StartsWith("Open", StringComparison.Ordinal) ? verb : "Open" + verb;
             else if (step.Actions.All(action => action.Kind == "expect"))
@@ -149,6 +152,18 @@ internal static partial class StepNamer
     }
 
     private static string FirstWord(string pascal) => FirstWordOf().Match(pascal).Value;
+
+    // What the button that opened a dialog says, or its id or test id when that says more: a button "Change" with the
+    // id "change-shipping-button" gives ChangeShipping.
+    private static string? OpenerSubject(PlannedAction opener)
+    {
+        if (opener.Kind is not ("click" or "dblclick")) return null;
+        var stem = Stem(opener.Source.Target);
+        var label = Label(opener) is { Length: <= 40 } text && CSharp.IsAsciiText(text) && !text.Any(char.IsDigit)
+            ? CSharp.Pascal(text)
+            : null;
+        return label is not null && stem?.StartsWith(label, StringComparison.Ordinal) == true ? stem : label ?? stem;
+    }
 
     // The button that opened the dialog, by its id or test id: "bookAppointmentButton" gives BookAppointment.
     private static string? OpenerStem(FlowPlan plan, string title)

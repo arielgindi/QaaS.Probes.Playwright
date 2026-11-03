@@ -75,6 +75,7 @@ internal static partial class LocatorPolicy
         {
             "css" => part.Css,
             "testid" => $"test id \"{part.Value}\"",
+            "text" => $"text \"{part.Text}\"",
             "filter" => $"\"{part.HasText}\"",
             _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
         });
@@ -104,7 +105,7 @@ internal static partial class LocatorPolicy
     /// </summary>
     public static string Render(string root, IEnumerable<LocatorPart> parts, Func<LocatorPart, string?>? nameOf = null,
         string breakBefore = "") =>
-        root + string.Concat(parts.Select(part => breakBefore + "." + RenderPart(part, nameOf?.Invoke(part))));
+        root + string.Concat(parts.Select(part => breakBefore + "." + RenderPart(part, nameOf?.Invoke(part), root, breakBefore)));
 
     /// <summary>An attribute's value as the capture script quotes it in CSS: <c>[value='x']</c>.</summary>
     public static string CssValue(string value) =>
@@ -116,11 +117,15 @@ internal static partial class LocatorPolicy
     public static string? AriaRoleName(string? role) =>
         role is not null && Enum.TryParse<AriaRole>(role, ignoreCase: true, out var value) ? value.ToString() : null;
 
-    private static string RenderPart(LocatorPart part, string? name) => part.M switch
+    // A dialog found by its heading is the first part of a locator, so its root is a page.
+    private static string RenderPart(LocatorPart part, string? name, string root, string breakBefore) => part.M switch
     {
         "css" => $"Locator({name ?? CSharp.Literal(part.Css ?? "")})",
         "testid" => $"GetByTestId({CSharp.Literal(part.Value ?? "")})",
+        "text" => $"GetByText({name ?? CSharp.Literal(part.Text ?? "")}, new() {{ Exact = true }})",
         "filter" => $"Filter(new() {{ HasText = {name ?? CSharp.Literal(part.HasText ?? "")} }})",
+        "role" when part.Heading is { } heading =>
+            $"GetByRole(AriaRole.{AriaRoleName(part.Role)}){breakBefore}.Filter(new() {{ Has = {root}.GetByText({name ?? CSharp.Literal(heading)}, new() {{ Exact = true }}) }})",
         "role" => RenderRole(part, name),
         _ => throw new InvalidOperationException($"Unknown locator part '{part.M}'."),
     };

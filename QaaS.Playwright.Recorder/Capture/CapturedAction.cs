@@ -235,8 +235,17 @@ internal sealed class CapturedCandidate
 /// <summary>One call of a locator chain.</summary>
 internal sealed class LocatorPart
 {
-    /// <summary><c>css</c>, <c>role</c>, <c>testid</c> or <c>filter</c>.</summary>
+    /// <summary><c>css</c>, <c>role</c>, <c>testid</c>, <c>text</c> or <c>filter</c>.</summary>
     public string M { get; set; } = "";
+
+    /// <summary>For <c>text</c>: the exact text of the element (<c>GetByText</c>).</summary>
+    public string? Text { get; set; }
+
+    /// <summary>
+    /// For a dialog that has no name: the heading it shows, which it is found by
+    /// (<c>GetByRole(AriaRole.Dialog).Filter(new() { Has = page.GetByText(heading) })</c>).
+    /// </summary>
+    public string? Heading { get; set; }
 
     public string? Css { get; set; }
     public string? Value { get; set; }
@@ -256,7 +265,10 @@ internal sealed class LocatorPart
 /// <summary>A dialog, and which of its names find it alone.</summary>
 internal sealed class CapturedDialog
 {
-    /// <summary>The title without bidi marks and asterisk.</summary>
+    /// <summary>
+    /// The title without bidi marks and asterisk: its accessible name, else the heading it shows
+    /// (<see cref="Heading"/>).
+    /// </summary>
     public string Title { get; set; } = "";
 
     public string? Raw { get; set; }
@@ -267,6 +279,16 @@ internal sealed class CapturedDialog
 
     public bool PrefixMatches { get; set; }
     public bool RawMatches { get; set; }
+
+    /// <summary>
+    /// For a dialog that has no accessible name, as a hand-made modal often has: the text it shows as its title, its
+    /// heading, else its first words.
+    /// </summary>
+    public string? Heading { get; set; }
+
+    /// <summary>The dialog with an element of exactly <see cref="Heading"/>'s text is this one alone.</summary>
+    public bool HeadingMatches { get; set; }
+
     public bool UnnamedMatches { get; set; }
 }
 
