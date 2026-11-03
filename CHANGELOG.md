@@ -2,7 +2,7 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 1.2.0
 
 - While recording, a box follows the pointer over the element a click records, labelled with the locator the flow
   will use and why each locator tried before it lost (`id: found 2 (1 hidden)`, `id: looks generated`,
