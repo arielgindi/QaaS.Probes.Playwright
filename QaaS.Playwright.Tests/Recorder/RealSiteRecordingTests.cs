@@ -114,6 +114,130 @@ public class RealSiteRecordingTests
     }
 
     [Test]
+    public async Task OrangeHrm_RecordedMessily_GivesAFlowATesterKeeps_ThatPassesOnAFreshPage()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var url = $"{site.Url}/web/index.php/dashboard/index";
+        var session = await StartAsync(url);
+        try
+        {
+            var page = session.Page;
+            var person = new Person(page);
+            ILocator Row(string key) => page.GetByRole(AriaRole.Row).Filter(new() { HasText = key });
+            ILocator Group(string label) => page.Locator(".oxd-input-group").Filter(new() { Has = page.GetByText(label, new() { Exact = true }) });
+
+            // Empty space in the side menu, then its link.
+            await person.ClickAtAsync(page.Locator(".oxd-sidepanel-body"), fromBottom: 20);
+            await person.ClickAsync(page.GetByRole(AriaRole.Link, new() { Name = "Admin" }));
+            await page.Locator(".oxd-table-card").First.WaitForAsync();
+            await person.ClickAsync(page.GetByRole(AriaRole.Columnheader).Locator(".oxd-checkbox-input"));
+            foreach (var user in new[] { "adna.maric.49677", "Dayana.Wisoky", "dtr69884", "manimarann" })
+                await person.ClickAsync(Row(user).Locator(".oxd-checkbox-input"));
+            await person.ClickAsync(Row("manimarann").Locator("button:has(i.bi-trash)"));
+            await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Yes, Delete" }));
+            foreach (var user in new[] { "Jobinsam@6742", "ksenia.kuz751968", "kmn25326", "nqw35599" })
+            {
+                await page.Locator(".oxd-overlay:not(.oxd-overlay--hide)").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+                await person.ClickAsync(Row(user).Locator(".oxd-checkbox-input"));
+                await person.ClickAsync(Row(user).Locator("button:has(i.bi-trash)"));
+                await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Yes, Delete" }));
+            }
+
+            await page.Locator(".oxd-overlay:not(.oxd-overlay--hide)").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await person.ClickAsync(Group("User Role").Locator(".oxd-select-text-input"));
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Admin" }));
+            await person.ClickAsync(Group("Status").Locator(".oxd-select-text-input"));
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Disabled" }));
+            // The select again, through the value it shows now.
+            await person.ClickAsync(page.GetByText("Disabled", new() { Exact = true }));
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Enabled" }));
+            await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Search" }));
+            await person.ClickAsync(page.Locator("button:has(i.bi-caret-down-fill)"));
+            await person.ClickAsync(page.Locator("button:has(i.bi-caret-down-fill)"));
+            await person.ClickAsync(page.GetByTitle("Help"));
+            await person.ClickAsync(page.GetByRole(AriaRole.Link, new() { Name = "My Info" }));
+            await page.Locator(".oxd-date-input").First.WaitForAsync();
+
+            await person.ClickAsync(page.GetByText("Single", new() { Exact = true }));
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Other" }));
+            ILocator Section(string heading) => page.Locator(".orangehrm-horizontal-padding, .orangehrm-card-container")
+                .Filter(new() { Has = page.GetByText(heading, new() { Exact = true }) });
+            await person.ClickAsync(Section("Personal Details").GetByRole(AriaRole.Button, new() { Name = "Save" }));
+            var expiry = Group("License Expiry Date");
+            await person.ClickAsync(expiry.Locator("i.oxd-date-input-icon"));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-date").GetByText("13", new() { Exact = true }));
+            await person.ClickAsync(expiry.Locator("i.oxd-date-input-icon"));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-selector-month-selected"));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-dropdown--option").GetByText("March", new() { Exact = true }));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-selector-year-selected"));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-dropdown--option").GetByText("2027", new() { Exact = true }));
+            await person.ClickAsync(expiry.Locator(".oxd-calendar-date").GetByText("22", new() { Exact = true }));
+            await person.ClickAsync(Section("Personal Details").GetByRole(AriaRole.Button, new() { Name = "Save" }));
+            await person.ClickAsync(page.GetByText("A+", new() { Exact = true }));
+            await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "B-" }));
+            await person.TypeAsync(Group("Test_Field").Locator("input"), "124445");
+            await page.Keyboard.PressAsync("Enter");
+            await person.ClickAsync(page.Locator(".orangehrm-action-header").Filter(new() { HasText = "Attachments" }).GetByRole(AriaRole.Button));
+            await person.ClickAsync(page.GetByText("Browse", new() { Exact = true }));
+            await person.TypeAsync(page.GetByPlaceholder("Type comment here"), "klasmvlksadmvklasdmv");
+            await person.ClickAsync(Section("Add Attachment").GetByRole(AriaRole.Button, new() { Name = "Save" }));
+            await person.ClickAsync(page.Locator(".oxd-switch-input"));
+            for (var times = 0; times < 2; times++) await person.ClickAsync(page.GetByText("Contract Start Date", new() { Exact = true }));
+            // The tab's link, dragged a little as it was clicked, then clicked.
+            await person.DragAsync(page.GetByRole(AriaRole.Link, new() { Name = "Personal Details" }), 14);
+            await person.ClickAsync(page.GetByRole(AriaRole.Link, new() { Name = "Buzz" }));
+            await page.Locator("#heart-svg").First.WaitForAsync();
+            await person.ClickAsync(page.Locator(".orangehrm-buzz").Filter(new() { HasText = "Joao Santos" }).Locator("#heart-svg"));
+            await Task.Delay(500);
+
+            var plan = FlowPlanner.Plan(session.Build(), "UsersAndMyInfo");
+            var flow = FlowWriter.Write(plan, "Flows");
+            TestContext.Out.WriteLine(flow.Code);
+            TestContext.Out.WriteLine(flow.Yaml);
+            foreach (var suggestion in plan.Suggestions) TestContext.Out.WriteLine($"suggests: {suggestion.Text}");
+            Apply(session, plan);
+            var applied = FlowCodeGenerator.Generate(session.Build(), "UsersAndMyInfo", "Flows");
+            TestContext.Out.WriteLine(applied.Code);
+            var report = await TestAsync(session, url);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(flow.Code, Does.Not.Contain("Name = \"\"").And.Not.Contain("GetByLabel(\"\"").And.Not.Contain(".Nth(")
+                    .And.Not.Match(@"\.(First|Last)\b(?!Name)"), "no empty name, no position");
+                Assert.That(flow.Code, Does.Not.Contain("AdminPIM").And.Not.Contain("NameEmployee").And.Not.Contain("Required Cancel")
+                    .And.Not.Contain("AscendingDescending").And.Not.Contain("GetByText(\"13\")").And.Not.Contain("GetByText(\"22\")")
+                    .And.Not.Contain("\"Browse\"").And.Not.Contain("DragToAsync").And.Not.Contain("HoverAsync"),
+                    "no glued text, no calendar's day, no file chooser's click, no drag that dropped nowhere");
+                Assert.That(flow.Code, Does.Contain("foreach (var username in Configuration.UsernamesToDelete)")
+                    .And.Contain("Locator(\"button:has(i.bi-trash)\")").And.Contain("GetByRole(AriaRole.Checkbox).CheckAsync()"),
+                    "the delete rounds as a loop over the rows' keys, the trash by its icon");
+                Assert.That(flow.Code, Does.Contain("Configuration.UsernamesToUncheck"), "the unticks as a loop");
+                Assert.That(flow.Code, Does.Contain("GetByRole(AriaRole.Columnheader).GetByRole(AriaRole.Checkbox)"), "select all by its place");
+                Assert.That(flow.Code, Does.Contain("Filter(new() { Has = page.GetByText(\"User Role\", new() { Exact = true }) })")
+                    .And.Contain("Filter(new() { Has = page.GetByText(\"Status\", new() { Exact = true }) })"), "each select by its group's label");
+                Assert.That(flow.Code, Does.Contain("GetByText(\"Personal Details\", new() { Exact = true })")
+                    .And.Contain("GetByText(\"Attachments\", new() { Exact = true })"), "a Save and an Add of several by their section");
+                Assert.That(flow.Code, Does.Contain("GetByTitle(\"Help\", new() { Exact = true })")
+                    .And.Contain("Locator(\"button:has(i.bi-caret-down-fill)\")"), "icon buttons by their title and icon");
+                Assert.That(flow.Code, Does.Contain("FillAsync(Configuration.LicenseExpiryDate)"), "the date as typed");
+                Assert.That(flow.Code, Does.Contain("Filter(new() { HasText = \"Joao Santos\" }).Locator(\"[id='heart-svg']\")"), "the post's like by its words");
+                Assert.That(flow.Code, Does.Not.Match(@"[a-z]\d+Async\("), "no numbered step");
+                Assert.That(flow.Yaml, Does.Contain("UserRole: 'Admin'").And.Contain("MaritalStatus: 'Other'").And.Contain("BloodType: 'B-'")
+                    .And.Contain("TestField: '124445'").And.Contain("IncludeEmploymentContractDetails: true").And.Contain("UsernamesToDelete:")
+                    .And.Not.Contain("Admin: 'Admin'").And.Not.Contain("Value").And.Not.Contain("B:"), "settings by the groups' labels");
+                Assert.That(plan.Suggestions.Select(suggestion => suggestion.Key.Split(':')[0]), Does.Contain("replaced"),
+                    "Status and the date chosen again are suggested");
+                Assert.That(report.Outcome, Is.EqualTo(TestOutcome.Passed), $"{report.Failure?.Headline ?? report.Problem}\n{applied}");
+            });
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
+    }
+
+    [Test]
     public void RawRecordings_OfTheRealSites_GiveWhatTheyCanTell()
     {
         var demoqa = Read("PracticeForm");
@@ -148,7 +272,7 @@ public class RealSiteRecordingTests
     private static async Task<TestReport> TestAsync(RecordingSession session, string url)
     {
         await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
-        return await tester.RunAsync(RecordRequest.Parse(["record", "practice", url]), "Flows");
+        return await tester.RunAsync(RecordRequest.Parse(["record", "real-site", url]), "Flows");
     }
 
     // Each suggestion applied, as its one click in the panel does: its actions and what only led to them left out.
@@ -190,6 +314,26 @@ public class RealSiteRecordingTests
             await Task.Delay(40);
             await page.Mouse.UpAsync();
             // What the page does is told with the click before the next one begins.
+            await Task.Delay(300);
+        }
+
+        public async Task ClickAtAsync(ILocator element, float fromBottom)
+        {
+            var box = await element.BoundingBoxAsync() ?? throw new InvalidOperationException("The element does not show.");
+            await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height - fromBottom, new() { Steps = 3 });
+            await page.Mouse.DownAsync();
+            await page.Mouse.UpAsync();
+            await Task.Delay(300);
+        }
+
+        // Presses, moves a little and lets go, as a click does that slipped.
+        public async Task DragAsync(ILocator element, float by)
+        {
+            await MoveAsync(element);
+            var box = (await element.BoundingBoxAsync())!;
+            await page.Mouse.DownAsync();
+            await page.Mouse.MoveAsync(box.X + box.Width / 2 + by, box.Y + box.Height / 2 + 2, new() { Steps = 4 });
+            await page.Mouse.UpAsync();
             await Task.Delay(300);
         }
 
