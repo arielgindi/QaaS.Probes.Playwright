@@ -830,7 +830,10 @@ For each element the recorder takes the first of these that finds it, and only i
    (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it. A name that holds what
    changes from load to load, or what the flow may edit, a price, a date, a time or a percentage, by the words before
    it when they find the element alone: a poster's link `NameRegex = new Regex("^Black & White 14\\.4x17\\.88")`,
-   without its `US$15.57`; else it is listed to check by hand.
+   without its `US$15.57`; else it is listed to check by hand. A name an icon's label starts, as antd's "plus New", or
+   "loading Next" while a spinner turns in it, or that a flag's label says twice ("EnglishEnglish"), is found with it
+   or without it (`NameRegex = new Regex("^(?:loading )?Next$")`), and the step is named after what it says. A title or
+   text no person wrote (`[object Object]`, `undefined`) never finds anything.
 5. In a table: the row by its key cell's text, then the element in it; an icon button there by its icon
    (`row.Locator("button:has(i.bi-trash)")`). A column's name is its header's own text, not a sort menu hidden in it.
    The key is a reference of letters and digits (`50SKLO`, `TCK-1040`), else a number in a column of ids, else a name;
@@ -857,6 +860,9 @@ For each element the recorder takes the first of these that finds it, and only i
     it picks by a class a style library hashed (`css-1x2y3z-control`, `sc-…`, `jss12`, `makeStyles-root-3`), a
     position, an empty name, the glued text of a wrapper (`"Employee Full NameEmployee"`), a number alone, or a row's
     whole name.
+
+A value typed before is read from its setting in a later locator only where the text shows it as a word of its own:
+the link "TradeCode 99" after "TradeCode 9" was typed stays as it is, never `$"{Configuration.Name}9"`.
 
 An element in a dialog is located inside it (`dialog.GetByRole(...)`). A dialog that has no name, as a hand-made
 modal often has, takes the heading it shows as its title, and is found by it:

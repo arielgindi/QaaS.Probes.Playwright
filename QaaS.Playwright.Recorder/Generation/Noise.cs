@@ -75,9 +75,10 @@ internal static partial class Noise
 
     /// <summary>A drag that dropped on nothing, or on what it dragged, and did nothing: the pointer moved as it clicked.</summary>
     public static bool DroppedNowhere(PlannedAction drag) =>
-        drag.Kind == "drag" && drag.Effects.Count == 0
-        && (drag.Source.To is null || LocatorPolicy.Choose(drag.Source.To) is { } to && to.Kind != "generator"
-            && LocatorPolicy.Render("page", to.Parts) == drag.Key);
+        drag.Kind == "drag" && !HasResult(drag)
+        && (drag.Effects.Count == 0 || drag.Source.To is not null)
+        && (drag.Source.To is null || LocatorPolicy.Choose(drag.Source.To) is { } to
+            && (to.Kind == "generator" ? to.Csharp : LocatorPolicy.Render("page", to.Parts)) == drag.Key);
 
     /// <summary>
     /// Whether a value typed at <paramref name="from"/> could have been used by the actions before <paramref name="to"/>:

@@ -309,6 +309,15 @@ public class RealSiteRecordingTests
                 .And.Contain("SportSearch: 'Bask'").And.Contain("Sport: 'Basketball'"), "the letters typed, never the suggestion completed in place");
             Assert.That(posters.Flow.Code, Does.Contain("GetByRole(AriaRole.Link, new() { NameRegex = new Regex(\"^Black & White 14\\\\.4x17\\\\.88\") })")
                 .And.Not.Contain("US$"), "a poster's link by its title and size, never by the price the demo makes anew on each load");
+            Assert.That(antdRun.Flow.Code, Does.Contain(".GetByText(Configuration.Status, new() { Exact = true })").And.Not.Contain("[object Object]"),
+                "an option of no role is a choice of its select, found by its text among the options that show");
+            Assert.That(antdRun.Flow.Yaml, Does.Contain("Status: 'running'").And.Contain("RuleName: 'Nightly sync'"), "the choice a setting");
+            Assert.That(antdRun.Flow.Code, Does.Match(@"\.HoverAsync\(\);\s+await page\.GetByRole\(AriaRole\.Menuitem, new\(\) \{ Name = ""Account Settings"""),
+                "a menu that opened on hover is hovered open");
+            Assert.That(antdRun.Flow.Code, Does.Match(@"time\.FillAsync\(Configuration\.Time\);\s+await time\.PressAsync\(""Enter""\)"),
+                "a date its picker keeps once OK commits it is committed by Enter");
+            Assert.That(kendoRun.Flow.Code, Does.Not.Match(@"id=\\?[""']_?[0-9a-f]{8}-").And.Contain("DragToAsync(").And.Not.Contain("Home Ec on Tuesday"),
+                "no GUID; the event dropped on the slot it went to, as it was before the drop");
             foreach (var run in new[] { posters, antdRun, kendoRun })
                 Assert.That(run.Report.Outcome, Is.EqualTo(TestOutcome.Passed), $"{run.Report.Failure?.Headline ?? run.Report.Problem}\n{run.Flow.Code}");
         });
@@ -364,6 +373,23 @@ public class RealSiteRecordingTests
         await person.ClickAsync(Switch("Fixed Header"));
         await person.ClickAsync(Switch("Fixed Header"));
         await person.ClickAsync(Switch("Split Menus"));
+        // The Status select: its list opens in a portal, its options of no role, each titled "[object Object]".
+        await person.ClickAsync(page.Locator("#status").Locator(".."));
+        await person.ClickAsync(page.Locator(".ant-select-item-option:visible").Filter(new() { HasText = "running" }));
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Query" }));
+        // The avatar's menu opens as the pointer rests on it.
+        await Task.Delay(1100);
+        await person.MoveAsync(page.Locator("#avatar"));
+        await Task.Delay(300);
+        await person.ClickAsync(page.GetByRole(AriaRole.Menuitem, new() { Name = "Account Settings" }));
+        // A new rule, its starting time picked in the calendar and kept by OK.
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "plus New" }));
+        await person.TypeAsync(page.Locator("#rule-name"), "Nightly sync");
+        await person.ClickAsync(page.Locator("#time"));
+        await person.ClickAsync(page.Locator("td[title='2026-11-17']"));
+        await person.ClickAsync(page.Locator(".ant-picker-footer button"));
+        await person.ClickAsync(page.GetByRole(AriaRole.Button, new() { Name = "Finish" }));
+        await page.GetByRole(AriaRole.Alert).Filter(new() { HasText = "Added" }).WaitForAsync();
     }
 
     // Kendo UI: a product's price changed in its popup, two deleted through the browser's confirm, the switch turned on.
@@ -377,6 +403,11 @@ public class RealSiteRecordingTests
         await person.ClickAsync(Row("Tofu").GetByRole(AriaRole.Button, new() { Name = "Delete" }));
         await person.ClickAsync(Row("Konbu").GetByRole(AriaRole.Button, new() { Name = "Delete" }));
         await person.ClickAsync(page.GetByRole(AriaRole.Switch, new() { Name = "All day" }));
+        // Two files of the tree ticked, by checkboxes whose ids are new GUIDs on each load.
+        foreach (var file in new[] { "February.pdf", "March.pdf" })
+            await person.ClickAsync(page.GetByRole(AriaRole.Treeitem, new() { Name = file }).GetByRole(AriaRole.Checkbox));
+        // The event dragged from Monday 10:00 to Tuesday 9:00.
+        await person.DragToAsync(page.Locator(".k-event"), page.Locator(".k-slot[data-day^=Tuesday][data-hour='9:00 AM']"));
         // The combobox completes "Bask" in place; the person takes the option.
         await person.TypeAsync(page.Locator("#sport"), "Bask");
         await person.ClickAsync(page.GetByRole(AriaRole.Option, new() { Name = "Basketball" }));
@@ -392,6 +423,8 @@ public class RealSiteRecordingTests
         var widgets = FlowCodeGenerator.Generate(Read("KendoWidgets"), "KendoWidgets", "Flows");
         var rules = FlowCodeGenerator.Generate(Read("AntdProTable"), "AntdProTable", "Flows");
         var poster = FlowCodeGenerator.Generate(Read("ReactAdminPosters"), "Posters", "Flows");
+        var steps = FlowCodeGenerator.Generate(Read("AntdProStepForm"), "AntdProStepForm", "Flows");
+        var search = FlowCodeGenerator.Generate(Read("AntdProSearch"), "AntdProSearch", "Flows");
 
         Assert.Multiple(() =>
         {
@@ -408,6 +441,13 @@ public class RealSiteRecordingTests
                 "and the flow has it once however often it runs on the page");
             Assert.That(rules.Code, Does.Not.Contain("GetByRole(AriaRole.Row, new() { Name =").And.Not.Contain("5740000"),
                 "a row is never found by all it says, its random counts and statuses with it");
+            Assert.That(steps.Code, Does.Contain("GetByRole(AriaRole.Button, new() { NameRegex = new Regex(\"^(?:loading )?Next$\") })")
+                .And.Not.Contain("LoadingNext").And.Not.Contain("Name = \"loading Next\""),
+                "a button found with or without the spinner it showed, its step named after what it says");
+            Assert.That(search.Code, Does.Contain("NameRegex = new Regex(\"^(?:English)?English$\")").And.Not.Contain("\"EnglishEnglish\""),
+                "a menu's item whose flag says its name again");
+            Assert.That(rules.Code, Does.Not.Contain("{Configuration.Name}9").And.Not.Contain("GetByTitle(\"[object Object]\")"),
+                "a setting only where the text is its value, and never a title no person wrote");
             Assert.That(poster.Checks.Select(check => check.Message), Has.Some.Contains("may change from run to run (\"Black & White 14.4x17.88, US$15.57\")"),
                 "a name with a price a recording of an older recorder kept is one to check by hand");
         });
@@ -474,6 +514,17 @@ public class RealSiteRecordingTests
             var box = await element.BoundingBoxAsync() ?? throw new InvalidOperationException("The element does not show.");
             await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height - fromBottom, new() { Steps = 3 });
             await page.Mouse.DownAsync();
+            await page.Mouse.UpAsync();
+            await Task.Delay(300);
+        }
+
+        // Presses on one element, moves to the other in steps, and lets go there.
+        public async Task DragToAsync(ILocator from, ILocator to)
+        {
+            await MoveAsync(from);
+            await page.Mouse.DownAsync();
+            var box = await to.BoundingBoxAsync() ?? throw new InvalidOperationException("The target does not show.");
+            await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height / 2, new() { Steps = 8 });
             await page.Mouse.UpAsync();
             await Task.Delay(300);
         }

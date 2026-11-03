@@ -1054,14 +1054,23 @@ internal sealed partial class FlowWriter
         if (_step.LoopValues.ContainsValue(code)) _step.ReadsItem = true;
     }
 
+    // The text around each place it shows the value, as a word of its own: "TradeCode 99" shows no "TradeCode 9", which
+    // a case changing the setting would make "Alpha9" of.
     private static IEnumerable<(string, string?, Setting?)> Split(string text, (string Text, string Code, Setting? Setting) value)
     {
-        var parts = text.Split(value.Text);
-        for (var index = 0; index < parts.Length; index++)
+        var from = 0;
+        for (var at = text.IndexOf(value.Text, StringComparison.Ordinal); at >= 0; at = text.IndexOf(value.Text, at + 1, StringComparison.Ordinal))
         {
-            if (parts[index].Length > 0) yield return (parts[index], null, null);
-            if (index < parts.Length - 1) yield return (value.Text, value.Code, value.Setting);
+            var end = at + value.Text.Length;
+            var whole = (at == 0 || !char.IsLetterOrDigit(text[at - 1]) || !char.IsLetterOrDigit(value.Text[0]))
+                        && (end == text.Length || !char.IsLetterOrDigit(text[end]) || !char.IsLetterOrDigit(value.Text[^1]));
+            if (!whole || at < from) continue;
+            if (at > from) yield return (text[from..at], null, null);
+            yield return (value.Text, value.Code, value.Setting);
+            from = end;
         }
+
+        if (from < text.Length) yield return (text[from..], null, null);
     }
 
     // The pieces as C#: a literal, a setting alone, or an interpolated string.

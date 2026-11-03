@@ -33,7 +33,7 @@ internal static partial class Names
     public static string? Human(CapturedTarget? target)
     {
         if (target is null) return null;
-        var text = Clean(target.Text);
+        var text = Clean(target.Text) is { } own && !LocatorPolicy.IsJunk(own) ? LocatorPolicy.WithoutIcon(own) : null;
         var fromPlaceholder = text is not null && (text == Clean(target.Placeholder) || IsExample(text));
         var control = target.Tag is "button" or "a" || target.Role is "button" or "link" or "menuitem" or "tab" or "option";
         return Clean(target.Label)

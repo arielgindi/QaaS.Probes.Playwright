@@ -1,0 +1,1844 @@
+{
+  "startUrl": "https://preview.pro.ant.design/form/step-form",
+  "actions": [
+    {
+      "id": "8wwyqr-1",
+      "t": 1793740983993,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "0_payAccount",
+        "text": "付款账户",
+        "label": "付款账户",
+        "groupLabel": "付款账户",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_payAccount']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_payAccount"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "付款账户",
+                "exact": true
+              }
+            ],
+            "text": "付款账户"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "付款账户"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "付款账户"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "付款账户"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "付款账户"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "付款账户"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-col"
+              },
+              {
+                "m": "filter",
+                "hasText": "ant-design@alipay.com"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "付款账户"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "ant-design@alipay.com"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"* 付款账户\" })",
+            "selector": "internal:role=combobox[name=\"* 付款账户\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-1",
+          "sinceAction": 5,
+          "t": 1793740983998
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-2",
+      "t": 1793740989688,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "ant-design@alipay.com",
+        "groupLabel": "ant-design@alipay.com",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div"
+              },
+              {
+                "m": "has",
+                "text": "ant-design@alipay.com"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "ant-design@alipay.com"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "ant-design@alipay.com"
+              }
+            ],
+            "count": 5,
+            "text": "ant-design@alipay.com"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"ant-design@alipay.com\").Nth(1)",
+            "selector": "internal:attr=[title=\"ant-design@alipay.com\"i] >> nth=1"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-2",
+          "sinceAction": 3,
+          "t": 1793740989691
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-3",
+      "t": 1793740990869,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "0_receiverMode",
+        "text": "",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_receiverMode']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_receiverMode"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 2
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "支付宝"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "支付宝"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"[id=\\\"\\\\30 _receiverMode\\\"]\")",
+            "selector": "[id=\"\\30 _receiverMode\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-3",
+          "sinceAction": 10,
+          "t": 1793740990879
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-4",
+      "t": 1793740997475,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "银行账户",
+        "groupLabel": "支付宝",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.rc-virtual-list-holder-inner"
+              },
+              {
+                "m": "has",
+                "text": "支付宝"
+              },
+              {
+                "m": "css",
+                "css": "div.ant-select-item"
+              }
+            ],
+            "count": 2,
+            "text": "支付宝"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "银行账户"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "银行账户"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"银行账户\")",
+            "selector": "internal:attr=[title=\"银行账户\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-4",
+          "sinceAction": 15,
+          "t": 1793740997490
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-5",
+      "t": 1793740998698,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "0_receiverMode",
+        "text": "",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_receiverMode']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_receiverMode"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 2
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "银行账户"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "银行账户"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"[id=\\\"\\\\30 _receiverMode\\\"]\")",
+            "selector": "[id=\"\\30 _receiverMode\"]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-5",
+          "sinceAction": 7,
+          "t": 1793740998705
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-6",
+      "t": 1793740999921,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "支付宝",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "支付宝"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "支付宝"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByTitle(\"支付宝\")",
+            "selector": "internal:attr=[title=\"支付宝\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-6",
+          "sinceAction": 7,
+          "t": 1793740999928
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-7",
+      "t": 1793741001268,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "dana.test@example.com",
+      "raw": "dana.test@example.com",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "0_receiverAccount",
+        "text": "test@example.com",
+        "placeholder": "test@example.com",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_receiverAccount']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_receiverAccount"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "test@example.com",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "test@example.com"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"test@example.com\" })",
+            "selector": "internal:role=textbox[name=\"test@example.com\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8wwyqr-8",
+      "t": 1793741002574,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Dana est",
+      "raw": "Dana est",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": "0_receiverName",
+        "text": "收款人姓名",
+        "label": "收款人姓名",
+        "groupLabel": "收款人姓名",
+        "placeholder": "请输入收款人姓名",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_receiverName']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_receiverName"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "收款人姓名",
+                "exact": true
+              }
+            ],
+            "text": "收款人姓名"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "收款人姓名"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "收款人姓名"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "收款人姓名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "收款人姓名"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "收款人姓名"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-form-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "收款人姓名"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "收款人姓名"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "收款人姓名"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"* 收款人姓名\" })",
+            "selector": "internal:role=textbox[name=\"* 收款人姓名\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8wwyqr-9",
+      "t": 1793741003399,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "800",
+      "raw": "800",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "spinbutton",
+        "id": "0_amount",
+        "text": "转账金额",
+        "label": "转账金额",
+        "groupLabel": "转账金额",
+        "placeholder": "请输入金额",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='0_amount']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "0_amount"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "转账金额",
+                "exact": true
+              }
+            ],
+            "text": "转账金额"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "转账金额"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "转账金额"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "转账金额"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "转账金额"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "转账金额"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-form-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "转账金额"
+              },
+              {
+                "m": "role",
+                "role": "spinbutton",
+                "name": "转账金额"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "转账金额"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"* 转账金额\" })",
+            "selector": "internal:role=spinbutton[name=\"* 转账金额\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8wwyqr-10",
+      "t": 1793741004333,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Next",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space"
+              },
+              {
+                "m": "filter",
+                "hasText": "Next"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Next\" })",
+            "selector": "internal:role=button[name=\"Next\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-10",
+          "sinceAction": 2,
+          "t": 1793741004335
+        },
+        {
+          "kind": "alert",
+          "actionId": "8wwyqr-10",
+          "sinceAction": 59,
+          "t": 1793741004392,
+          "text": "确认转账后，资金将直接打入对方账户，无法退回。",
+          "alertCount": 1
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-11",
+      "t": 1793741011798,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "Previous",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Previous",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Previous"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Previous"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Previous",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Previous"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Previous\" })",
+            "selector": "internal:role=button[name=\"Previous\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-11",
+          "sinceAction": 18,
+          "t": 1793741011816
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-12",
+      "t": 1793741013411,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "loading Next",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "loading Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "loading Next"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space"
+              },
+              {
+                "m": "filter",
+                "hasText": "Next"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "loading Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"loading Next\" })",
+            "selector": "internal:role=button[name=\"loading Next\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-12",
+          "sinceAction": 11,
+          "t": 1793741013422
+        },
+        {
+          "kind": "alert",
+          "actionId": "8wwyqr-12",
+          "sinceAction": 82,
+          "t": 1793741013493,
+          "text": "确认转账后，资金将直接打入对方账户，无法退回。",
+          "alertCount": 1
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-13",
+      "t": 1793741015429,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "final": true,
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "type": "password",
+        "id": "1_password",
+        "text": "支付密码",
+        "label": "支付密码",
+        "groupLabel": "支付密码",
+        "placeholder": "Please enter",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='1_password']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "1_password"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-row"
+              },
+              {
+                "m": "has",
+                "text": "支付密码"
+              },
+              {
+                "m": "css",
+                "css": "input.ant-input"
+              }
+            ],
+            "count": 3,
+            "hidden": 2,
+            "text": "支付密码"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"支付密码\" })",
+            "selector": "internal:role=textbox[name=\"支付密码\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "8wwyqr-14",
+      "t": 1793741016492,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "loading Next",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "loading Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "loading Next"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-space-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Next"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "loading Next",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Next"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"loading Next\" })",
+            "selector": "internal:role=button[name=\"loading Next\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-14",
+          "sinceAction": 1,
+          "t": 1793741016493
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-15",
+      "t": 1793741025527,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "再转一笔",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "再转一笔",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "再转一笔"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"再转一笔\" })",
+            "selector": "internal:role=button[name=\"再转一笔\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-15",
+          "sinceAction": 27,
+          "t": 1793741025554
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-16",
+      "t": 1793741027451,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "menuitem",
+        "text": "profile Profile",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "profile Profile",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "profile Profile"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.ant-menu-submenu"
+              },
+              {
+                "m": "filter",
+                "hasText": "Profile"
+              },
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "profile Profile",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Profile"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"profile Profile\" })",
+            "selector": "internal:role=menuitem[name=\"profile Profile\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-16",
+          "sinceAction": 6,
+          "t": 1793741027457
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-17",
+      "t": 1793741033275,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/form/step-form/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "Advanced Profile",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Profile",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Advanced Profile"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.ant-menu-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Advanced Profile"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Profile",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Advanced Profile"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='rc-menu-uuid-/profile-popup']"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "Advanced Profile",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "rc-menu-uuid-/profile-popup"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Advanced Profile\" })",
+            "selector": "internal:role=link[name=\"Advanced Profile\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-17",
+          "sinceAction": 32,
+          "t": 1793741033307
+        },
+        {
+          "kind": "busy",
+          "actionId": "8wwyqr-17",
+          "sinceAction": 424,
+          "t": 1793741033792,
+          "value": "ariaBusy"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "8wwyqr-17",
+          "t": 1793741033284,
+          "url": "https://preview.pro.ant.design/profile/advanced",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-18",
+      "t": 1793741040249,
+      "kind": "click",
+      "page": "page",
+      "widget": "tab",
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "tab",
+        "id": "rc-tabs-0-tab-rule",
+        "text": "规则",
+        "section": "Ant Design Pro",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='rc-tabs-0-tab-rule']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "rc-tabs-0-tab-rule"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "tab",
+                "name": "规则",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "规则"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"规则\" })",
+            "selector": "internal:role=tab[name=\"规则\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-18",
+          "sinceAction": 15,
+          "t": 1793741040264
+        },
+        {
+          "kind": "tabSelected",
+          "actionId": "8wwyqr-18",
+          "sinceAction": 306,
+          "t": 1793741040555
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-19",
+      "t": 1793741041885,
+      "kind": "click",
+      "page": "page",
+      "widget": "tab",
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "tab",
+        "id": "rc-tabs-0-tab-detail",
+        "text": "详情",
+        "section": "Ant Design Pro",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='rc-tabs-0-tab-detail']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "rc-tabs-0-tab-detail"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "tab",
+                "name": "详情",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "详情"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"详情\" })",
+            "selector": "internal:role=tab[name=\"详情\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-19",
+          "sinceAction": 27,
+          "t": 1793741041912
+        },
+        {
+          "kind": "tabSelected",
+          "actionId": "8wwyqr-19",
+          "sinceAction": 310,
+          "t": 1793741042195
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-20",
+      "t": 1793741050936,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "选项三",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "选项三",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "选项三"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"选项三\" })",
+            "selector": "internal:role=menuitem[name=\"选项三\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-20",
+          "sinceAction": 9,
+          "t": 1793741050945
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-21",
+      "t": 1793741059412,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "skin 主题设置",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "skin 主题设置",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "skin 主题设置"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin 主题设置\" })",
+            "selector": "internal:role=menuitem[name=\"skin 主题设置\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-21",
+          "sinceAction": 78,
+          "t": 1793741059490
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "8wwyqr-21",
+          "sinceAction": 109,
+          "t": 1793741059521,
+          "dialog": {
+            "title": "Page style setting",
+            "raw": "",
+            "heading": "Page style setting",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        },
+        {
+          "kind": "alert",
+          "actionId": "8wwyqr-21",
+          "sinceAction": 109,
+          "t": 1793741059521,
+          "text": "Setting panel shows in development environment only, please manually modify",
+          "alertCount": 1
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-22",
+      "t": 1793741065831,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "SideMenu Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Fixed Header"
+              },
+              {
+                "m": "role",
+                "role": "switch"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Fixed Header"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Fixed Header\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Fixed Header\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-22",
+          "sinceAction": 12,
+          "t": 1793741065843
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-23",
+      "t": 1793741067028,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "Other Settings",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Weak Mode\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Weak Mode\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-23",
+          "sinceAction": 8,
+          "t": 1793741067036
+        }
+      ]
+    },
+    {
+      "id": "8wwyqr-24",
+      "t": 1793741068284,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/profile/advanced",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "input",
+        "role": "combobox",
+        "type": "search",
+        "id": "_r_5v_",
+        "text": "",
+        "groupLabel": "Content Width",
+        "section": "SideMenu Type",
+        "editable": false,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "[id='_r_5v_']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "_r_5v_"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "has",
+                "text": "Content Width"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Content Width"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Content Width"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Content Width"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox)",
+            "selector": "internal:role=combobox"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "8wwyqr-24",
+          "sinceAction": 9,
+          "t": 1793741068293
+        }
+      ]
+    }
+  ]
+}

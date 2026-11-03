@@ -130,6 +130,8 @@ internal static partial class StepNamer
             : !string.IsNullOrWhiteSpace(own) ? own
             : Names.IconName(action.Source.Target?.Icon);
         if (string.IsNullOrWhiteSpace(text)) return null;
+        // Without the icon's label it starts with: "plus New" is New, "loading Next" Next.
+        text = LocatorPolicy.WithoutIcon(text);
         if (without is { Length: > 0 }) text = text.Replace(without, " ", StringComparison.Ordinal);
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
         while (words.Count > 0
