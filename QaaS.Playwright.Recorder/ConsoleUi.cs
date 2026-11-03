@@ -62,6 +62,7 @@ internal static class ConsoleUi
             ($"--output-dir {t.Paint("<dir>", Tone.Dim)}", "Saves the flow in <dir> instead of ./Flows"),
             ("--keep-recording", "Also saves the raw recording, with every locator tried"),
             ("--no-panel", "Records without the panel beside the browser"),
+            ("--no-auto-checks", "Writes no Expect of what each action did; waits stay"),
             ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with a flow of your tests, e.g. LoginFlow"),
             ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The built test project that holds it"),
             ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "Its settings, if it has any"),

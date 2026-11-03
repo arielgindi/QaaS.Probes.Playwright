@@ -22,6 +22,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     /// <summary>Whether the recorder's panel shows the flow beside the recorded window as it is written.</summary>
     public bool Panel { get; init; } = true;
 
+    /// <summary>Whether the flow checks what each action did when recorded (<c>--no-auto-checks</c> turns it off).</summary>
+    public bool AutoChecks { get; init; } = true;
+
     /// <summary>A flow of the person's tests that logs in before the recording starts; null to start at once.</summary>
     public LoginFlow? Login { get; init; }
 
@@ -29,9 +32,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     public bool LoginRemembered { get; init; }
 
     /// <summary>
-    /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording] [--no-panel] [--login Flow
-    /// --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options anywhere. What
-    /// the login options leave out comes from <paramref name="remembered"/>, the login last used here.
+    /// Parses <c>record &lt;name&gt; &lt;url&gt; [--output-dir Dir] [--keep-recording] [--no-panel] [--no-auto-checks]
+    /// [--login Flow --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]</c>, with the options
+    /// anywhere. What the login options leave out comes from <paramref name="remembered"/>, the login last used here.
     /// </summary>
     /// <exception cref="ArgumentException">The arguments are not a valid record command.</exception>
     public static RecordRequest Parse(IReadOnlyList<string> args, LoginFlow? remembered = null)
@@ -41,6 +44,7 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var outputDir = DefaultOutputDir;
         var keepRecording = false;
         var panel = true;
+        var autoChecks = true;
         var noLogin = false;
         string? loginFlow = null, loginAssembly = null, loginSettings = null;
         var positionals = new List<string>();
@@ -56,6 +60,7 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                 case "--output-dir": outputDir = ValueOf("--output-dir", "a directory"); break;
                 case "--keep-recording": keepRecording = true; break;
                 case "--no-panel": panel = false; break;
+                case "--no-auto-checks": autoChecks = false; break;
                 case "--login": loginFlow = ValueOf("--login", "the login flow's class name"); break;
                 case "--login-assembly": loginAssembly = ValueOf("--login-assembly", "your test project's built .dll"); break;
                 case "--login-settings": loginSettings = ValueOf("--login-settings", "a YAML file"); break;
@@ -67,7 +72,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
 
         if (positionals is not [var name, var url])
             throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording] [--no-panel] " +
-                                        "[--login Flow --login-assembly Tests.dll [--login-settings Flow.flow.yaml] | --no-login]");
+                                        "[--no-auto-checks] [--login Flow --login-assembly Tests.dll " +
+                                        "[--login-settings Flow.flow.yaml] | --no-login]");
         var given = loginFlow ?? loginAssembly ?? loginSettings;
         if (noLogin && given is not null) throw new ArgumentException("--no-login cannot go with the other login options.");
         var login = noLogin ? null
@@ -76,7 +82,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                 loginSettings ?? (loginFlow is null || loginFlow == remembered?.Flow ? remembered?.Settings : null));
         return Create(name, url, outputDir) with
         {
-            KeepRecording = keepRecording, Panel = panel, Login = login, LoginRemembered = login is not null && given is null,
+            KeepRecording = keepRecording, Panel = panel, AutoChecks = autoChecks, Login = login,
+            LoginRemembered = login is not null && given is null,
         };
     }
 
@@ -120,7 +127,10 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     /// <summary>The same request for a flow named <paramref name="name"/>, checked as a new name is.</summary>
     /// <exception cref="ArgumentException">The flow cannot have that name.</exception>
     public RecordRequest Renamed(string name) =>
-        Create(name, Url, OutputDir) with { Panel = Panel, Login = Login, LoginRemembered = LoginRemembered };
+        Create(name, Url, OutputDir) with
+        {
+            Panel = Panel, AutoChecks = AutoChecks, Login = Login, LoginRemembered = LoginRemembered,
+        };
 
     // Checked before Chrome opens; the paths are kept whole, so the login is remembered whatever folder it ran in.
     private static LoginFlow CheckedLogin(string? flow, string? assembly, string? settings)
