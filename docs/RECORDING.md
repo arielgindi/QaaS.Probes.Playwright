@@ -136,7 +136,9 @@ summary: the files it wrote, how many actions, steps and settings the flow has, 
   Asked for the name (`qaas-playwright`), the recorder offers instead to [continue](#continuing-a-flow) the flow there,
   overwrite it, or take another name.
 - The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
-  (a folder named like a C# keyword gets an `@`, e.g. `@internal`).
+  (a folder named like a C# keyword gets an `@`, e.g. `@internal`). The project is the nearest one the flow can be
+  built in, which references QaaS.Playwright; a project of something else above the folder, such as a tool's above a
+  scratch folder, names nothing, and the namespace is `Flows`.
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
   Windows device (`nul`, `com1`), or one too long for a file name. Asked for the name, the recorder says why and asks
   again; so it does for a URL that is not http(s). Ctrl+C at a question stops without recording.

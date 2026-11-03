@@ -110,6 +110,14 @@ public class AutosaveTests
         var posters = byName with { ClassName = "Posters" };
         var recorded = FlowRecorder.Save(posters, whole);
         var leftOut = FlowRecorder.Save(FlowRecorder.LeftOut(posters with { Replaces = Autosave.Hash(whole.Code) }), start);
+        // A test project of flows, and a tool's project above a scratch folder.
+        Directory.CreateDirectory(Path.Combine(_folder, "Shop.Tests", "Flows"));
+        File.WriteAllText(Path.Combine(_folder, "Shop.Tests", "Shop.Tests.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"QaaS.Playwright\" /></ItemGroup></Project>");
+        Directory.CreateDirectory(Path.Combine(_folder, "scratch", "overnight", "Flows"));
+        File.WriteAllText(Path.Combine(_folder, "scratch", "recorder.final.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><ProjectReference Include=\"..\\QaaS.Playwright\\QaaS.Playwright.csproj\" /></ItemGroup></Project>");
+        var (tests, scratch) = (ProjectNamespace.Of(Path.Combine(_folder, "Shop.Tests", "Flows")), ProjectNamespace.Of(Path.Combine(_folder, "scratch", "overnight", "Flows")));
 
         Assert.Multiple(() =>
         {
@@ -120,6 +128,8 @@ public class AutosaveTests
             Assert.That(File.ReadAllText(created.CodePath), Is.EqualTo(whole.Code + "// Changed by hand.\n"));
             Assert.That((Path.GetFileName(leftOut.CodePath), File.ReadAllText(recorded.CodePath)), Is.EqualTo(("Posters.recorded.txt", whole.Code)),
                 "a flow continued without steps is saved beside the flow, which keeps them");
+            Assert.That((tests, scratch), Is.EqualTo(("Shop.Tests.Flows", "Flows")),
+                "the namespace of the project the flow builds in, never of a project of something else above a scratch folder");
         });
     }
 
