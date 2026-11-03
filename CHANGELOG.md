@@ -2,6 +2,25 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- The recorder can log in first with a login flow of your tests: `--login LoginFlow --login-assembly
+  bin/Debug/net10.0/MyTests.dll [--login-settings Flows/LoginFlow.flow.yaml]`. The flow runs as the probe runs a setup
+  flow, nothing it does is recorded, the recording starts on the page it leaves, and the flow recorded says it runs
+  after it. When it fails, the recorder says why, secrets hidden, and waits for you to log in by hand. The options are
+  remembered per project folder; `--no-login` forgets them.
+- `F8` in the recorded window, or **Pause** in the panel, pauses the recording, and resumes it. While paused nothing is
+  recorded, and the overlay, the panel and the console say so. A page the app went to meanwhile is opened by its
+  address after the pause, and listed to check by hand.
+- The panel's **Elements** view shows the recorded page's elements as a tree, searchable by text, id or CSS selector, to
+  pick one a hover cannot reach: it lists its locators, and re-targets the selected step to it, or adds a click or a
+  fill on it. `F4` freezes the page's elements, so the items of a menu that closes when the focus leaves can be picked
+  after it closed.
+- The panel shows XML doc comments readably (their tags dimmed), wraps long lines between calls rather than inside
+  names, and got a polish pass: states for paused, logging in and saving, and a layout that holds at narrow widths.
+- Actions of a login flow in the recorder time out as in the probe: the recorder's own driver no longer runs in
+  Playwright's debug mode, which waits forever.
+
 ## 1.2.1
 
 - A `Directory.Packages.Local.props` beside `Directory.Packages.props`, if there is one, changes package versions, e.g.

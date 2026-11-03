@@ -11,6 +11,7 @@ qaas-playwright record login-flow https://my-app.com             # the same, wit
 qaas-playwright record login-flow https://my-app.com --output-dir UiFlows
 qaas-playwright record login-flow https://my-app.com --keep-recording    # also saves the raw recording
 qaas-playwright record login-flow https://my-app.com --no-panel          # without the panel beside the browser
+qaas-playwright record new-order https://my-app.com --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll
 ```
 
 Run it in your test project's folder: the flow is saved in `Flows/` there, in the project's namespace. From a clone
@@ -60,13 +61,17 @@ not in frames, which are not recorded.
 
 | Key, in the browser | Does |
 |---------------------|------|
+| `F8` | Pauses or resumes the recording (see [Pausing](#pausing)). |
+| `F4` | Freezes the page's elements for the panel's [Elements view](#the-elements-view), e.g. with a menu open. |
 | `F9` | Hides or shows the overlay. Hidden, the recorder records as it would without it. |
 | `Alt+↑` | Picks the element around the one in the box (the box turns orange): the next click records it instead. |
 | `Alt+↓` | Goes back toward the element under the pointer. |
 
 A pick holds while the pointer stays on the same element, and is dropped when it moves to another. These keys do
 nothing in Chrome by themselves, type no text, and cannot be a page's access key; they still reach the page as for a
-person, so with a select or an autocomplete field focused, `Alt+↓` also opens its list. On macOS, `Alt` is `Option`.
+person, so with a select or an autocomplete field focused, `Alt+↓` also opens its list. On macOS, `Alt` is `Option`,
+and the function keys may need `fn`. (`F7` would toggle Chrome's caret browsing, with a prompt that takes the focus
+and closes the very menu being frozen, so freezing is on `F4`.)
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
 recorder saves two files: `Flows/LoginFlow.cs`
@@ -75,7 +80,8 @@ to run the flow, with the page you started on as `BaseUrl`.
 
 - Your login is kept between recordings in `~/.qaas/auth.json`, so you log in once. It is saved when the recording
   ends, also when you closed the window. When it cannot be written (the folder is read-only, or the file is open
-  elsewhere), the recorder says so and still saves the flow.
+  elsewhere), the recorder says so and still saves the flow. With a [login flow](#logging-in-first), the recording
+  starts from no login instead, as the probe does, and the login flow logs in.
 - Recording again under the same name never overwrites anything you may have edited: the new recording is saved
   beside the flow as `LoginFlow.recorded.txt` with `LoginFlow.recorded.flow.yaml`, then `LoginFlow.recorded-2.txt`
   and so on, to merge by hand. They are not `.cs` files, so the project still builds while they declare the same class.
@@ -84,6 +90,59 @@ to run the flow, with the page you started on as `BaseUrl`.
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
   Windows device (`nul`, `com1`), or one too long for a file name.
 
+### Logging in first
+
+Your tests already log in with a flow of their own, e.g. `LoginFlow`, which the probe runs as a setup flow. The recorder
+can run it too, so the recording starts logged in, on the page the login leaves the app on, instead of on the login
+page:
+
+```bash
+dotnet build                                      # the recorder runs the flow from your test project's build
+qaas-playwright record new-order https://my-app.com --login LoginFlow \
+    --login-assembly bin/Debug/net10.0/MyTests.dll --login-settings Flows/LoginFlow.flow.yaml
+```
+
+| Option | Is |
+|--------|----|
+| `--login <Flow>` | The login flow's class name, as `SetupFlows` names it. |
+| `--login-assembly <dll>` | Your test project's built assembly, which has the flow. |
+| `--login-settings <yaml>` | Optional: its settings. The `FlowConfiguration: { LoginFlow: ... }` the recorder writes, a probe's `ProbeConfiguration`, or a whole `test.qaas.yaml`, whose first `FlowConfiguration:LoginFlow` is taken. `${NAME}` reads an environment variable, as in QaaS, so a password need not be in the file. Without it, the flow's settings keep their defaults. |
+| `--no-login` | Records without a login flow, and forgets the one remembered. |
+
+Asked for interactively too (`qaas-playwright` with no arguments). The flow is created and run as the probe runs a
+setup flow: found by its class name in that assembly and the ones it references, given `BaseUrl` (the URL you record)
+and a QaaS `Context` whose logger writes to the console, its settings bound and checked as strictly as the probe checks
+them, then run on the recording's page once it opened the URL. Your assembly's own references load from its folder;
+QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so the flow runs on the recorder's pages whatever
+versions your project was built with (a flow that needs a newer Playwright than the recorder has fails with
+`MissingMethodException`: update the recorder).
+
+- **Nothing the login flow does is recorded**: not its typing and clicks, the pages it goes to, the pop-ups it opens,
+  or the browser dialogs it gets, which Playwright dismisses unless the flow handles them, as in the probe. The
+  console and the panel say `Logging in with LoginFlow…`, then where the recording starts.
+- **The flow you record runs after it.** Its doc comment says so, and the console's YAML hint adds that it needs
+  `SetupFlows: [LoginFlow]`, with the login's settings, before it in the probe.
+- **When the login flow fails**, the console and the panel show why, as the probe reports it, secrets hidden. The
+  recording stays paused: log in by hand, then resume it (`F8`, or **Resume** in the panel), and nothing you did is
+  recorded. To give up, close the browser.
+- **The options are remembered** for the folder you record in, in `~/.qaas/recorder-logins.json`, so the next plain
+  `qaas-playwright record <name> <url>` there logs in the same way, and says so. Give any option to change it, or
+  `--no-login` to stop: it records without logging in, and forgets the login for that folder.
+
+### Pausing
+
+Press `F8` in the recorded window, or **Pause** in the panel, to stop recording for a while, e.g. to look something up,
+or to get the app where the next step starts without those clicks in the flow. While paused, nothing you do in the app
+is recorded, and the panel and the console say so; the overlay shows `Recording paused · F8 resumes` at the top
+instead of the box, and suggests no locator. `F8` again, or **Resume**, records from the page the app is on then. A
+page opened, an address gone to or a browser dialog shown while paused is no later action's doing.
+
+If the app is on another page when you resume (you went there while paused), the flow goes to that address itself, as
+if you had typed it (`await page.GotoAsync($"{BaseUrl}/orders/5")`), and lists the line under "Check by hand": the step
+after the pause then runs on the page it was recorded on, where a replay would otherwise still be on the page before
+the pause, but what led there was not recorded, and an address with a record's id in it may not exist on another run.
+A tab that opened while paused is opened the same way. When the app is on the same page, nothing is added.
+
 ## The panel
 
 Beside the recorded window, the recorder opens its panel: the flow exactly as it will be saved, written as you work.
@@ -91,8 +150,9 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 - **Steps**, on the left: a card for each action, under the step (method) it is part of, with the locator it uses,
   what it caused (a dialog opened, the address changed to `/tickets/[id]`, an alert), and in amber what to check by
   hand.
-- **The code**, in the middle, or the YAML of its values (**Code | YAML** at the top). The selected step's lines are
-  marked, and a line to check by hand has a warning beside its number. Click a line to select its step.
+- **The code**, in the middle, or the YAML of its values, or the page's [Elements](#the-elements-view) (**Code |
+  YAML | Elements** at the top). The selected step's lines are marked, and a line to check by hand has a warning
+  beside its number. Click a line to select its step.
 - **The inspector**, on the right: every locator the recorder found for the selected step's element, each with what it
   found when you acted (`✓ 1 match`, `✗ 3 matches`, `✗ generated id`). Point at one to see in the app what it finds;
   click one to use it instead, and the code changes at once. **Use the recorder's choice** goes back to its own. Below
@@ -104,6 +164,7 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 | ↑ / ↓ | Selects the step before or after |
 | **Undo**, Ctrl+Z | Leaves the last step out of the flow; the app stays as it is |
 | The flow's name, at the top | Renames the flow; a name it cannot have is refused, with why |
+| **Pause** / **Resume**, F8 | Pauses or resumes the recording, as `F8` in the recorded window does |
 | **Save**, Ctrl+S | Ends the recording and saves the flow, as closing the browser does |
 
 The panel is a window of the recorder's own Chrome in a browser context of its own: nothing you do in it is recorded,
@@ -111,6 +172,30 @@ and it needs no network or port. Closing it does not end the recording; closing 
 the system's light or dark theme, and the sun or moon at the top switches it. On a screen with no room beside the
 recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
 part: move it to another screen, or snap it aside. `--no-panel` records without it.
+
+### The Elements view
+
+For what a hover cannot reach or single out (a menu item in a portal, a nested dropdown, an element under another),
+**Elements** shows the recorded page's elements as a tree, as a browser's developer tools do: each element's tag, id,
+classes (those a framework generates left out), role, test id, name and own text. A level loads as you open it, so a
+large page stays fast, and the tree follows the page as it changes, once you leave it alone for a moment. Search by
+text, id or CSS selector (Enter goes to the next match), or **Refresh**.
+
+Point at an element to see it in the app; click it to pick it. The inspector then lists every locator for it, each
+checked against the page, chosen by the same rules as for a recorded click, and the steps it can become:
+
+| In the inspector | Does |
+|---|---|
+| **Use for this step** | Has the step selected on the left act on this element instead; the code changes at once |
+| **Add click** | Adds a click on it after the selected step, or last |
+| **Add fill…** | Adds typing a text you give into it (a text field), as a setting of the flow like a recorded one |
+| **Copy locator** | Copies its locator's C# |
+
+A menu that closes as soon as the focus leaves the app closes before you can click into the panel. Open it, press `F4`
+in the app, and the panel shows the page's elements as they were then, opened at the menu, with the locators of each
+element a click acts on found at that moment. Pick an item even after the menu closed: it is marked "Not on the page
+now", and a click added on it replays, as the step before it opens the menu again. **Back to live** leaves the frozen
+tree. Neither the tree nor `F4` changes the page or is recorded.
 
 ## What gets generated
 
@@ -242,6 +327,7 @@ When it saves a flow, the recorder lists the lines to look at, with their number
 - **Menus that opened on hover**: add `HoverAsync()` on what opens them.
 - **Drag and drop**: check where it drops. A drag the recorder could not follow is saved as a hover.
 - **Pop-ups and tabs you opened yourself**: check what the flow does in them.
+- **An address the app was on when you resumed a pause**: the flow goes there by the address; see [Pausing](#pausing).
 
 When an element is located badly, hover it while recording: the overlay tells why each locator before the chosen one
 lost. To share the details, record with `--keep-recording`: the raw recording is saved beside the flow as
@@ -255,10 +341,12 @@ field then shows. Only Enter and Escape are recorded as key presses; typing is r
 
 The recorder runs its own Chrome session through Playwright, not Playwright's codegen. A script added to every page
 listens, without changing anything, to what you click, type and choose, and reports each action with the candidates
-for its locator, checked against the page with Playwright's own selector engine. That engine is only available when
-the driver runs with `PWDEBUG=console`, which the recorder sets for its own driver alone. The overlay asks the recorder
-which locator it would write through a second binding, so it shows what the flow gets. The recorder then plans the
-steps, names the settings and writes the flow.
+for its locator, checked against the page with Playwright's own selector engine. That engine is only available from a
+driver that runs with `PWDEBUG=console`, which also turns off every timeout, so the recorder drives Chrome with a
+normal driver, where a login flow times out as in the probe, and attaches a second driver in that mode over CDP
+(a DevTools port on this machine only, which Chrome picks) only to install the engine in the pages. The overlay asks
+the recorder which locator it would write, so it shows what the flow gets. The recorder then plans the steps, names
+the settings and writes the flow.
 
 ## Tips
 
