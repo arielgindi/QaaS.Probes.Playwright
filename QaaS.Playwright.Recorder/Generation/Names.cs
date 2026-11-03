@@ -65,8 +65,19 @@ internal static partial class Names
         if (toggle && field.Role != "radio" && English(field.Text) is { } boxLabel && !groupMember
             && (UnstableId.IsUnstable(id) || NumberedId().IsMatch(id!)) && field.Name is null)
             return boxLabel;
+        // A switch or checkbox of no label of its own, in an item of a list or a tree: by the item's words, as antd's
+        // settings list says "Fixed Header" beside its switch, a tree "February.pdf" beside its checkbox.
+        if (toggle && field.Role != "radio" && English(field.Text) is null && field.Name is null && (id is null || UnstableId.IsUnstable(id))
+            && field.Candidates.FirstOrDefault(candidate => candidate is { Kind: "item", Text.Length: > 0 }) is { } item
+            && English(item.Text) is { } itemLabel)
+            return itemLabel;
 
-        var path = new[] { select, field.Name, id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
+        // A form's field named by the index of the form it is in, as antd's step forms are (0_receiverAccount), by its
+        // name; a name of a letter or two (q) by what a person reads beside it.
+        var said = label ?? English(field.Placeholder) ?? (field.Role is "combobox" ? null : English(field.Text));
+        var path = new[] { select, field.Name, id, field.TestId }.Select(value => value is null ? null : StepIndex().Replace(value, ""))
+            .FirstOrDefault(value => !UnstableId.IsUnstable(value) && !(value!.Length <= 2 && said is not null));
+        if (path is null && said is not null && new[] { field.Name, id }.Any(value => value is { Length: <= 2 })) return said;
         if (path is not null)
         {
             var name = WithoutKindWords(CSharp.Pascal(path)!);
@@ -75,8 +86,10 @@ internal static partial class Names
             return name;
         }
 
-        // The widget the field is part of: the input of react-select's #state is the state.
-        if (field.Candidates.FirstOrDefault(candidate => candidate.Kind == "within" && !UnstableId.IsUnstable(candidate.Value)) is { } within)
+        // The widget the field is part of: the input of react-select's #state is the state. Not a container of the page
+        // (#root, #app, #main-content), nor what holds a switch or a checkbox, which its label names.
+        if (!toggle && field.Candidates.FirstOrDefault(candidate => candidate.Kind == "within" && !UnstableId.IsUnstable(candidate.Value)
+                                                                    && !PageContainer().IsMatch(candidate.Value ?? "")) is { } within)
             return WithoutKindWords(CSharp.Pascal(within.Value)!);
         if (label is not null) return label;
         // An option chosen with no field of its own is no name for the choice: the next choice changes it.
@@ -85,12 +98,19 @@ internal static partial class Names
         if (toggle && InColumnHeader(field)) return "SelectAll";
         // A row's checkbox, of no label: the row selected, by its key's column.
         if (toggle && field.Row is { } row) return (CSharp.IsAsciiText(row.Header) ? CSharp.Pascal(row.Header) : "Row") + "Selected";
-        if (Prompt(field.Placeholder ?? field.Text) is { } prompt)
+        // A field that shows its value as its name, as a combobox does, is named by its placeholder alone.
+        var shown = field.Role is "combobox" or "listbox" ? null : field.Text;
+        if (Prompt(field.Placeholder ?? shown) is { } prompt)
             return field.Section is { } section && English(LoopFinder.Singular(CSharp.Pascal(section) ?? "")) is { } part
                                                 && StepNamer.Words(prompt).Count() == 1 && !prompt.StartsWith(part, StringComparison.Ordinal)
                 ? part + prompt
                 : prompt;
-        return English(field.Text) is { } text && !IsExample(field.Text!) ? text : "Value";
+        if (English(shown) is { } text && !IsExample(shown!)) return text;
+        // Else what the section it is in is about: a sport chosen under "Hobbies" is the hobby.
+        return CSharp.IsAsciiText(field.Section) && English(LoopFinder.Singular(CSharp.Pascal(field.Section) ?? "")) is { } about
+               && StepNamer.Words(about).Count() <= 2
+            ? about
+            : "Value";
     }
 
     /// <summary>
@@ -200,6 +220,14 @@ internal static partial class Names
 
     [GeneratedRegex(@"[-_]\d+$")]
     private static partial Regex NumberedId();
+
+    // The index of a form of several steps before a field's name: 0_receiverAccount.
+    [GeneratedRegex(@"^\d+_(?=[A-Za-z])")]
+    private static partial Regex StepIndex();
+
+    // What holds a page or a demo, not a widget: #root, #app, #__next, #main-content, #demo-runner, #example.
+    [GeneratedRegex(@"^(root|app|__next|__nuxt|main|main-content|content|page|layout|wrapper|container|body|demo|demo-runner|example|examples|grid|form|treeview|tree)([-_].*)?$", RegexOptions.IgnoreCase)]
+    private static partial Regex PageContainer();
 
     [GeneratedRegex(@"\s*[(\[][^)\]]*[)\]]")]
     private static partial Regex Hint();

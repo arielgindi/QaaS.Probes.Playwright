@@ -1,0 +1,429 @@
+{
+  "startUrl": "https://preview.pro.ant.design/profile/advanced",
+  "actions": [
+    {
+      "id": "bw6qh8-1",
+      "t": 1793741165640,
+      "kind": "click",
+      "page": "page",
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "催一下",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "催一下",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "催一下"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.ant-steps-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "部门初审"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "催一下",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "部门初审"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"催一下\" })",
+            "selector": "internal:role=link[name=\"催一下\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "7by79n-1",
+      "t": 1793741168871,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "skin 主题设置",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "skin 主题设置",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "skin 主题设置"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin 主题设置\" })",
+            "selector": "internal:role=menuitem[name=\"skin 主题设置\"i]"
+          }
+        ]
+      },
+      "hoverMenu": true,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7by79n-1",
+          "sinceAction": 125,
+          "t": 1793741168996
+        },
+        {
+          "kind": "dialogOpened",
+          "actionId": "7by79n-1",
+          "sinceAction": 175,
+          "t": 1793741169046,
+          "dialog": {
+            "title": "Page style setting",
+            "raw": "",
+            "heading": "Page style setting",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        },
+        {
+          "kind": "alert",
+          "actionId": "7by79n-1",
+          "sinceAction": 176,
+          "t": 1793741169047,
+          "text": "Setting panel shows in development environment only, please manually modify",
+          "alertCount": 1
+        }
+      ]
+    },
+    {
+      "id": "7by79n-2",
+      "t": 1793741170902,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "SideMenu Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Fixed Header"
+              },
+              {
+                "m": "role",
+                "role": "switch"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Fixed Header"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Fixed Header\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Fixed Header\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7by79n-2",
+          "sinceAction": 14,
+          "t": 1793741170916
+        }
+      ]
+    },
+    {
+      "id": "7by79n-3",
+      "t": 1793741175999,
+      "kind": "check",
+      "page": "page",
+      "widget": "switch",
+      "checked": true,
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "SideMenu Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Fixed Header"
+              },
+              {
+                "m": "role",
+                "role": "switch"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Fixed Header"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Fixed Header\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Fixed Header\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7by79n-3",
+          "sinceAction": 12,
+          "t": 1793741176011
+        }
+      ]
+    },
+    {
+      "id": "7by79n-4",
+      "t": 1793741177431,
+      "kind": "uncheck",
+      "page": "page",
+      "widget": "switch",
+      "checked": false,
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "SideMenu Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Split Menus"
+              },
+              {
+                "m": "role",
+                "role": "switch"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Split Menus"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Split Menus\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Split Menus\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "7by79n-4",
+          "sinceAction": 10,
+          "t": 1793741177441
+        }
+      ]
+    },
+    {
+      "id": "7by79n-5",
+      "t": 1793741183434,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://preview.pro.ant.design/profile/advanced/",
+      "dialog": {
+        "title": "Page style setting",
+        "raw": "",
+        "heading": "Page style setting",
+        "headingMatches": true,
+        "unnamedMatches": true
+      },
+      "openDialogs": [
+        "Page style setting"
+      ],
+      "target": {
+        "tag": "button",
+        "role": "switch",
+        "type": "button",
+        "text": "",
+        "section": "SideMenu Type",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "role",
+                "heading": "Page style setting",
+                "role": "dialog"
+              },
+              {
+                "m": "css",
+                "css": "li.ant-list-item"
+              },
+              {
+                "m": "filter",
+                "hasText": "Split Menus"
+              },
+              {
+                "m": "role",
+                "role": "switch"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Split Menus"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Listitem).Filter(new() { HasText = \"Split Menus\" }).GetByRole(AriaRole.Switch)",
+            "selector": "internal:role=listitem >> internal:has-text=\"Split Menus\"i >> internal:role=switch"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "dialogClosed",
+          "actionId": "7by79n-5",
+          "sinceAction": 672,
+          "t": 1793741183984,
+          "dialog": {
+            "title": "Page style setting",
+            "raw": "",
+            "heading": "Page style setting",
+            "headingMatches": true,
+            "unnamedMatches": true
+          }
+        }
+      ]
+    }
+  ]
+}

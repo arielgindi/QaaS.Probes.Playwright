@@ -701,19 +701,28 @@ FlowConfiguration:
   a verb a route starts with (`viewPersonalDetails` is `PersonalDetails`). A name taken is the step done again
   (`OpenMyInfoAgainAsync`), numbered only the third time; a second form step of a page is named after what it fills in
   (`FillGenderAndEmailAsync`). Each summary says what a person would: "Fills in the gender, email, first name, last name
-  and mobile number, pressing Enter after the email." A dialog is named after its title,
-  or the heading it shows, else after the button that opened it, each dialog after its own. The click that only opened
+  and mobile number, pressing Enter after the email." A dialog is named after its title, without the Close button its
+  title bar holds ("New Event", never "New Event Close") and up to its first word with a number,
+  or the heading it shows, else after the button that opened it, each dialog after its own; a dialog another button
+  opened before is named after what its own button does (`AddAsync` for "Add" opening the "Edit" window), never
+  `OpenEditAgainAsync`. A lone verb takes a section of one or two words only, never a page's long title; "Sign in" is
+  `SignInAsync`; a page of an app that routes by the address's fragment (`#/products`) is named after its route. The click that only opened
   a select's list is left out: the flow opens it as it chooses.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
   value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
   (`employee.firstName` gives `EmployeeFirstName`), else its own stable id (by its label when that says the same in
   fewer words: `userEmail` and "Email" give `Email`; `subjectsInput` gives `Subjects`), test id, the stable id of the
-  widget it is part of (react-select's input in `#state` gives `State`), its label, the label beside it in its form
+  widget it is part of (react-select's input in `#state` gives `State`, never a container of the page such as `#root`,
+  `#main-content` or `#demo-runner`), its label, the label beside it in its form
   group, row or column though nothing ties it to it (`User Role`, `Blood Type`), what its prompt says (`Select State`),
   for an option of a list without a field the list's label, else the dialog's title; never a placeholder's example of a
   value (`name@example.com`), nor the value a select shows. A checkbox whose id only numbers it is named after its label
-  (`hobbies-checkbox-3` is `Music`), a row's checkbox after its row (`UsernameSelected`), the header's `SelectAll`. A
+  (`hobbies-checkbox-3` is `Music`), a switch or a checkbox of no label after the words of its list's or its tree's item
+  (`FixedHeader`, `FebruaryPdf`), a row's checkbox after its row (`UsernameSelected`), the header's `SelectAll`; a field
+  of a step form after its name without the step's index (`0_receiverAccount` is `ReceiverAccount`), a name of a letter
+  or two (`q`) after its label or placeholder (`Search`); a choice of no name after the section it is in (a sport chosen
+  under "Hobbies" is `Hobby`); a link to a person without their avatar's initial ("L Leonie Abernathy"). A
   choice drops the `Id` its field's name ends with, as it holds the option's text (`maintenanceTypeId` gives
   `MaintenanceType`). The same words typed again into another field, as a user's name searched for after it was given,
   read the first one's setting. One file uploaded is a setting of its path, named after its field's label

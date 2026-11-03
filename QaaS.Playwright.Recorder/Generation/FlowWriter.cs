@@ -748,7 +748,8 @@ internal sealed partial class FlowWriter
     {
         const string role = "GetByRole(AriaRole.Dialog";
         if (dialog is null) return ($"{page}.{role})", "the recorder did not see this dialog's title");
-        var pieces = Pieces(dialog.Title);
+        // By its title without the Close button in its title bar, which is part of the name it has, so finds it still.
+        var pieces = Pieces(dialog.TitleMatches ? StepNamer.WithoutClose(dialog.Title) : dialog.Title);
         var hasNumber = pieces.Where(piece => piece.Code is null).Any(piece => piece.Text.Any(char.IsDigit));
         if (dialog.TitleMatches && !hasNumber) return ($"{page}.{role}, new() {{ Name = {Code(pieces)} }})", null);
         if (dialog is { PrefixMatches: true, Prefix: { } prefix })
@@ -984,7 +985,7 @@ internal sealed partial class FlowWriter
             return $"$\"{CSharp.Escape(part.Name[..at], true)}{{{Setting(rowKey)}}}{CSharp.Escape(part.Name[(at + key.Length)..], true)}\"";
         }
 
-        return Linked(part.Name);
+        return Linked(LocatorPolicy.WithoutIcon(part.Name));
     }
 
     // The text with the loop's item values in it read from the item, and the values typed before from their settings;

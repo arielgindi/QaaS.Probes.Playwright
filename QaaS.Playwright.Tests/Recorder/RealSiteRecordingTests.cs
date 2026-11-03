@@ -311,7 +311,10 @@ public class RealSiteRecordingTests
                 .And.Not.Contain("US$"), "a poster's link by its title and size, never by the price the demo makes anew on each load");
             Assert.That(antdRun.Flow.Code, Does.Contain(".GetByText(Configuration.Status, new() { Exact = true })").And.Not.Contain("[object Object]"),
                 "an option of no role is a choice of its select, found by its text among the options that show");
-            Assert.That(antdRun.Flow.Yaml, Does.Contain("Status: 'running'").And.Contain("RuleName: 'Nightly sync'"), "the choice a setting");
+            Assert.That(antdRun.Flow.Yaml, Does.Contain("Status: 'running'").And.Contain("RuleName: 'Nightly sync'")
+                .And.Contain("FixedHeader").And.Contain("SplitMenus").And.Not.Contain("Root"), "the choice a setting, each switch by its label");
+            Assert.That(kendoRun.Flow.Code + kendoRun.Flow.Yaml, Does.Contain("GetByRole(AriaRole.Dialog, new() { Name = \"Edit\" })")
+                .And.Contain("FebruaryPdf").And.Contain("MarchPdf").And.Not.Contain("Treeview"), "Kendo's window by its title, a tree's checkbox by its item");
             Assert.That(antdRun.Flow.Code, Does.Match(@"\.HoverAsync\(\);\s+await page\.GetByRole\(AriaRole\.Menuitem, new\(\) \{ Name = ""Account Settings"""),
                 "a menu that opened on hover is hovered open");
             Assert.That(antdRun.Flow.Code, Does.Match(@"time\.FillAsync\(Configuration\.Time\);\s+await time\.PressAsync\(""Enter""\)"),
@@ -444,6 +447,19 @@ public class RealSiteRecordingTests
                 "a row is never found by all it says, its random counts and statuses with it");
             Assert.That(widgets.Code + scheduler.Code + steps.Code, Does.Not.Contain("_9b2b62df").And.Not.Contain("\\\\36 d9a47e9").And.Not.Contain("rc-tabs-0"),
                 "no id made anew on each load or render: a GUID, one CSS escapes, one a library numbers");
+            Assert.That(customersFlow.Code, Does.Contain("SignInAsync").And.Contain("OpenLeonieAbernathyAsync")
+                .And.Contain("GetByRole(AriaRole.Link, new() { NameRegex = new Regex(\"^(?:L )?Leonie Abernathy$\") })")
+                .And.Contain("GetByRole(AriaRole.Link, new() { Name = $\"{Configuration.FirstName} Abernathy\" })").And.Not.Contain("OpenLLeonie"),
+                "a person's link without the initial of their avatar, in its name or its step's");
+            Assert.That(customersFlow.Yaml, Does.Contain("Search: ''").And.Not.Contain("Q:"), "a field named q by what it says");
+            Assert.That(widgets.Code, Does.Contain("await AddAsync(page)").And.Not.Contain("OpenEditAgain").And.Not.Contain("DemoRunner")
+                .And.Not.Contain("TreeviewTvActive").And.Not.Contain("JQueryGridPopupEditing"),
+                "a dialog another button opened before by what its own button does, and no name of a page's container or long heading");
+            Assert.That(scheduler.Code, Does.Contain("OpenNewEventAsync").And.Contain("GetByRole(AriaRole.Dialog, new() { Name = \"New Event\" })")
+                .And.Not.Contain("New Event Close"), "a dialog's title without its Close button");
+            Assert.That(rules.Code, Does.Contain("OpenTradeCodeAsync").And.Not.Contain("ConfigurationSubscribeToAlerts"), "a drawer by the words of its title before its number");
+            Assert.That(Read("AntdProProfile") is var profile ? FlowCodeGenerator.Generate(profile, "AntdProProfile", "Flows").Yaml : "",
+                Does.Contain("FixedHeader:").And.Contain("SplitMenus:").And.Not.Contain("Value"), "a switch by its list item's words");
             Assert.That(scheduler.Checks.Select(check => check.Message), Has.Some.Contains("only an id made anew on each load finds was left out"),
                 "a click only such an id finds is left out, and said");
             Assert.That(steps.Code, Does.Contain("GetByRole(AriaRole.Button, new() { NameRegex = new Regex(\"^(?:loading )?Next$\") })")

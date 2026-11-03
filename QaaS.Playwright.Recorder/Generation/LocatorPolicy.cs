@@ -189,7 +189,8 @@ internal static partial class LocatorPolicy
         if (part.Regex is not null) return $"GetByRole({role}, new() {{ NameRegex = new Regex({CSharp.Literal(part.Regex)}) }})";
         if (name is null && SteadyName(part.Name) is { } steady) return $"GetByRole({role}, new() {{ NameRegex = new Regex({CSharp.Literal(steady)}) }})";
         if (part.Name is null) return $"GetByRole({role})";
-        var exact = part.Exact ? ", Exact = true" : "";
+        // A name read from a setting without the icon or avatar it starts with is matched in it, as part of it.
+        var exact = part.Exact && (name is null || WithoutIcon(part.Name) == part.Name) ? ", Exact = true" : "";
         return $"GetByRole({role}, new() {{ Name = {name ?? CSharp.Literal(part.Name)}{exact} }})";
     }
 
@@ -203,6 +204,9 @@ internal static partial class LocatorPolicy
         if (name is null) return null;
         if (IconPrefix().Match(name) is { Success: true } icon)
             return $"^(?:{PatternOf(icon.Groups["icon"].Value)} )?{PatternOf(icon.Groups["rest"].Value)}$";
+        // A person's name after the initial of their avatar: "L Leonie Abernathy".
+        if (AvatarInitial().Match(name) is { Success: true } avatar)
+            return $"^(?:{PatternOf(avatar.Groups["initial"].Value)} )?{PatternOf(avatar.Groups["rest"].Value)}$";
         var half = name.Length / 2;
         return name.Length >= 6 && name.Length % 2 == 0 && name[..half] == name[half..] && !name[..half].Contains(' ')
             ? $"^(?:{PatternOf(name[..half])})?{PatternOf(name[..half])}$"
@@ -212,6 +216,7 @@ internal static partial class LocatorPolicy
     /// <summary>The name without the icon's label it starts with, as a person reads it: "plus New" is New.</summary>
     public static string WithoutIcon(string name) =>
         IconPrefix().Match(name) is { Success: true } icon ? icon.Groups["rest"].Value
+        : AvatarInitial().Match(name) is { Success: true } avatar ? avatar.Groups["rest"].Value
         : name.Length >= 6 && name.Length % 2 == 0 && name[..(name.Length / 2)] == name[(name.Length / 2)..] ? name[..(name.Length / 2)]
         : name;
 
@@ -313,6 +318,10 @@ internal static partial class LocatorPolicy
     // An icon's label in lowercase, then the words a person reads, in capitals or another script.
     [GeneratedRegex(@"^(?<icon>[a-z]+(?:-[a-z]+)*) (?<rest>[^\p{Ll}\s].*)$")]
     private static partial Regex IconPrefix();
+
+    // The initial an avatar shows, then the name it is the initial of.
+    [GeneratedRegex(@"^(?<initial>\p{Lu}) (?<rest>\k<initial>\p{Ll}+(?: \p{L}[\p{L}'-]*)+)$")]
+    private static partial Regex AvatarInitial();
 
     [GeneratedRegex(@"^\s*(\[object \w+\]|undefined|null|NaN)\s*$")]
     private static partial Regex JunkText();
