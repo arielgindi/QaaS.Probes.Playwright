@@ -31,8 +31,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         "json => typeof window.__qaasPanelElements === 'function' && window.__qaasPanelElements(json)";
     private const string SendFunction = "__qaasPanelSend";
 
-    // Playwright highlights until it highlights something else, so highlighting nothing hides it.
-    private const string Nothing = "qaas-panel-nothing";
+    // The overlay boxes every element a locator finds, as the person's pointer on a step or a locator asks.
+    private const string ShowInPage =
+        "(elements, tag) => typeof window.__qaasRecorder === 'function' && !window.__qaasRecorder({ op: 'show', elements, tag })";
 
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(150);
     private static readonly Lazy<string> Html = new(LoadHtml);
@@ -521,8 +522,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         _ => "recording",
     };
 
-    // Shows in the recorded page the element of an action, what one of its candidates finds, or a candidate of the
-    // element picked in the Elements view; null hides it. The Elements view's own elements are marked by MarkAsync.
+    // Shows in the recorded page, in its overlay, the elements an action's locator finds, what one of its candidates finds,
+    // or a candidate of the element picked in the Elements view; null hides them. The Elements view's own elements are
+    // marked by MarkAsync.
     private async Task HighlightAsync(PanelCommand? command)
     {
         var action = command is { Type: "highlight", Action: { } id }
@@ -538,10 +540,13 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
         try
         {
-            if (_highlighted is { IsClosed: false } previous && previous != page) await previous.Locator(Nothing).HighlightAsync();
+            if (_highlighted is { IsClosed: false } previous && previous != page) await PageElements.CallAsync(previous, new { op = "show" });
             _highlighted = page;
-            if (page is not null)
-                await ((candidate is null ? null : Locate(page, candidate)) ?? page.Locator(Nothing)).HighlightAsync();
+            if (page is null) return;
+            if ((candidate is null ? null : Locate(page, candidate)) is { } locator)
+                await locator.EvaluateAllAsync<bool>(ShowInPage, command?.Candidate is null ? "Step" : "Locator");
+            else
+                await PageElements.CallAsync(page, new { op = "show" });
         }
         catch (Exception failure) when (failure is PlaywrightException or ArgumentException)
         {
