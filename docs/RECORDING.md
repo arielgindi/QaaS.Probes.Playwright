@@ -803,7 +803,10 @@ nothing, in its view of a month, of a year or of a decade alike, as its "Navigat
 year: the date the field then shows is recorded as typed into it, as MUI's, antd's and Kendo's pickers all take it.
 When the picker kept it only once you pressed its OK, as antd's does, the flow presses Enter in the field after typing
 it. A click that opens a file chooser through what
-stands for it ("Browse") records nothing; the file chosen is the upload.
+stands for it ("Browse") records nothing; the file chosen is the upload. A click on a cell of a table records the cell,
+as a header's cell sorts its column, never the whole row. A drag drops on what was under the pointer before the drop,
+such as a scheduler's slot, never on the item dragged, nor on the hint a library moves with the pointer, which names
+where it would drop.
 
 So a click on the title of a card, a tile or a carousel's slide records the card, and keeps it in the flow, though
 nothing else tells it is clickable. When only its label's text or Playwright's own locator would find that element, or

@@ -366,8 +366,12 @@ internal static class CaptureScript
               if (looksClickable(node)) clickable = node;
             }
             if (handled) actionable.add(handled);
-            return handled ?? clickable ?? item ?? interactive ?? hit;
+            // In a row, the cell clicked, as a header's cell sorts or filters its column, a slot of a scheduler takes a
+            // drop: never the whole row for a click on one of its cells.
+            const cell = interactive?.matches(CONTAINERS) ? closestUp(hit, CELLS) : null;
+            return handled ?? clickable ?? item ?? (cell && interactive.contains(cell) ? cell : interactive) ?? hit;
           }
+          const CELLS = 'th, td, [role=gridcell], [role=columnheader], [role=rowheader], [role=cell]';
 
           // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
           function onlyChild(element) {
@@ -1316,7 +1320,7 @@ internal static class CaptureScript
               state.done = true;
               // A link or an image moved as it was clicked is the browser's own drag of it, which drops nowhere: nothing.
               if (nativeDrag(state.draft.element)) return;
-              const drop = deepTarget(event);
+              const drop = dropTarget(event, state);
               const { element, adornmentField, owner, listbox, ...rest } = state.draft;
               record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
               return;
@@ -1325,6 +1329,24 @@ internal static class CaptureScript
             // itself was the action.
             setTimeout(() => safe(() => { if (pending === state) pending = null; finish(state, 'pointer'); }), 80);
           }), { capture: true, passive: true });
+
+          // Where a drag dropped: the topmost element under the pointer that was there before the drag, so neither the item
+          // dragged, which the app may have moved there already, nor a hint a library moves with the pointer naming where
+          // it would drop (Kendo's scheduler), nor anything that copies the item dragged.
+          const DRAG_HINT = /drag|hint|clue|ghost|placeholder|preview|helper|chosen|dragging/i;
+          function dropTarget(event, state) {
+            const dragged = state.draft.element;
+            const said = clean(dragged?.innerText ?? dragged?.textContent ?? '');
+            const copies = (element) => !!said && clean(element.innerText ?? element.textContent ?? '') === said;
+            for (const element of document.elementsFromPoint(event.clientX, event.clientY)) {
+              if (!dragged || element === dragged || containsDeep(dragged, element) || containsDeep(element, dragged) && element !== document.body) continue;
+              let hint = false;
+              for (let node = element, depth = 0; node && node !== document.body && depth < 4; node = upFrom(node), depth++)
+                if (DRAG_HINT.test(node.getAttribute?.('class') ?? '') || copies(node)) { hint = true; break; }
+              if (!hint) return element;
+            }
+            return deepTarget(event);
+          }
 
           addEventListener('pointercancel', () => safe(() => { pending = null; }), { capture: true, passive: true });
           const nativeDrag = (element) => !!element && !closestUp(element, '[draggable=true]') &&
