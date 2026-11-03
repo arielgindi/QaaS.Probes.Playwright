@@ -447,11 +447,11 @@ green once every repeat of it passed. The console prints the result too, and how
 slow one shows:
 
 ```text
-  › Testing      NewTicket…
-  × Failed       NewTicket at step 4 of 6, line 34, after 31.8 s.
+  › Testing       NewTicket…
+  × Failed        NewTicket at step 4 of 6, line 34, after 31.8 s.
     4 ▼ choose  Category → Software           [name='category']
         └ Timeout 30000ms exceeded (waiting for Locator("[name='category']")) on https://helpdesk.example/helpdesk
-                 build 0.2 s · window 0.6 s · start page 1.1 s · run 31.2 s
+                  build 0.2 s · window 0.6 s · start page 1.1 s · run 31.2 s
 ```
 
 The result stays until you test again or dismiss it; once you change the flow, it is marked `changed since`.
