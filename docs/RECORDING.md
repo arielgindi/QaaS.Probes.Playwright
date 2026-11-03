@@ -437,7 +437,12 @@ it back. It never leaves these out by itself, as what looks like noise may be wh
 | **Leave it out** | A value typed or chosen again in the same field later, before anything used it: no submit, no new address, no dialog or message, no check of yours. Enter pressed in it that did nothing counts as nothing. | Leaves out the first, with the Enter after it and the click that opened its list |
 | **Leave the repeats out** | The same click again right after, and nothing showed after it: a button that seemed to do nothing, clicked again. | Keeps the first click |
 | **Leave both out** | A choice of a multi-select taken back by its "Remove …" button before anything used it. | Leaves out the choice and the removal: the list is the choices that stayed |
+| **Leave it out**, **Leave both out**, **Leave these 4 out** | What was done and undone before anything used it, so the page is as it was: a checkbox or a switch ticked and unticked, a toggle clicked twice ("Toggle light/dark mode", a menu's group opened and closed), a menu's choice made and made back (English, Français, English). Never a column's header clicked twice, which sorts it one way and then the other. | Leaves out all of it |
 | **Leave these out** | In a recording of an older recorder, which did not watch what a click changed: clicks on what is no control that showed nothing. | Leaves them all out |
+
+A checkbox or a switch ticked again and again is the state it ends in, one step; radios of one group picked one after
+the other, the last. The address the app was at when a pause or a try ended is not gone to when the next click is on a
+menu's item or a tab that goes elsewhere itself.
 
 The console lists the suggestions left when you save. What the recorder leaves out by itself, without asking, is only
 what cannot matter: a click that only put the focus in a field the next action types into or that you left, the click

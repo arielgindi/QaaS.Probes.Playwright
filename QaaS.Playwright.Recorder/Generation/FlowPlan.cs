@@ -49,6 +49,12 @@ internal sealed class PlannedAction
     /// <summary>The checks the person chose right after the action, which the flow makes after it.</summary>
     public List<CapturedAction> Checks { get; } = [];
 
+    /// <summary>
+    /// For a checkbox or switch ticked or turned more than once in a row: whether it was on before the first time, which
+    /// tells a round trip (on, then off again) that the flow needs none of.
+    /// </summary>
+    public bool? Before { get; set; }
+
     /// <summary>What was typed into an Autocomplete before an option was chosen.</summary>
     public string? Search { get; set; }
 

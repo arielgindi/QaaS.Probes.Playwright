@@ -114,6 +114,8 @@ internal static partial class Noise
                 suggestions.Add(repeated);
             if (Removed(actions, index) is { } removed && removed.Drop.All(suggested.Add))
                 suggestions.Add(removed);
+            if (RoundTrip(actions, index) is { } roundTrip && roundTrip.Drop.All(suggested.Add))
+                suggestions.Add(roundTrip);
         }
 
         // Clicks on what is no control that changed nothing, as far as an older recorder could tell: all at once.
@@ -165,6 +167,9 @@ internal static partial class Noise
         if (action.Kind != "click" || index > 0 && actions[index - 1] is { Kind: "click" } before && before.Key == action.Key
                                     && before.Dialog == action.Dialog)
             return null;
+        // A column's header sorts it one way, then the other: each click counts.
+        if (action.Source.Target?.Role is "columnheader" || StepNamer.Label(action)?.StartsWith("Sort", StringComparison.OrdinalIgnoreCase) == true)
+            return null;
         var repeats = new List<string>();
         for (var next = index + 1; next < actions.Count; next++)
         {
@@ -184,6 +189,46 @@ internal static partial class Noise
         return new Suggestion($"repeated:{action.Source.Id}", text, repeats.Count == 1 ? "Leave the repeat out" : $"Leave the {repeats.Count} repeats out",
             repeats, [action.Source.Id, .. repeats]);
     }
+
+    // What was done and undone before anything used it, so the page is as it was: a checkbox ticked and unticked, a
+    // toggle clicked twice ("Toggle light/dark mode", a menu's group opened and closed), a choice of a menu made and made
+    // back again (English, Français, English). Never what may have gone on twice, as "Add" twice adds two.
+    private static Suggestion? RoundTrip(List<PlannedAction> actions, int index)
+    {
+        var action = actions[index];
+        if (action is { Kind: "check" or "uncheck", Before: { } before } && before == (action.Kind == "check") && action.Checks.Count == 0)
+            return new Suggestion($"roundTrip:{action.Source.Id}",
+                $"{Quote(Names.Human(action.Source.Target)) ?? "The checkbox"} is " +
+                (action.Source is { Widget: "switch", Target.Role: not "checkbox" } ? before ? "turned off and on" : "turned on and off"
+                    : before ? "unticked and ticked" : "ticked and unticked") +
+                " again before anything used it: the flow needs none of it.", "Leave it out", [action.Source.Id], [action.Source.Id]);
+        if (index + 1 < actions.Count && actions[index + 1] is var again && action is { Kind: "click" } && again.Kind == "click"
+            && again.Key == action.Key && action.Has("changed") && again.Has("changed") && !HasResult(action) && !HasResult(again)
+            && action.Checks.Count == 0 && again.Checks.Count == 0 && Toggles(action)
+            && (index == 0 || actions[index - 1].Key != action.Key))
+            return new Suggestion($"roundTrip:{action.Source.Id}",
+                $"{Quote(Names.Human(action.Source.Target)) ?? "The element"} is clicked twice in a row, which turned it on and off again: the flow needs neither.",
+                "Leave both out", [action.Source.Id, again.Source.Id], [action.Source.Id, again.Source.Id]);
+        // A menu's choice made back: its button says what is chosen, as a language's does.
+        if (index + 3 < actions.Count && actions.Skip(index).Take(4).ToList() is [var open, var pick, var reopen, var back]
+            && new[] { open, pick, reopen, back }.All(each => each is { Kind: "click", Checks.Count: 0 } && !each.Has("urlChanged") && !each.Has("dialogOpened"))
+            && StepNamer.Label(open) is { } first && StepNamer.Label(pick) is { } other && first != other
+            && StepNamer.Label(reopen) == other && StepNamer.Label(back) == first
+            && pick.Source.Target?.Role is "menuitem" or "option" or "menuitemradio")
+            return new Suggestion($"roundTrip:{open.Source.Id}",
+                $"“{other}” is chosen, then “{first}” again, as it was, before anything used it: the flow needs none of it.",
+                "Leave these 4 out", [open.Source.Id, pick.Source.Id, reopen.Source.Id, back.Source.Id],
+                [open.Source.Id, pick.Source.Id, reopen.Source.Id, back.Source.Id]);
+        return null;
+    }
+
+    // What a second click turns back: a toggle by its words, a menu's group that opens and closes, a switch.
+    private static bool Toggles(PlannedAction click) =>
+        click.Source.Target?.Role is "switch" or "menuitem" && !click.Has("urlChanged")
+        || StepNamer.Label(click) is { } label && ToggleWord().IsMatch(label);
+
+    [GeneratedRegex(@"\b(toggle|dark|light|theme|mode|expand|collapse|show|hide|more|less)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ToggleWord();
 
     // A choice of a list of several taken back by its "Remove ..." button before anything used it: the flow chooses what
     // was left.

@@ -414,7 +414,8 @@ internal static class CaptureScript
 
           // What the element is beyond its role, for the recorder to write it.
           const widgetOf = (element) => element.matches(TOGGLES)
-            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' || closestUp(element, '[class*=switch i]') ? 'switch' : 'checkbox')
+            // MUI's checkboxes and radios are of its SwitchBase: no switch.
+            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' || closestUp(element, '[class*=switch i]:not([class*=switchbase i])') ? 'switch' : 'checkbox')
             : isMuiSelect(element) ? 'select-open'
             : element.closest('.MuiAutocomplete-root') && element.tagName === 'BUTTON' ? 'autocomplete-button'
             : roleOf(element) === 'tab' ? 'tab'

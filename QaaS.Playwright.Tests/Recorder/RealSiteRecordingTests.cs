@@ -424,6 +424,7 @@ public class RealSiteRecordingTests
         foreach (var typed in customers.Actions.Where(action => action.Target?.Type == "password")) (typed.Value, typed.Raw) = ("demo", "demo");
         var customersFlow = FlowCodeGenerator.Generate(customers, "CustomersFilterEdit", "Flows");
         var widgets = FlowCodeGenerator.Generate(Read("KendoWidgets"), "KendoWidgets", "Flows");
+        var orders = FlowPlanner.Plan(Read("ReactAdminOrders"), "OrdersAndReviews");
         var rules = FlowCodeGenerator.Generate(Read("AntdProTable"), "AntdProTable", "Flows");
         var poster = FlowCodeGenerator.Generate(Read("ReactAdminPosters"), "Posters", "Flows");
         var steps = FlowCodeGenerator.Generate(Read("AntdProStepForm"), "AntdProStepForm", "Flows");
@@ -466,6 +467,11 @@ public class RealSiteRecordingTests
             Assert.That(rules.Code, Does.Contain("OpenTradeCodeAsync").And.Not.Contain("ConfigurationSubscribeToAlerts"), "a drawer by the words of its title before its number");
             Assert.That(Read("AntdProProfile") is var profile ? FlowCodeGenerator.Generate(profile, "AntdProProfile", "Flows").Yaml : "",
                 Does.Contain("FixedHeader:").And.Contain("SplitMenus:").And.Not.Contain("Value"), "a switch by its list item's words");
+            Assert.That(orders.Suggestions.Select(suggestion => suggestion.Text), Has.Some.Contains("“Français” is chosen, then “English” again")
+                .And.Some.Contains("“Toggle light/dark mode” is clicked twice in a row").And.Some.Contains("ticked and unticked again"),
+                "what was done and undone is suggested away, never left out silently");
+            Assert.That(widgets.Code, Does.Not.Contain("Discontinued2").And.Not.Contain("FebruaryPdf2"), "a checkbox ticked again is the state it ends in");
+            Assert.That(poster.Code, Does.Not.Contain("GotoAsync"), "no address gone to after a try, right before a menu's item that goes elsewhere");
             Assert.That(scheduler.Checks.Select(check => check.Message), Has.Some.Contains("only an id made anew on each load finds was left out"),
                 "a click only such an id finds is left out, and said");
             Assert.That(steps.Code, Does.Contain("GetByRole(AriaRole.Button, new() { NameRegex = new Regex(\"^(?:loading )?Next$\") })")

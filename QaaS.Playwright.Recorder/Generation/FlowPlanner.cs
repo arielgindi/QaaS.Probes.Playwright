@@ -102,6 +102,10 @@ internal static partial class FlowPlanner
                 case "click" when Noise.OnlyFocuses(action, next):
                 case "drag" when Noise.DroppedNowhere(action):
                 case "press" when action.Source.Key == "Escape" && noEffect:
+                // The address the app was at when a pause or a try ended, right before a click on a menu's item or a tab
+                // that goes elsewhere itself, as a menu is on every page: the flow need not go there first.
+                case "navigate" when action.Source.AfterPause == true && next is { Kind: "click" } && next.Has("urlChanged")
+                                     && next.Source.Target?.Role is "menuitem" or "tab":
                     continue;
                 // The click that opened the list of the choice next, which the flow makes as it writes the choice: by the
                 // capture script's word, or a click on the field itself.
@@ -121,8 +125,14 @@ internal static partial class FlowPlanner
                 // Typing on in a field: the value it ends with is the one typed.
                 case "fill" when last is { Kind: "fill" } && last.Key == action.Key && last.Effects.Count == 0
                                  && (action.Source.Value ?? "").StartsWith(last.Source.Value ?? "", StringComparison.Ordinal):
-                case "check" or "uncheck" when last is { Kind: "check" or "uncheck" } && last.Key == action.Key
-                                               && last.Effects.Count == 0:
+                // Ticked again, or turned on and off: the state it ends in, which a suggestion leaves out where it is the
+                // one it had before; a radio of the group picked again, the last.
+                case "check" or "uncheck" when last is { Kind: "check" or "uncheck" } && last.Key == action.Key && !Noise.HasResult(last):
+                    action.Before = last.Before ?? last.Kind != "check";
+                    kept.RemoveAt(kept.Count - 1);
+                    break;
+                case "check" when widget == "radio" && last is { Kind: "check", Source.Widget: "radio" } && !Noise.HasResult(last)
+                                  && last.Source.Target?.Name is { Length: > 0 } group && action.Source.Target?.Name == group:
                 case "dblclick" when last is { Kind: "click" } && last.Key == action.Key:
                     kept.RemoveAt(kept.Count - 1);
                     break;
