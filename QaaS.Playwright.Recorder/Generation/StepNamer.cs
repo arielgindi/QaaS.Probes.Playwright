@@ -24,6 +24,10 @@ internal static partial class StepNamer
         "Share", "Invite", "Accept", "Decline", "Enable", "Disable", "Run", "Load", "Return",
     ];
 
+    // What a button that only confirms a choice says.
+    private static readonly HashSet<string> Confirms = new(StringComparer.OrdinalIgnoreCase)
+        { "Confirm", "OK", "Done", "Apply", "Select", "Choose", "Continue", "Next", "Use" };
+
     // Words a label may end with once the record's key is taken out of it: "Actions for HL-775-ZE" gives "Actions".
     private static readonly string[] Dangling = ["for", "of", "to", "in", "on", "at", "with", "by", "from", "#"];
 
@@ -37,8 +41,11 @@ internal static partial class StepNamer
         var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
 
-        string DialogSubject(string title, CapturedDialog? info)
+        // A dialog without a title of any kind is told apart by the button that opened it, as every such dialog has the
+        // same empty title.
+        string DialogSubject(string title, CapturedDialog? info, PlannedAction? opener = null)
         {
+            if (title.Length == 0 && opener is not null && OpenerSubject(opener) is { } own) return own;
             if (subjects.TryGetValue(title, out var known)) return known;
             var titleWords = info?.Prefix is { Length: > 0 } prefix ? prefix : title;
             var subject = (CSharp.IsAsciiText(titleWords) ? CSharp.Pascal(titleWords) : null) ?? OpenerStem(plan, title);
@@ -62,7 +69,7 @@ internal static partial class StepNamer
             if (step.Loop is { } loop)
                 name = LoopName(step, loop);
             else if (step.Opens is { } opened)
-                name = "Open" + DialogSubject(opened.Title, opened);
+                name = "Open" + DialogSubject(opened.Title, opened, last);
             else if (step.OpensPage is not null)
                 name = verb is null ? "OpenPage" : verb.StartsWith("Open", StringComparison.Ordinal) ? verb : "Open" + verb;
             else if (step.Actions.All(action => action.Kind == "expect"))
@@ -71,7 +78,8 @@ internal static partial class StepNamer
             {
                 var subject = step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog)
                     : PageSubject(last.Source.Url) ?? plan.ClassName;
-                name = verb is not null && (step.Ended || !hasValues) ? verb
+                name = Choice(step) is { } chosen ? "Choose" + chosen
+                    : verb is not null && (step.Ended || !hasValues) ? verb
                     : last.Kind == "navigate" ? "Open" + (PageSubject(last.Source.Url) ?? "Page")
                     : hasValues ? "Fill" + subject
                     : last.Has("dialogClosed") ? "Submit" + subject
@@ -134,6 +142,27 @@ internal static partial class StepNamer
         return verb;
     }
 
+    // What a step chooses, when choosing is all it does, maybe confirmed by a click on "Confirm", "OK" and the like: the
+    // setting of its last choice (Shipping), else the label of the option or card it clicked last (Express).
+    private static string? Choice(Step step)
+    {
+        var actions = step.Actions.ToList();
+        var confirmed = actions is [_, .., { Kind: "click" } confirm] && Label(confirm) is { } said && Confirms.Contains(said);
+        if (confirmed) actions.RemoveAt(actions.Count - 1);
+        if (actions.Count == 0 || actions.Any(action => action.Kind is not ("choose" or "click"))) return null;
+        var last = actions[^1];
+        if (last.Kind == "choose") return last.Value?.Name;
+        // An item of a list without a role of its own; a link or menu item of one when a click confirms it.
+        var item = last.Source.Target is { Item: true, Role: null or "option" or "listitem" }
+                   || (confirmed && last.Source.Target is { Item: true, Role: "link" or "menuitem" });
+        // One that goes to another address is a way there, not a choice.
+        if (!item || last.Has("urlChanged") || last.Has("popup")) return null;
+        // Its words before a number, as "Express" of "Express 2 days"; one not in English is an option still.
+        var words = Label(last)?.Split(' ').TakeWhile(word => !word.Any(char.IsDigit)).ToList() ?? [];
+        var label = string.Join(' ', words);
+        return label.Length is > 0 and <= 40 && CSharp.IsAsciiText(label) ? CSharp.Pascal(label) : "Option";
+    }
+
     private static string LoopName(Step step, Loop loop)
     {
         var last = step.Actions[loop.Length - 1];
@@ -149,6 +178,18 @@ internal static partial class StepNamer
     }
 
     private static string FirstWord(string pascal) => FirstWordOf().Match(pascal).Value;
+
+    // What the button that opened a dialog says, or its id or test id when that says more: a button "Change" with the
+    // id "change-shipping-button" gives ChangeShipping.
+    private static string? OpenerSubject(PlannedAction opener)
+    {
+        if (opener.Kind is not ("click" or "dblclick")) return null;
+        var stem = Stem(opener.Source.Target);
+        var label = Label(opener) is { Length: <= 40 } text && CSharp.IsAsciiText(text) && !text.Any(char.IsDigit)
+            ? CSharp.Pascal(text)
+            : null;
+        return label is not null && stem?.StartsWith(label, StringComparison.Ordinal) == true ? stem : label ?? stem;
+    }
 
     // The button that opened the dialog, by its id or test id: "bookAppointmentButton" gives BookAppointment.
     private static string? OpenerStem(FlowPlan plan, string title)

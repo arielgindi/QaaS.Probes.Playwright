@@ -82,6 +82,18 @@ internal sealed class CapturedAction
     /// <summary>For a choice, the option clicked.</summary>
     public CapturedTarget? Option { get; set; }
 
+    /// <summary>
+    /// For a choice, the click just before it that only opened its list, on the field or on what holds it, by its id:
+    /// the flow opens the list as the choice is written.
+    /// </summary>
+    public string? Opener { get; set; }
+
+    /// <summary>
+    /// The list the element was in, scrolled to it, which renders only the items in sight (a virtualised list): the flow
+    /// scrolls it as far first.
+    /// </summary>
+    public CapturedScroll? Scrolled { get; set; }
+
     /// <summary>For a drag, the element it was dropped on.</summary>
     public CapturedTarget? To { get; set; }
 
@@ -180,11 +192,24 @@ internal sealed class CapturedTarget
 
     public string? Label { get; set; }
     public bool Interactive { get; set; }
+
+    /// <summary>One of a list of like items, or in one: an option, a card among cards, a link of a menu.</summary>
+    public bool? Item { get; set; }
+
     public CapturedRow? Row { get; set; }
     public List<CapturedCandidate> Candidates { get; set; } = [];
 
     /// <summary>The candidate the person chose in the recorder's panel, by its index; null leaves it to the policy.</summary>
     public int? Chosen { get; set; }
+}
+
+/// <summary>A list scrolled to an element, which renders only the items in sight.</summary>
+internal sealed class CapturedScroll
+{
+    /// <summary>How far down it was scrolled, in pixels.</summary>
+    public int Top { get; set; }
+
+    public CapturedTarget? List { get; set; }
 }
 
 /// <summary>The table row an element is in, and the text that tells the row apart from the others.</summary>
@@ -235,8 +260,17 @@ internal sealed class CapturedCandidate
 /// <summary>One call of a locator chain.</summary>
 internal sealed class LocatorPart
 {
-    /// <summary><c>css</c>, <c>role</c>, <c>testid</c> or <c>filter</c>.</summary>
+    /// <summary><c>css</c>, <c>role</c>, <c>testid</c>, <c>text</c> or <c>filter</c>.</summary>
     public string M { get; set; } = "";
+
+    /// <summary>For <c>text</c>: the exact text of the element (<c>GetByText</c>).</summary>
+    public string? Text { get; set; }
+
+    /// <summary>
+    /// For a dialog that has no name: the heading it shows, which it is found by
+    /// (<c>GetByRole(AriaRole.Dialog).Filter(new() { Has = page.GetByText(heading) })</c>).
+    /// </summary>
+    public string? Heading { get; set; }
 
     public string? Css { get; set; }
     public string? Value { get; set; }
@@ -256,7 +290,10 @@ internal sealed class LocatorPart
 /// <summary>A dialog, and which of its names find it alone.</summary>
 internal sealed class CapturedDialog
 {
-    /// <summary>The title without bidi marks and asterisk.</summary>
+    /// <summary>
+    /// The title without bidi marks and asterisk: its accessible name, else the heading it shows
+    /// (<see cref="Heading"/>).
+    /// </summary>
     public string Title { get; set; } = "";
 
     public string? Raw { get; set; }
@@ -267,6 +304,16 @@ internal sealed class CapturedDialog
 
     public bool PrefixMatches { get; set; }
     public bool RawMatches { get; set; }
+
+    /// <summary>
+    /// For a dialog that has no accessible name, as a hand-made modal often has: the text it shows as its title, its
+    /// heading, else its first words.
+    /// </summary>
+    public string? Heading { get; set; }
+
+    /// <summary>The dialog with an element of exactly <see cref="Heading"/>'s text is this one alone.</summary>
+    public bool HeadingMatches { get; set; }
+
     public bool UnnamedMatches { get; set; }
 }
 

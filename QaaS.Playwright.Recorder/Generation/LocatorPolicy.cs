@@ -7,11 +7,12 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// <summary>
 /// Picks the locator of an element from the ones the capture script checked, and writes it as C#. In order, the first
 /// that found the element alone wins: its Formik path (<c>[name='x']</c>), its own stable id, a MUI Select's field by
-/// the path of its hidden input, the test id, its role and exact name, its row, and last Playwright's own generator.
+/// the path of its hidden input, the test id, its role and exact name, its row, for an element without a role (a card,
+/// an option of a hand-made list) the element of its label's text in it, and last Playwright's own generator.
 /// </summary>
 internal static partial class LocatorPolicy
 {
-    private static readonly string[] Order = ["name", "id", "select", "testid", "role", "roleInGroup", "row", "generator"];
+    private static readonly string[] Order = ["name", "id", "select", "testid", "role", "roleInGroup", "row", "text", "generator"];
 
     // A choice among radios is written with the option's name, so the name can come from the flow's settings.
     private static readonly string[] ByName = ["role", "roleInGroup", "nameValue"];
@@ -35,14 +36,19 @@ internal static partial class LocatorPolicy
     }
 
     /// <summary>
-    /// The element to locate a click by: <paramref name="target"/>, unless only Playwright's own locator finds it, or
-    /// nothing finds it alone, and one of <paramref name="equivalents"/>, which the same click hits, has a stable id
-    /// or test id that finds it alone; then the first such.
+    /// The element to locate a click by: <paramref name="target"/>, unless only its label's text or Playwright's own
+    /// locator finds it, or nothing finds it alone, and one of <paramref name="equivalents"/>, which the same click hits,
+    /// has a stable id or test id that finds it alone, else is the one control in it (the input in a select's box) found
+    /// by its role or name; then the first such.
     /// </summary>
     public static CapturedTarget? Prefer(CapturedTarget? target, IEnumerable<CapturedTarget>? equivalents)
     {
-        if (target is null || equivalents is null || Choose(target) is { Kind: not "generator", Matches: true }) return target;
-        return equivalents.FirstOrDefault(other => Choose(other) is { Kind: "id" or "testid", Matches: true }) ?? target;
+        if (target is null || equivalents is null || Choose(target) is { Kind: not ("generator" or "text"), Matches: true })
+            return target;
+        var others = equivalents.ToList();
+        return others.FirstOrDefault(other => Choose(other) is { Kind: "id" or "testid", Matches: true })
+               ?? others.FirstOrDefault(other => other.Interactive && Choose(other) is { Kind: "name" or "role", Matches: true })
+               ?? target;
     }
 
     /// <summary>
@@ -75,6 +81,7 @@ internal static partial class LocatorPolicy
         {
             "css" => part.Css,
             "testid" => $"test id \"{part.Value}\"",
+            "text" => $"text \"{part.Text}\"",
             "filter" => $"\"{part.HasText}\"",
             _ => part.Regex is not null ? $"{part.Role} /{part.Regex}/" : part.Name is not null ? $"{part.Role} \"{part.Name}\"" : part.Role,
         });
@@ -104,7 +111,7 @@ internal static partial class LocatorPolicy
     /// </summary>
     public static string Render(string root, IEnumerable<LocatorPart> parts, Func<LocatorPart, string?>? nameOf = null,
         string breakBefore = "") =>
-        root + string.Concat(parts.Select(part => breakBefore + "." + RenderPart(part, nameOf?.Invoke(part))));
+        root + string.Concat(parts.Select(part => breakBefore + "." + RenderPart(part, nameOf?.Invoke(part), root, breakBefore)));
 
     /// <summary>An attribute's value as the capture script quotes it in CSS: <c>[value='x']</c>.</summary>
     public static string CssValue(string value) =>
@@ -116,11 +123,15 @@ internal static partial class LocatorPolicy
     public static string? AriaRoleName(string? role) =>
         role is not null && Enum.TryParse<AriaRole>(role, ignoreCase: true, out var value) ? value.ToString() : null;
 
-    private static string RenderPart(LocatorPart part, string? name) => part.M switch
+    // A dialog found by its heading is the first part of a locator, so its root is a page.
+    private static string RenderPart(LocatorPart part, string? name, string root, string breakBefore) => part.M switch
     {
         "css" => $"Locator({name ?? CSharp.Literal(part.Css ?? "")})",
         "testid" => $"GetByTestId({CSharp.Literal(part.Value ?? "")})",
+        "text" => $"GetByText({name ?? CSharp.Literal(part.Text ?? "")}, new() {{ Exact = true }})",
         "filter" => $"Filter(new() {{ HasText = {name ?? CSharp.Literal(part.HasText ?? "")} }})",
+        "role" when part.Heading is { } heading =>
+            $"GetByRole(AriaRole.{AriaRoleName(part.Role)}){breakBefore}.Filter(new() {{ Has = {root}.GetByText({name ?? CSharp.Literal(heading)}, new() {{ Exact = true }}) }})",
         "role" => RenderRole(part, name),
         _ => throw new InvalidOperationException($"Unknown locator part '{part.M}'."),
     };
@@ -142,6 +153,7 @@ internal static partial class LocatorPolicy
         "name" or "nameValue" or "id" or "select" or "testid" => !UnstableId.IsUnstable(candidate.Value),
         "role" or "roleInGroup" or "row" =>
             candidate.Parts.All(part => part.M != "role" || AriaRoleName(part.Role) is not null),
+        "text" => candidate.Parts.Any(part => part is { M: "text", Text.Length: > 0 }),
         "generator" => !string.IsNullOrWhiteSpace(candidate.Csharp),
         _ => false,
     };

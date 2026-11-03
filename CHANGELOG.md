@@ -4,6 +4,22 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+- **Choices in dialogs are recorded as you meant them.** A click on the title or the badge of a card, a tile or a
+  carousel's slide is recorded on the card, the element the app's own click handler is on (React's, Vue's or jQuery's,
+  which leave no attribute), never on the text in it or on the list of all the cards, and is kept in the flow though
+  nothing else says the card is clickable. It is found by its label (`GetByText("Express", new() { Exact = true })`), a
+  carousel's hidden clones left out, rather than by Playwright's own locator and a position. An option of a web
+  component's shadow root is the option; one another list has too is found in its own list; the box of a select by the
+  one control in it, or by its label rather than the value it shows. Ids select libraries number by instance
+  (react-select's, antd's, Headless UI's, Select2's) are never used.
+- A dialog without a name, as a hand-made modal has, is titled by the heading it shows and found by it, so a dialog
+  opened over another one is found, and a step that opens one is named after it, or its own button: no longer after the
+  first dialog's button with a `2`. A step that only chooses is named after the choice (`ChooseShippingAsync`,
+  `ChooseExpressAsync`), also when a button such as "Confirm" ends it; the click that only opened the select's list is
+  left out, as the choice opens it.
+- A list that renders only the options in sight is scrolled as far as you scrolled it before the choice.
+- `Alt+↑` and `Alt+↓` show the way as a breadcrumb, go out of shadow roots, stop at the element's dialog, never into a
+  portal's root or the page's containers, and the pick holds while the pointer moves within the element picked.
 - The panel's **Elements** view works as a browser's developer tools do. `Ctrl+Shift+C`, in the app or the panel,
   picks an element in the app: a box names what is under the pointer, the tree opens to it, and a click picks it
   without clicking it or recording anything, a menu that closes on blur still open. Pointing at a row boxes its element

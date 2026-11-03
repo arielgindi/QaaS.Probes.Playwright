@@ -24,6 +24,8 @@ internal static partial class FlowPlanner
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
 
+    private const string MuiSelectId = "mui-component-select-";
+
     public static FlowPlan Plan(Recording recording, string className)
     {
         var plan = new FlowPlan
@@ -75,10 +77,17 @@ internal static partial class FlowPlanner
                 case "click" when widget == "select-open":
                 // The arrow that opens an Autocomplete's list, when an option of it is chosen next.
                 case "click" when widget == "autocomplete-button" && ChoiceFollows(actions, index, action.Source.Field):
-                // A click beside every control, e.g. to leave a field, that changed nothing.
+                // A click beside every control, e.g. to leave a field, that changed nothing; or on a native select, whose
+                // choice the flow makes without opening it.
                 case "click" or "dblclick" when action.Source.Target is not { Interactive: true } && noEffect:
+                case "click" when action.Source.Target?.Tag == "select" && noEffect:
                 case "press" when action.Source.Key == "Escape" && noEffect:
                     continue;
+                // The click that opened the list of the choice next, which the flow makes as it writes the choice.
+                case "choose" when last is { Kind: "click" } && last.Source.Id == action.Source.Opener
+                                   && !last.Effects.Any(effect => Boundaries.Contains(effect.Kind)):
+                    kept.RemoveAt(kept.Count - 1);
+                    break;
                 case "choose" when widget == "autocomplete" && last is { Kind: "fill" } && last.Key == action.Key:
                     action.Search = last.Source.Value;
                     action.Effects.InsertRange(0, last.Effects);
@@ -180,10 +189,12 @@ internal static partial class FlowPlanner
             var source = action.Source;
             var field = source.Kind == "choose" ? source.Field ?? source.Target : source.Target;
             var name = SettingName(field);
-            var qualified = action.Dialog is { } dialog && CSharp.IsAsciiText(dialog) && !dialog.Any(char.IsDigit)
-                            && CSharp.Pascal(dialog) is { } subject
-                ? subject + name
+            var subject = action.Dialog is { } dialog && CSharp.IsAsciiText(dialog) && !dialog.Any(char.IsDigit)
+                ? CSharp.Pascal(dialog)
                 : null;
+            var qualified = subject is null ? null : subject + name;
+            // A choice whose field says nothing of what it is for is named after its dialog: what the Shipping dialog chooses.
+            if (source.Kind == "choose" && name == "Value" && subject is not null) (name, qualified) = (subject, null);
             switch (action.Kind)
             {
                 case "fill":
@@ -242,7 +253,7 @@ internal static partial class FlowPlanner
             new(name + suffix, text) { Qualified = qualified is null ? null : qualified + suffix };
         if (source.Widget == "autocomplete")
         {
-            var shown = settled?.Raw is { } raw ? Bidi.Strip(raw) : option;
+            var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
             if (action.Search is not null) action.SearchValue = Add("Search", action.Search);
             action.Value = Add("", shown);
             if (shown != option) action.OptionValue = Add("Option", option);
@@ -250,7 +261,7 @@ internal static partial class FlowPlanner
         }
 
         action.Value = Add("", option);
-        if (source.Widget == "select" && settled?.Value is { } text && text != option)
+        if (source.Widget == "select" && settled?.Value is { Length: > 0 } text && text != option && source.Field?.Tag != "input")
             action.ShownValue = Add("Shown", text);
     }
 
@@ -264,7 +275,11 @@ internal static partial class FlowPlanner
         if (field is null) return "Value";
         var select = field.Candidates.FirstOrDefault(candidate => candidate.Kind == "select")?.Value;
         var groupMember = field.Role == "checkbox" && field.Candidates.Any(candidate => candidate is { Kind: "name", Count: > 1 });
-        var path = new[] { select, field.Name, field.Id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
+        // MUI names a Select's box after its field: mui-component-select-shipping.
+        var id = field.Id is { } own && own.StartsWith(MuiSelectId, StringComparison.Ordinal) && own.Length > MuiSelectId.Length
+            ? own[MuiSelectId.Length..]
+            : field.Id;
+        var path = new[] { select, field.Name, id, field.TestId }.FirstOrDefault(value => !UnstableId.IsUnstable(value));
         var name = CSharp.Pascal(path) ?? (CSharp.IsAsciiText(field.Label) ? CSharp.Pascal(field.Label) : null)
                    ?? (CSharp.IsAsciiText(field.Text) ? CSharp.Pascal(field.Text) : null) ?? "Value";
         if (groupMember && path == field.Name)

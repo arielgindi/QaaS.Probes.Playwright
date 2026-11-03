@@ -79,14 +79,19 @@ not in frames, which are not recorded.
 | `F7` | Tries things without recording them: each action shows in the panel as the recorder would write it (see [Trying things](#trying-things)). |
 | `F2` | While a part of the flow is recorded again, ends it and keeps what you did (see [Recording a part again](#recording-a-part-again)). Otherwise it is the page's. |
 | `Alt+↑` | Picks the element around the one in the box (the box turns orange): the next click records it instead. |
-| `Alt+↓` | Goes back toward the element under the pointer. |
+| `Alt+↓` | Goes back toward the element under the pointer, the same way. |
 
-A pick holds while the pointer stays on the same element, and is dropped when it moves to another. These keys do
-nothing in Chrome by themselves, type no text, and cannot be a page's access key; they still reach the page as for a
-person, so with a select or an autocomplete field focused, `Alt+↓` also opens its list. On macOS, `Alt` is `Option`,
-and the function keys may need `fn`. Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the
-focus and close the very menu being frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would
-open Chrome's developer tools.
+Once you pick, the label shows the way as a breadcrumb, from the outside in, with the element picked marked:
+`div.paper › div.cardGrid › div.card › span.cardTitle`, each by its tag and its id or first class, without the hash a
+framework puts in a class (`css-1x2y3z-card` shows as `card`). The way goes out of a web component's shadow root, passes
+over what takes no room (a slot), and ends at the dialog the element is in, or below the root of the app or of the
+portal a menu is in: the page's own containers are never offered. A pick holds while the pointer moves within the
+element picked, and is dropped when it leaves it. These keys do nothing in Chrome by themselves, type no text, and
+cannot be a page's access key; they still reach the page as for a person, so with a select or an autocomplete field
+focused, `Alt+↓` also opens its list. On Windows, `Alt` pressed and let go alone puts the focus on Chrome's menu, but
+not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and the function keys may need `fn`.
+Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the focus and close the very menu being
+frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
 recorder saves two files: `Flows/LoginFlow.cs`
@@ -601,11 +606,16 @@ FlowConfiguration:
   `ScheduleAsync`), unless it is one or two values, as a search box or a login is (`SearchAsync`). The step that opens
   a dialog checks that it shows and returns it; the steps in it work inside it. A step is named after what you clicked
   (`AssignTicketAsync` for the "Assign" button of a ticket's row, `OpenOrdersAsync` for a link "Orders"), else after the
-  dialog or the page, else after the button's id or test id.
+  dialog or the page, else after the button's id or test id. A step that only chooses, maybe confirmed by a button
+  such as "Confirm", "OK" or "Done", is named after the choice: `ChooseShippingAsync` after the setting of a select or a
+  list's option, `ChooseExpressAsync` after the label of a card or an item clicked. A dialog is named after its title,
+  or the heading it shows, else after the button that opened it, each dialog after its own. The click that only opened
+  a select's list is left out: the flow opens it as it chooses.
 - **Settings.** Every value you type, choose, check or pick becomes a property of `<Name>Config`, with the recorded
   value as its default, and the same values go in `<Name>.flow.yaml`: paste that block under the probe's
   `ProbeConfiguration` and change it per case. A setting is named after the field's form name
-  (`employee.firstName` gives `EmployeeFirstName`), else its id, test id or English label; a choice drops the `Id` its
+  (`employee.firstName` gives `EmployeeFirstName`), else its id, test id or English label, for an option of a list
+  without a field the list's label, else the dialog's title; a choice drops the `Id` its
   field's name ends with, as it holds the option's text (`maintenanceTypeId` gives `MaintenanceType`). Two settings of
   one name are told apart by what they are for (`TicketToAssign`, `TicketToClose`), else by a number. A checkbox is a
   `bool`, a number field an `int` or a `decimal`; the rest are text. A record of more than five settings is grouped by
@@ -660,16 +670,24 @@ or choose changing, becomes a step that loops over a list setting with the value
 The element you meant, which is not always the one under the pointer:
 
 1. The control you clicked in: the button, link, field or widget (`role=button`, `tab`, `menuitem`, ...), e.g. the
-   button rather than the icon in it; for the label of a checkbox, radio or switch, the control itself.
-2. Else the outermost element that looks clickable: the pointer is a hand over it and not over its parent, it has an
+   button rather than the icon in it; for the label of a checkbox, radio or switch, the control itself. Also out of a
+   web component's shadow root: an option of a select made of custom elements.
+2. Else the nearest element that handles the click itself, with one control in it at most (so never a form or a
+   dialog's content): a handler the app's framework keeps on it, which leaves no attribute in the page, as React's
+   `onClick` or `onMouseDown`, Vue's `@click` or one bound with jQuery; or an `onclick`.
+3. Else the outermost element that looks clickable: the pointer is a hand over it and not over its parent, it has an
    `onclick` attribute, or the Tab key stops on it (`tabindex` 0 or more, and it does not scroll). In a table row or a
    grid cell, that element rather than the whole row.
-3. Else the row or cell, else the element under the pointer.
+4. Never a wrapper of several options, such as a grid of cards or a carousel's track: the click is on the option in
+   it, also when only the list handles the clicks on its items.
+5. Else the row or cell, else the element under the pointer.
 
-When only Playwright's own locator would find that element, or nothing finds it alone, an element the same click hits
-that has a stable id or test id is recorded instead: one between it and the element under the pointer, or the only
-child of a wrapper with nearly the same box, like the `div`s a carousel puts around each slide
-(`.slick-track > div > div`). `Alt+↑` and `Alt+↓` override all of this for one click.
+So a click on the title of a card, a tile or a carousel's slide records the card, and keeps it in the flow, though
+nothing else tells it is clickable. When only its label's text or Playwright's own locator would find that element, or
+nothing finds it alone, an element the same click hits that has a stable id or test id is recorded instead: one
+between it and the element under the pointer, or the only child of a wrapper with nearly the same box, like the `div`s
+a carousel puts around each slide (`.slick-track > div > div`); else the one control in it when a click on its middle
+reaches it, like the input in a select's box. `Alt+↑` and `Alt+↓` override all of this for one click.
 
 ### Locators
 
@@ -677,16 +695,25 @@ For each element the recorder takes the first of these that finds it, and only i
 
 1. The interactive element itself (the input, not the label or icon you clicked), by its form `name` (Formik's path,
    `[name='employee.firstName']`) or its own stable `id`. Generated ids, like React's `:r1:`, MUI's `mui-12`,
-   `-option-3`, `-listbox`, long numbers and GUIDs, are never used.
+   `-option-3`, `-listbox`, the ids select libraries number by instance (`react-select-2-input`, antd's
+   `rc_select_0`), Headless UI's and Select2's, long numbers and GUIDs, are never used.
 2. An MUI Select by its `id`, else as the box around its hidden input (`div:has(> input[name='x'])`).
 3. Its test id (`GetByTestId`, i.e. `data-testid`).
 4. Its role and exact name, without direction marks and a required field's ` *`. A tab whose name counts something
-   (`Open (3)`) by the start of its name.
+   (`Open (3)`) by the start of its name. A field that opens a list by its label, without the value it shows
+   (`NameRegex = new Regex("^Shipping")`), or by its role alone when only that value names it.
 5. In a table: the row by its key cell's text, then the element in it.
-6. Last, Playwright's own locator, listed under "Check by hand".
+6. An element without a role, such as a card, a tile or an option of a hand-made list, by its label: the element of
+   exactly its first words in it, which a click there reaches it through, a badge or a price after them left out
+   (`GetByText("Express", new() { Exact = true })`). When copies of it hidden from assistive technology have it too, as a
+   carousel's clones do, within the item that is not hidden (`.slick-slide:not([aria-hidden='true'])`).
+7. Last, Playwright's own locator, listed under "Check by hand".
 
-An element in a dialog is located inside it (`dialog.GetByRole(...)`). The options of a select or autocomplete open
-outside the dialog, so they come from `dialog.Page`.
+An element in a dialog is located inside it (`dialog.GetByRole(...)`). A dialog that has no name, as a hand-made
+modal often has, takes the heading it shows as its title, and is found by it:
+`page.GetByRole(AriaRole.Dialog).Filter(new() { Has = page.GetByText("Shipping", new() { Exact = true }) })`. The
+options of a select or autocomplete open outside the dialog, so they come from `dialog.Page`; one that another list on
+the page has too, from its own list (`GetByRole(AriaRole.Listbox, new() { Name = "Delivery window" })`).
 
 ### What each action expects
 
@@ -696,7 +723,8 @@ or the **Auto checks** switch above the steps, writes none. Checks you [choose](
 yourself follow them.
 
 - A choice: the field shows it (`ToHaveTextAsync` for a select, `ToHaveValueAsync` for an autocomplete, which is typed
-  into first).
+  into first, or a field that is an input). None when the field shows nothing of it itself, as an input under the text
+  that shows the choice.
 - A tab: `ToHaveAttributeAsync("aria-selected", "true")`.
 - A click that opened a dialog: the dialog is visible. One that closed it: `ToBeHiddenAsync`, with 30 seconds for the
   save behind it.
@@ -730,6 +758,9 @@ When it saves a flow, the recorder lists the lines to look at, with their number
 - **Browser dialogs** (alert, confirm): the flow accepts them. Dismiss where you dismissed. One that showed before
   your first action on a page is listed without a line: the flow cannot answer it.
 - **Menus that opened on hover**: add `HoverAsync()` on what opens them.
+- **A list that renders only the options in sight** (a virtualised list): the flow scrolls it as far as you did
+  (`Mouse.WheelAsync`) before it chooses; check that this reaches the option, as it does while its items keep their
+  height.
 - **Drag and drop**: check where it drops. A drag the recorder could not follow is saved as a hover.
 - **Pop-ups and tabs you opened yourself**: check what the flow does in them.
 - **An address the app was on when you resumed a pause**: the flow goes there by the address; see [Pausing](#pausing).

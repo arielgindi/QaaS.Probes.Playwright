@@ -73,6 +73,10 @@ internal sealed class RecordingSession : IAsyncDisposable
     private static readonly TimeSpan SettleTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DevToolsPortTimeout = TimeSpan.FromSeconds(10);
 
+    // A driver reads PWDEBUG from the process as it starts: sessions that start one at the same time take turns, so none
+    // starts with the console API's value, which turns off every timeout, nor leaves it set for the drivers after it.
+    private static readonly SemaphoreSlim DriverStart = new(1, 1);
+
     private readonly IPlaywright _playwright;
     private IPlaywright? _consoleApi;
     private readonly IBrowser _browser;
@@ -178,7 +182,17 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// </summary>
     public static async Task<RecordingSession> StartAsync(RecordingOptions options, Action<object> onNews)
     {
-        var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        IPlaywright playwright;
+        await DriverStart.WaitAsync();
+        try
+        {
+            playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        }
+        finally
+        {
+            DriverStart.Release();
+        }
+
         RecordingSession? session = null;
         try
         {
@@ -627,16 +641,18 @@ internal sealed class RecordingSession : IAsyncDisposable
         if (_consoleApi is not null) return;
         var endpoint = await DevToolsEndpointAsync(_browser);
         const string debug = "PWDEBUG";
-        var previous = Environment.GetEnvironmentVariable(debug);
-        Environment.SetEnvironmentVariable(debug, "console");
         IPlaywright consoleApi;
+        await DriverStart.WaitAsync();
+        var previous = Environment.GetEnvironmentVariable(debug);
         try
         {
+            Environment.SetEnvironmentVariable(debug, "console");
             consoleApi = await Microsoft.Playwright.Playwright.CreateAsync();
         }
         finally
         {
             Environment.SetEnvironmentVariable(debug, previous);
+            DriverStart.Release();
         }
 
         try

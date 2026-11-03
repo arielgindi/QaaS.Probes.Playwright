@@ -5,7 +5,9 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// <summary>
 /// Ids a framework generates, which change from one render or build to the next and so never make a locator: React's
 /// <c>:r1:</c>, <c>«r1»</c> and <c>_r_1_</c>, MUI's <c>mui-123</c> and the ids it derives (<c>-option-3</c>,
-/// <c>-listbox</c>), random-looking ids, and ids with a long run of digits (a record's number). A form's path to a
+/// <c>-listbox</c>), those numbered by the instance of a select or menu (<c>react-select-2-input</c>, antd's
+/// <c>rc_select_0</c>, <c>downshift-1-menu</c>, Angular Material's <c>mat-option-4</c>), Headless UI's and Radix's,
+/// Select2's results, random-looking ids, and ids with a long run of digits (a record's number). A form's path to a
 /// field, such as Formik's <c>items[0].price</c> or <c>contacts.0.phone</c>, is stable when each name in it is.
 /// </summary>
 internal static partial class UnstableId
@@ -53,6 +55,7 @@ internal static partial class UnstableId
     [GeneratedRegex(@"^[A-Za-z_$][\w$]*(\[\d{1,4}\])*(\.([A-Za-z_$][\w$]*|\d{1,4})(\[\d{1,4}\])*)+$|^[A-Za-z_$][\w$]*(\[\d{1,4}\])+$")]
     private static partial Regex FieldPath();
 
-    [GeneratedRegex(@":[rR][0-9a-zA-Z]*:|«[rR][0-9a-zA-Z]*»|_[rR]_[0-9a-zA-Z]+_|(^|[^a-zA-Z])mui-\d+|-option-\d+|-listbox|\d{5,}")]
+    [GeneratedRegex(@":[rR][0-9a-zA-Z]*:|«[rR][0-9a-zA-Z]*»|_[rR]_[0-9a-zA-Z]+_|(^|[^a-zA-Z])mui-\d+|-option-\d+|-listbox|\d{5,}" +
+                    @"|^react-select-\d+-|^rc_select_\d+|^downshift-\d+-|^(mat|cdk)-[a-z-]*\d+$|^headlessui-|^radix-|^select2-.+-result-")]
     private static partial Regex Generated();
 }

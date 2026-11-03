@@ -106,8 +106,9 @@ internal static class CaptureScript
             const style = styleOf(element);
             return !!style && style.visibility !== 'hidden' && style.display !== 'none';
           };
+          // In the element's own document or shadow root.
           const idRefs = (element, attribute) => (element.getAttribute(attribute) || '').split(/\s+/).filter(Boolean)
-            .map((id) => document.getElementById(id)).filter(Boolean);
+            .map((id) => element.getRootNode().getElementById?.(id) ?? document.getElementById(id)).filter(Boolean);
 
           function roleOf(element) {
             const explicit = (element.getAttribute('role') || '').split(/\s+/).filter(Boolean)[0];
@@ -221,12 +222,14 @@ internal static class CaptureScript
               if (part.m === 'css') locator = locator.locator(part.css);
               else if (part.m === 'testid') locator = locator.getByTestId(part.value);
               else if (part.m === 'filter') locator = locator.filter({ hasText: part.hasText });
+              else if (part.m === 'text') locator = locator.getByText(part.text, { exact: true });
               else if (part.m === 'role') {
                 const options = {};
                 if (part.regex !== undefined) options.name = new RegExp(part.regex);
                 else if (part.name !== undefined) options.name = part.name;
                 if (part.exact) options.exact = true;
                 locator = locator.getByRole(part.role, options);
+                if (part.heading !== undefined) locator = locator.filter({ has: engine().getByText(part.heading, { exact: true }) });
               }
             }
             return locator;
@@ -245,8 +248,41 @@ internal static class CaptureScript
           const isMuiSelect = (element) => element.getAttribute('role') === 'combobox' && element.tagName !== 'INPUT' &&
             !!element.parentElement?.querySelector(':scope > input[name]');
           const selectInput = (element) => element.parentElement?.querySelector(':scope > input[name]');
-          const isAutocomplete = (element) => element.tagName === 'INPUT' && element.getAttribute('role') === 'combobox';
+          const isAutocomplete = (element) => element.tagName === 'INPUT' && element.getAttribute('role') === 'combobox' &&
+            !element.readOnly;
           const controlOfLabel = (label) => label.control ?? label.querySelector(TOGGLES);
+
+          // An element's parent as the page shows it: the slot it is shown in, else its parent, and out of a shadow root,
+          // its host.
+          const upFrom = (element) => element.assignedSlot ?? element.parentElement ??
+            (element.parentNode instanceof ShadowRoot ? element.parentNode.host : null);
+          const closestUp = (element, selector) => {
+            for (let node = element; node; node = upFrom(node)) if (node.matches(selector)) return node;
+            return null;
+          };
+          const containsDeep = (ancestor, element) => {
+            for (let node = element; node; node = upFrom(node)) if (node === ancestor) return true;
+            return false;
+          };
+
+          // A click handler the page keeps on the element, which a framework runs from one listener of its own (event
+          // delegation), so the element has no onclick attribute: React's props, and the onclick it sets on an element
+          // with onClick, Vue's invokers, jQuery's record of what it bound. Read, never called.
+          const CLICK_PROPS = ['onClick', 'onMouseDown', 'onMouseUp', 'onPointerDown', 'onPointerUp', 'onDoubleClick'];
+          const VUE_CLICKS = ['onClick', 'onMousedown', 'onMouseup', 'onPointerdown', 'onPointerup'];
+          function hasClickHandler(element) {
+            if (element.hasAttribute('onclick') || typeof element.onclick === 'function' ||
+                typeof element.onmousedown === 'function') return true;
+            for (const key of Object.keys(element)) {
+              const value = element[key];
+              if (!value || typeof value !== 'object') continue;
+              if (key.startsWith('__reactProps$') || key.startsWith('__reactEventHandlers$')) {
+                if (CLICK_PROPS.some((prop) => typeof value[prop] === 'function')) return true;
+              } else if (key === '_vei' && VUE_CLICKS.some((prop) => value[prop])) return true;
+            }
+            const events = safe(() => window.jQuery?._data?.(element, 'events'), null);
+            return !!events && ['click', 'mousedown', 'mouseup'].some((type) => events[type]?.length > 0);
+          }
 
           // What looks clickable without being a control: the pointer turns into a hand over it and not over its parent, it
           // has an onclick attribute, or the Tab key stops on it. A focusable area that scrolls is for the keyboard.
@@ -255,27 +291,61 @@ internal static class CaptureScript
             if (element.hasAttribute('onclick')) return true;
             const style = styleOf(element);
             if (!style) return false;
-            if (style.cursor === 'pointer' && styleOf(element.parentElement)?.cursor !== 'pointer') return true;
+            const parent = upFrom(element);
+            if (style.cursor === 'pointer' && (!parent || styleOf(parent)?.cursor !== 'pointer')) return true;
             if (!element.hasAttribute('tabindex') || element.tabIndex < 0 || element.matches(DIALOGS)) return false;
             return !(/auto|scroll/.test(style.overflowX + style.overflowY) &&
               (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth));
           }
 
+          // An item of a list of options, as its tag, role or class say, or as it handles clicks or looks clickable.
+          const OPTION_CLASS = /option|item|card|tile|choice|result|slide|entry/i;
+          const itemLike = (element) => ['LI', 'OPTION', 'TR'].includes(element.tagName) || element.hasAttribute('role') ||
+            OPTION_CLASS.test(element.getAttribute('class') ?? '') || hasClickHandler(element) || looksClickable(element);
+          // Two of a kind: the same tag and role, and a class in common, or none at all.
+          const sameKind = (a, b) => a.tagName === b.tagName && a.getAttribute('role') === b.getAttribute('role') &&
+            ((a.classList.length === 0 && b.classList.length === 0) || [...a.classList].some((name) => b.classList.contains(name)));
+          // The element holds other items like the one the pointer is in, each with words: a list of options.
+          const holdsSeveral = (element, item) => itemLike(item) &&
+            [...(element.tagName === 'SLOT' ? element.assignedElements() : element.children)].some((other) =>
+              other !== item && sameKind(other, item) && visible(other) && hasLetters(other.textContent ?? ''));
+          const controlsIn = (element) => element.querySelectorAll(INTERACTIVE).length;
+
+          // What retarget found by a handler of the page's or as an item of a list, which a person acts on.
+          const actionable = new WeakSet();
+
           // The element a person meant: the control around what the pointer hit (for a label of a checkbox, radio or
-          // switch, the control itself), else the outermost element below the next row or cell that looks clickable, else
+          // switch, the control itself), out of shadow roots; else, below the next row, cell or dialog, the nearest element
+          // that handles clicks (one with no more than one control in it), else the outermost one that looks clickable,
+          // never above an item of a list of options: that item, when the list or what holds it handles the click; else
           // the row or cell, else what was hit.
           function retarget(hit) {
-            const interactive = hit.closest(INTERACTIVE);
+            const interactive = closestUp(hit, INTERACTIVE);
             const label = hit.closest('label');
             if (label && (!interactive || interactive.contains(label))) {
               const control = controlOfLabel(label);
               if (control) return control;
             }
             if (interactive && !interactive.matches(CONTAINERS)) return interactive;
+            let handled = null;
             let clickable = null;
-            for (let node = hit; node && node !== interactive; node = node.parentElement)
+            let item = null;
+            for (let node = hit, from = null; node && node !== interactive; from = node, node = upFrom(node)) {
+              if (node === document.body || node === document.documentElement || node.matches(DIALOGS)) break;
+              if (from && !item && holdsSeveral(node, from)) {
+                if (handled || clickable) break;
+                item = from;
+              }
+              const handles = hasClickHandler(node);
+              if (item) {
+                if (handles || looksClickable(node)) { actionable.add(item); return item; }
+                continue;
+              }
+              if (!handled && handles && controlsIn(node) <= 1) handled = node;
               if (looksClickable(node)) clickable = node;
-            return clickable ?? interactive ?? hit;
+            }
+            if (handled) actionable.add(handled);
+            return handled ?? clickable ?? item ?? interactive ?? hit;
           }
 
           // The only element child of a wrapper with (nearly) the same box, as a carousel wraps each slide's content.
@@ -292,10 +362,27 @@ internal static class CaptureScript
           // only Playwright's own locator finds the target.
           function equivalentsOf(hit, element) {
             const found = [];
-            if (element.contains(hit)) for (let node = hit; node !== element; node = node.parentElement) found.unshift(node);
+            if (containsDeep(element, hit)) for (let node = hit; node !== element; node = upFrom(node)) found.unshift(node);
             for (let child = onlyChild(element); child; child = onlyChild(child)) if (!found.includes(child)) found.push(child);
-            return found.filter((node) => node.id || node.getAttribute(TEST_ID));
+            const kept = found.filter((node) => node.id || node.getAttribute(TEST_ID));
+            // The one control in the element, as the input in a select's box, when a click on its middle reaches it.
+            const controls = element.matches(INTERACTIVE) ? [] : [...element.querySelectorAll(INTERACTIVE)].filter(visible);
+            if (controls.length === 1 && !kept.includes(controls[0])) {
+              const box = controls[0].getBoundingClientRect();
+              const atMiddle = deepAt(box.left + box.width / 2, box.top + box.height / 2);
+              if (atMiddle && containsDeep(controls[0], atMiddle)) kept.push(controls[0]);
+            }
+            return kept;
           }
+          const deepAt = (x, y) => {
+            let element = document.elementFromPoint(x, y);
+            while (element?.shadowRoot) {
+              const inner = element.shadowRoot.elementFromPoint(x, y);
+              if (!inner || inner === element) break;
+              element = inner;
+            }
+            return element;
+          };
           // Each is the same click: when the target is a control, so are they.
           const describeEquivalents = (elements, target) =>
             elements.map((other) => describe(other, target.interactive ? { interactive: true } : {}).target);
@@ -310,27 +397,54 @@ internal static class CaptureScript
             : null;
 
           function dialogOf(element) {
-            for (let dialog = element.closest(DIALOGS); dialog; dialog = dialog.parentElement?.closest(DIALOGS))
+            for (let dialog = closestUp(element, DIALOGS); dialog; dialog = upFrom(dialog) && closestUp(upFrom(dialog), DIALOGS))
               if (!dialog.matches(PICKER)) return dialog;
             return null;
           }
           const openDialogs = () => [...document.querySelectorAll(DIALOGS)].filter((dialog) => !dialog.matches(PICKER) &&
             visible(dialog));
+          const hasLetters = (text) => /\p{L}{2}/u.test(text);
+
+          // The title a dialog shows when nothing names it, as a hand-made modal often does: its heading, else what is
+          // styled as its title, else its first words. The person reads it as the dialog's title; the flow finds the
+          // dialog by it, and names its steps after it.
+          function headingOf(dialog) {
+            const own = (element) => element.closest(DIALOGS) === dialog && visible(element);
+            const fits = (text) => text.length <= 60 && hasLetters(text);
+            for (const selector of ['h1, h2, h3, h4, h5, h6, [role=heading]', '[class*=title i], [class*=heading i], [class*=header i]'])
+              for (const element of dialog.querySelectorAll(selector)) {
+                const text = own(element) ? clean(element.innerText ?? element.textContent) : '';
+                if (text && fits(text)) return text;
+              }
+            const walker = document.createTreeWalker(dialog, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+              const text = clean(node.textContent);
+              if (text && node.parentElement && own(node.parentElement)) return fits(text) ? text : null;
+            }
+            return null;
+          }
+
+          // A dialog by its accessible name; one that has none by the heading it shows.
+          const dialogTitle = (dialog) => clean(accessibleName(dialog)) || headingOf(dialog) || '';
 
           function describeDialog(dialog) {
             const raw = normalize(accessibleName(dialog));
-            const title = clean(raw);
-            const prefix = beforeDigits(title);
+            const named = clean(raw);
+            const heading = named ? null : headingOf(dialog);
+            const title = named || heading || '';
+            const prefix = beforeDigits(named);
             const count = (name) => name ? (matches([{ m: 'role', role: 'dialog', name }])?.length ?? -1) : -1;
-            const hits = (name) => { const found = matches([{ m: 'role', role: 'dialog', name }]); return !!found && found.length === 1 && found[0] === dialog; };
+            const finds = (parts) => { const found = matches(parts); return !!found && found.length === 1 && found[0] === dialog; };
+            const hits = (name) => finds([{ m: 'role', role: 'dialog', name }]);
             return {
               title, raw,
-              titleMatches: !!title && hits(title),
-              prefix: prefix !== title ? prefix : null,
-              prefixMatches: !!prefix && prefix !== title && hits(prefix),
-              rawMatches: raw !== title && hits(raw),
+              titleMatches: !!named && hits(named),
+              prefix: prefix !== named ? prefix : null,
+              prefixMatches: !!prefix && prefix !== named && hits(prefix),
+              rawMatches: raw !== named && hits(raw),
+              ...(heading ? { heading, headingMatches: finds([{ m: 'role', role: 'dialog', heading }]) } : {}),
               unnamedMatches: (matches([{ m: 'role', role: 'dialog' }])?.length ?? 0) === 1,
-              count: count(title),
+              count: count(named),
             };
           }
 
@@ -340,6 +454,7 @@ internal static class CaptureScript
             if (dialogInfo.titleMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.title }];
             if (dialogInfo.prefixMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.prefix }];
             if (dialogInfo.rawMatches) return [{ m: 'role', role: 'dialog', name: dialogInfo.raw, exact: true }];
+            if (dialogInfo.headingMatches) return [{ m: 'role', role: 'dialog', heading: dialogInfo.heading }];
             if (dialogInfo.unnamedMatches) return [{ m: 'role', role: 'dialog' }];
             return [];
           }
@@ -347,11 +462,14 @@ internal static class CaptureScript
           function nameVariants(element, role) {
             const raw = normalize(accessibleName(element));
             const stripped = clean(raw);
-            if (!stripped) return [];
-            if (isMuiSelect(element) || (role === 'combobox' && element.getAttribute('aria-labelledby'))) {
-              const label = clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element)
+            // A field that opens a list is named by its label and the value it shows: by its label, as the value changes. One
+            // labelled only by what it shows, or not at all, is found by its role alone.
+            const opensList = role === 'combobox' || ['listbox', 'true', 'menu'].includes(element.getAttribute('aria-haspopup'));
+            if (!stripped) return opensList ? [{}] : [];
+            if (isMuiSelect(element) || (opensList && element.getAttribute('aria-labelledby'))) {
+              const label = clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref))
                 .map((ref) => ref.textContent).join(' '));
-              return label ? [{ regex: '^' + regexEscape(label), text: label }] : [];
+              return label ? [{ regex: '^' + regexEscape(label), text: label }] : [{}];
             }
             if (role === 'tab' && /\d/.test(stripped)) {
               const prefix = beforeDigits(stripped).replace(/\s*\($/, '');
@@ -389,6 +507,66 @@ internal static class CaptureScript
               matches: !!found && found.length === 1 && found[0] === element, ...(hidden ? { hidden } : {}), ...extra };
           }
 
+          // What an element without a role says first: the text of its first element of words, as a card's title before
+          // its badge and price.
+          function labelOf(element) {
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+              const holder = node.parentElement;
+              // An element of this text alone, beside icons at most.
+              const alone = holder && [...holder.children].every((child) => !child.textContent.trim());
+              const text = alone && visible(holder) ? clean(holder.textContent) : '';
+              if (text && hasLetters(text) && text.length <= 60) return { holder, text };
+            }
+            return null;
+          }
+          // The element, or one in it so deep, holds several items like each other.
+          const listIn = (element, depth) => depth > 0 && [...element.children].some((child) =>
+            holdsSeveral(element, child) || listIn(child, depth - 1));
+
+          // A class a person gave it, not one a framework generated.
+          const ownClass = (element) => [...element.classList].find((name) => name.length > 2 &&
+            !/^(css|jss|sc|emotion|styled|tw)-|^_|[0-9]{3,}|[A-Za-z]+_[A-Za-z]+__/i.test(name) && !/[a-z][0-9][a-z]/i.test(name));
+
+          // The element by its label, an element of exactly that text in it, which a click reaches the element through. Copies
+          // of it hidden from assistive technology, as a carousel's clones, are left out by the item it is in.
+          function labelCandidate(element, scope) {
+            // Not a list's or a form's: its first words are one item's or one field's.
+            if (controlsIn(element) > 1 || listIn(element, 3)) return null;
+            const label = labelOf(element);
+            if (!label) return null;
+            const parts = [{ m: 'text', text: label.text }];
+            const found = matches([...scope, ...parts]);
+            const inside = (other) => containsDeep(element, other);
+            if (found?.length > 1 && found.filter((other) => !closestUp(other, '[aria-hidden=true]')).length === 1) {
+              for (let item = element; item && item !== document.body; item = upFrom(item)) {
+                const own = ownClass(item);
+                const parent = upFrom(item);
+                if (!own || !parent || ![...parent.children].some((other) => other !== item && other.classList.contains(own) &&
+                    other.getAttribute('aria-hidden') === 'true')) continue;
+                const scoped = [{ m: 'css', css: `.${CSS.escape(own)}:not([aria-hidden='true'])` }, ...parts];
+                const again = matches([...scope, ...scoped]);
+                return { kind: 'text', parts: [...scope, ...scoped], count: again?.length ?? -1,
+                  matches: again?.length === 1 && inside(again[0]), text: label.text };
+              }
+            }
+            return { kind: 'text', parts: [...scope, ...parts], count: found?.length ?? -1,
+              matches: found?.length === 1 && inside(found[0]), text: label.text };
+          }
+
+          // An option's label is its list's: "Pickup point" for one of its pickup points.
+          const listLabel = (element, role) => {
+            const listbox = role === 'option' ? closestUp(element, '[role=listbox]') : null;
+            return listbox ? clean(accessibleName(listbox)) : '';
+          };
+
+          // One of a list of options, or in one, as a carousel's tile is in the wrappers of its slide.
+          const isItem = (element) => {
+            for (let item = element, depth = 0; item && depth < 3; item = upFrom(item), depth++)
+              if (upFrom(item) && holdsSeveral(upFrom(item), item)) return true;
+            return false;
+          };
+
           // Every way to find the element, each checked against the page as it is now. The recorder picks one.
           function describeTarget(element, dialog, dialogInfo, options = {}) {
             const scope = options.pageLevel ? [] : scopeOf(element, dialogInfo, dialog);
@@ -419,7 +597,8 @@ internal static class CaptureScript
                 const { text, ...part } = variant;
                 const found = candidate('role', scope, [{ m: 'role', role, ...part }], element, { text: text ?? variant.name });
                 candidates.push(found);
-                roleText ??= text ?? variant.name;
+                // A field found by its role alone is named by nothing it shows.
+                roleText ??= text ?? variant.name ?? '';
                 if (found.matches) break;
               }
               if (role === 'radio' || role === 'checkbox') {
@@ -439,17 +618,35 @@ internal static class CaptureScript
               const inner = row.element === element ? [] : name ? [{ m: 'role', role, name, exact: true }] : [{ m: 'role', role }];
               candidates.push(candidate('row', scope, [...rowParts, ...inner], element, { text: name }));
             }
+            if (role === 'option' && !candidates.some((found) => found.matches)) {
+              // An option whose name another list has too, in its own list.
+              const listbox = closestUp(element, '[role=listbox]');
+              const listName = listbox ? clean(accessibleName(listbox)) : '';
+              const name = clean(accessibleName(element));
+              if (listName && name)
+                candidates.push(candidate('role', scope, [{ m: 'role', role: 'listbox', name: listName, exact: true },
+                  { m: 'role', role: 'option', name, exact: true }], element, { text: name }));
+            }
+            let labelText = null;
+            if (!role || !NAME_FROM_CONTENT.has(role)) {
+              const text = labelCandidate(element, scope);
+              if (text) candidates.push(text);
+              labelText = text?.text ?? null;
+            }
             const generated = safe(() => engine()?.generateLocator(element, 'csharp'), null);
             if (generated) candidates.push({ kind: 'generator', csharp: generated, selector: safe(() => engine().selector(element), null), count: 1, matches: true });
             return {
               tag: tag.toLowerCase(), role, type: element.getAttribute('type'), id: element.id || null,
               name: nameAttribute, testId, value: element.matches('input[type=radio], input[type=checkbox]') ? element.value : null,
-              text: roleText ?? clean(accessibleName(element)),
-              label: clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element).map((ref) => ref.textContent).join(' ')) ||
+              text: roleText ?? (clean(accessibleName(element)) || labelText || ''),
+              label: listLabel(element, role) ||
+                clean(idRefs(element, 'aria-labelledby').filter((ref) => ref !== element && !containsDeep(element, ref)).map((ref) => ref.textContent).join(' ')) ||
                 clean([...(element.labels || [])].map((label) => label.textContent).join(' ')) || null,
               interactive: options.interactive ??
-                (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element)),
+                (element.matches(INTERACTIVE) || element.matches(TOGGLES) || looksClickable(element) || actionable.has(element)),
               row: row ? { key: row.key, header: row.header } : null,
+              // One of a list of options, or in one: a card, a menu's link.
+              item: isItem(element) || undefined,
               candidates,
             };
           }
@@ -459,7 +656,7 @@ internal static class CaptureScript
             const dialogInfo = dialog ? describeDialog(dialog) : null;
             return {
               dialog: dialogInfo,
-              openDialogs: openDialogs().map((open) => clean(accessibleName(open))),
+              openDialogs: openDialogs().map(dialogTitle),
               target: describeTarget(element, dialog, dialogInfo, extra),
             };
           }
@@ -467,9 +664,14 @@ internal static class CaptureScript
           // -------------------------------------------------------------------------------------------------- actions
           let lastAction = null;
           const remember = (id) => { lastAction = { id, t: now() }; };
+          let lastRecorded = null;
           function record(action) {
             send({ type: 'action', url: location.href, ...action });
+            if (recording()) lastRecorded = action.id;
           }
+          // The click just before a choice that only opened its list: on the field, or on what holds it or is in it.
+          const openerOf = (field) => lastClick && lastRecorded === lastClick.record.id && now() - lastClick.t < 60000 &&
+            (containsDeep(lastClick.element, field) || containsDeep(field, lastClick.element)) ? lastClick.record.id : null;
           function effect(kind, data, actionId) {
             send({ type: 'effect', kind, t: now(), actionId: actionId ?? lastAction?.id ?? null,
               sinceAction: lastAction ? now() - lastAction.t : null, ...data });
@@ -540,6 +742,20 @@ internal static class CaptureScript
           let lastEnter = 0;
           let lastPointer = 0;
 
+          // The field a listbox belongs to: what controls it, in the listbox's own document or shadow root.
+          const ownerOf = (listbox) => {
+            const selector = `[aria-controls="${CSS.escape(listbox.id)}"], [aria-owns="${CSS.escape(listbox.id)}"]`;
+            const owners = !listbox.id ? []
+              : [...new Set([...listbox.getRootNode().querySelectorAll(selector), ...document.querySelectorAll(selector)])]
+                .filter((owner) => !containsDeep(listbox, owner) && owner.getAttribute('role') !== 'searchbox');
+            const owner = owners.find((each) => each.matches('[role=combobox], [aria-haspopup], select, input')) ?? owners[0];
+            if (owner) return owner;
+            // Else the one trigger of a listbox that says it is open, as MUI's Select before it was a combobox.
+            const open = [...new Set([...listbox.getRootNode().querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]'),
+              ...document.querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]')])].filter((each) => !containsDeep(listbox, each));
+            return open.length === 1 ? open[0] : null;
+          };
+
           function draftFor(hit) {
             const picked = pickedFor(hit);
             const element = picked ?? retarget(hit);
@@ -549,18 +765,18 @@ internal static class CaptureScript
             if (fileInput) return { ignore: 'file chooser' };
             if (isTextual(element) && !element.readOnly) return { ignore: 'focus', element };
             const toggle = element.matches(TOGGLES) ? element : null;
-            const option = element.closest('[role=option]');
+            const option = closestUp(element, '[role=option]');
             if (option) {
-              const listbox = option.closest('[role=listbox]');
-              const owner = listbox?.id ? document.querySelector(`[aria-controls="${CSS.escape(listbox.id)}"]`) : null;
+              const listbox = closestUp(option, '[role=listbox]');
+              const owner = listbox ? ownerOf(listbox) : null;
               const info = describe(option, { pageLevel: true, noRow: true });
               // A Select's menu hides the rest of the page from assistive technology, so the field is described as it was
               // when its menu opened.
               const ownerInfo = !owner ? null : opened?.element === owner ? opened.info : describe(owner);
-              return { element: option, owner, kind: 'choose',
+              return { element: option, owner, listbox, kind: 'choose',
                 widget: !owner ? 'option' : isAutocomplete(owner) ? 'autocomplete' : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
-                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')) };
+                hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')), scrolled: scrolledList(option) };
             }
             // An element the person picked is what they act on, whatever it is.
             const info = describe(element, picked ? { interactive: true } : {});
@@ -572,22 +788,37 @@ internal static class CaptureScript
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
               ...(equivalents.length ? { equivalents } : {}),
               adornmentField: element.tagName === 'BUTTON' ? fieldOfAdornment(element) : null,
-              hoverMenu: hoverMenus.has(element.closest('[role=menu]')) };
+              hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
+          }
+
+          // A list that renders only what is in sight, scrolled to the element: what the flow scrolls first, as far. It says
+          // it has more options than it shows (aria-setsize), or what it shows is far shorter than what it scrolls.
+          function scrolledList(element) {
+            for (let list = upFrom(element); list && list !== document.body; list = upFrom(list)) {
+              const style = styleOf(list);
+              if (!style || !/auto|scroll/.test(style.overflowY) || list.scrollTop <= 0) continue;
+              const items = [...list.querySelectorAll('[role=option], [role=row], [role=listitem], [role=treeitem], li')];
+              const said = Number(closestUp(element, '[aria-setsize]')?.getAttribute('aria-setsize') ?? 0);
+              const shown = items.reduce((sum, item) => sum + item.getBoundingClientRect().height, 0);
+              if (!items.length || (said <= items.length && shown > list.scrollHeight * 0.6)) return null;
+              return { top: Math.round(list.scrollTop), list: describe(list, { interactive: true }).target };
+            }
+            return null;
           }
 
           function finish(state, via) {
             if (!state || state.done) return;
             state.done = true;
             const { draft } = state;
-            const { element, adornmentField, owner, ignore, ...rest } = draft;
+            const { element, adornmentField, owner, listbox, ignore, ...rest } = draft;
             if (draft.kind === 'toggle') {
               const checked = element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
               record({ ...rest, id: state.id, t: state.t, kind: checked ? 'check' : draft.widget === 'radio' ? 'check' : 'uncheck', checked, via });
               return;
             }
             if (draft.kind === 'choose') {
-              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text });
-              if (owner) settleChoice(state.id, owner, draft.option);
+              record({ ...rest, id: state.id, t: state.t, via, value: draft.option.text, opener: owner ? openerOf(owner) : null });
+              if (owner) settleChoice(state.id, owner, listbox);
               return;
             }
             if (adornmentField) {
@@ -611,14 +842,13 @@ internal static class CaptureScript
           }
 
           // The field shows the choice once its list has closed.
-          function settleChoice(id, owner, option) {
+          function settleChoice(id, owner, listbox) {
             const started = now();
             const poll = setInterval(() => safe(() => {
-              const listbox = document.getElementById(owner.getAttribute('aria-controls') || '');
-              const open = listbox && visible(listbox);
+              const open = listbox?.isConnected && visible(listbox);
               if (open && now() - started < 1500) return;
               clearInterval(poll);
-              const shown = isAutocomplete(owner) || owner.tagName === 'SELECT' ? owner.value : owner.innerText || owner.textContent;
+              const shown = owner.tagName === 'INPUT' || owner.tagName === 'SELECT' ? owner.value : owner.innerText || owner.textContent;
               effect('settled', { value: normalizeValue(normalize(shown)), raw: shown, closed: !open }, id);
             }), 50);
           }
@@ -643,7 +873,7 @@ internal static class CaptureScript
               pending = null;
               state.done = true;
               const drop = deepTarget(event);
-              const { element, adornmentField, owner, ...rest } = state.draft;
+              const { element, adornmentField, owner, listbox, ...rest } = state.draft;
               record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: drop ? describe(retarget(drop)).target : null });
               return;
             }
@@ -658,7 +888,7 @@ internal static class CaptureScript
             const state = pending;
             pending = null;
             state.done = true;
-            const { element, adornmentField, owner, ...rest } = state.draft;
+            const { element, adornmentField, owner, listbox, ...rest } = state.draft;
             record({ ...rest, id: state.id, t: state.t, kind: 'drag', to: null });
           }), true);
 
@@ -720,6 +950,12 @@ internal static class CaptureScript
             .locator, .reasons { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; }
             .locator { font-size: 12px; font-weight: 600; color: #fff; }
             .pick, .problem { color: #fbbf24; }
+            .pick { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace; color: #a1a1aa; }
+            .pick b { color: #c4b5fd; font-weight: 600; }
+            .pick i { color: #93c5fd; font-style: normal; }
+            .pick .on { padding: 0 3px; border-radius: 3px; background: rgba(227, 116, 0, .28); color: #fbbf24; }
+            .pick .on b, .pick .on i { color: #fbbf24; }
+            .pick .keys { margin-left: 8px; color: #71717a; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
             .reasons, .note { color: #a1a1aa; }
             .state { position: fixed; display: none; top: 12px; left: 50%; transform: translateX(-50%); box-sizing: border-box;
               align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; pointer-events: none;
@@ -900,10 +1136,10 @@ internal static class CaptureScript
             Object.assign(label.style, { left: `${Math.max(4, left)}px`, top: `${Math.max(4, top)}px` });
           }
 
-          function fillLabel(answer, picked) {
+          function fillLabel(answer, state) {
             const parts = overlayView();
             const line = (part, text) => { part.textContent = text || ''; part.style.display = text ? 'block' : 'none'; };
-            line(parts.pick, picked && `picked: ${tagOf(picked)}  (Alt+${range(0x2191)} ${range(0x2193)})`);
+            crumbs(parts.pick, state);
             line(parts.locator, answer.locator ? isolateQuoted(answer.locator) : 'nothing finds it');
             line(parts.problem, answer.problem);
             line(parts.reasons, (answer.reasons ?? []).join('  ·  '));
@@ -912,9 +1148,41 @@ internal static class CaptureScript
 
           const tagOf = (element) => element.tagName.toLowerCase() + (element.id ? `#${element.id}`
             : typeof element.className === 'string' && element.className.trim() ? `.${element.className.trim().split(/\s+/)[0]}` : '');
+          // An element in a breadcrumb as Inspect names it: its tag, then its id or its first class, here without the hash a
+          // framework put in it (css-1x2y3z-card gives card).
+          const crumbOf = (element) => {
+            const crumb = document.createElement('span');
+            crumb.appendChild(document.createElement('b')).textContent = element.tagName.toLowerCase();
+            const name = [...element.classList].map((each) => each.replace(/^(css|sc|jss)-[a-z0-9]+-?/i, '').replace(/__[A-Za-z0-9-]{4,}$/, ''))
+              .find((each) => each.length > 1);
+            if (element.id) crumb.appendChild(document.createElement('i')).textContent = `#${element.id}`;
+            else if (name) crumb.append(`.${name}`);
+            return crumb;
+          };
+
+          // The elements Alt+Up and Alt+Down step through, as a breadcrumb from the outermost: the one picked marked, the
+          // keys after it. Shown once the person picked, also back at the element a click records by itself.
+          function crumbs(part, state) {
+            part.replaceChildren();
+            if (!state?.chain) { part.style.display = 'none'; return; }
+            part.style.display = 'block';
+            const from = Math.max(0, state.index - 2);
+            const to = Math.min(state.chain.length, state.index + 4);
+            const shown = state.chain.slice(from, to).reverse();
+            if (to < state.chain.length) part.append(`${range(0x2026)} ${range(0x203a)} `);
+            shown.forEach((element, at) => {
+              if (at > 0) part.append(` ${range(0x203a)} `);
+              const crumb = part.appendChild(crumbOf(element));
+              if (element === state.chain[state.index]) crumb.className = 'on';
+            });
+            if (from > 0) part.append(` ${range(0x203a)} ${range(0x2026)}`);
+            const keys = part.appendChild(document.createElement('span'));
+            keys.className = 'keys';
+            keys.textContent = `Alt+${range(0x2191)} ${range(0x2193)}`;
+          }
           const hoverOver = (hit) => {
             const element = checking ? checkTarget(hit) : retarget(hit);
-            return { hit, element, picked: null, shown: checking ? element : element.closest('[role=option]') ?? element,
+            return { hit, element, picked: null, shown: checking ? element : closestUp(element, '[role=option]') ?? element,
               boxed: null, answer: null, at: 0 };
           };
 
@@ -922,21 +1190,37 @@ internal static class CaptureScript
           const pickedFor = (hit) => (overlayOn && hover?.hit === hit && hover.picked) || null;
 
           // Steps the pick through the elements from the one under the pointer up to the body: up by Alt+Up, down by Alt+Down.
+          // The elements from the one under the pointer out, through shadow roots, up to its dialog, or below the root of the
+          // app or of a portal: never the page's own containers. Those that take no room (a slot) are passed over.
+          function chainOf(state) {
+            const chain = [];
+            for (let node = containsDeep(state.element, state.hit) ? state.hit : state.element;
+                 node && node !== document.body && node !== document.documentElement; node = upFrom(node)) {
+              if (node !== state.element && upFrom(node) === document.body) break;
+              if (node === state.element || node.getClientRects().length > 0) chain.push(node);
+              if (node.matches(DIALOGS)) break;
+            }
+            return chain;
+          }
+
           function pick(step) {
             const state = hover;
             if (!state) return;
             if (!state.chain) {
-              state.chain = [];
-              for (let node = state.element.contains(state.hit) ? state.hit : state.element;
-                   node && node !== document.body && node !== document.documentElement; node = node.parentElement)
-                state.chain.push(node);
+              state.chain = chainOf(state);
               state.index = state.chain.indexOf(state.element);
             }
             const index = Math.min(Math.max(state.index + step, 0), state.chain.length - 1);
-            if (index === state.index || index < 0) return;
+            if (index < 0) return;
+            if (index === state.index) {
+              // At either end: the breadcrumb shows it.
+              if (state.answer) fillLabel(state.answer, state);
+              drawOverlay();
+              return;
+            }
             state.index = index;
             state.picked = state.chain[index] === state.element ? null : state.chain[index];
-            state.shown = state.picked ?? state.element.closest('[role=option]') ?? state.element;
+            state.shown = state.picked ?? closestUp(state.element, '[role=option]') ?? state.element;
             state.boxed = null;
             state.answer = null;
             drawOverlay();
@@ -972,7 +1256,7 @@ internal static class CaptureScript
             if (hover === state && state.shown === shown && reply) {
               state.answer = JSON.parse(reply);
               state.boxed = others[(state.answer.element ?? 0) - 1] ?? null;
-              fillLabel(state.answer, picked);
+              fillLabel(state.answer, state);
               if (chooser?.element === shown && state.answer.locator) chooser.what.textContent = state.answer.locator;
               drawOverlay();
             }
@@ -985,6 +1269,15 @@ internal static class CaptureScript
             if (hit === hover?.hit) {
               // The page may have changed under a pointer at rest.
               if (now() - hover.at > 1500) scheduleExplain();
+              return;
+            }
+            // Within the element picked, the pick holds, on the path to where the pointer is now.
+            if (hover?.picked && hit && containsDeep(hover.picked, hit) && !checking) {
+              const picked = hover.picked;
+              hover.hit = hit;
+              hover.chain = chainOf(hover);
+              if (!hover.chain.includes(picked)) hover.chain = [hit, ...hover.chain.filter((node) => node !== hit)];
+              hover.index = hover.chain.indexOf(picked);
               return;
             }
             hover = hit && hit !== document.body && hit !== document.documentElement && !hit.matches('iframe, frame')
@@ -1073,7 +1366,7 @@ internal static class CaptureScript
           // What a check is of: the control around what the pointer is on, else that element itself, as text is checked
           // where it is.
           const checkTarget = (hit) => {
-            const control = hit.closest(INTERACTIVE);
+            const control = closestUp(hit, INTERACTIVE);
             return control && !control.matches(CONTAINERS) ? control : hit;
           };
           const textOf = (element) => normalizeValue(normalize(element.innerText ?? element.textContent ?? ''));
@@ -1418,7 +1711,7 @@ internal static class CaptureScript
               const labels = [...element.selectedOptions].map((option) => clean(option.label || option.textContent));
               const info = describe(element);
               record({ ...info, id, t: now(), kind: 'choose', widget: 'native', field: info.target, value: labels.join(', '),
-                values: labels });
+                values: labels, opener: openerOf(element) });
             }
           }), true);
 

@@ -360,6 +360,7 @@ internal sealed partial class FlowWriter
                 }
                 else
                 {
+                    ScrollTo(source);
                     _step.Add($"await {Locate(action, ref problem)}{Break}.{method}();", problem);
                     // In a loop, a check stays only when it reads the loop's item.
                     if (_autoChecks && _step.Depth == 0 && action.Has("tabSelected"))
@@ -450,7 +451,11 @@ internal sealed partial class FlowWriter
     {
         var source = action.Source;
         var scope = _step.Scope;
-        var option = $"{scope.Page}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
+        // In its own list, when another list has an option of that name too.
+        var list = source.Option?.Candidates.FirstOrDefault(candidate => candidate is { Kind: "role", Matches: true }
+            && candidate.Parts is [.., { M: "role", Role: "listbox" }, { M: "role", Role: "option" }])?.Parts[^2];
+        var inList = list is null ? "" : LocatorPolicy.Render("", [list], breakBefore: Break);
+        var option = $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
         var optionProblem = source.Option is null || source.Option.Candidates.Any(candidate =>
             candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
             ? null
@@ -461,14 +466,19 @@ internal sealed partial class FlowWriter
                 _step.Add(source.Widget == "autocomplete" && action.SearchValue is not null
                     ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue)});"
                     : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);
+                ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
-                // In a loop, a check stays only when it reads the loop's item.
-                if (_autoChecks && (_step.Depth == 0 || _step.LoopValues.ContainsKey(action.ShownValue ?? action.Value!)))
+                // In a loop, a check stays only when it reads the loop's item. A field that showed nothing of the choice,
+                // such as an input under the text that shows it, is not checked; an input that holds it, by its value.
+                var settled = source.Effects.FirstOrDefault(effect => effect.Kind == "settled");
+                var byValue = source.Widget == "autocomplete" || source.Field?.Tag == "input";
+                if (_autoChecks && settled is not { Value: null or "" }
+                    && (_step.Depth == 0 || _step.LoopValues.ContainsKey(action.ShownValue ?? action.Value!)))
                 {
                     var field = Locate(action, ref problem);
-                    AddCheck("shows", $"shows “{(action.ShownValue ?? action.Value)!.Value}”", source.Widget == "select"
-                        ? $"await Expect({field}){Break}.ToHaveTextAsync({Setting(action.ShownValue ?? action.Value)});"
-                        : $"await Expect({field}){Break}.ToHaveValueAsync({Setting(action.Value)});");
+                    AddCheck("shows", $"shows “{(action.ShownValue ?? action.Value)!.Value}”", byValue
+                        ? $"await Expect({field}){Break}.ToHaveValueAsync({Setting(action.Value)});"
+                        : $"await Expect({field}){Break}.ToHaveTextAsync({Setting(action.ShownValue ?? action.Value)});");
                 }
 
                 break;
@@ -480,9 +490,19 @@ internal sealed partial class FlowWriter
                 break;
             }
             default:
+                ScrollTo(source);
                 _step.Add($"await {option}{Break}.ClickAsync();", optionProblem);
                 break;
         }
+    }
+
+    // A list that renders only the items in sight is scrolled as far as the person scrolled it, so the item is there.
+    private void ScrollTo(CapturedAction source)
+    {
+        if (source.Scrolled is not { List: { } list, Top: > 0 } scrolled || LocatorPolicy.Choose(list) is not { } found) return;
+        _step.Add($"await {Render(found, source)}{Break}.HoverAsync();");
+        _step.Add($"await {_step.Scope.Page}.Mouse.WheelAsync(0, {scrolled.Top});",
+            "a list that shows only the items in sight: the flow scrolls it as far as you did; check that this reaches the item");
     }
 
     // What the action changed: the dialog it closed, the address it went to (unless a stronger check says the same),
@@ -658,7 +678,15 @@ internal sealed partial class FlowWriter
         if (dialog.TitleMatches) return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(dialog.Title)} }})", null);
         if (dialog is { RawMatches: true, Raw: { } raw })
             return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(raw)}, Exact = true }})", null);
+        // A dialog with no name, by the heading it shows: only it has an element of that text.
+        var byHeading = dialog.Heading is { } heading
+            ? LocatorPolicy.Render(page, [new LocatorPart { M = "role", Role = "dialog", Heading = heading }],
+                _ => Code(Pieces(heading)), Break)
+            : null;
+        if (byHeading is not null && dialog.HeadingMatches) return (byHeading, null);
         if (dialog.UnnamedMatches) return ($"{page}.{role})", null);
+        if (byHeading is not null) return (byHeading, "this dialog's heading did not find it alone when recorded");
+        if (dialog.Title.Length == 0) return ($"{page}.{role})", "this dialog has no title, and another dialog was open too");
         return ($"{page}.{role}, new() {{ Name = {CSharp.Literal(dialog.Title)} }})",
             "this dialog's title did not find it alone when recorded");
     }
@@ -866,6 +894,7 @@ internal sealed partial class FlowWriter
             && part.Css is { } css && css.EndsWith(LocatorPolicy.CssValue(value), StringComparison.Ordinal))
             return $"$\"{CSharp.Escape(css[..^LocatorPolicy.CssValue(value).Length], true)}[value='{{{Setting(radio)}}}']\"";
         if (part.M == "filter" && part.HasText is { } shown) return Linked(shown);
+        if (part.M == "text" && part.Text is { } label) return Linked(label);
         if (part.M != "role" || part.Name is null) return null;
         if (action.Source.Widget == "radio" && action.Value is { } choice && part.Role == "radio" && part.Name == choice.Text)
             return Setting(choice);
