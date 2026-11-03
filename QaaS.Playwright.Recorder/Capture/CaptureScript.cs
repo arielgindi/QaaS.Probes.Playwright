@@ -1100,6 +1100,7 @@ internal static class CaptureScript
               ? describe(element.closest('.MuiAutocomplete-root').querySelector('input')).target : null;
             const equivalents = picked || widget ? [] : describeEquivalents(equivalentsOf(hit, element), info.target);
             return { element, kind: toggle ? 'toggle' : 'click', widget, ...info, field,
+              ...(toggle && !toggle.matches('input') ? { before: toggle.getAttribute('aria-checked') === 'true' } : {}),
               ...(equivalents.length ? { equivalents } : {}),
               adornmentField: !isTextual(element) ? fieldOfAdornment(element) : null,
               hoverMenu: hoverMenus.has(element.closest('[role=menu]')), scrolled: scrolledList(element) };
@@ -1124,10 +1125,25 @@ internal static class CaptureScript
             if (!state || state.done) return;
             state.done = true;
             const { draft } = state;
-            const { element, adornmentField, owner, listbox, ignore, ...rest } = draft;
+            const { element, adornmentField, owner, listbox, ignore, before: _before, ...rest } = draft;
             if (draft.kind === 'toggle') {
-              const checked = element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
-              record({ ...rest, id: state.id, t: state.t, kind: checked ? 'check' : draft.widget === 'radio' ? 'check' : 'uncheck', checked, via });
+              // A native checkbox has its new state as the click reaches it; a switch or checkbox of ARIA only once the app
+              // handled the click, after this listener, and a framework rendered it, maybe a moment later (antd's, Kendo's).
+              // The state is told as the page then shows it: at once as the click turns it, then as it settled.
+              const on = () => element.matches('input') ? element.checked : element.getAttribute('aria-checked') === 'true';
+              const tell = (checked, final) => record({ ...rest, id: state.id, t: state.t,
+                kind: checked || draft.widget === 'radio' ? 'check' : 'uncheck', checked, via, ...(final ? {} : { final: false }) });
+              if (element.matches('input')) { tell(on(), true); return; }
+              const before = draft.before ?? on();
+              tell(!before, false);
+              let waited = 0;
+              const settle = () => safe(() => {
+                const now = element.isConnected ? on() : !before;
+                if (now !== before || waited >= 400) { tell(now, true); return; }
+                waited += 25;
+                setTimeout(settle, 25);
+              });
+              setTimeout(settle, 0);
               return;
             }
             if (draft.kind === 'choose') {

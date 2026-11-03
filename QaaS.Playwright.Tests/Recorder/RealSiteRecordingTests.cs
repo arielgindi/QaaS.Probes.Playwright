@@ -281,6 +281,49 @@ public class RealSiteRecordingTests
     }
 
     [Test]
+    public async Task ReactAdminAntDesignProAndKendo_RecordedMessily_GiveFlowsThatReplayOnFreshPages()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        // Each site in a Chrome of its own, at the same time, as each takes its time to be clicked through.
+        var antd = AntDesignProAsync($"{site.Url}/antd-pro/list");
+        await Task.WhenAll(antd);
+        var (antdActions, antdFlow, antdReport) = await antd;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(antdActions.Where(action => action.Widget == "switch").Select(action => action.Kind),
+                Is.EqualTo(new[] { "check", "uncheck", "check" }), "a switch React renders after the click is told as it then shows");
+            Assert.That(antdReport.Outcome, Is.EqualTo(TestOutcome.Passed), $"{antdReport.Failure?.Headline ?? antdReport.Problem}\n{antdFlow.Code}");
+        });
+    }
+
+    // Ant Design Pro: the settings' switches, turned on, off again, and another on.
+    private static async Task<(IReadOnlyList<CapturedAction> Actions, GeneratedFlow Flow, TestReport Report)> AntDesignProAsync(string url)
+    {
+        var session = await StartAsync(url);
+        try
+        {
+            var page = session.Page;
+            var person = new Person(page);
+            ILocator Switch(string label) => page.Locator("li.ant-list-item").Filter(new() { HasText = label }).GetByRole(AriaRole.Switch);
+            await person.ClickAsync(Switch("Fixed Header"));
+            await person.ClickAsync(Switch("Fixed Header"));
+            await person.ClickAsync(Switch("Split Menus"));
+            await Task.Delay(500);
+
+            var recording = session.Build();
+            var flow = FlowCodeGenerator.Generate(recording, "AntdProTable", "Flows");
+            TestContext.Out.WriteLine(flow.Code);
+            return (recording.Actions, flow, await TestAsync(session, url));
+        }
+        finally
+        {
+            await session.StopAsync();
+        }
+    }
+
+    [Test]
     public void RawRecordings_OfReactAdminAntDesignProAndKendo_GiveFlowsThatReplay()
     {
         // react-admin's demo logs in as demo, with the password demo: typed live, though no file of the recorder keeps it.

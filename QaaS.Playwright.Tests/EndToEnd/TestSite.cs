@@ -11,7 +11,8 @@ namespace QaaS.Playwright.Tests.EndToEnd;
 /// A tiny web app on a free local port: a cookie login, a whoami page, an order page, a ticket form, a helpdesk with
 /// a ticket table and a dialog to record in, orders with a menu in a portal, a to-do list, under <c>/pickers/</c>
 /// the option pickers of common UI libraries, each in a modal flow (<c>Recorder/Pickers/kit.js</c>), and imitations of
-/// two public practice sites (<c>Recorder/Sites</c>): demoqa's practice form, and OrangeHRM's demo under its own addresses.
+/// public practice sites (<c>Recorder/Sites</c>): demoqa's practice form, and OrangeHRM's, react-admin's, Ant Design Pro's
+/// and Kendo UI's demos, each under addresses of its own.
 /// </summary>
 public sealed class TestSite : IDisposable
 {
@@ -93,10 +94,11 @@ public sealed class TestSite : IDisposable
             return;
         }
 
-        if (path == "/automation-practice-form" || path.StartsWith("/web/index.php/", StringComparison.Ordinal))
+        if (path == "/automation-practice-form" || path.StartsWith("/web/index.php/", StringComparison.Ordinal)
+            || SiteOf(path) is not null)
         {
-            var app = path == "/automation-practice-form" ? "practice-form" : "hrm";
-            var title = app == "hrm" ? "OrangeHRM" : "demosite";
+            var app = SiteOf(path) ?? (path == "/automation-practice-form" ? "practice-form" : "hrm");
+            var title = app switch { "hrm" => "OrangeHRM", "react-admin" => "Posters Galore", "antd-pro" => "Ant Design Pro", "kendo" => "Kendo UI", _ => "demosite" };
             var shell = $"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{title}</title></head><body>" +
                         $"<div id=\"root\"></div><script src=\"/sites/{app}.js\"></script></body></html>";
             Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(shell));
@@ -187,6 +189,13 @@ public sealed class TestSite : IDisposable
           });
         </script>
         """;
+
+    // react-admin's demo, Ant Design Pro's and Kendo UI's, each under addresses of its own.
+    private static string? SiteOf(string path) =>
+        path.StartsWith("/react-admin-demo/", StringComparison.Ordinal) ? "react-admin"
+        : path.StartsWith("/antd-pro/", StringComparison.Ordinal) ? "antd-pro"
+        : path.StartsWith("/kendo-ui/", StringComparison.Ordinal) ? "kendo"
+        : null;
 
     // The kit's script, or a page that starts one of its cases.
     private static void ServePicker(HttpListenerResponse response, string name)
