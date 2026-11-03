@@ -437,8 +437,14 @@ The console lists the suggestions left when you save. What the recorder leaves o
 what cannot matter: a click that only put the focus in a field the next action types into or that you left, the click
 that opened the list of the choice next (an arrow hidden from assistive technology included), a click on no control or
 item after which nothing at all changed on the page, the clicks of a date picker's calendar or of a file chooser you
-closed, a link dragged a few pixels as you clicked it, and the letters typed to filter a list, which are part of the
-choice: the flow types the option's own text to find it (`FillAsync(subject)`).
+closed, and a link dragged a few pixels as you clicked it.
+
+The letters you typed to find an option of an autocomplete are part of the choice, as its search: a setting of their
+own, `CustomerSearch: 'Hipol'` beside `Customer: 'Hipolito Bergnaum'`, which the flow types before it takes the option
+(`FillAsync(Configuration.CustomerSearch)`), as a site may find nothing by the option's whole text. A combobox that
+completes what you type in place, the rest selected, is recorded with the letters you typed, never the completion. A
+search the option's text is all of needs no setting. In a loop, each round is a record of its `Search` and the option's
+`Name`.
 
 ### Testing the flow
 

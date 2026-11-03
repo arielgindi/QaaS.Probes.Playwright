@@ -518,7 +518,7 @@ internal sealed partial class FlowWriter
         switch (source.Widget)
         {
             case "select" or "autocomplete":
-                // What the person typed to filter the list, the flow types as the option's own text, which finds it.
+                // What the person typed to find the option, the flow types too, then chooses the option by its own text.
                 _step.Add(source.Widget == "autocomplete" && (action.Search is not null || action.SearchValue is not null)
                     ? $"await {Locate(action, ref problem)}{Break}.FillAsync({Setting(action.SearchValue ?? action.OptionValue ?? action.Value)});"
                     : $"await {Locate(action, ref problem)}{Break}.ClickAsync();", problem);

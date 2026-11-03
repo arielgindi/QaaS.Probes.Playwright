@@ -348,7 +348,11 @@ internal static partial class FlowPlanner
         if (source.Widget == "autocomplete")
         {
             var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
-            // What was typed to filter the list is no setting: the flow types the option's own text.
+            // What the person typed to find the option is the search, a setting of its own: the flow types it, as a site
+            // may find nothing by the option's whole text (react-admin's customers by their first name only), then chooses
+            // the option. A search the option's text is all of needs none.
+            if (action.Search is { Length: > 0 } search && search != option && search != shown)
+                action.SearchValue = Add("Search", search);
             action.Value = Add("", shown);
             if (shown != option) action.OptionValue = Add("Option", option);
             return;

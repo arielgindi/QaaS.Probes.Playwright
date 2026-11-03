@@ -918,9 +918,18 @@ internal static class CaptureScript
           // ------------------------------------------------------------------------------------- typing: settled values
           const typing = new Map();
           const valueOf = (element) => element.isContentEditable ? element.innerText : element.value;
+          // What the person typed of a field that completes it in place, the rest of the value selected after it, as a
+          // combobox suggests an option (Kendo's, the browser's datalist): the typed letters, not the suggestion.
+          const typedOf = (element) => {
+            const value = valueOf(element) ?? '';
+            const { selectionStart: start, selectionEnd: end } = element.matches?.('input') ? element : {};
+            return typeof start === 'number' && start > 0 && start < end && end === value.length
+              && (/both|inline/.test(element.getAttribute('aria-autocomplete') ?? '') || element.getAttribute('role') === 'combobox')
+              ? value.slice(0, start) : value;
+          };
           function emitFill(entry, final) {
             clearTimeout(entry.timer);
-            const raw = valueOf(entry.element) ?? '';
+            const raw = typedOf(entry.element);
             record({ ...entry.description, id: entry.id, t: entry.t, kind: 'fill', final, value: normalizeValue(raw), raw,
               widget: isAutocomplete(entry.element) ? 'autocomplete' : entry.element.tagName === 'TEXTAREA' ? 'textarea' : 'text' });
             if (final) typing.delete(entry.element);
