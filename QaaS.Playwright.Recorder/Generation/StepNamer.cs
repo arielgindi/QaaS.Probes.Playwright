@@ -174,10 +174,12 @@ internal static partial class StepNamer
         if (confirmed) actions.RemoveAt(actions.Count - 1);
         if (actions.Count == 0 || actions.Any(action => action.Kind is not ("choose" or "click"))) return null;
         var last = actions[^1];
-        if (actions.Where(action => action.Kind == "choose").Select(action => action.Value?.Name).Distinct().ToList() is [{ } one, { } two]
+        // A setting numbered to tell it from another of its field is the same field: City2 is the city chosen again.
+        static string? Field(PlannedAction choice) => choice.Value?.Name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9') is { Length: > 0 } name ? name : choice.Value?.Name;
+        if (actions.Where(action => action.Kind == "choose").Select(Field).Distinct().ToList() is [{ } one, { } two]
             && actions.All(action => action.Kind == "choose"))
             return $"{one}And{two}";
-        if (last.Kind == "choose") return last.Value?.Name;
+        if (last.Kind == "choose") return Field(last);
         // An item of a list without a role of its own; a link or menu item of one when a click confirms it.
         var item = last.Source.Target is { Item: true, Role: null or "option" or "listitem" }
                    || (confirmed && last.Source.Target is { Item: true, Role: "link" or "menuitem" });

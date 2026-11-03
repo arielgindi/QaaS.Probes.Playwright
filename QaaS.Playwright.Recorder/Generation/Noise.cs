@@ -84,8 +84,19 @@ internal static partial class Noise
     /// </summary>
     private static bool UsedBetween(List<PlannedAction> actions, int from, int to, string key) =>
         actions.Skip(from + 1).Take(to - from - 1).Any(between =>
-            between.Checks.Count > 0 || HasResult(between)
-            || (between.Key != key && between.Effects.Any(effect => effect.Kind == "changed")));
+            between.Checks.Count > 0 || HasResult(between) || between.Key != key && Sends(between));
+
+    // What sends a form's values: a submit button, or a button that says it saves, adds or sends them.
+    private static readonly HashSet<string> Sending = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Add", "Save", "Submit", "Create", "Search", "Apply", "Send", "Update", "Confirm", "Ok", "Next", "Continue", "Login",
+        "Log", "Sign", "Register", "Book", "Pay", "Upload", "Import", "Filter", "Go", "Done", "Finish", "Insert", "Enter",
+    };
+
+    private static bool Sends(PlannedAction action) =>
+        action is { Kind: "click" or "dblclick" or "press" }
+        && (action.Source.Target is { Type: "submit" } || action.Kind == "click" && action.Source.Target?.Role is "button" or "link"
+            && StepNamer.Label(action) is { } label && Sending.Contains(StepNamer.Words(CSharp.Pascal(label) ?? "").FirstOrDefault() ?? ""));
 
     /// <summary>The suggestions for the actions the flow does, in their order.</summary>
     public static List<Suggestion> Suggest(List<PlannedAction> actions)

@@ -867,7 +867,12 @@ internal static class CaptureScript
 
           // -------------------------------------------------------------------------------------------------- actions
           let lastAction = null;
-          const remember = (id) => { lastAction = { id, t: now() }; };
+          // What the page changes after a click is its doing until the next action begins.
+          let changesWatched = null;
+          const remember = (id) => {
+            lastAction = { id, t: now() };
+            if (changesWatched && changesWatched.id !== id) { changesWatched.observer.disconnect(); changesWatched = null; }
+          };
           let lastRecorded = null;
           function record(action) {
             send({ type: 'action', url: location.href, ...action });
@@ -1137,6 +1142,7 @@ internal static class CaptureScript
               if (changed) { observer.disconnect(); effect('changed', {}, id); }
             }));
             observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true });
+            changesWatched = { id, observer };
             setTimeout(() => observer.disconnect(), 700);
           }
 

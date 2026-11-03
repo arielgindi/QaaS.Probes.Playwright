@@ -72,6 +72,8 @@ internal static partial class FlowPlanner
             var next = index + 1 < actions.Count ? actions[index + 1] : null;
             var widget = action.Source.Widget;
             var noEffect = action.Effects.Count == 0;
+            // What a click beside every control changed, as a field it left closing its list, is no result of its own.
+            var noResult = !Noise.HasResult(action);
             switch (action.Kind)
             {
                 // Choosing an option opens its Select first.
@@ -80,7 +82,7 @@ internal static partial class FlowPlanner
                 case "click" when widget == "autocomplete-button" && ChoiceFollows(actions, index, action.Source.Field):
                 // A click beside every control, e.g. to leave a field, that changed nothing; or on a native select, whose
                 // choice the flow makes without opening it.
-                case "click" or "dblclick" when action.Source.Target is not { Interactive: true } && noEffect:
+                case "click" or "dblclick" when action.Source.Target is not { Interactive: true } && noResult:
                 case "click" when action.Source.Target?.Tag == "select" && noEffect:
                 case "click" or "dblclick" when Noise.DidNothing(action):
                 case "click" when Noise.OnlyFocuses(action, next):
@@ -221,6 +223,8 @@ internal static partial class FlowPlanner
             switch (action.Kind)
             {
                 case "fill":
+                    // Text typed into an autocomplete and left there, no choice of it, is its text: the choices are its name's.
+                    if (source.Widget == "autocomplete") (name, qualified) = (name + "Text", qualified is null ? null : qualified + "Text");
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
                     action.Value.Secret = field?.Type == "password";
                     break;
