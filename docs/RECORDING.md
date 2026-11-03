@@ -822,7 +822,9 @@ For each element the recorder takes the first of these that finds it, and only i
 1. The interactive element itself (the input, not the label or icon you clicked), by its form `name` (Formik's path,
    `[name='employee.firstName']`) or its own stable `id`. Generated ids, like React's `:r1:`, MUI's `mui-12`,
    `-option-3`, `-listbox`, the ids select libraries number by instance (`react-select-2-input`, antd's
-   `rc_select_0`), Headless UI's and Select2's, long numbers and GUIDs, are never used.
+   `rc_select_0`, `rc-tabs-0-tab-rule`), Headless UI's and Select2's, long numbers, GUIDs and runs of hex anywhere in
+   an id, also as CSS escapes them (`\36 d9a47e9-…_k-dialog-content`), are never used. A click on no control that only
+   such an id finds is left out, and listed to check by hand.
 2. An MUI Select by its `id`, else as the box around its hidden input (`div:has(> input[name='x'])`).
 3. Its test id (`GetByTestId`, i.e. `data-testid`).
 4. Its role and exact name, without direction marks and a required field's ` *`. A tab whose name counts something

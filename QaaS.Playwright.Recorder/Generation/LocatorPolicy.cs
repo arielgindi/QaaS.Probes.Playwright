@@ -118,6 +118,9 @@ internal static partial class LocatorPolicy
         return string.Join(" » ", parts);
     }
 
+    /// <summary>What <see cref="Problem"/> says of Playwright's locator by an id made anew on each load.</summary>
+    public const string GeneratedIdProblem = "Playwright's locator uses a generated id";
+
     /// <summary>Why the locator needs a person's look, or null when it is fine.</summary>
     public static string? Problem(CapturedCandidate? candidate)
     {
@@ -134,7 +137,7 @@ internal static partial class LocatorPolicy
         if (EmptyName().IsMatch(code)) return "Playwright's locator matches an empty name, which many elements have";
         if (CssStrings(code).Any(HasHashedClass)) return "Playwright's locator picks the element by a class a style library generated";
         if (CssStrings(code).Any(HasClass)) return "Playwright's locator picks the element by a style class";
-        if (CssStrings(code).SelectMany(IdsIn).Any(UnstableId.IsUnstable)) return "Playwright's locator uses a generated id";
+        if (CssStrings(code).SelectMany(IdsIn).Any(UnstableId.IsUnstable)) return GeneratedIdProblem;
         if (Texts(code).Any(Glued)) return "Playwright's locator finds a wrapper by the text of everything in it";
         if (Texts(code).Any(text => !text.Any(char.IsLetter))) return "Playwright's locator finds the element by a number alone";
         if (WholeRowName().IsMatch(code)) return "Playwright's locator finds the row by all it says, not by its key";
@@ -302,7 +305,7 @@ internal static partial class LocatorPolicy
     private static bool HasClass(string css) => ClassSelector().IsMatch(AttributeValue().Replace(css, "[]"));
 
     private static IEnumerable<string> IdsIn(string css) =>
-        IdSelector().Matches(css.Replace("\\", "")).Select(match => match.Groups["id"].Value);
+        IdSelector().Matches(css).Select(match => UnstableId.CssUnescape(match.Groups["id"].Value));
 
     [GeneratedRegex(@"[-_]\d+$")]
     private static partial Regex NumberedId();

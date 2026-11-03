@@ -32,6 +32,14 @@ internal static partial class FlowPlanner
         };
         plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
         var prepared = recording.Actions.Select(Prepare).ToList();
+        // A click on no control that only an id made anew on each load finds cannot replay: left out, and said.
+        foreach (var lost in prepared.Where(OnlyByGeneratedId).ToList())
+        {
+            prepared.Remove(lost);
+            plan.NotRecorded.Add($"a click on {Names.Human(lost.Source.Target) ?? $"a {lost.Source.Target?.Tag ?? "element"}"} that only an id " +
+                                 "made anew on each load finds was left out: redo it by hand if the flow needs it");
+        }
+
         var actions = AttachChecks(prepared, Clean([.. prepared.Where(action => action.Kind != "expect")]));
         PlaceInDialogs(actions);
         actions = CloseUnseen(actions);
@@ -60,6 +68,10 @@ internal static partial class FlowPlanner
         planned.Effects.AddRange(source.Effects);
         return planned;
     }
+
+    private static bool OnlyByGeneratedId(PlannedAction action) =>
+        action is { Kind: "click" or "dblclick", Locator: { Kind: "generator" } generated } && !Noise.IsControl(action.Source.Target)
+        && !Noise.HasResult(action) && LocatorPolicy.Problem(generated) == LocatorPolicy.GeneratedIdProblem;
 
     // What a person does on the way to an action is not a step of its own: opening a select, a click that only put the
     // focus in a field, a click on no control that changed nothing, a drag that dropped nowhere, the click that opened

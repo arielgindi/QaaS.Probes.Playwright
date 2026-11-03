@@ -424,6 +424,7 @@ public class RealSiteRecordingTests
         var rules = FlowCodeGenerator.Generate(Read("AntdProTable"), "AntdProTable", "Flows");
         var poster = FlowCodeGenerator.Generate(Read("ReactAdminPosters"), "Posters", "Flows");
         var steps = FlowCodeGenerator.Generate(Read("AntdProStepForm"), "AntdProStepForm", "Flows");
+        var scheduler = FlowCodeGenerator.Generate(Read("KendoScheduler"), "KendoScheduler", "Flows");
         var search = FlowCodeGenerator.Generate(Read("AntdProSearch"), "AntdProSearch", "Flows");
 
         Assert.Multiple(() =>
@@ -441,6 +442,10 @@ public class RealSiteRecordingTests
                 "and the flow has it once however often it runs on the page");
             Assert.That(rules.Code, Does.Not.Contain("GetByRole(AriaRole.Row, new() { Name =").And.Not.Contain("5740000"),
                 "a row is never found by all it says, its random counts and statuses with it");
+            Assert.That(widgets.Code + scheduler.Code + steps.Code, Does.Not.Contain("_9b2b62df").And.Not.Contain("\\\\36 d9a47e9").And.Not.Contain("rc-tabs-0"),
+                "no id made anew on each load or render: a GUID, one CSS escapes, one a library numbers");
+            Assert.That(scheduler.Checks.Select(check => check.Message), Has.Some.Contains("only an id made anew on each load finds was left out"),
+                "a click only such an id finds is left out, and said");
             Assert.That(steps.Code, Does.Contain("GetByRole(AriaRole.Button, new() { NameRegex = new Regex(\"^(?:loading )?Next$\") })")
                 .And.Not.Contain("LoadingNext").And.Not.Contain("Name = \"loading Next\""),
                 "a button found with or without the spinner it showed, its step named after what it says");
