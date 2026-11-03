@@ -193,7 +193,8 @@ part: move it to another screen, or snap it aside. `--no-panel` records without 
 **Test** in the panel's top bar, `Ctrl+Enter` or `F5` there, runs the flow recorded so far and shows, step by step,
 whether it works and where it fails, before you save it.
 
-- **It runs the code that will be saved.** The code the panel shows is built as your test project builds it, with the
+- **It runs the code that will be saved**, with or without auto checks as it will be saved. The code the panel shows is
+  built as your test project builds it, with the
   .NET SDK, in a temporary folder only you can read, against the recorder's own QaaS.Playwright and Playwright: nothing
   is restored, so no package feed is needed. A test of code that has not changed uses the same build again. Each run
   loads the build afresh, and unloads it after.
@@ -211,8 +212,10 @@ While it runs, a bar under the top bar says which step runs, with the time, and 
 then a ✓ with how long it took. When a step fails, the bar says which, the step turns red and opens on why, as the
 probe reports it: what it waited for, on which page and on which line, the screenshot of the page then (click it to
 see it whole), what the recorder listed to check by hand there, and Playwright's call log. The steps after it show
-`Not run`. In the code, each step's lines are marked green when it passed, and the line that failed in red. The
-console prints the result too:
+`Not run`. In the code, the statement running is marked as it runs, each step's lines green once it passed, and the
+line that failed in red. A [loop](#repeated-actions)'s line runs once for each item: it is marked as each repeat runs
+it, each repeat's step on the left gets its own ✓, a failure is told at the repeat it happened in, and the line turns
+green once every repeat of it passed. The console prints the result too:
 
 ```text
   › Testing NewTicket…
@@ -226,8 +229,7 @@ The result stays until you test again or dismiss it; once you change the flow, i
 - **Run to here**, on a step (point at it) or in the inspector, or `Ctrl+Shift+Enter`, runs the flow from the start up
   to the selected step, that step included, and stops there: the steps after it do not run. It checks the start of a
   flow without its end, e.g. without the final save.
-- **Slow motion**, the gauge beside **Test**, has each action wait 500 ms first, as `SlowMo: 500` in the probe, to
-  watch it. The panel remembers it.
+- **Slow motion**, the gauge beside **Test**, has each step wait 500 ms first, to watch it. The panel remembers it.
 - **Stop**, `Esc` or `Shift+F5` closes the test's window and ends the run; closing that window does too.
 - **It needs the .NET SDK** of the recorder's .NET (10), which a test project needs anyway; the recorder itself runs
   on the runtime. Without it, **Test** says so, and the recording goes on.

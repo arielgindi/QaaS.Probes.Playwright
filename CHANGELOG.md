@@ -27,8 +27,9 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   hidden secrets. Each step shows as it runs, passes with its time, or fails, opened on what it waited for, on which
   page and line, the screenshot, and what to check by hand; the code marks each step's lines, the failed one in red,
   and the console prints the result. **Run to here** (`Ctrl+Shift+Enter`) runs the flow up to the selected step,
-  **Stop** (`Esc`, `Shift+F5`) ends a run, and slow motion waits 500 ms before each action. Nothing a test does is
-  recorded: the recording pauses while it runs.
+  **Stop** (`Esc`, `Shift+F5`) ends a run, and slow motion waits 500 ms before each action. A loop's line is followed
+  repeat by repeat, and a failure is told at its repeat. Nothing a test does is recorded: the recording pauses while it
+  runs.
 
 ## 1.3.0
 
