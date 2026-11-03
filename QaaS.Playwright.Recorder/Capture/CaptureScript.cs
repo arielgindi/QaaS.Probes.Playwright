@@ -410,7 +410,7 @@ internal static class CaptureScript
 
           // What the element is beyond its role, for the recorder to write it.
           const widgetOf = (element) => element.matches(TOGGLES)
-            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' ? 'switch' : 'checkbox')
+            ? (roleOf(element) === 'radio' ? 'radio' : roleOf(element) === 'switch' || closestUp(element, '[class*=switch i]') ? 'switch' : 'checkbox')
             : isMuiSelect(element) ? 'select-open'
             : element.closest('.MuiAutocomplete-root') && element.tagName === 'BUTTON' ? 'autocomplete-button'
             : roleOf(element) === 'tab' ? 'tab'
@@ -678,7 +678,8 @@ internal static class CaptureScript
           const ICON_CLASS = /^(bi|fa|fas|far|fab|fal|mdi|ti|ri|las|lar|glyphicon|icon|feather|ion|ph)-([a-z0-9-]+)$/;
           const ICON_SUFFIX = /-(fill|filled|outline|outlined|alt|o|lg|sm|solid|regular|line|light|bold)$/;
           function iconOf(element) {
-            if (hasLetters(shownText(element))) return null;
+            // What shows any text of its own is no icon alone; an icon font's glyph is no text.
+            if (shownText(element).replace(/[\uE000-\uF8FF]/g, '').trim()) return null;
             for (const icon of [element, ...element.querySelectorAll('i, svg, span, use, img')]) {
               const iconClass = [...(icon.classList ?? [])].find((name) => ICON_CLASS.test(name) && !/^(fa|bi)-(fw|lg|xs|sm|\dx)$/.test(name));
               if (iconClass) {
@@ -727,26 +728,35 @@ internal static class CaptureScript
             const candidates = [];
             const add = (kind, parts, extra) => { candidates.push(candidate(kind, scope, parts, element, extra)); };
             const icon = iconOf(element);
-            // The element within what holds it: by its role and name, its icon, its class, its tag.
-            const inner = role && name ? [{ m: 'role', role, name, exact: true }]
-              : icon?.css ? [{ m: 'css', css: icon.css }]
-              : element.id && found(element.id) ? [{ m: 'css', css: `[id=${quote(element.id)}]` }]
-              : role ? [{ m: 'role', role }]
-              : [{ m: 'css', css: libraryCss(element) }];
-            const group = groupOf(element);
-            if (group) add('group', [{ m: 'css', css: libraryCss(group.group) }, { m: 'has', text: group.label }, ...inner], { text: group.label });
+            // The element within what holds it: by its role and name (exactly, else as a part of its name, as an icon
+            // font's glyph is part of it), its icon, its class, its tag.
+            const inners = role && name ? [[{ m: 'role', role, name, exact: true }], [{ m: 'role', role, name }]]
+              : [icon?.css ? [{ m: 'css', css: icon.css }]
+                : element.id && found(element.id) ? [{ m: 'css', css: `[id=${quote(element.id)}]` }]
+                : role ? [{ m: 'role', role }]
+                : [{ m: 'css', css: libraryCss(element) }]];
+            const within = (kind, outer, extra) => {
+              for (const inner of inners) {
+                const tried = candidate(kind, scope, [...outer, ...inner], element, extra);
+                if (tried.matches || inner === inners[inners.length - 1]) { candidates.push(tried); return; }
+              }
+            };
+            // A field's group: a button or a link of a group is no field of it.
+            const field = !element.matches('button, a[href], [role=button], [role=link], [role=menuitem], [role=tab], [role=option]');
+            const group = field ? groupOf(element) : null;
+            if (group) within('group', [{ m: 'css', css: libraryCss(group.group) }, { m: 'has', text: group.label }], { text: group.label });
             const section = sectionOf(element);
             if (section && (role === 'button' || role === 'link') && name)
-              add('section', [{ m: 'css', css: libraryCss(section.holder) }, { m: 'has', text: section.heading }, ...inner], { text: section.heading });
+              within('section', [{ m: 'css', css: libraryCss(section.holder) }, { m: 'has', text: section.heading }], { text: section.heading });
             const card = cardOf(element);
             if (card && libraryClass(card.item))
-              add('item', [{ m: 'css', css: libraryCss(card.item) }, { m: 'filter', hasText: card.text }, ...inner], { text: card.text });
+              within('item', [{ m: 'css', css: libraryCss(card.item) }, { m: 'filter', hasText: card.text }], { text: card.text });
             let ids = 0;
             for (let holder = upFrom(element), depth = 0; holder && depth < 8 && ids < 2; holder = upFrom(holder), depth++) {
               if (holder === document.body || holder.matches(DIALOGS)) break;
               if (!holder.id || /^\d|[\s'"\\]/.test(holder.id)) continue;
               ids++;
-              add('within', [{ m: 'css', css: `[id=${quote(holder.id)}]` }, ...inner], { value: holder.id });
+              within('within', [{ m: 'css', css: `[id=${quote(holder.id)}]` }], { value: holder.id });
             }
             if (icon?.css) add('icon', [{ m: 'css', css: icon.css }], { text: icon.word });
             const title = element.getAttribute('title');
@@ -958,11 +968,12 @@ internal static class CaptureScript
           addEventListener('focusin', (event) => safe(() => { const field = deepTarget(event); if (field && isTextual(field)) lastField = field; }), true);
           // A file chooser opened by what stands for it: a "Browse" beside the hidden file input of its group.
           function fileInputNear(hit) {
+            if (closestUp(hit, 'button, a[href], [role=button], [role=link], input, select, textarea')) return null;
             for (let holder = hit, depth = 0; holder && depth < 4; holder = upFrom(holder), depth++) {
-              if (holder === document.body || holder.matches(FILLABLE) && !holder.matches('input[type=file]')) return null;
+              if (holder === document.body) return null;
               const inputs = holder.querySelectorAll('input[type=file]');
+              if (inputs.length > 1 || [...holder.querySelectorAll(INTERACTIVE)].some((other) => !other.matches('input[type=file]'))) return null;
               if (inputs.length === 1) return inputs[0];
-              if (inputs.length > 1) return null;
             }
             return null;
           }
@@ -1130,7 +1141,12 @@ internal static class CaptureScript
                 if (mutation.type === 'childList')
                   return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node.nodeType === 1 || node.textContent.trim());
                 if (mutation.type === 'characterData') return !!mutation.target.textContent.trim();
-                if (['style', 'tabindex', 'aria-activedescendant'].includes(mutation.attributeName)) return false;
+                // A style that shows or hides something is a change; one that animates it is not.
+                if (mutation.attributeName === 'style') {
+                  const shown = (style) => /(display|visibility)\s*:\s*(none|hidden)/i.test(style ?? '');
+                  return shown(mutation.oldValue) !== shown(mutation.target.getAttribute('style'));
+                }
+                if (['tabindex', 'aria-activedescendant'].includes(mutation.attributeName)) return false;
                 if (mutation.attributeName === 'class') {
                   const before = new Set((mutation.oldValue ?? '').split(/\s+/).filter(Boolean));
                   const after = new Set([...mutation.target.classList]);
@@ -1143,7 +1159,7 @@ internal static class CaptureScript
             }));
             observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true });
             changesWatched = { id, observer };
-            setTimeout(() => observer.disconnect(), 700);
+            setTimeout(() => observer.disconnect(), 900);
           }
 
           function emitClick(state, rest, element, via) {
@@ -1152,7 +1168,7 @@ internal static class CaptureScript
             const focus = !!focused && isTextual(focused) && !focused.readOnly && (focused === element || containsDeep(element, focused));
             const action = { ...rest, id: state.id, t: state.t, kind: 'click', via, watched: true, ...(focus ? { focus } : {}) };
             record(action);
-            watchChanges(state.id);
+            if (changesWatched?.id !== state.id) watchChanges(state.id);
             lastClick = { element, t: state.t, record: action };
             if (rest.widget === 'tab') setTimeout(() => safe(() => {
               if (element.getAttribute('aria-selected') === 'true') effect('tabSelected', {}, state.id);
@@ -1190,6 +1206,8 @@ internal static class CaptureScript
             if (draft.ignore) { pending = null; return; }
             pending = { id: newId(), t: now(), x: event.clientX, y: event.clientY, draft, hit, detail: event.detail };
             remember(pending.id);
+            // From the press on: a select opens its list as it is pressed.
+            watchChanges(pending.id);
           }), { capture: true, passive: true });
 
           addEventListener('pointerup', (event) => safe(() => {

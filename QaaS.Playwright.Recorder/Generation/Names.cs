@@ -35,9 +35,10 @@ internal static partial class Names
         if (target is null) return null;
         var text = Clean(target.Text);
         var fromPlaceholder = text is not null && (text == Clean(target.Placeholder) || IsExample(text));
+        var control = target.Tag is "button" or "a" || target.Role is "button" or "link" or "menuitem" or "tab" or "option";
         return Clean(target.Label)
                ?? (fromPlaceholder ? null : text)
-               ?? Clean(Hintless(target.GroupLabel))
+               ?? (control ? null : Clean(Hintless(target.GroupLabel)))
                ?? (text is not null && !IsExample(text) ? text : null)
                ?? IconName(target.Icon);
     }

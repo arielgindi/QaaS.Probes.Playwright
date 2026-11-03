@@ -37,6 +37,7 @@ internal static partial class FlowPlanner
         AssignSettings(actions);
         SplitIntoSteps(actions, plan, LoopFinder.Find(actions));
         SplitAtResults(plan);
+        SplitAtSections(plan);
         ApplyEdits(plan);
         CollectSettings(plan);
         StepNamer.Name(plan);
@@ -399,6 +400,27 @@ internal static partial class FlowPlanner
                 : last.Effects.FirstOrDefault(effect => effect.Kind == "popup")?.Page;
         }
     }
+
+    // A step works in one section of the page, as a person goes from a form's "Personal Details" to its "Custom Fields":
+    // where the heading of what the actions are in changes, a step ends.
+    private static void SplitAtSections(FlowPlan plan)
+    {
+        for (var index = 0; index < plan.Steps.Count; index++)
+        {
+            var step = plan.Steps[index];
+            if (step.Loop is not null || step.Opens is not null || step.OpensPage is not null) continue;
+            var at = Enumerable.Range(1, Math.Max(0, step.Actions.Count - 1)).FirstOrDefault(position =>
+                SectionOf(step.Actions[position - 1]) is { } before && SectionOf(step.Actions[position]) is { } after && before != after);
+            if (at == 0) continue;
+            var rest = new Step { Page = step.Page, Dialog = step.Dialog, Ended = step.Ended };
+            rest.Actions.AddRange(step.Actions.Skip(at));
+            step.Actions.RemoveRange(at, step.Actions.Count - at);
+            step.Ended = false;
+            plan.Steps.Insert(index + 1, rest);
+        }
+    }
+
+    private static string? SectionOf(PlannedAction action) => action.Kind == "expect" ? null : action.Source.Element?.Section;
 
     // What the person changed about a setting in the panel: its name, its default, a run stamp, or a date from today. A
     // setting of a loop takes only a default, as its name and the way it is typed are the list's.

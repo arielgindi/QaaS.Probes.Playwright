@@ -60,12 +60,13 @@ internal static partial class Noise
             || (target.Tag == "input" && TextTypes.Contains(target.Type ?? "text") && TextRoles.Contains(target.Role ?? "textbox")));
 
     /// <summary>
-    /// A click on what is no control, which the page was watched after and which changed nothing at all. A recording of an
-    /// older recorder did not watch: such a click is suggested to leave out instead.
+    /// A click on what is no control nor an item of a list (a card, a slide, an option chosen with no change to see), which
+    /// the page was watched after and which changed nothing at all. A recording of an older recorder did not watch: such
+    /// a click is suggested to leave out instead.
     /// </summary>
     public static bool DidNothing(PlannedAction click) =>
         click.Kind is "click" or "dblclick" && click.Source.Watched == true && click.Effects.Count == 0
-        && !IsControl(click.Source.Target);
+        && !IsControl(click.Source.Target) && click.Source.Target?.Item != true;
 
     /// <summary>What a person acts on: a native control, or an element of a control's role.</summary>
     public static bool IsControl(CapturedTarget? target) =>
@@ -174,7 +175,7 @@ internal static partial class Noise
         }
 
         if (repeats.Count == 0) return null;
-        var name = Quote(action.Source.Target?.Text) ?? "the element";
+        var name = Quote(Names.Human(action.Source.Target)) ?? "The element";
         var times = repeats.Count + 1;
         var text = action.Effects.Count == 0
             ? $"{name} is clicked {times} times in a row, and nothing showed after any: the flow needs one click, as the next would find nothing to click once one worked."

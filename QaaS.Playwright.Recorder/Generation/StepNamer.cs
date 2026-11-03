@@ -80,6 +80,7 @@ internal static partial class StepNamer
                 var subject = step.Dialog is { } title ? DialogSubject(title, last.Source.Dialog)
                     : SectionOf(step) ?? PageSubject(last.Source.Url) ?? plan.ClassName;
                 name = Choice(step) is { } chosen ? "Choose" + chosen
+                    : Toggles(step) is { } toggled ? toggled
                     : verb is not null && (step.Ended || !hasValues) ? verb
                     : last.Kind == "navigate" ? "Open" + (PageSubject(last.Source.Url) ?? "Page")
                     : last is { Kind: "press", Source.Key: "Escape" } && last.Has("dialogClosed") ? "Close" + subject
@@ -123,7 +124,11 @@ internal static partial class StepNamer
     /// </summary>
     public static string? Label(PlannedAction action, string? without = null)
     {
-        var text = action.Source.Target?.Text;
+        // An icon button by what its icon says (a trash is "Delete"), a close button's cross by its word.
+        var own = action.Source.Target?.Text;
+        var text = own is { Length: > 0 } && CloseGlyph().IsMatch(own) ? "Close"
+            : !string.IsNullOrWhiteSpace(own) ? own
+            : Names.IconName(action.Source.Target?.Icon);
         if (string.IsNullOrWhiteSpace(text)) return null;
         if (without is { Length: > 0 }) text = text.Replace(without, " ", StringComparison.Ordinal);
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -144,11 +149,24 @@ internal static partial class StepNamer
         var verb = label is { Length: <= 40 } && CSharp.IsAsciiText(label) && !label.Any(char.IsDigit) ? CSharp.Pascal(label)
             : Stem(target);
         if (verb is null) return null;
+        // A lone verb says what of by its section: "Add" in Attachments adds an attachment.
+        if (Verbs.Contains(verb) && CSharp.IsAsciiText(target?.Section) && CSharp.Pascal(target!.Section) is { } section
+            && !verb.Equals(section, StringComparison.Ordinal))
+            verb += LoopFinder.Singular(section);
         if (target?.Role is "link" or "tab" && !Verbs.Contains(FirstWord(verb))) verb = "Open" + verb;
         if (action.RowKey is not null && CSharp.Pascal(target?.Row?.Header) is { } header
                                       && !verb.Contains(header, StringComparison.Ordinal))
             verb += header;
         return verb;
+    }
+
+    // A step that only ticks or turns on: by its setting when that says what it does (SelectAll), else CheckTerms,
+    // TurnOnNotifications.
+    private static string? Toggles(Step step)
+    {
+        if (step.Actions is not [{ Kind: "check" or "uncheck", Value.Name: { } setting } only] || only.Source.Widget == "radio") return null;
+        if (IsVerb(FirstWord(setting))) return setting;
+        return (only.Source.Widget == "switch" ? only.Kind == "check" ? "TurnOn" : "TurnOff" : only.Kind == "check" ? "Check" : "Uncheck") + setting;
     }
 
     // The section all of a step's actions are in, by its heading.
@@ -318,6 +336,8 @@ internal static partial class StepNamer
 
         private static string VerbOf(PlannedAction action) => action.Kind switch
         {
+            "check" when action.Source.Widget == "switch" => "turns on",
+            "uncheck" when action.Source.Widget == "switch" => "turns off",
             "check" when action.Source.Widget == "radio" => "picks",
             "check" => "ticks",
             "uncheck" => "unticks",
@@ -375,8 +395,9 @@ internal static partial class StepNamer
             if (filled.Select(action => action.Kind).Distinct().ToList() is [var kind and ("check" or "uncheck")]
                 && filled.All(action => action.Source.Widget != "radio"))
             {
-                var boxes = filled.Select(action => Quote(action.Source.Target?.Text) ?? Human(action.Value!.Name)).Distinct();
-                return $"{(kind == "check" ? "ticks" : "unticks")} {Join([.. boxes], " and ")}";
+                var boxes = filled.Select(action => Quote(Names.Human(action.Source.Target)) ?? Human(action.Value!.Name)).Distinct();
+                var switches = filled.All(action => action.Source.Widget == "switch");
+                return $"{(switches ? kind == "check" ? "turns on" : "turns off" : kind == "check" ? "ticks" : "unticks")} {Join([.. boxes], " and ")}";
             }
 
             if (filled.All(action => action.Kind == "choose"))
@@ -470,6 +491,9 @@ internal static partial class StepNamer
 
     [GeneratedRegex("^[A-Z][a-z0-9]*")]
     private static partial Regex FirstWordOf();
+
+    [GeneratedRegex(@"^\s*[×✕✖✗xX]\s*$")]
+    private static partial Regex CloseGlyph();
 
     // The name of a record's id in a route: empNumber, userId, id.
     [GeneratedRegex("(?i)(id|number|no|num|key|code)$")]

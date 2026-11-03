@@ -67,6 +67,9 @@ internal static class LoopFinder
             }
 
             var rounds = actions.GetRange(start, length * repeats).Chunk(length).ToList();
+            // A round acts on one row, as a person goes through them; a round that ends on the next row is the rounds
+            // seen from the wrong start.
+            if (rounds[0].Select(action => action.RowKey).OfType<Setting>().Distinct().Count() > 1) continue;
             var least = length == 1 && rounds.All(round => Noise.IsMulti(round[0], actions)) ? MinChoices : MinRepeats;
             if (repeats < least || !HasEvidence(rounds)) continue;
             if (best is null || length * repeats > best.Value.Length * best.Value.Repeats) best = (length, repeats);

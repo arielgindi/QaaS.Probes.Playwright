@@ -8,7 +8,7 @@ namespace QaaS.Playwright.Recorder.Generation;
 /// Picks the locator of an element from the ones the capture script checked, and writes it as C#. In order, the first
 /// that found the element alone wins: its Formik path (<c>[name='x']</c>), its own stable id, a MUI Select's field by
 /// the path of its hidden input, the test id, its role and exact name, its row, the form group its label names, the
-/// section its heading names, the card its words tell apart, the nearest stable id around it, its icon, its title, for
+/// section its heading names, its title, its icon, the card its words tell apart, the nearest stable id around it, for
 /// an element without a role (a card, an option of a hand-made list) the element of its label's text in it, the place it
 /// has in what holds it (the checkbox of a table's header), and last Playwright's own generator. Never a class a
 /// CSS-in-JS library hashed, a position, an empty name, a text glued from several elements, or a row's whole name.
@@ -17,7 +17,7 @@ internal static partial class LocatorPolicy
 {
     private static readonly string[] Order =
     [
-        "name", "id", "select", "testid", "role", "roleInGroup", "row", "group", "section", "item", "within", "icon", "title",
+        "name", "id", "select", "testid", "role", "roleInGroup", "row", "group", "section", "title", "icon", "item", "within",
         "text", "structure", "generator",
     ];
 
@@ -32,7 +32,10 @@ internal static partial class LocatorPolicy
     {
         if (target is null) return null;
         if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
-        var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)).ToList();
+        // A field named only by its placeholder's example of a value (yyyy-dd-mm) is found by its group instead.
+        var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)
+                                                          && !(candidate.Kind == "role" && candidate.Text is { } said
+                                                               && said == target.Placeholder && Names.IsExample(said))).ToList();
         foreach (var kind in byName ? [.. ByName, .. Order] : Order)
             if (usable.FirstOrDefault(candidate => candidate.Kind == kind) is { } found)
                 return found;
