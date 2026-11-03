@@ -35,7 +35,7 @@ public class TestRunTests
             await Expect(code).ToContainTextAsync("ToBeVisibleAsync");
             await app.Locator("[name='title']").FillAsync("Printer jammed");
             await app.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
-            await Expect(code).ToContainTextAsync("ToHaveURLAsync");
+            await Expect(code).ToContainTextAsync("ToBeHiddenAsync");
             var recorded = session.Build().Actions.Select(action => action.Id).ToList();
 
             await view.GetByRole(AriaRole.Button, new() { Name = "Test the flow" }).ClickAsync();
@@ -66,39 +66,44 @@ public class TestRunTests
     }
 
     [Test]
-    public async Task Test_FailsAtTheStepWhoseElementIsGone_WithWhatItWaitedFor_OnWhichPage()
+    public async Task Test_FailsAtTheRepeatWhoseElementIsGone_WithWhatItWaitedFor_OnWhichPage()
     {
         using var site = TestSite.Start();
         var actions = 0;
-        var session = await StartAsync($"{site.Url}/order", news => { if (news is CapturedAction) Interlocked.Increment(ref actions); });
+        var session = await StartAsync($"{site.Url}/todos", news => { if (news is CapturedAction) Interlocked.Increment(ref actions); });
         try
         {
+            // Three tasks typed alike make a loop. The list takes three here, and two in the test, as on a new page.
             var app = session.Page;
-            await app.GetByTestId("submit-order").ClickAsync();
-            // A banner the app shows only once: the test run's page never has it.
-            await app.EvaluateAsync("() => document.body.insertAdjacentHTML('beforeend', '<button id=\"dismiss-banner\">Dismiss</button>')");
-            await app.Locator("#dismiss-banner").ClickAsync();
-            await app.GetByTestId("submit-order").ClickAsync();
-            for (var wait = 0; wait < 50 && Volatile.Read(ref actions) < 3; wait++) await Task.Delay(100);
+            await app.EvaluateAsync("() => window.limit = 3");
+            foreach (var task in (string[])["Buy milk", "Pay the bill", "Return the books"])
+            {
+                await app.Locator("#new-task").FillAsync(task);
+                await app.Locator("#new-task").PressAsync("Enter");
+            }
+
+            for (var wait = 0; wait < 50 && Volatile.Read(ref actions) < 6; wait++) await Task.Delay(100);
 
             await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 1000 });
-            var request = RecordRequest.Parse(["record", "submit-order", session.Options.Url]);
+            var request = RecordRequest.Parse(["record", "add-tasks", session.Options.Url]);
             var report = await tester.RunAsync(request, "Flows");
 
             var flow = FlowCodeGenerator.Generate(session.Build(), request.ClassName, "Flows");
-            var (passed, gone, after) = (report.Actions[0], report.Actions[1], report.Actions[2]);
+            var gone = report.Actions[4];
             var failure = report.Failure!;
             Assert.Multiple(() =>
             {
+                Assert.That(report.Code, Does.Contain("foreach (var task in Configuration.NewTasks)"), "the repeats are a loop");
                 Assert.That(report.Outcome, Is.EqualTo(TestOutcome.Failed), report.Problem);
-                Assert.That(failure.Action, Is.EqualTo(gone));
-                Assert.That(failure.Line, Is.EqualTo(flow.ActionLines[gone].First));
+                Assert.That(failure.Action, Is.EqualTo(gone), "the third repeat's fill");
+                Assert.That(failure.Line, Is.EqualTo(flow.ActionLines[gone].First), "the loop's line that fills");
                 Assert.That(failure.Headline, Is.EqualTo(
-                    $"Timeout 1000ms exceeded (waiting for Locator(\"[id='dismiss-banner']\")) on {site.Url}/order"));
+                    $"Timeout 1000ms exceeded (waiting for Locator(\"[id='new-task']\")) on {site.Url}/todos"));
                 Assert.That(failure.Screenshot, Does.StartWith("data:image/png;base64,"));
-                Assert.That(report.Steps[passed].State, Is.EqualTo(StepState.Passed));
-                Assert.That(report.Steps[gone].State, Is.EqualTo(StepState.Failed));
-                Assert.That(report.Steps[after].State, Is.EqualTo(StepState.NotRun));
+                Assert.That(report.Actions.Select(action => report.Steps[action].State), Is.EqualTo(new[]
+                {
+                    StepState.Passed, StepState.Passed, StepState.Passed, StepState.Passed, StepState.Failed, StepState.NotRun,
+                }));
                 Assert.That(session.State, Is.EqualTo(RecordingState.Recording));
             });
         }
