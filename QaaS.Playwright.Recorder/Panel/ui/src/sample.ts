@@ -1,3 +1,4 @@
+import { isGoing } from './test';
 import type { Command, DomNode, DomPatch, PanelState, PickedElement, TestRun } from './types';
 
 // A recording of a helpdesk's ticket form, as the recorder shows it, for working on the panel with `npm run dev`.
@@ -499,7 +500,9 @@ function testIn(state: string): TestRun | undefined {
   const started = Date.now() - 2300;
   switch (state) {
     case 'building':
-      return { run: 1, state: 'building', total: 6, started, steps: {}, warnings: [] };
+    case 'window':
+    case 'start':
+      return { run: 1, state, total: 6, started, since: Date.now() - 400, steps: {}, warnings: [] };
     case 'running':
       return { run: 1, state: 'running', total: 6, started, steps: at(3, { state: 'running', since: Date.now() - 700 }), warnings: [], slowMotion: true };
     case 'passed':
@@ -521,7 +524,7 @@ export function start(): void {
   const tree = patch();
   const menuItems = tree.nodes.filter((node) => node.role === 'menuitem').map((node) => node.id);
   const initial = testIn(new URLSearchParams(location.search).get('test') ?? '');
-  const going = initial?.state === 'building' || initial?.state === 'running';
+  const going = isGoing(initial);
   let current: PanelState = { ...sample, status: going ? 'testing' : sample.status, test: initial };
   const show = (state: PanelState) => {
     current = state;
@@ -531,8 +534,9 @@ export function start(): void {
   let timer = 0;
   const simulate = (upTo: string | undefined, slow: boolean) => {
     const total = upTo ? order.indexOf(upTo) + 1 : order.length;
-    const run: TestRun = { run: (current.test?.run ?? 0) + 1, state: 'building', total, upTo, slowMotion: slow, started: Date.now(), steps: {}, warnings: [] };
+    const run: TestRun = { run: (current.test?.run ?? 0) + 1, state: 'building', total, upTo, slowMotion: slow, started: Date.now(), since: Date.now(), steps: {}, warnings: [] };
     show({ ...current, status: 'testing', test: run });
+    const phase = (state: TestRun['state']) => show({ ...current, test: { ...current.test!, state, since: Date.now() } });
     let index = -1;
     let began = Date.now();
     const next = () => {
@@ -555,7 +559,14 @@ export function start(): void {
       show({ ...current, test: { ...current.test!, state: 'running', steps } });
       timer = window.setTimeout(next, (slow ? 900 : 350) + Math.random() * 400);
     };
-    timer = window.setTimeout(next, 700);
+    // The build, its window, its start page, then the steps, as the recorder's run tells each.
+    timer = window.setTimeout(() => {
+      phase('window');
+      timer = window.setTimeout(() => {
+        phase('start');
+        timer = window.setTimeout(next, 500);
+      }, 300);
+    }, 250);
   };
   const elements = (message: object) => window.__qaasPanelElements?.(JSON.stringify(message));
   window.__qaasPanelSend = (json) => {

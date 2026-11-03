@@ -51,6 +51,8 @@ export interface TestRun {
   login?: string;
   /** When it started, in Unix milliseconds. */
   started: number;
+  /** When its state began, in Unix milliseconds: the time of each phase before the first step. */
+  since?: number;
   /** How long the browser's part took, once it ended. */
   ms?: number;
   /** The lines of the statement running; in a loop, of its body's statement, which every repeat runs. */
@@ -66,7 +68,8 @@ export interface TestRun {
   stale?: boolean;
 }
 
-export type TestState = 'building' | 'login' | 'running' | 'passed' | 'failed' | 'stopped' | 'error';
+/** Before the first step: building the flow, opening its window, opening BaseUrl there, logging in. */
+export type TestState = 'building' | 'window' | 'start' | 'login' | 'running' | 'passed' | 'failed' | 'stopped' | 'error';
 
 export interface TestStep {
   state: 'running' | 'passed' | 'failed' | 'skipped';
