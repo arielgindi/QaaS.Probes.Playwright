@@ -1479,6 +1479,8 @@ internal static class CaptureScript
               gap: 8px; max-width: calc(100vw - 24px); padding: 4px 5px 4px 11px; border-radius: 999px; white-space: nowrap;
               pointer-events: none; transition: opacity 120ms ease-out; }
             .pill.shown { display: flex; }
+            /* A test or a replay runs a while: its pill at the bottom, off the app's header. */
+            .pill[data-tone=accent] { top: auto; bottom: 10px; }
             .pill.near { opacity: .18; }
             .pill.interactive { pointer-events: auto; }
             .pill::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone);
@@ -1666,7 +1668,7 @@ internal static class CaptureScript
           // The box over the element, and the label beside it.
           function drawOverlay() {
             const element = hover?.boxed ?? hover?.shown;
-            if (!(overlayOn || checking) || dragging || !element?.isConnected) { hideOverlay(); return; }
+            if (!(overlayOn || checking) || dragging || !element?.isConnected || quietOn && hover?.hit === quietOn) { hideOverlay(); return; }
             const rect = element.getBoundingClientRect();
             if (!rect.width && !rect.height) { hideOverlay(); return; }
             const { box, label } = overlayView();
@@ -1890,8 +1892,14 @@ internal static class CaptureScript
             moved = { hit: deepTarget(event), buttons: event.buttons };
             if (!moveFrame) moveFrame = requestAnimationFrame(() => { moveFrame = 0; safe(() => movedTo(moved)); });
           }), { capture: true, passive: true });
-          addEventListener('pointerdown', (event) => { if (event.isTrusted) downAt = { x: event.clientX, y: event.clientY }; },
-            { capture: true, passive: true });
+          // Once clicked, the element's box and label step aside until the pointer moves onto another one, as what the
+          // click opens (a menu, a list) shows where they were.
+          let quietOn = null;
+          addEventListener('pointerdown', (event) => {
+            if (!event.isTrusted) return;
+            downAt = { x: event.clientX, y: event.clientY };
+            if (!checking) { quietOn = deepTarget(event); scheduleDraw(); }
+          }, { capture: true, passive: true });
           addEventListener('pointerup', () => safe(() => {
             downAt = null;
             if (dragging) { dragging = false; scheduleDraw(); }
@@ -1905,6 +1913,7 @@ internal static class CaptureScript
             if (dragging) { hideOverlay(); return; }
             if (chooser || !(overlayOn && recording()) && !checking) return;
             const target = hit && !onScrollbar(hit, pointer.x, pointer.y) ? hit : null;
+            if (target !== quietOn) quietOn = null;
             if (target && target === hover?.hit) {
               // The page may have changed under a pointer at rest.
               if (now() - hover.at > 1500) scheduleExplain();

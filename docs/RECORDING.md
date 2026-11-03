@@ -86,12 +86,13 @@ what the panel points at (`Step`, `Locator`, `Element`). The box glides from ele
 the last element's words, dimmed, until the new ones come, so passing over many elements is quiet; both are drawn
 once a frame, without animation when the system asks for reduced motion. The label goes below the element, else above
 it, else inside it, always on the screen and never over the pointer. The overlay steps aside while you drag or select
-text, or while the pointer is on a scrollbar, and comes back as you let go.
+text, or while the pointer is on a scrollbar, and comes back as you let go; once you click an element, it steps aside
+until the pointer moves onto another one, as a menu or a list the click opens shows where the label was.
 
 When the recording is in another mode than recording, a pill at the top of the page says which, in its colour, and the
 key that leaves it: `Recording paused · F8`, `Trying · F7`, `Check · Esc`, `Inspect · Esc`, the part being recorded
-again with `F2`, or the login flow's progress. It fades as the pointer comes near it, so what is under it can be seen
-and clicked.
+again with `F2`, or the login flow's progress; while the flow is tested or replayed, it is at the bottom, off the app's
+header. It fades as the pointer comes near it, so what is under it can be seen and clicked.
 
 The overlay never changes the page: it is drawn in a closed shadow root on an element of its own outside `<body>`,
 takes no pointer events, no focus and no room, and Playwright's selectors do not see into it. It shows in the main page,

@@ -489,6 +489,14 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         {
             _namespace ??= ProjectNamespace.Of(Request.OutputDir);
             var recording = _session.Build();
+            // An element picked in the Elements view on a page the app has left is no element of the page now: what it
+            // offers ("Use for") would act on what is not there.
+            if (_picked is { Url: { } pickedAt, Gone: false } stale && _session.PageNamed(stale.Page) is { } at && at.Url != pickedAt)
+                (_picked, _elementStep) = (null, null);
+            // A test that failed at a step the flow has no more, deleted or left out since, says nothing of the flow now.
+            if (_tester.Report is { Phase: TestPhase.Done, Outcome: TestOutcome.Failed, Failure.Action: { } failedAt }
+                && recording.Actions.All(action => action.Id != failedAt))
+                _tester.Clear();
             var fresh = _session.Log.Fresh(recording);
             _shown = PanelSnapshot.Of(recording, Request, _namespace, Status(), _error, fresh);
             // Told once: the panel says it, and the next state is without it.
