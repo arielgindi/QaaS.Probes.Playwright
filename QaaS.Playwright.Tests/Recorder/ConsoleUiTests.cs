@@ -13,10 +13,10 @@ public class ConsoleUiTests
         var terminal = Terminal.Fixed(TextWriter.Null, width: 60);
         var action = new CapturedAction
         {
-            Id = "a1", Kind = "fill", Value = "ישראל\u001b[31m",
+            Id = "a1", Kind = "fill", Value = "مرحبا\u001b[31m",
             Target = new CapturedTarget
             {
-                Tag = "input", Text = "שם פרטי",
+                Tag = "input", Text = "اسم أول",
                 Candidates =
                 [
                     new CapturedCandidate
@@ -34,7 +34,7 @@ public class ConsoleUiTests
         {
             Assert.That(Terminal.WidthOf(line), Is.EqualTo(59), line);
             // Each in an isolate of its own, so a terminal that lays out bidirectional text keeps the name first.
-            Assert.That(line.Contains("\u2068שם פרטי\u2069 = \u2068ישראל [31m\u2069", StringComparison.Ordinal), line);
+            Assert.That(line.Contains("\u2068اسم أول\u2069 = \u2068مرحبا [31m\u2069", StringComparison.Ordinal), line);
             Assert.That(line.Contains('\u001b'), Is.False, "a page's escape sequence reached the terminal");
             Assert.That(line, Does.StartWith("    3 ≡ fill    ").And.EndWith("[name='employee.add…"));
         });
