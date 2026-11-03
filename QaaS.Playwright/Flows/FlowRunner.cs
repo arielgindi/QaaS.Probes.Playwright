@@ -12,10 +12,12 @@ namespace QaaS.Playwright.Flows;
 /// Runs flows in order on one page and records each one's outcome for <see cref="PlaywrightFlowAssertion"/>, named per
 /// item in ForEach mode. The first flow that throws stops the run: its failure is recorded with the screenshot and URL
 /// of its page and of each pop-up it left open, and the whole exception, the run's secrets hidden, then rethrown. Each
-/// flow's progress goes to the console; <paramref name="logger"/>, the run's, takes the warnings for the report.
+/// flow's progress goes to the console; <paramref name="logger"/>, the run's, takes the warnings for the report. A flow
+/// is created by its name with <paramref name="create"/>, by default <see cref="FlowDiscovery.Resolve"/>; a flow that
+/// throws <see cref="FlowStoppedException"/> was stopped on purpose, and is neither recorded nor shot.
 /// </summary>
 internal sealed class FlowRunner(Context context, string? sessionName, string? probeName, PlaywrightFlowConfig config,
-    IConfiguration flowConfiguration, Secrets secrets, ILogger logger)
+    IConfiguration flowConfiguration, Secrets secrets, ILogger logger, Func<string, IPlaywrightFlow>? create = null)
 {
     private const int ScreenshotTimeoutMs = 5_000;
 
@@ -32,7 +34,7 @@ internal sealed class FlowRunner(Context context, string? sessionName, string? p
                 Record(new PlaywrightFlowOutcome(name, Passed: true, ProbeName: probeName));
                 context.Logger.LogInformation("{Flow} passed in {Seconds:0.0} s", name, timer.Elapsed.TotalSeconds);
             }
-            catch (Exception failure)
+            catch (Exception failure) when (failure is not FlowStoppedException)
             {
                 context.Logger.LogWarning("{Flow} failed after {Seconds:0.0} s", name, timer.Elapsed.TotalSeconds);
                 var popups = browser.Pages.Skip(pagesBefore).Where(page => !page.IsClosed);
@@ -82,7 +84,8 @@ internal sealed class FlowRunner(Context context, string? sessionName, string? p
     // the run, so invalid settings fail only a flow whose own validation changed its mind.
     private async Task RunFlowAsync(string flowName, FlowItem? item, IPage page)
     {
-        var (flow, problems) = FlowLoader.Load(flowName, context, config.BaseUrl, flowConfiguration, item);
+        var (flow, problems) = FlowLoader.Load(
+            create?.Invoke(flowName) ?? FlowDiscovery.Resolve(flowName), flowName, context, config.BaseUrl, flowConfiguration, item);
         try
         {
             if (problems.Count > 0)
