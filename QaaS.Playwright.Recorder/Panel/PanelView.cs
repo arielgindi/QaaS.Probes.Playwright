@@ -195,6 +195,35 @@ internal sealed record PanelElement(int Node, string Page)
 
     /// <summary>A text field, which a fill can type into.</summary>
     public bool Fillable { get; init; }
+
+    /// <summary>
+    /// The lines each step on it would write, before it is made: <c>use</c>, the selected step acting on it instead, and
+    /// <c>click</c>, <c>fill</c> and <c>check</c>, added where the next action goes.
+    /// </summary>
+    public IReadOnlyList<PanelPreview> Previews { get; init; } = [];
+
+    /// <summary>The checks that fit it, the likeliest at <see cref="Check"/>.</summary>
+    public IReadOnlyList<PanelCheck> Checks { get; init; } = [];
+
+    public int Check { get; init; }
+
+    /// <summary>
+    /// What Enter makes of it: <c>use</c> when it is around, inside or in the same row as the selected step's element,
+    /// else <c>fill</c> for a text field and <c>click</c>.
+    /// </summary>
+    public string? Primary { get; init; }
+}
+
+/// <summary>The lines a step on the picked element would write; for <c>use</c>, the step's lines as they are now too.</summary>
+internal sealed record PanelPreview(string Kind, string Code)
+{
+    public string? Was { get; init; }
+}
+
+/// <summary>A check that fits the picked element: what it expects (<c>text</c>, <c>visible</c>, ...), and of what value.</summary>
+internal sealed record PanelCheck(string Kind, string Name)
+{
+    public string? Value { get; init; }
 }
 
 /// <summary>A test run of the flow as the panel shows it: where it is, each action's state, and how it ended.</summary>
