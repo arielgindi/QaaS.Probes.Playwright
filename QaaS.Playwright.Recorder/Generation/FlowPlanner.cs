@@ -264,6 +264,17 @@ internal static partial class FlowPlanner
                 case "fill":
                     // Text typed into an autocomplete and left there, no choice of it, is its text: the choices are its name's.
                     if (source.Widget == "autocomplete") (name, qualified) = (name + "Text", qualified is null ? null : qualified + "Text");
+                    // The same words typed again, into another field, are the same value: a user's name searched for after
+                    // it was given to the user reads the same setting, so a case that changes one changes both.
+                    if (source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
+                            setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value") is { } earlier
+                        && actions.Any(other => other.Kind == "fill" && other.Value == earlier
+                                                && (other.Key != action.Key || Path(other.Source.Url) != Path(action.Source.Url))))
+                    {
+                        action.Value = earlier;
+                        break;
+                    }
+
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
                     action.Value.Secret = field?.Type == "password";
                     break;
@@ -357,6 +368,8 @@ internal static partial class FlowPlanner
 
         return sources;
     }
+
+    private static string? Path(string? url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
 
     /// <summary>The setting of a field's value, as <see cref="Names.Setting"/> names it.</summary>
     internal static string SettingName(CapturedTarget? field) => Names.Setting(field);

@@ -83,6 +83,8 @@ internal static partial class Names
         if (field.Role == "option") return "Value";
         if (toggle && English(field.Text) is { } toggleLabel) return toggleLabel;
         if (toggle && InColumnHeader(field)) return "SelectAll";
+        // A row's checkbox, of no label: the row selected, by its key's column.
+        if (toggle && field.Row is { } row) return (CSharp.IsAsciiText(row.Header) ? CSharp.Pascal(row.Header) : "Row") + "Selected";
         if (Prompt(field.Placeholder ?? field.Text) is { } prompt)
             return field.Section is { } section && English(LoopFinder.Singular(CSharp.Pascal(section) ?? "")) is { } part
                                                 && StepNamer.Words(prompt).Count() == 1 && !prompt.StartsWith(part, StringComparison.Ordinal)

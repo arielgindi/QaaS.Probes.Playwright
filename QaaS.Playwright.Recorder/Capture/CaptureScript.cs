@@ -1036,13 +1036,19 @@ internal static class CaptureScript
             const open = [...new Set([...listbox.getRootNode().querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]'),
               ...document.querySelectorAll('[aria-haspopup=listbox][aria-expanded=true]')])].filter((each) => !containsDeep(listbox, each));
             if (open.length === 1) return open[0];
-            // Else the element clicked just before, when the list opened beside it, in what holds both, as OrangeHRM's
-            // select opens its list in its own wrapper: what tells which select the choice is of.
-            const clicked = lastClick?.element;
-            if (!clicked?.isConnected || containsDeep(listbox, clicked) || now() - lastClick.t > 60000) return null;
-            for (let holder = upFrom(clicked), depth = 0; holder && depth < 3; holder = upFrom(holder), depth++)
-              if (containsDeep(holder, listbox)) return clicked;
-            return null;
+            // Else the field typed into or the element clicked just before, when the list opened beside it, in what holds
+            // both, as OrangeHRM's select and autocomplete open their lists in their own wrappers: what tells which field
+            // the choice is of.
+            const near = (element) => {
+              if (!element?.isConnected || containsDeep(listbox, element)) return false;
+              for (let holder = upFrom(element), depth = 0; holder && depth < 4; holder = upFrom(holder), depth++)
+                if (containsDeep(holder, listbox)) return true;
+              return false;
+            };
+            const typed = activeElement();
+            if (typed && isTextual(typed) && near(typed)) return typed;
+            if (near(lastField)) return lastField;
+            return lastClick && now() - lastClick.t <= 60000 && near(lastClick.element) ? lastClick.element : null;
           };
 
           function draftFor(hit) {
@@ -1071,7 +1077,8 @@ internal static class CaptureScript
               // when its menu opened.
               const ownerInfo = !owner ? null : opened?.element === owner ? opened.info : describe(owner);
               return { element: option, owner, listbox, kind: 'choose',
-                widget: !owner ? 'option' : isAutocomplete(owner) ? 'autocomplete' : owner.tagName === 'SELECT' ? 'native' : 'select',
+                widget: !owner ? 'option' : isAutocomplete(owner) || isTextual(owner) && !owner.readOnly ? 'autocomplete'
+                  : owner.tagName === 'SELECT' ? 'native' : 'select',
                 option: info.target, ...(ownerInfo ?? info), field: ownerInfo?.target ?? null,
                 hoverMenu: hoverMenus.has(option.closest('[role=menu], [role=listbox]')), scrolled: scrolledList(option) };
             }

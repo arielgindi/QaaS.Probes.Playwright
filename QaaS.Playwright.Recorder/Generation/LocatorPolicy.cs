@@ -33,10 +33,12 @@ internal static partial class LocatorPolicy
         if (target is null) return null;
         byName |= IsNumberedToggle(target);
         if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
-        // A field named only by its placeholder's example of a value (yyyy-dd-mm) is found by its group instead.
+        // A field named only by its placeholder, a prompt (Type for hints...) or an example of a value (yyyy-dd-mm), is
+        // found by its group's label when it has one, and never by an example.
+        var grouped = target.Candidates.Any(candidate => candidate is { Kind: "group", Matches: true } && IsUsable(candidate));
         var usable = target.Candidates.Where(candidate => candidate.Matches && IsUsable(candidate)
                                                           && !(candidate.Kind == "role" && candidate.Text is { } said
-                                                               && said == target.Placeholder && Names.IsExample(said))).ToList();
+                                                               && said == target.Placeholder && (grouped || Names.IsExample(said)))).ToList();
         foreach (var kind in byName ? [.. ByName, .. Order] : Order)
             if (usable.FirstOrDefault(candidate => candidate.Kind == kind) is { } found)
                 return found;
