@@ -21,8 +21,12 @@ internal static class ConsoleUi
     private const int LeastLocator = 16;
     private static readonly int StepIndent = Margin.Length + NumberWidth + 3;
 
+    // A mode's line: "  ● Recording    Work through the site in Chrome; each action shows here.", its words in a column.
+    private const int ModeWidth = 14;
+
     private static readonly Lock Gate = new();
     private static readonly Dictionary<string, int> StepOfAction = [];
+    private static readonly HashSet<string> EffectsShown = [];
     private static int _lastStep;
     private static int _stepsBefore;
     private static bool _recording;
@@ -82,13 +86,17 @@ internal static class ConsoleUi
         ];
         (string, string)[] keys =
         [
-            ("F9", "Hides or shows the box over the element a click records"),
-            ($"Alt+{t.Glyph("↑", "Up")} / Alt+{t.Glyph("↓", "Down")}", "Picks the element around the box, or goes back"),
             ("F8", "Pauses or resumes the recording"),
             ("F6", "Checks something: a click picks the element, then you choose the check"),
-            ("F4", "Freezes the page's elements for the panel's Elements tab"),
+            ("F7", "Tries things: nothing is recorded, the panel shows how each would be written"),
+            ("Ctrl+Shift+C", "Picks an element for the panel's Elements view"),
+            ("F4", "Freezes the page's elements for the Elements view, e.g. with a menu open"),
+            ("F9", "Hides or shows the box over the element a click records"),
+            ($"Alt+{t.Glyph("↑", "Up")} / Alt+{t.Glyph("↓", "Down")}", "Picks the element around the box, or goes back"),
+            ("F2", "While a part is recorded again: done"),
             ("Esc", "While your login flow runs: stops it, to log in by hand"),
             ("Ctrl+Enter", "In the panel: tests the flow so far, as it will be saved"),
+            ("Ctrl+K", "In the panel: every command, with its key"),
             ("Enter", "Finishes and saves; so do Save in the panel and closing Chrome"),
         ];
         Rows(t, "USAGE", usage, ColumnFor(usage), Tone.Plain);
@@ -245,13 +253,14 @@ internal static class ConsoleUi
             Field(t, "Flow", [new Span(request.ClassName, Tone.Bold, Untrusted: true),
                 new Span($" {t.Glyph("→", "->")} ", Tone.Dim), new Span(Relative(request.CodePath), Shrink: Shrink.Middle, Untrusted: true)]);
             if (from is not null) Field(t, "From", [new Span(from, Tone.Dim)]);
-            Keys(t, [("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("F6", "check"),
-                ("F8", "pause"), ("F7", "try"), ("F4", "freeze elements"), ("Enter", "or close Chrome to finish")]);
+            Keys(t, [("F8", "pause"), ("F6", "check"), ("F7", "try"), ("Ctrl+Shift+C", "inspect"), ("F4", "freeze"),
+                ("F9", "overlay"), ($"Alt+{t.Glyph("↑/↓", "Up/Down")}", "pick element"), ("Enter", "or close Chrome to finish")]);
             t.WriteLine();
             if (from is null) RecordingState(t, "Recording", "Work through the site in Chrome; each action shows here.");
             else RecordingState(t, "Continuing", "Its steps replay first; then each action you do shows here, after them.");
             t.WriteLine();
             StepOfAction.Clear();
+            EffectsShown.Clear();
             (_lastStep, _stepsBefore) = (0, 0);
             Volatile.Write(ref _recording, true);
         }
@@ -288,9 +297,9 @@ internal static class ConsoleUi
     public static void Phase(string text) => Status(Out, Margin, Out.Glyph("›", ">"), Tone.Accent, $"{text}{Out.Ellipsis}", Tone.Dim);
 
     public static void Paused() =>
-        Status(Out, Margin, Out.Glyph("║", "="), Tone.Warning, "Paused. What you do now is not recorded.");
+        Mode(Out, Out.Glyph("║", "="), Tone.Warning, "Paused", "Nothing you do in Chrome is recorded. F8 resumes.");
 
-    public static void Resumed() => RecordingState(Out, "Recording", "resumed.");
+    public static void Resumed() => RecordingState(Out, "Recording", "again, from the page the app is on.");
 
     // ── One line of each kind ───────────────────────────────────────────────────────────────────────────────────
 
@@ -408,7 +417,9 @@ internal static class ConsoleUi
     /// <summary>The line of a step: its number, glyph and verb, the element's name and value, and its locator, dim.</summary>
     internal static string? StepLine(Terminal t, int number, CapturedAction action)
     {
-        if (action is { Kind: "click", Widget: "select-open" or "autocomplete-button" }) return null;
+        // What only opens a list the flow chooses from: it is no step of the flow, so none here either.
+        if (action is { Kind: "click", Widget: "select-open" or "autocomplete-button" } or { Kind: "click", Element.Tag: "select" })
+            return null;
 
         var element = action.Element;
         var locator = element is null ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(element, byName: action.Widget == "radio"));
@@ -440,6 +451,8 @@ internal static class ConsoleUi
             _ => [Untrusted(name, Tone.Bold, order: 0, min: 24)],
         };
         if (action.Kind is "navigate" or "newTab" || action is { Kind: "press", OnPage: true }) locator = null;
+        // A check of an element's own text, found by that text, says it once.
+        if (action.Kind == "expect" && locator?.Contains(name, StringComparison.Ordinal) == true) locator = null;
 
         List<Span> spans =
         [
@@ -481,6 +494,10 @@ internal static class ConsoleUi
 
     private static string? EffectLine(Terminal t, CapturedEffect effect)
     {
+        // Of a step shown here, and once: a part's replay makes the page do it again, of no step.
+        if (effect.ActionId is null || !StepOfAction.ContainsKey(effect.ActionId)
+            || !EffectsShown.Add($"{effect.ActionId}|{effect.Kind}|{effect.Dialog?.Title}{effect.Text}{effect.Url}"))
+            return null;
         var (what, detail) = effect.Kind switch
         {
             "dialogOpened" => ("opened dialog", effect.Dialog?.Title),
@@ -505,14 +522,16 @@ internal static class ConsoleUi
         ]);
     }
 
+    // The verbs the panel says: a checkbox is ticked and a radio picked, as "check" is a check of what the page shows.
     private static (string Glyph, string Verb) Verb(Terminal t, CapturedAction action) => action.Kind switch
     {
         "click" => (t.Glyph("•", "*"), "click"),
         "dblclick" => (t.Glyph("•", "*"), "dblclick"),
         "fill" => (t.Glyph("≡", "="), "fill"),
         "choose" => (t.Glyph("▼", "v"), "choose"),
-        "check" => (t.Glyph("■", "x"), "check"),
-        "uncheck" => (t.Glyph("□", "o"), "uncheck"),
+        "check" when action.Widget == "radio" => (t.Glyph("■", "x"), "pick"),
+        "check" => (t.Glyph("■", "x"), "tick"),
+        "uncheck" => (t.Glyph("□", "o"), "untick"),
         "press" => (t.Glyph("◘", "#"), "press"),
         "upload" => (t.Glyph("↑", "^"), "upload"),
         "drag" => (t.Glyph("↔", "~"), "drag"),
@@ -525,6 +544,8 @@ internal static class ConsoleUi
     // What a check the person chose expects, as the panel says it.
     private static string CheckOf(CapturedAction check) => check.Check switch
     {
+        "text" when Terminal.Clean(check.Value) == Terminal.Clean(check.Element?.Text) => "has this text",
+        "contains" when Terminal.Clean(check.Value) == Terminal.Clean(check.Element?.Text) => "contains this text",
         "text" => $"has text \"{check.Value}\"",
         "contains" => $"contains \"{check.Value}\"",
         "value" => $"has value \"{check.Value}\"",
@@ -566,8 +587,27 @@ internal static class ConsoleUi
         }
     }
 
-    private static void RecordingState(Terminal t, string state, string detail) =>
-        Headline(t, t.Paint(t.Glyph("●", "*"), Tone.Error) + " " + t.Paint(state, Tone.Bold), detail);
+    private static void RecordingState(Terminal t, string state, string detail) => Mode(t, t.Glyph("●", "*"), Tone.Error, state, detail);
+
+    /// <summary>
+    /// A mode the recording is in, or a result: its glyph, its word in a column of its own, and what to do, dim, wrapped
+    /// under its start: "  ║ Paused       Nothing you do in Chrome is recorded. F8 resumes."
+    /// </summary>
+    private static void Mode(Terminal t, string glyph, Tone tone, string word, string detail, Tone detailTone = Tone.Dim)
+    {
+        lock (Gate)
+        {
+            EndLive();
+            var start = Margin.Length + Terminal.WidthOf(glyph) + 1 + Math.Max(ModeWidth, Terminal.WidthOf(word) + 2);
+            var lines = Terminal.Wrap(detail, Math.Max(20, t.Width - 1 - start)).DefaultIfEmpty("").ToList();
+            var gap = new string(' ', start - Margin.Length - Terminal.WidthOf(glyph) - 1 - Terminal.WidthOf(word));
+            t.WriteLine(Margin + t.Paint(glyph, tone) + " " + t.Paint(word, Tone.Bold) + gap + t.Paint(lines[0], detailTone));
+            foreach (var more in lines.Skip(1)) t.WriteLine(new string(' ', start) + t.Paint(more, detailTone));
+        }
+    }
+
+    // The indent of a line under a mode's detail, as the times of a test are, before Status's glyph and space.
+    private static string UnderMode => new(' ', Margin.Length + ModeWidth);
 
     // A bold first line with dim details after it, wrapped under the details' start when they do not fit; details
     // kept together go on the next line instead.
@@ -666,8 +706,8 @@ internal static class ConsoleUi
     {
         _slowTold = false;
         var values = login.Settings is null ? "" : $", its values from {Relative(login.Settings)}";
-        Phase($"Logging in with {login.Flow}, from {Relative(login.Assembly)}{values}");
-        if (remembered) Status(Out, Margin, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
+        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, "Logging in", $"with {login.Flow}, from {Relative(login.Assembly)}{values}{Out.Ellipsis}");
+        if (remembered) Status(Out, UnderMode, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
     }
 
     // ── The login flow found in the tests ───────────────────────────────────────────────────────────────────────
@@ -806,7 +846,7 @@ internal static class ConsoleUi
     /// <param name="flow">The login flow.</param>
     /// <param name="url">Where the recording starts; null when the steps of the flow continued replay first.</param>
     public static void LoggedIn(string flow, string? url) =>
-        Success(url is null ? $"Logged in with {flow}." : $"Logged in with {flow}. Recording from {url}");
+        Mode(Out, Out.Glyph("✓", "√", "+"), Tone.Success, "Logged in", url is null ? $"with {flow}." : $"with {flow}. Recording from {url}", Tone.Plain);
 
     /// <param name="flow">The login flow.</param>
     /// <param name="reason">Why it failed.</param>
@@ -832,8 +872,8 @@ internal static class ConsoleUi
         if (state == Capture.RecordingState.Paused) Paused();
         else if (state == Capture.RecordingState.Recording) Resumed();
         else if (state == Capture.RecordingState.Trying)
-            Status(Out, Margin, Out.Glyph("◇", "~"), Tone.Accent,
-                "Trying. Nothing is recorded: the panel shows what the recorder would write for each action. F7 goes back.");
+            Mode(Out, Out.Glyph("◇", "◊", "~"), Tone.Accent, "Trying",
+                "Nothing is recorded: the panel shows how each action would be written. F7 records again.");
     }
 
     // ── Recording a part again ──────────────────────────────────────────────────────────────────────────────────
@@ -841,13 +881,10 @@ internal static class ConsoleUi
     /// <summary>The replay up to a part went well: the person records it again, or records after it.</summary>
     /// <param name="part">The part, e.g. <c>FillNewTicketAsync</c>.</param>
     /// <param name="after">Recording more after it, rather than it again.</param>
-    public static void Rerecording(string part, bool after)
-    {
-        lock (Gate)
-            RecordingState(Out, after ? $"Recording after {part}" : $"Re-recording {part}",
-                (after ? "What you do now goes there, before the steps after it." : "Do it again in Chrome: it replaces the steps it had.") +
-                " Then F2 there, or Done in the panel; Esc in the panel keeps the flow as it was.");
-    }
+    public static void Rerecording(string part, bool after) =>
+        RecordingState(Out, after ? "Recording" : "Re-recording",
+            (after ? $"after {part}: what you do now goes there, before the steps after it." : $"{part}: do it again in Chrome.") +
+            " F2 there when done; Esc in the panel keeps the flow as it was.");
 
     /// <summary>The replay did not get to the part: the panel offers to record again from where it stopped.</summary>
     public static void ReplayStopped(string part) =>
@@ -856,27 +893,30 @@ internal static class ConsoleUi
     /// <summary>A part recorded again was kept, or kept as it was; the recording is paused when the app is elsewhere.</summary>
     public static void Rerecorded(string part, bool kept, bool paused)
     {
+        var t = Out;
         lock (Gate)
         {
-            if (kept) Success($"{part} is in the flow as you did it now. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
-            else Info($"Kept {part} as it was.");
+            if (kept) Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Re-recorded", $"{part}. Test it in the panel (Ctrl+Enter); Ctrl+Z there brings it back as it was.");
+            else Mode(t, " ", Tone.Plain, "Kept", $"{part} as it was.");
             if (paused)
-                Info("The app is where that part left it, not at the end of the flow: Resume (F8) records at the end from there.");
+                Status(t, UnderMode, " ", Tone.Plain, "The app is where that part left it, not at the end of the flow: F8 records at the end from there.", Tone.Dim);
         }
     }
 
     public static void Froze(FrozenElements frozen) =>
-        Status(Out, Margin, Out.Glyph("❄", "*"), Tone.Accent,
-            $"The elements of {frozen.Page} are frozen: pick them in the panel's Elements tab.", Tone.Dim);
+        Mode(Out, Out.Glyph("❄", "*", "*"), Tone.Accent, "Frozen", $"the elements of {frozen.Page}: pick them in the panel's Elements view.");
 
     // ── Testing the flow ────────────────────────────────────────────────────────────────────────────────────────
 
-    public static void Testing(TestRun.TestReport report) =>
-        Phase(report is { FromStart: true, Total: 0 } ? $"Going back to the start of {report.Flow}"
-            : report.FromStart ? $"Replaying {report.Flow} from its start up to step {report.Total}"
-            : report.Replay ? $"Replaying the {Count(report.Total, "step")} of {report.Flow}"
-            : report.UpTo is null ? $"Testing {report.Flow}"
-            : $"Testing {report.Flow} up to step {report.Total} of {report.Actions.Count}");
+    public static void Testing(TestRun.TestReport report)
+    {
+        var (word, what) = report is { FromStart: true, Total: 0 } ? ("Replaying", $"back to the start of {report.Flow}")
+            : report.FromStart ? ("Replaying", $"{report.Flow} from its start up to step {report.Total}")
+            : report.Replay ? ("Replaying", $"the {Count(report.Total, "step")} of {report.Flow}")
+            : report.UpTo is null ? ("Testing", report.Flow)
+            : ("Testing", $"{report.Flow} up to step {report.Total} of {report.Actions.Count}");
+        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, word, $"{what}{Out.Ellipsis}");
+    }
 
     /// <summary>
     /// How a test went, in a line or a few: passed, with how long it took; or the step that failed, as its line shows
@@ -894,32 +934,30 @@ internal static class ConsoleUi
             switch (report.Outcome)
             {
                 case TestRun.TestOutcome.Passed when report.FromStart:
-                    Success(report.Total == 0 ? $"Back at the start of {report.Flow}."
-                        : $"Replayed {report.Flow} up to step {report.Total}{(took is null ? "" : $" in {took}")}.");
+                    Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Replayed", report.Total == 0 ? $"back at the start of {report.Flow}."
+                        : $"{report.Flow} up to step {report.Total}{(took is null ? "" : $" in {took}")}.", Tone.Plain);
                     break;
                 case TestRun.TestOutcome.Passed when report.Replay:
-                    Success($"Replayed the {steps} of {report.Flow}{(took is null ? "" : $" in {took}")}. What you do now " +
-                            "is added after them.");
+                    Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Replayed", $"the {steps} of {report.Flow}{(took is null ? "" : $" in {took}")}. " +
+                                                                              "What you do now is added after them.", Tone.Plain);
                     break;
                 case TestRun.TestOutcome.Passed:
-                    Success($"{report.Flow} passed: {steps}{(took is null ? "" : $" in {took}")}.");
+                    Mode(t, t.Glyph("✓", "√", "+"), Tone.Success, "Passed", $"{report.Flow}: {steps}{(took is null ? "" : $" in {took}")}.", Tone.Plain);
                     break;
                 case TestRun.TestOutcome.Stopped:
-                    Status(t, Margin, t.Glyph("■", "#"), Tone.Dim,
-                        $"Stopped {(report.Replay ? "replaying" : "testing")} {report.Flow}.", Tone.Dim);
+                    Mode(t, t.Glyph("■", "#"), Tone.Dim, "Stopped", $"{(report.Replay ? "replaying" : "testing")} {report.Flow}.");
                     break;
                 case TestRun.TestOutcome.Failed when report.Failure is { } failure:
                     Failed(t, report, failure, recording, took);
                     break;
                 default:
-                    Status(t, Margin, t.Glyph("×", "x"), Tone.Error,
-                        $"Could not {(report.Replay ? "replay" : "test")} {report.Flow}: {report.Problem}");
+                    Mode(t, t.Glyph("×", "x"), Tone.Error, report.Replay ? "Not replayed" : "Not tested", $"{report.Flow}: {report.Problem}", Tone.Plain);
                     break;
             }
 
             // Where the time went, so a slow build, window or page shows: "build 0.2 s · window 0.6 s · run 4.3 s".
             if (report.Times.Count > 0)
-                Status(t, Margin, " ", Tone.Plain,
+                Status(t, UnderMode, " ", Tone.Plain,
                     string.Join($" {t.Glyph("·", "-")} ", report.Times.Select(time => $"{time.Phase} {time.Ms / 1000.0:0.0} s")), Tone.Dim);
         }
     }
@@ -930,7 +968,7 @@ internal static class ConsoleUi
         var where = failure.InLogin is { } login ? $"in {login}, before its first step"
             : number > 0 ? $"at step {number} of {report.Actions.Count}{(failure.Line is { } line ? $", line {line}" : "")}"
             : "before its first step";
-        Status(t, Margin, t.Glyph("×", "x"), Tone.Error, $"{report.Flow} failed {where}{(took is null ? "" : $", after {took}")}.");
+        Mode(t, t.Glyph("×", "x"), Tone.Error, "Failed", $"{report.Flow} {where}{(took is null ? "" : $", after {took}")}.", Tone.Plain);
         var indent = new string(' ', StepIndent);
         if (recording.Actions.FirstOrDefault(action => action.Id == failure.Action) is { } failed && StepLine(t, number, failed) is { } step)
             t.WriteLine(step);

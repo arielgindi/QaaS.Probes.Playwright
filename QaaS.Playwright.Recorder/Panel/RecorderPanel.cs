@@ -335,7 +335,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     {
         var action = shown.View.Steps.SelectMany(step => step.Actions).FirstOrDefault(action => action.Id == id);
         if (action is null || action.Kind == "expect") return "the check";
-        return action.Element is { Length: > 0 } element ? $"the {action.Kind} on “{element}”" : $"the {action.Kind}";
+        // As the panel says it: a checkbox is ticked, as a check is of what the page shows.
+        var kind = action.Kind switch { "check" => "tick", "uncheck" => "untick", var other => other };
+        return action.Element is { Length: > 0 } element ? $"the {kind} on “{element}”" : $"the {kind}";
     }
 
     // A click, a fill or a check of the picked element, as the capture script would have recorded it.
