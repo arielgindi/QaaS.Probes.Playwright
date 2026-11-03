@@ -2,6 +2,23 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- The recorder finds your tests' login flow by itself, so `--login LoginFlow --login-assembly <dll>` is no longer
+  needed: in your test project (the nearest `.csproj`), the flow its YAML runs in `SetupFlows` most, else one named like
+  a login, in the project's build or a DLL beside it, as a shared package's flow is, with its values from the
+  `FlowConfiguration` of a test that runs it. It says where the flow is (`LoginFlow, from
+  bin/Debug/net10.0/YourShared.dll`), whether it needs values, and for those set nowhere, the YAML to add and where. It
+  asks once per folder and remembers the answer; later runs only say what it logs in with. A project not built yet, or
+  changed since, is offered a `dotnet build`. `--login <Flow>` alone finds the flow's DLL and values; `--no-login` forgets
+  the answer.
+- A login flow is hard to miss while it runs: the console, the page and the panel show how long it has run, the page it
+  is on, and what it did last. Esc, in the console or the page, or **Log in by hand** in the panel, stops it, for you
+  to log in by hand, as when it fails. It stops by itself after 2 minutes of nothing, and when the app asks the browser
+  to sign in (with Windows, or HTTP authentication), which a flow cannot answer.
+- `--login-assembly` with the test project's own DLL finds a login flow of a package it references, and a YAML of no
+  `FlowConfiguration` (`{}`) gives a flow of no settings its defaults instead of being refused.
+
 ## 2.0.0
 
 - Checks you choose: `F6` in the recorded page, or **Check** in the panel, turns on check mode, where a click picks an

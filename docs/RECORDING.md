@@ -12,7 +12,7 @@ qaas-playwright record login-flow https://my-app.com --output-dir UiFlows
 qaas-playwright record login-flow https://my-app.com --keep-recording    # also saves the raw recording
 qaas-playwright record login-flow https://my-app.com --no-panel          # without the panel beside the browser
 qaas-playwright record login-flow https://my-app.com --no-auto-checks    # without the Expect after each action
-qaas-playwright record new-order https://my-app.com --login LoginFlow --login-assembly bin/Debug/net10.0/MyTests.dll
+qaas-playwright record new-order https://my-app.com --login LoginFlow   # logs in with that flow of your tests first
 qaas-playwright --continue new-order                             # replays a saved flow, then records more after it
 ```
 
@@ -154,48 +154,91 @@ goes on from where they left the app: what you do is added after them, numbered 
   (`--keep-recording`), whichever is newer. A flow recorded with an older version, on another machine, or before the
   last 30 saved has none: the recorder says so. Record with `--keep-recording` to continue a flow anywhere.
 - The password and the secrets the recorder's copy does not hold come from the flow's YAML, so the replay types them.
-  The flow keeps its auto checks, or their absence. One recorded after a login flow logs in with it again: as given or
-  remembered for the folder, else as it was recorded.
+  The flow keeps its auto checks, or their absence. One recorded after a login flow logs in with it again: as given,
+  found or remembered for the folder, else as it was recorded.
 - Continuing needs the .NET SDK, as **Test** does.
 
 ### Logging in first
 
-Your tests already log in with a flow of their own, e.g. `LoginFlow`, which the probe runs as a setup flow. The recorder
-can run it too, so the recording starts logged in, on the page the login leaves the app on, instead of on the login
-page:
+Your tests log in with a flow of their own, e.g. `LoginFlow`, which the probe runs before the others
+(`SetupFlows: [LoginFlow]`). The recorder runs it too, so the recording starts logged in, on the page the login leaves
+the app on. Run the recorder in your test project's folder and it finds the flow by itself, then asks once:
 
-```bash
-dotnet build                                      # the recorder runs the flow from your test project's build
-qaas-playwright record new-order https://my-app.com --login LoginFlow \
-    --login-assembly bin/Debug/net10.0/MyTests.dll --login-settings Flows/LoginFlow.flow.yaml
+```text
+    Your tests log in with LoginFlow, from bin/Debug/net10.0/YourShared.dll: the setup flow of 4 test files.
+    Its values (Username, Url) come from Tests/Smoke.qaas.yaml.
+  ? Log in first with LoginFlow (Y/n) ›
 ```
+
+**What the recorder does by itself:**
+
+- **It finds your test project**: the nearest `.csproj` from the folder the flow is saved in, up; else from the current
+  folder.
+- **It finds its newest build**: `bin/Debug/<tfm>/<Project>.dll`, or `bin/Release/...`. When there is none, or the
+  project changed since, it offers to build it, saying the command (`dotnet build`, or `dotnet build Tests/MyTests.csproj`
+  from another folder), and shows one line while it builds and the errors if it fails. Say no, and it says how to build
+  it.
+- **It finds the flow**: the one your test YAML files (`*.yaml`, `*.yml`, outside `bin` and `obj`) run in `SetupFlows`
+  most, else the one named like a login (`Login`, `LogIn`, `SignIn` or `Auth`), in your project's DLL or a DLL beside it
+  in the bin folder, as the probe finds a setup flow. More than one: it asks which. None: it records without logging
+  in, as before, and says nothing.
+- **It finds its values** in the `FlowConfiguration: LoginFlow:` block of a test that runs it, and says whether it
+  needs any (below).
+- **It asks once per folder**, and remembers the answer in `~/.qaas/recorder-logins.json`. Later runs only say
+  `Logging in with LoginFlow, from bin/Debug/net10.0/YourShared.dll, its values from Tests/Smoke.qaas.yaml…`, and find
+  the flow again in the newest build. Said no: it records without logging in there, until you record once with
+  `--login LoginFlow`, or with `--no-login`, which forgets the answer so the next run asks again.
+
+**Where the DLL is.** In your test project's bin folder, once built: `bin/Debug/net10.0/`. Your project's own DLL is
+there, `MyTests.dll`, and the DLL of each package it references, e.g. a shared package of your team that has the login
+flow: `bin/Debug/net10.0/YourShared.dll`. `--login-assembly` takes either one.
+
+**Whether it needs values.** Look for its block in your test YAML, under the probe's `ProbeConfiguration`:
+
+```yaml
+FlowConfiguration:
+  LoginFlow:
+    Username: smoke-user
+    Password: ${LOGIN_PASSWORD}
+```
+
+No block: it needs no values, or keeps its defaults. The recorder says which: `It needs no values`, or
+`Its values (Username, Url) come from Tests/Smoke.qaas.yaml`. A value it needs that is set nowhere (a required one, or
+text that is empty unless set, as a user name is) is named, with the block to add and where: in your test YAML, under the
+probe's `ProbeConfiguration`, or in a `LoginFlow.flow.yaml` given with `--login-settings`. `${NAME}` reads an
+environment variable, and `${NAME ?? default}` has a default, as in QaaS, so a password need not be in the file.
 
 | Option | Is |
 |--------|----|
-| `--login <Flow>` | The login flow's class name, as `SetupFlows` names it. |
-| `--login-assembly <dll>` | Your test project's built assembly, which has the flow. |
-| `--login-settings <yaml>` | Optional: its settings. The `FlowConfiguration: { LoginFlow: ... }` the recorder writes, a probe's `ProbeConfiguration`, or a whole `test.qaas.yaml`, whose first `FlowConfiguration:LoginFlow` is taken. `${NAME}` reads an environment variable, as in QaaS, so a password need not be in the file. Without it, the flow's settings keep their defaults. |
-| `--no-login` | Records without a login flow, and forgets the one remembered. |
+| `--login <Flow>` | Logs in with that flow, by its class name as `SetupFlows` names it; its DLL and values are found as above. |
+| `--login-assembly <dll>` | The DLL in your test project's bin folder that has the flow, e.g. `bin/Debug/net10.0/YourShared.dll`, when the recorder does not run in the project's folder. |
+| `--login-settings <yaml>` | The YAML with its values: a test, e.g. `Tests/Smoke.qaas.yaml`, a probe's `ProbeConfiguration`, or the `FlowConfiguration: { LoginFlow: ... }` the recorder writes. Its first `FlowConfiguration:LoginFlow` is taken; a file of none, as `{}` is, keeps the flow's defaults. |
+| `--no-login` | Records without logging in, and forgets the answer for this folder. |
 
-Asked for interactively too (`qaas-playwright` with no arguments). The flow is created and run as the probe runs a
-setup flow: found by its class name in that assembly and the ones it references, given `BaseUrl` (the URL you record)
-and a QaaS `Context` whose logger writes to the console, its settings bound and checked as strictly as the probe checks
-them, then run on the recording's page once it opened the URL. Your assembly's own references load from its folder;
-QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so the flow runs on the recorder's pages whatever
-versions your project was built with (a flow that needs a newer Playwright than the recorder has fails with
-`MissingMethodException`: update the recorder).
+The options always win over what is found, and are remembered for the folder in its place. Asked for interactively too
+(`qaas-playwright` with no arguments). The flow is created and run as the probe runs a setup flow: found by its class
+name in that DLL and the ones beside it, given `BaseUrl` (the URL you record) and a QaaS `Context` whose logger writes to
+the console, its values bound and checked as strictly as the probe checks them, then run on the recording's page once
+it opened the URL. The DLLs load from their folder; QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so
+the flow runs on the recorder's pages whatever versions your project was built with (a flow that needs a newer
+Playwright than the recorder has fails with `MissingMethodException`: update the recorder).
 
+- **You see how it goes.** The console, a pill at the top of the page and the panel say
+  `Logging in with LoginFlow… 12 s, on /signin`, the page's address without its query, secrets hidden, and what it
+  did last there (`typed in “Username”`, `clicked button “Sign in”`, never a value). After 5 seconds they add
+  `Taking long? Press Esc to log in by hand.`
+- **Esc stops it**, in the console or the page, as does **Log in by hand** in the panel: its page is replaced by a
+  fresh one at the same address, keeping the login so far, so whatever it waited for fails at once and it does nothing
+  more. It also stops by itself after 2 minutes in which no page loaded and nothing went to the app or came back,
+  saying what it waited for, and when the app asks the browser to sign in (with Windows, or a user name and password of
+  HTTP authentication), which a flow cannot answer. Its own timeouts are the probe's.
 - **Nothing the login flow does is recorded**: not its typing and clicks, the pages it goes to, the pop-ups it opens,
-  or the browser dialogs it gets, which Playwright dismisses unless the flow handles them, as in the probe. The
-  console and the panel say `Logging in with LoginFlow…`, then where the recording starts.
+  or the browser dialogs it gets, which Playwright dismisses unless the flow handles them, as in the probe.
 - **The flow you record runs after it.** Its doc comment says so, and the console's YAML hint adds that it needs
-  `SetupFlows: [LoginFlow]`, with the login's settings, before it in the probe.
-- **When the login flow fails**, the console and the panel show why, as the probe reports it, secrets hidden. The
-  recording stays paused: log in by hand, then resume it (`F8`, or **Resume** in the panel), and nothing you did is
-  recorded. To give up, close the browser.
-- **The options are remembered** for the folder you record in, in `~/.qaas/recorder-logins.json`, so the next plain
-  `qaas-playwright record <name> <url>` there logs in the same way, and says so. Give any option to change it, or
-  `--no-login` to stop: it records without logging in, and forgets the login for that folder.
+  `SetupFlows: [LoginFlow]`, with the login's values, before it in the probe.
+- **When the login flow fails or is stopped**, the console and the panel show why, as the probe reports it, secrets
+  hidden. The recording stays paused: log in by hand, then resume it (`F8`, or **Resume** in the panel), and nothing
+  you did is recorded. To give up, close the browser.
 
 ### Pausing
 
