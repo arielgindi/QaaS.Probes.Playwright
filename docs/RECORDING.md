@@ -119,7 +119,8 @@ not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and 
 Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the focus and close the very menu being
 frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
-When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console. The
+When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console (or
+send it a line, when a script gives the console its input through a pipe; the input's end finishes nothing). The
 recorder saves two files: `Flows/LoginFlow.cs`
 (the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints a
 summary: the files it wrote, how many actions, steps and settings the flow has, each line to check by hand as

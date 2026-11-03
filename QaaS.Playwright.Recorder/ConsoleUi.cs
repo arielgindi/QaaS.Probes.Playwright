@@ -266,9 +266,14 @@ internal static class ConsoleUi
         }
     }
 
-    /// <summary>Completes when the person presses Enter; never, when nobody can type here.</summary>
-    public static Task EnterPressedAsync() =>
-        Console.IsInputRedirected ? new TaskCompletionSource().Task : Task.Run(() => Console.ReadLine());
+    /// <summary>
+    /// Completes when the person presses Enter, or a line comes in on an input redirected from a pipe or a FIFO, as a
+    /// script sends it; never at the end of the input (<c>&lt; /dev/null</c>), which nobody typed.
+    /// </summary>
+    public static Task EnterPressedAsync() => Task.Run(async () =>
+    {
+        if (Console.ReadLine() is null) await Task.Delay(Timeout.Infinite);
+    });
 
     /// <summary>Shows an action as it is captured, with what to check in it, and what the page did after it.</summary>
     public static void Captured(object news)
