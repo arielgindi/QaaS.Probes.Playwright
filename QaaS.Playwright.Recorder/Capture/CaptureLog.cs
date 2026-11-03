@@ -288,7 +288,7 @@ internal sealed class CaptureLog(bool paused = false)
 
     private static bool Belongs(CapturedEffect effect) => effect.Kind switch
     {
-        "dialogOpened" or "dialogClosed" => effect.SinceAction is null or <= DialogWindowMs,
+        "dialogOpened" or "dialogClosed" or "busy" => effect.SinceAction is null or <= DialogWindowMs,
         "alert" => effect.SinceAction is null or <= AlertWindowMs,
         _ => true,
     };

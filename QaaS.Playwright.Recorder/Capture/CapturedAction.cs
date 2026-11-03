@@ -219,7 +219,8 @@ internal sealed class CapturedEffect
 {
     /// <summary>
     /// <c>dialogOpened</c>, <c>dialogClosed</c>, <c>alert</c>, <c>tabSelected</c>, <c>settled</c> (a list closed and
-    /// its field shows the choice), <c>urlChanged</c>, <c>popup</c> or <c>jsDialog</c>.
+    /// its field shows the choice), <c>busy</c> (a busy indicator came up and went away: <see cref="Value"/> is
+    /// <c>progressbar</c> or <c>ariaBusy</c>), <c>urlChanged</c>, <c>popup</c> or <c>jsDialog</c>.
     /// </summary>
     public string Kind { get; set; } = "";
 
