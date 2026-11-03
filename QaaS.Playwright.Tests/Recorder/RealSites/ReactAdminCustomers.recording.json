@@ -1,0 +1,4161 @@
+{
+  "startUrl": "https://marmelab.com/react-admin-demo/",
+  "actions": [
+    {
+      "id": "4jf5d2-1",
+      "t": 1793740239532,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "demo",
+      "raw": "demo",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":r1:",
+        "name": "username",
+        "text": "Username",
+        "label": "Username",
+        "groupLabel": "Username",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='username']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "username"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r1:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r1:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Username"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Username"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username"
+              }
+            ],
+            "text": "Username"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Username"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Username"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Username",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Username\" })",
+            "selector": "internal:role=textbox[name=\"Username\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-2",
+      "t": 1793740239757,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "type": "password",
+        "id": ":r3:",
+        "name": "password",
+        "text": "Password",
+        "label": "Password",
+        "groupLabel": "Password",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='password']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "password"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r3:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r3:"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Password"
+              },
+              {
+                "m": "css",
+                "css": "input.MuiInputBase-input"
+              }
+            ],
+            "text": "Password"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Password"
+              },
+              {
+                "m": "css",
+                "css": "input.MuiInputBase-input"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Password"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "input.MuiInputBase-input"
+              }
+            ],
+            "count": 2,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Password\" })",
+            "selector": "internal:role=textbox[name=\"Password\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-3",
+      "t": 1793740246191,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/login",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Sign in",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sign in",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sign in"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sign in",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Sign in\" })",
+            "selector": "internal:role=button[name=\"Sign in\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-3",
+          "sinceAction": 2,
+          "t": 1793740246193
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-3",
+          "sinceAction": 443,
+          "t": 1793740246995,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-3",
+          "t": 1793740246201,
+          "url": "https://marmelab.com/react-admin-demo/#/",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-4",
+      "t": 1793740255471,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "Pending Orders",
+        "section": "US$9,945",
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiPaper-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Pending Orders"
+              },
+              {
+                "m": "css",
+                "css": "div.MuiCardHeader-root"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Pending Orders"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "css",
+                "css": "div.MuiCardHeader-root"
+              }
+            ],
+            "count": 2,
+            "value": "main-content"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Pending Orders"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Pending Orders"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Pending Orders$\") }).First",
+            "selector": "div >> internal:has-text=/^Pending Orders$/ >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-5",
+      "t": 1793740256011,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://marmelab.com/react-admin-demo/#/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "Sales",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Sales",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sales"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"Sales\" })",
+            "selector": "internal:role=menuitem[name=\"Sales\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-5",
+          "sinceAction": 0,
+          "t": 1793740256011
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-6",
+      "t": 1793740256912,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://marmelab.com/react-admin-demo/#/",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "menuitem",
+        "text": "Sales",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Sales",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sales"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"Sales\" })",
+            "selector": "internal:role=menuitem[name=\"Sales\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-6",
+          "sinceAction": 1,
+          "t": 1793740256913
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-7",
+      "t": 1793740257856,
+      "kind": "click",
+      "page": "page",
+      "widget": "menuitem",
+      "url": "https://marmelab.com/react-admin-demo/#/",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "menuitem",
+        "text": "Customers",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Customers",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Customers"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "menuitem",
+                "name": "Customers"
+              }
+            ],
+            "count": 2,
+            "text": "Customers"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"a\").Filter(new() { HasTextRegex = new Regex(\"^Customers$\") })",
+            "selector": "a >> internal:has-text=/^Customers$/"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-7",
+          "sinceAction": 1,
+          "t": 1793740257857
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-7",
+          "sinceAction": 46,
+          "t": 1793740258289,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-7",
+          "t": 1793740257861,
+          "url": "https://marmelab.com/react-admin-demo/#/customers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-8",
+      "t": 1793740267791,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "",
+      "raw": "",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":rr:",
+        "name": "q",
+        "text": "Search",
+        "placeholder": "Search",
+        "section": "Customers",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='q']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "q"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':rr:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":rr:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Search",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Search"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Search",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Search\" })",
+            "selector": "internal:role=textbox[name=\"Search\"i]"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-8",
+          "sinceAction": 791,
+          "t": 1793740268888,
+          "value": "progressbar"
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-8",
+          "sinceAction": 2891,
+          "t": 1793740270989,
+          "value": "progressbar"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-9",
+      "t": 1793740271688,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "button",
+        "text": "Yes",
+        "section": "Customers",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes",
+                "exact": true
+              }
+            ],
+            "count": 2,
+            "text": "Yes"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes"
+              }
+            ],
+            "count": 2,
+            "text": "Yes"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes"
+              }
+            ],
+            "count": 2,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.MuiListItem-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Yes"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes"
+              }
+            ],
+            "count": 2,
+            "text": "Yes"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Yes"
+              }
+            ],
+            "count": 2,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Yes\" }).First",
+            "selector": "internal:role=button[name=\"Yes\"i] >> nth=0"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-9",
+          "sinceAction": 1,
+          "t": 1793740271689
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-9",
+          "sinceAction": 155,
+          "t": 1793740272089,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-9",
+          "t": 1793740271697,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-10",
+      "t": 1793740273238,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "button",
+        "text": "Compulsive",
+        "section": "Customers",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Compulsive",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Compulsive"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Compulsive",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.MuiListItem-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Compulsive"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Compulsive",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Compulsive"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Compulsive",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Compulsive\" })",
+            "selector": "internal:role=button[name=\"Compulsive\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-10",
+          "sinceAction": 1,
+          "t": 1793740273239
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-10",
+          "sinceAction": 51,
+          "t": 1793740273588,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-10",
+          "t": 1793740273246,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-11",
+      "t": 1793740284521,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=last_seen",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "role": "button",
+        "text": "Sort by orders ascending",
+        "section": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sort by orders ascending"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "th.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Orders"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Orders"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Sort by orders ascending\" })",
+            "selector": "internal:role=button[name=\"Sort by orders ascending\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-11",
+          "sinceAction": 21,
+          "t": 1793740284542
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-11",
+          "sinceAction": 68,
+          "t": 1793740284889,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-11",
+          "t": 1793740284527,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=ASC&page=1&perPage=25&sort=nb_orders",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-12",
+      "t": 1793740286121,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=ASC&page=1&perPage=25&sort=nb_orders",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "role": "button",
+        "text": "Sort by orders descending",
+        "section": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders descending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sort by orders descending"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders descending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "th.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Orders"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by orders descending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Orders"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Sort by orders descending\" })",
+            "selector": "internal:role=button[name=\"Sort by orders descending\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-12",
+          "sinceAction": 14,
+          "t": 1793740286135
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-12",
+          "sinceAction": 67,
+          "t": 1793740286489,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-12",
+          "t": 1793740286125,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-13",
+      "t": 1793740287738,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22nb_orders_gte%22%3A1%2C%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "section": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.MuiListItem-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Yes"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 3,
+            "text": "Yes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"div\").Filter(new() { HasTextRegex = new Regex(\"^Has orderedYesNo$\") }).Locator(\"button\")",
+            "selector": "div >> internal:has-text=/^Has orderedYesNo$/ >> button"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-13",
+          "sinceAction": 1,
+          "t": 1793740287739
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-13",
+          "sinceAction": 50,
+          "t": 1793740288089,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-13",
+          "t": 1793740287746,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-14",
+      "t": 1793740289339,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%22groups%22%3A%22compulsive%22%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "button",
+        "text": "",
+        "section": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "li.MuiListItem-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Compulsive"
+              },
+              {
+                "m": "role",
+                "role": "button"
+              }
+            ],
+            "count": 2,
+            "text": "Compulsive"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Compulsive\" }).GetByRole(AriaRole.Button)",
+            "selector": "internal:role=button[name=\"Compulsive\"i] >> internal:role=button"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-14",
+          "sinceAction": 1,
+          "t": 1793740289340
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-14",
+          "sinceAction": 49,
+          "t": 1793740289689,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-14",
+          "t": 1793740289346,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-15",
+      "t": 1793740290936,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=DESC&page=1&perPage=25&sort=nb_orders",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "role": "button",
+        "text": "Sort by name ascending",
+        "section": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by name ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Sort by name ascending"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by name ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "th.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Name"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Sort by name ascending",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Sort by name ascending\" })",
+            "selector": "internal:role=button[name=\"Sort by name ascending\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-15",
+          "sinceAction": 21,
+          "t": 1793740290957
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-15",
+          "sinceAction": 53,
+          "t": 1793740291289,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-15",
+          "t": 1793740290941,
+          "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=ASC&page=1&perPage=25&sort=last_name",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-16",
+      "t": 1793740298863,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers?filter=%7B%7D&order=ASC&page=1&perPage=25&sort=last_name",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "L Leonie Abernathy",
+        "section": "Customers",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "24/07/2026",
+          "header": "Last seen"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leonie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "L Leonie Abernathy"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "24/07/2026"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leonie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "L Leonie Abernathy"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leonie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "td.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Leonie"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leonie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Leonie"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"L Leonie Abernathy\" })",
+            "selector": "internal:role=link[name=\"L Leonie Abernathy\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-16",
+          "sinceAction": 9,
+          "t": 1793740298872
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-16",
+          "sinceAction": 49,
+          "t": 1793740299288,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-16",
+          "t": 1793740298866,
+          "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-17",
+      "t": 1793740307929,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Leoniie",
+      "raw": "Leoniie",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":r5d:",
+        "name": "first_name",
+        "text": "First name",
+        "label": "First name",
+        "groupLabel": "First name",
+        "section": "Identity",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='first_name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "first_name"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r5d:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r5d:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "First name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "First name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "First name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "First name"
+              }
+            ],
+            "text": "First name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiBox-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "First name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "First name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "First name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"First name\" })",
+            "selector": "internal:role=textbox[name=\"First name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-18",
+      "t": 1793740309278,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r63:",
+        "text": "Segments",
+        "label": "Segments",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r63:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r63:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='groups'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "groups"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Segments"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Segments"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Segments Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Regular"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Regular"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Segments Regular\" })",
+            "selector": "internal:role=combobox[name=\"Segments Regular\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-18",
+          "sinceAction": 5,
+          "t": 1793740309283
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-19",
+      "t": 1793740316087,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "option",
+        "text": "Regular",
+        "label": "Segments",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Regular"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r64:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r64:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-groups']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-groups"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Regular\" })",
+            "selector": "internal:role=option[name=\"Regular\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-20",
+      "t": 1793740317105,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r63:",
+        "text": "Segments",
+        "label": "Segments",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r63:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r63:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='groups'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "groups"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Segments"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Segments"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Segments Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Regular"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Regular"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Segments Regular\" })",
+            "selector": "internal:role=combobox[name=\"Segments Regular\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-20",
+          "sinceAction": 3,
+          "t": 1793740317108
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-21",
+      "t": 1793740318205,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "Returns",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r63:",
+        "text": "Segments",
+        "label": "Segments",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r63:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r63:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='groups'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "groups"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Segments"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Segments"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Segments Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Regular"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Regular"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Segments Regular\" })",
+            "selector": "internal:role=combobox[name=\"Segments Regular\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r63:",
+        "text": "Segments",
+        "label": "Segments",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r63:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r63:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='groups'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "groups"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Segments"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Segments"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Segments Regular",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Segments"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Regular"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Regular"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Segments Regular\" })",
+            "selector": "internal:role=combobox[name=\"Segments Regular\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "Returns",
+        "label": "Segments",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Returns"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r64:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r64:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-groups']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-groups"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Returns\" })",
+            "selector": "internal:role=option[name=\"Returns\"i]"
+          }
+        ]
+      },
+      "opener": "4jf5d2-20",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-21",
+          "sinceAction": 0,
+          "t": 1793740318205
+        },
+        {
+          "kind": "settled",
+          "actionId": "4jf5d2-21",
+          "sinceAction": 303,
+          "t": 1793740319608,
+          "value": "Regular Returns",
+          "raw": "Regular\nReturns",
+          "multi": true
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-22",
+      "t": 1793740319307,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "option",
+        "text": "Returns",
+        "label": "Segments",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Returns"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r64:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r64:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-groups']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Returns",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-groups"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Returns\" })",
+            "selector": "internal:role=option[name=\"Returns\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-23",
+      "t": 1793740325943,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "1990-05-12",
+      "raw": "1990-05-12",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "date",
+        "id": ":r5j:",
+        "name": "birthday",
+        "text": "Birthday",
+        "label": "Birthday",
+        "groupLabel": "Birthday",
+        "section": "Identity",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='birthday']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "birthday"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r5j:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r5j:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Birthday",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Birthday"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Birthday"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Birthday",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Birthday"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiBox-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Birthday"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Birthday",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Birthday"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Birthday\" })",
+            "selector": "internal:role=textbox[name=\"Birthday\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-24",
+      "t": 1793740327154,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r65:",
+        "text": "Has newsletter",
+        "label": "Has newsletter",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r65:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r65:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='has_newsletter'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "has_newsletter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Has newsletter"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Has newsletter"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Has newsletter Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Yes"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Has newsletter Yes\" })",
+            "selector": "internal:role=combobox[name=\"Has newsletter Yes\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-24",
+          "sinceAction": 4,
+          "t": 1793740327158
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-25",
+      "t": 1793740332759,
+      "kind": "press",
+      "page": "page",
+      "key": "Escape",
+      "onPage": false,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "li",
+        "role": "option",
+        "text": "Yes",
+        "label": "Has newsletter",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r67:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r67:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-has_newsletter']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-has_newsletter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"Yes\" })",
+            "selector": "internal:role=option[name=\"Yes\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-26",
+      "t": 1793740334781,
+      "kind": "click",
+      "page": "page",
+      "widget": "select-open",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r65:",
+        "text": "Has newsletter",
+        "label": "Has newsletter",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r65:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r65:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='has_newsletter'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "has_newsletter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Has newsletter"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Has newsletter"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Has newsletter Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Yes"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Has newsletter Yes\" })",
+            "selector": "internal:role=combobox[name=\"Has newsletter Yes\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-26",
+          "sinceAction": 3,
+          "t": 1793740334784
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-27",
+      "t": 1793740339856,
+      "kind": "choose",
+      "page": "page",
+      "widget": "select",
+      "value": "No",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r65:",
+        "text": "Has newsletter",
+        "label": "Has newsletter",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r65:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r65:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='has_newsletter'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "has_newsletter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Has newsletter"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Has newsletter"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Has newsletter Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Yes"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Has newsletter Yes\" })",
+            "selector": "internal:role=combobox[name=\"Has newsletter Yes\"i]"
+          }
+        ]
+      },
+      "field": {
+        "tag": "div",
+        "role": "combobox",
+        "id": ":r65:",
+        "text": "Has newsletter",
+        "label": "Has newsletter",
+        "section": "Stats",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r65:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r65:"
+          },
+          {
+            "kind": "select",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div:has(> input[name='has_newsletter'])"
+              },
+              {
+                "m": "role",
+                "role": "combobox"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "has_newsletter"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "combobox",
+                "regex": "^Has newsletter"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Has newsletter"
+              },
+              {
+                "m": "role",
+                "role": "combobox",
+                "name": "Has newsletter Yes",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Has newsletter"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Yes"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Yes"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Has newsletter Yes\" })",
+            "selector": "internal:role=combobox[name=\"Has newsletter Yes\"i]"
+          }
+        ]
+      },
+      "option": {
+        "tag": "li",
+        "role": "option",
+        "text": "No",
+        "label": "Has newsletter",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "option",
+                "name": "No",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "No"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r67:']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "No",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r67:"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='menu-has_newsletter']"
+              },
+              {
+                "m": "role",
+                "role": "option",
+                "name": "No",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "menu-has_newsletter"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Option, new() { Name = \"No\" })",
+            "selector": "internal:role=option[name=\"No\"i]"
+          }
+        ]
+      },
+      "opener": "4jf5d2-26",
+      "hoverMenu": false,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-27",
+          "sinceAction": 1,
+          "t": 1793740339857
+        },
+        {
+          "kind": "settled",
+          "actionId": "4jf5d2-27",
+          "sinceAction": 302,
+          "t": 1793740340158,
+          "value": "No",
+          "raw": "No",
+          "multi": false
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-28",
+      "t": 1793740341460,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "section": "Stats",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "form"
+              },
+              {
+                "m": "has",
+                "text": "Stats"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Stats"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-28",
+          "sinceAction": 1,
+          "t": 1793740341461
+        },
+        {
+          "kind": "alert",
+          "actionId": "4jf5d2-28",
+          "sinceAction": 34,
+          "t": 1793740341494,
+          "text": "Customer updated UNDO",
+          "alertCount": 1
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-28",
+          "sinceAction": 4329,
+          "t": 1793740346389,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-28",
+          "t": 1793740341490,
+          "url": "https://marmelab.com/react-admin-demo/#/customers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-29",
+      "t": 1793740349639,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "L Leoniie Abernathy",
+        "section": "Customers",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "24/07/2026",
+          "header": "Last seen"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leoniie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "L Leoniie Abernathy"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "24/07/2026"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leoniie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "L Leoniie Abernathy"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leoniie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "td.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Leoniie"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "L Leoniie Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Leoniie"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"L Leoniie Abernathy\" })",
+            "selector": "internal:role=link[name=\"L Leoniie Abernathy\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-29",
+          "sinceAction": 8,
+          "t": 1793740349647
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-29",
+          "sinceAction": 49,
+          "t": 1793740349989,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-29",
+          "t": 1793740349643,
+          "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-30",
+      "t": 1793740352840,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Abernatthy",
+      "raw": "Abernatthy",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":r7q:",
+        "name": "last_name",
+        "text": "Last name",
+        "label": "Last name",
+        "groupLabel": "Last name",
+        "section": "Identity",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='last_name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "last_name"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':r7q:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":r7q:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name"
+              }
+            ],
+            "text": "Last name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiBox-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Last name\" })",
+            "selector": "internal:role=textbox[name=\"Last name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-31",
+      "t": 1793740353749,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/387",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "section": "Stats",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "form"
+              },
+              {
+                "m": "has",
+                "text": "Stats"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Stats"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-31",
+          "sinceAction": 0,
+          "t": 1793740353749
+        },
+        {
+          "kind": "alert",
+          "actionId": "4jf5d2-31",
+          "sinceAction": 62,
+          "t": 1793740353811,
+          "text": "Customer updated UNDO",
+          "alertCount": 1
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-31",
+          "sinceAction": 4240,
+          "t": 1793740358590,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-31",
+          "t": 1793740353771,
+          "url": "https://marmelab.com/react-admin-demo/#/customers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-32",
+      "t": 1793740365429,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers",
+      "openDialogs": [],
+      "target": {
+        "tag": "a",
+        "role": "link",
+        "text": "M Margarita Abernathy",
+        "section": "Customers",
+        "interactive": true,
+        "item": true,
+        "row": {
+          "key": "12/07/2026",
+          "header": "Last seen"
+        },
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "link",
+                "name": "M Margarita Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "M Margarita Abernathy"
+          },
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "12/07/2026"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "M Margarita Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "M Margarita Abernathy"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.RaLayout-appFrame"
+              },
+              {
+                "m": "has",
+                "text": "Customers"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "M Margarita Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "td.MuiTableCell-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Margarita"
+              },
+              {
+                "m": "role",
+                "role": "link",
+                "name": "M Margarita Abernathy",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Margarita"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"M Margarita Abernathy\" })",
+            "selector": "internal:role=link[name=\"M Margarita Abernathy\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-32",
+          "sinceAction": 8,
+          "t": 1793740365437
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-32",
+          "sinceAction": 59,
+          "t": 1793740365788,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-32",
+          "t": 1793740365432,
+          "url": "https://marmelab.com/react-admin-demo/#/customers/748",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-33",
+      "t": 1793740368633,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Abernathy",
+      "raw": "Abernathy",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/748",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":ra5:",
+        "name": "last_name",
+        "text": "Last name",
+        "label": "Last name",
+        "groupLabel": "Last name",
+        "section": "Identity",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='last_name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "last_name"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':ra5:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":ra5:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name"
+              }
+            ],
+            "text": "Last name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiBox-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Last name\" })",
+            "selector": "internal:role=textbox[name=\"Last name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-34",
+      "t": 1793740369501,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/748",
+      "openDialogs": [],
+      "target": {
+        "tag": "div",
+        "text": "",
+        "section": "Stats",
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "css",
+                "css": "div.RaToolbar-defaultToolbar"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByText(\"SaveDelete\")",
+            "selector": "internal:text=\"SaveDelete\"i"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-34",
+          "sinceAction": 0,
+          "t": 1793740369501
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-35",
+      "t": 1793740382591,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Abernathyy",
+      "raw": "Abernathyy",
+      "final": true,
+      "url": "https://marmelab.com/react-admin-demo/#/customers/748",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "type": "text",
+        "id": ":ra5:",
+        "name": "last_name",
+        "text": "Last name",
+        "label": "Last name",
+        "groupLabel": "Last name",
+        "section": "Identity",
+        "editable": true,
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='last_name']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "last_name"
+          },
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id=':ra5:']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": ":ra5:"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "group",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiFormControl-root"
+              },
+              {
+                "m": "has",
+                "text": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name"
+              }
+            ],
+            "text": "Last name"
+          },
+          {
+            "kind": "item",
+            "parts": [
+              {
+                "m": "css",
+                "css": "div.MuiBox-root"
+              },
+              {
+                "m": "filter",
+                "hasText": "Last name"
+              },
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "Last name",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Last name"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Last name\" })",
+            "selector": "internal:role=textbox[name=\"Last name\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-36",
+      "t": 1793740383500,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers/748",
+      "openDialogs": [],
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "type": "submit",
+        "text": "Save",
+        "section": "Stats",
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Save"
+          },
+          {
+            "kind": "section",
+            "parts": [
+              {
+                "m": "css",
+                "css": "form"
+              },
+              {
+                "m": "has",
+                "text": "Stats"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Stats"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='main-content']"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Save",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "main-content"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Save\" })",
+            "selector": "internal:role=button[name=\"Save\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed",
+          "actionId": "4jf5d2-36",
+          "sinceAction": 1,
+          "t": 1793740383501
+        },
+        {
+          "kind": "alert",
+          "actionId": "4jf5d2-36",
+          "sinceAction": 89,
+          "t": 1793740383589,
+          "text": "Customer updated UNDO",
+          "alertCount": 1
+        },
+        {
+          "kind": "busy",
+          "actionId": "4jf5d2-36",
+          "sinceAction": 4288,
+          "t": 1793740388388,
+          "value": "progressbar"
+        },
+        {
+          "kind": "urlChanged",
+          "actionId": "4jf5d2-36",
+          "t": 1793740383521,
+          "url": "https://marmelab.com/react-admin-demo/#/customers",
+          "page": "page"
+        }
+      ]
+    },
+    {
+      "id": "4jf5d2-37",
+      "t": 1793740406647,
+      "kind": "click",
+      "page": "page",
+      "url": "https://marmelab.com/react-admin-demo/#/customers",
+      "openDialogs": [],
+      "target": {
+        "tag": "h6",
+        "role": "heading",
+        "id": "react-admin-title",
+        "text": "Customers",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-admin-title']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "react-admin-title"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "heading",
+                "name": "Customers",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Customers"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "role",
+                "role": "heading",
+                "name": "Customers",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "root"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Heading, new() { Name = \"Customers\" })",
+            "selector": "internal:role=heading[name=\"Customers\"i]"
+          }
+        ]
+      },
+      "hoverMenu": false,
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "4jf5d2-38",
+      "t": 1793740423027,
+      "kind": "expect",
+      "page": "page",
+      "value": "Customers",
+      "url": "https://marmelab.com/react-admin-demo/#/customers",
+      "openDialogs": [],
+      "target": {
+        "tag": "span",
+        "text": "Customers",
+        "candidates": [
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='react-admin-title']"
+              },
+              {
+                "m": "css",
+                "css": "span"
+              }
+            ],
+            "count": 3,
+            "value": "react-admin-title"
+          },
+          {
+            "kind": "within",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='root']"
+              },
+              {
+                "m": "css",
+                "css": "span"
+              }
+            ],
+            "count": 192,
+            "hidden": 1,
+            "value": "root"
+          },
+          {
+            "kind": "text",
+            "parts": [
+              {
+                "m": "text",
+                "text": "Customers"
+              }
+            ],
+            "count": 3,
+            "text": "Customers"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "Locator(\"#react-admin-title\").GetByText(\"Customers\")",
+            "selector": "#react-admin-title >> internal:text=\"Customers\"i"
+          }
+        ]
+      },
+      "effects": [],
+      "check": "text"
+    }
+  ]
+}

@@ -262,12 +262,17 @@ internal static partial class FlowPlanner
             switch (action.Kind)
             {
                 case "fill":
+                {
                     // Text typed into an autocomplete and left there, no choice of it, is its text: the choices are its name's.
                     if (source.Widget == "autocomplete") (name, qualified) = (name + "Text", qualified is null ? null : qualified + "Text");
                     // The same words typed again, into another field, are the same value: a user's name searched for after
-                    // it was given to the user reads the same setting, so a case that changes one changes both.
-                    if (source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
-                            setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value") is { } earlier
+                    // it was given to the user reads the same setting, so a case that changes one changes both. Never a
+                    // password, nor what a secret's field holds: a demo's password may be its user name too ("demo"),
+                    // and the flow would then type the user name as the password, with no setting for the password.
+                    var secret = IsSecretField(field, name);
+                    if (!secret && source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
+                            setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value"
+                            && !Configuration.Secrets.IsSecretKey(setting.Name)) is { } earlier
                         && actions.Any(other => other.Kind == "fill" && other.Value == earlier
                                                 && (other.Key != action.Key || Path(other.Source.Url) != Path(action.Source.Url))))
                     {
@@ -276,8 +281,9 @@ internal static partial class FlowPlanner
                     }
 
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
-                    action.Value.Secret = field?.Type == "password";
+                    action.Value.Secret = secret;
                     break;
+                }
                 // One file uploaded is a setting of its path, named after its field's label, its default the name the
                 // browser told; several stay the flow's FileToUpload to fill in.
                 case "upload" when source.Files is [var file]:
@@ -313,6 +319,10 @@ internal static partial class FlowPlanner
             }
         }
     }
+
+    // A password field, or one whose setting's name says it holds a secret (a token, an API key).
+    private static bool IsSecretField(CapturedTarget? field, string name) =>
+        field?.Type == "password" || Configuration.Secrets.IsSecretKey(name);
 
     // A number field's value as a number, when it is one that reads back the same.
     private static Setting Typed(string name, string text, CapturedTarget? field, string? qualified)

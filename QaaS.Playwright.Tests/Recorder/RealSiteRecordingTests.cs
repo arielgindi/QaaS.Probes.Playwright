@@ -280,6 +280,24 @@ public class RealSiteRecordingTests
         });
     }
 
+    [Test]
+    public void RawRecordings_OfReactAdminAntDesignProAndKendo_GiveFlowsThatReplay()
+    {
+        // react-admin's demo logs in as demo, with the password demo: typed live, though no file of the recorder keeps it.
+        var customers = Read("ReactAdminCustomers");
+        foreach (var typed in customers.Actions.Where(action => action.Target?.Type == "password")) (typed.Value, typed.Raw) = ("demo", "demo");
+        var customersFlow = FlowCodeGenerator.Generate(customers, "CustomersFilterEdit", "Flows");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(customersFlow.Code, Does.Contain("Locator(\"[name='password']\").FillAsync(Configuration.Password)")
+                .And.Not.Contain("[name='password']\").FillAsync(Configuration.Username)"),
+                "a password the user name equals is the password's setting");
+            Assert.That(customersFlow.Yaml, Does.Contain("Username: 'demo'").And.Contain("Password: '${PASSWORD}'").And.Not.Contain("Password: 'demo'"),
+                "the YAML reads it from the environment");
+        });
+    }
+
     // ── Doing as the person did ─────────────────────────────────────────────────────────────────────────────────
 
     private static Task<RecordingSession> StartAsync(string url) => RecordingSession.StartAsync(new RecordingOptions(url)
