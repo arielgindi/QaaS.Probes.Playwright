@@ -18,7 +18,8 @@ npm run build   # type-checks, then writes dist/panel.html and copies it to ../p
 `npm run dev` serves the panel with a sample recording (`src/sample.ts`) and reloads as you edit; the commands it
 would send the recorder are logged in the browser's console, and the Elements view shows a sample page
 (`/panel.html?frozen` as frozen with F4). **Test** runs a simulated test run (`?fail` makes it fail at a step), and
-`?test=building`, `running`, `passed`, `failed` or `error` opens on one. `npm run check` only type-checks.
+`?test=building`, `window`, `start`, `running`, `passed`, `failed` or `error` opens on one. `npm run check` only
+type-checks.
 
 ## How it talks to the recorder
 

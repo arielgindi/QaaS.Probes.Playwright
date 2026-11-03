@@ -141,7 +141,10 @@ internal sealed record PanelElement(int Node, string Page)
 
 /// <summary>A test run of the flow as the panel shows it: where it is, each action's state, and how it ended.</summary>
 /// <param name="Run">The run's number, which changes with each run.</param>
-/// <param name="State"><c>building</c>, <c>login</c>, <c>running</c>, <c>passed</c>, <c>failed</c>, <c>stopped</c> or <c>error</c>.</param>
+/// <param name="State">
+/// <c>building</c>, <c>window</c> (opening it), <c>start</c> (opening BaseUrl), <c>login</c>, <c>running</c>,
+/// <c>passed</c>, <c>failed</c>, <c>stopped</c> or <c>error</c>.
+/// </param>
 /// <param name="Total">How many actions the run goes through.</param>
 internal sealed record PanelTest(int Run, string State, int Total)
 {
@@ -155,6 +158,9 @@ internal sealed record PanelTest(int Run, string State, int Total)
 
     /// <summary>When it started, in Unix milliseconds.</summary>
     public long Started { get; init; }
+
+    /// <summary>When its state began, in Unix milliseconds, for the time of each phase before the first step.</summary>
+    public long Since { get; init; }
 
     /// <summary>How long the browser's part took, once it ended.</summary>
     public long? Ms { get; init; }
@@ -180,7 +186,8 @@ internal sealed record PanelTest(int Run, string State, int Total)
     /// <summary>The report as the panel shows it, against the code it shows now.</summary>
     public static PanelTest Of(TestReport report, string code) => new(report.Run, StateOf(report), report.Total)
     {
-        UpTo = report.UpTo, SlowMotion = report.SlowMotion, Login = report.Login, Started = report.Started, Ms = report.Ms,
+        UpTo = report.UpTo, SlowMotion = report.SlowMotion, Login = report.Login, Started = report.Started, Since = report.Since,
+        Ms = report.Ms,
         Running = report.Outcome is null ? report.Running : null,
         Steps = report.Steps.ToDictionary(pair => pair.Key, pair => new PanelTestStep(pair.Value.State switch
         {
@@ -202,6 +209,8 @@ internal sealed record PanelTest(int Run, string State, int Total)
         _ => report.Phase switch
         {
             TestPhase.Building => "building",
+            TestPhase.Opening => "window",
+            TestPhase.StartPage => "start",
             TestPhase.LoggingIn => "login",
             _ => "running",
         },

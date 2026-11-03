@@ -3,6 +3,7 @@ using System.Text.Json;
 using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Login;
+using QaaS.Playwright.Recorder.TestRun;
 using static QaaS.Playwright.Tests.Recorder.Captured;
 using CapturedRecording = QaaS.Playwright.Recorder.Capture.Recording;
 
@@ -66,6 +67,40 @@ public class GeneratedFlowBuildTests
                 """), Does.Contain("""
                 "Lines":[{"Product":"Stapler","Quantity":3}]
                 """.Trim()));
+        });
+    }
+
+    [Test]
+    public async Task TestBuild_CompilesEveryGeneratedFlow_AsDotnetBuildDoes_AndTellsTheSameErrorOfItsCode()
+    {
+        using var direct = new FlowBuild();
+        using var dotnetBuild = new FlowBuild(direct: false);
+        var flows = Recordings().Select(sample => FlowCodeGenerator.Generate(sample.Recording, sample.Name, "Flows"))
+            .Concat(Recordings().Where(sample => sample.Golden)
+                .Select(sample => FlowCodeGenerator.Generate(sample.Recording, sample.Name, "Flows", autoChecks: false)))
+            .ToList();
+        var warnings = new List<(string Flow, IReadOnlyList<string> Compiled, IReadOnlyList<string> Built)>();
+        foreach (var flow in flows)
+            warnings.Add((flow.Code, (await direct.BuildAsync(flow, CancellationToken.None)).Warnings,
+                (await dotnetBuild.BuildAsync(flow, CancellationToken.None)).Warnings));
+
+        // Code a person could not write in the panel: one more line that warns, or does not build.
+        var sample = flows[0];
+        var warned = sample with { Code = sample.Code + "\nfile static class Warned { public static int Use(string? text) => text.Length; }" };
+        warnings.Add((warned.Code, (await direct.BuildAsync(warned, CancellationToken.None)).Warnings,
+            (await dotnetBuild.BuildAsync(warned, CancellationToken.None)).Warnings));
+        var broken = sample with { Code = sample.Code + "\nfile static class Broken { public static void Use() => Missing(); }" };
+        var line = broken.Code.Split('\n').Length;
+        var compiled = Assert.ThrowsAsync<FlowBuildException>(() => direct.BuildAsync(broken, CancellationToken.None))!;
+        var built = Assert.ThrowsAsync<FlowBuildException>(() => dotnetBuild.BuildAsync(broken, CancellationToken.None))!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(direct.Direct, Is.True, "it compiled with the SDK's compiler itself");
+            Assert.That(warnings[^1].Compiled, Has.One.StartWith($"line {line}: CS8602:"), "the line that warns");
+            foreach (var (flow, inCompiled, inBuilt) in warnings)
+                Assert.That(inCompiled, Is.EqualTo(inBuilt), $"the same warnings as dotnet build gives:\n{flow}");
+            Assert.That(compiled.Message, Is.EqualTo($"The flow does not build, line {line}: CS0103: The name 'Missing' does not exist in the current context"));
+            Assert.That((compiled.Message, compiled.Detail), Is.EqualTo((built.Message, built.Detail)));
         });
     }
 

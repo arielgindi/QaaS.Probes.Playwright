@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { duration, isGoing, numberOf, useNow } from '../test';
+import { duration, isGoing, isPreparing, numberOf, useNow } from '../test';
 import { cls, plural, subjectOf, verbOf } from '../text';
 import type { Action, TestFailure, TestRun, TestStep } from '../types';
 import { Icon } from './icons';
@@ -46,6 +46,7 @@ const fills: Record<Tone, string> = {
 /** The test run's summary, under the top bar: where it is or how it ended, how long it took, and what to do next. */
 export function TestBar({ test, actions, onAgain, onStop, onClear, onShow }: BarProps) {
   const going = isGoing(test);
+  const preparing = isPreparing(test);
   const now = useNow(going, 100);
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [test.run]);
@@ -62,10 +63,16 @@ export function TestBar({ test, actions, onAgain, onStop, onClear, onShow }: Bar
   let detail: ComponentChildren = null;
   switch (test.state) {
     case 'building':
-      [tone, icon, title, detail] = ['going', <Spinner class="text-accent-fg" />, 'Building the flow', 'exactly as it will be saved'];
+      [tone, icon, title, detail] = ['going', <Spinner class="text-accent-fg" />, 'Building the flow…', 'exactly as it will be saved'];
+      break;
+    case 'window':
+      [tone, icon, title, detail] = ['going', <Spinner class="text-accent-fg" />, 'Opening a browser window…', 'a window of its own, over the recorded one'];
+      break;
+    case 'start':
+      [tone, icon, title, detail] = ['going', <Spinner class="text-accent-fg" />, 'Opening the start page…', 'BaseUrl, as the probe opens it'];
       break;
     case 'login':
-      [tone, icon, title, detail] = ['login', <Spinner class="text-info" />, `Logging in with ${test.login}`, 'first, as the probe runs it'];
+      [tone, icon, title, detail] = ['login', <Spinner class="text-info" />, `Logging in with ${test.login}…`, 'first, as the probe runs it'];
       break;
     case 'running':
       tone = 'going';
@@ -114,6 +121,11 @@ export function TestBar({ test, actions, onAgain, onStop, onClear, onShow }: Bar
         <span class={cls('grid size-5 shrink-0 place-items-center', wraps && 'mt-px')}>{icon}</span>
         <div class={cls('flex min-w-0 flex-1 gap-x-2 gap-y-0.5', wraps ? 'flex-wrap items-baseline pt-px' : 'items-baseline')}>
           <span class="shrink-0 font-semibold text-fg">{title}</span>
+          {preparing && (
+            <span class="shrink-0 font-mono text-[11.5px] text-fg/80 tabular-nums" title="This part so far">
+              {(Math.max(0, now - (test.since ?? test.started)) / 1000).toFixed(1)} s
+            </span>
+          )}
           {detail && <span class={cls('min-w-0 text-muted', !wraps && 'truncate')}>{detail}</span>}
         </div>
         <div class="flex shrink-0 items-center gap-1.5">
@@ -124,7 +136,7 @@ export function TestBar({ test, actions, onAgain, onStop, onClear, onShow }: Bar
               {plural(test.warnings.length, 'warning')}
             </Tag>
           )}
-          {time !== undefined && test.state !== 'building' && test.state !== 'error' && (
+          {time !== undefined && !preparing && test.state !== 'error' && (
             <span class="min-w-[44px] text-right font-mono text-[11.5px] text-muted tabular-nums" title={going ? 'Running for' : 'Took'}>
               {going ? `${(time / 1000).toFixed(1)} s` : duration(time)}
             </span>
@@ -160,7 +172,7 @@ export function TestBar({ test, actions, onAgain, onStop, onClear, onShow }: Bar
         </div>
         {test.state !== 'error' && test.state !== 'stopped' && (
           <span class="absolute inset-x-0 bottom-[-1px] h-[2px] overflow-hidden">
-            {test.state === 'building' || test.state === 'login' ? (
+            {preparing ? (
               <span class={cls('absolute inset-y-0 w-1/3 animate-indeterminate', fills[tone])} />
             ) : (
               <span class={cls('block h-full transition-[width] duration-500 ease-out', fills[tone])} style={{ width: `${progress * 100}%` }} />
