@@ -16,7 +16,8 @@ internal sealed class CapturedAction
 
     /// <summary>
     /// <c>click</c>, <c>dblclick</c>, <c>fill</c>, <c>check</c>, <c>uncheck</c>, <c>choose</c>, <c>press</c>,
-    /// <c>upload</c>, <c>drag</c>, <c>navigate</c> or <c>newTab</c>.
+    /// <c>upload</c>, <c>drag</c>, <c>navigate</c>, <c>newTab</c>, or <c>expect</c>: a check the person chose (F6),
+    /// which the flow makes after the action before it.
     /// </summary>
     public string Kind { get; set; } = "";
 
@@ -98,9 +99,64 @@ internal sealed class CapturedAction
     /// </summary>
     public bool? AfterPause { get; set; }
 
+    /// <summary>
+    /// For a check: what it expects of <see cref="Target"/>: <c>visible</c>, <c>hidden</c>, <c>text</c>, <c>contains</c>,
+    /// <c>value</c>, <c>checked</c>, <c>unchecked</c>, <c>enabled</c> or <c>disabled</c>; of <see cref="Group"/>,
+    /// <c>count</c> or <c>row</c>; or of the page, <c>url</c>. <see cref="Value"/> holds the text, value, count or
+    /// address expected.
+    /// </summary>
+    public string? Check { get; set; }
+
+    /// <summary>
+    /// For a check of a count, the locators that find every item the element is one of (a list's items, a table's rows);
+    /// of a row, the row by the cells chosen.
+    /// </summary>
+    public CapturedTarget? Group { get; set; }
+
+    /// <summary>What the person changed about the action in the panel; null when nothing.</summary>
+    public ActionEdit? Edit { get; set; }
+
     /// <summary>The element the flow finds to act on: for a choice, its field.</summary>
     [JsonIgnore]
     public CapturedTarget? Element => Kind == "choose" ? Field ?? Target : Target;
+}
+
+/// <summary>
+/// What the person changed in the panel about an action. It is part of the recording, so a flow planned again, or a
+/// recording saved and read back, keeps it.
+/// </summary>
+internal sealed class ActionEdit
+{
+    /// <summary>The name the person gave the step (method) the action is the first of, e.g. <c>SaveTicketAsync</c>.</summary>
+    public string? Step { get; set; }
+
+    /// <summary>The auto checks of the action the person dropped, by their key (<c>alert:...</c>, <c>url</c>, ...).</summary>
+    public List<string>? Dropped { get; set; }
+
+    /// <summary>
+    /// The person's changes to the settings the action reads, by the value's part in it: <c>value</c>, <c>search</c>,
+    /// <c>option</c>, <c>shown</c> or <c>row</c>.
+    /// </summary>
+    public Dictionary<string, ValueEdit>? Values { get; set; }
+}
+
+/// <summary>A setting as the person changed it: its name, its default, and how the flow types it.</summary>
+internal sealed class ValueEdit
+{
+    /// <summary>The setting's name, instead of the one the recorder gave it.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Its default, instead of the value recorded; for a date relative to today, the days from today.</summary>
+    public string? Value { get; set; }
+
+    /// <summary>The flow appends its run's stamp to it, so it never repeats from run to run (a new record's name).</summary>
+    public bool? Unique { get; set; }
+
+    /// <summary>
+    /// A date the flow types relative to the day it runs, in this format (<c>dd/MM/yyyy</c>); <see cref="Value"/> holds
+    /// the days from today.
+    /// </summary>
+    public string? DateFormat { get; set; }
 }
 
 /// <summary>An element, with every locator that might find it.</summary>
