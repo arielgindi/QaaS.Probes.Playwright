@@ -43,6 +43,9 @@ internal sealed class PlannedAction
 
     public List<CapturedEffect> Effects { get; } = [];
 
+    /// <summary>A dialog the action opened that closed later with no action seen, which the flow closes after it.</summary>
+    public List<CapturedEffect> Unseen { get; } = [];
+
     /// <summary>The checks the person chose right after the action, which the flow makes after it.</summary>
     public List<CapturedAction> Checks { get; } = [];
 

@@ -34,6 +34,7 @@ internal static partial class FlowPlanner
         var prepared = recording.Actions.Select(Prepare).ToList();
         var actions = AttachChecks(prepared, Clean([.. prepared.Where(action => action.Kind != "expect")]));
         PlaceInDialogs(actions);
+        actions = CloseUnseen(actions);
         AssignSettings(actions);
         SplitIntoSteps(actions, plan, LoopFinder.Find(actions));
         SplitAtResults(plan);
@@ -196,13 +197,50 @@ internal static partial class FlowPlanner
     private static bool ClosesOwnDialog(PlannedAction action) =>
         action.Effects.Any(effect => effect.Kind == "dialogClosed" && effect.Dialog?.Title == action.Dialog);
 
-    // A dialog that closed and opened again within one action was only rendered anew.
+    // A dialog that closed and opened again within one action was only rendered anew. One that opened, and closed a
+    // while later with no action seen in between, was closed by what the recorder did not see: a key, a click outside it.
     private static void DropFlicker(PlannedAction action)
     {
         var titles = action.Effects.Where(effect => effect.Kind == "dialogOpened").Select(effect => effect.Dialog?.Title)
             .Intersect(action.Effects.Where(effect => effect.Kind == "dialogClosed").Select(effect => effect.Dialog?.Title))
             .ToHashSet();
+        foreach (var title in titles.ToList())
+        {
+            var opened = action.Effects.First(effect => effect.Kind == "dialogOpened" && effect.Dialog?.Title == title);
+            var closed = action.Effects.Last(effect => effect.Kind == "dialogClosed" && effect.Dialog?.Title == title);
+            if (closed.T - opened.T < UnseenCloseMs) continue;
+            action.Effects.RemoveAll(effect => effect.Kind == "dialogClosed" && effect.Dialog?.Title == title);
+            action.Unseen.Add(closed);
+            titles.Remove(title);
+        }
+
         action.Effects.RemoveAll(effect => effect.Kind is "dialogOpened" or "dialogClosed" && titles.Contains(effect.Dialog?.Title));
+    }
+
+    // Longer than a render takes between a dialog's opening and its closing: someone closed it.
+    private const long UnseenCloseMs = 300;
+
+    // After an action whose dialog closed unseen, the flow closes it with Escape, which a person may need to change.
+    private static List<PlannedAction> CloseUnseen(List<PlannedAction> actions)
+    {
+        var all = new List<PlannedAction>();
+        foreach (var action in actions)
+        {
+            all.Add(action);
+            foreach (var closed in action.Unseen)
+            {
+                var escape = new CapturedAction
+                {
+                    Id = $"{action.Source.Id}-closed", T = closed.T, Kind = "press", Key = "Escape", OnPage = true, Page = action.Source.Page,
+                    Url = action.Source.Url, Dialog = closed.Dialog, OpenDialogs = closed.Dialog?.Title is { } title ? [title] : [], Guessed = true,
+                };
+                var planned = new PlannedAction { Source = escape, Key = $"press:Escape:{closed.Dialog?.Title}", Dialog = closed.Dialog?.Title };
+                planned.Effects.Add(closed);
+                all.Add(planned);
+            }
+        }
+
+        return all;
     }
 
     // Every value the person typed, chose or checked becomes a setting, named after the field's path; the names are

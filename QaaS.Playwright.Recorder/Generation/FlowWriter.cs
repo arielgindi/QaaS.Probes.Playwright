@@ -410,7 +410,10 @@ internal sealed partial class FlowWriter
                 break;
             case "press":
                 if (source.OnPage == true || action.Locator is null)
-                    _step.Add($"await {scope.Page}.Keyboard.PressAsync({CSharp.Literal(source.Key ?? "Enter")});");
+                    _step.Add($"await {scope.Page}.Keyboard.PressAsync({CSharp.Literal(source.Key ?? "Enter")});",
+                        source.Guessed
+                            ? "the dialog closed with no action the recorder saw (a key, a click beside it): the flow presses Escape; check that it closes it"
+                            : null);
                 else
                 {
                     var locator = Locate(action, ref problem);

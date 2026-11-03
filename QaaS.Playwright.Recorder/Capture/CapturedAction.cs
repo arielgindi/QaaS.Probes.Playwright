@@ -115,6 +115,13 @@ internal sealed class CapturedAction
     public bool Added { get; set; }
 
     /// <summary>
+    /// Not seen but guessed by the recorder: an Escape that closes a dialog that closed with no action seen. Never in a
+    /// recording; the planner makes it.
+    /// </summary>
+    [JsonIgnore]
+    public bool Guessed { get; set; }
+
+    /// <summary>
     /// For a navigation or a tab: where the page was when the person resumed a paused recording, having changed while it
     /// was paused.
     /// </summary>
