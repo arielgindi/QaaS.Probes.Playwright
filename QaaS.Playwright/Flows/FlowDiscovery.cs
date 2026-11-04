@@ -39,13 +39,7 @@ public static class FlowDiscovery
 
     private static Type FindType(string name, Assembly[] assemblies)
     {
-        var matches = assemblies
-            .SelectMany(LoadableTypes)
-            .Where(type => type is { IsAbstract: false, IsGenericTypeDefinition: false }
-                           && typeof(IPlaywrightFlow).IsAssignableFrom(type)
-                           && type.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
+        var matches = Named(name, assemblies);
         return matches switch
         {
             [var type] => type,
@@ -57,7 +51,20 @@ public static class FlowDiscovery
         };
     }
 
-    // An assembly whose types only partly load still offers the ones that did.
+    /// <summary>
+    /// The flows of <paramref name="assemblies"/> named <paramref name="name"/>, case-insensitively: one is the flow, more
+    /// is an error, as <see cref="Resolve"/> finds them. The recorder finds a login flow with it.
+    /// </summary>
+    internal static List<Type> Named(string name, IEnumerable<Assembly> assemblies) =>
+        [.. FlowsIn(assemblies).Where(type => type.Name.Equals(name, StringComparison.OrdinalIgnoreCase))];
+
+    /// <summary>The types of <paramref name="assemblies"/> that are flows: an <see cref="IPlaywrightFlow"/> that can be created.</summary>
+    internal static IEnumerable<Type> FlowsIn(IEnumerable<Assembly> assemblies) => assemblies
+        .SelectMany(LoadableTypes)
+        .Where(type => type is { IsAbstract: false, IsGenericTypeDefinition: false } && typeof(IPlaywrightFlow).IsAssignableFrom(type));
+
+    // An assembly whose types only partly load still offers the ones that did; one that needs an assembly that cannot be
+    // loaded offers none.
     private static IEnumerable<Type> LoadableTypes(Assembly assembly)
     {
         try
@@ -68,7 +75,7 @@ public static class FlowDiscovery
         {
             return partlyLoaded.Types.OfType<Type>();
         }
-        catch (Exception failure) when (failure is FileNotFoundException or TypeLoadException)
+        catch (Exception failure) when (failure is FileNotFoundException or FileLoadException or TypeLoadException)
         {
             return [];
         }

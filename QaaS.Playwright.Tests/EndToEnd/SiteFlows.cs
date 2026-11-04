@@ -26,6 +26,23 @@ public sealed class LogInFlow : BasePlaywrightFlow<UserConfig>
     }
 }
 
+/// <summary>
+/// Plants the token the gated app needs before any page loads, as a login behind a proxy does, then logs in on
+/// <c>{BaseUrl}/login</c>.
+/// </summary>
+public sealed class GatedLogInFlow : BasePlaywrightFlow<UserConfig>
+{
+    public override async Task RunAsync(IPage page)
+    {
+        await page.AddInitScriptAsync("try { localStorage.setItem('gate', 'open'); } catch { }");
+        await page.Context.ClearCookiesAsync();
+        await page.GotoAsync($"{BaseUrl}/login");
+        await page.GetByLabel("Username").FillAsync(Configuration.User);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Log in" }).ClickAsync();
+        await page.WaitForURLAsync("**/gate/home");
+    }
+}
+
 /// <summary>Types the user name, then waits for ever for a button the page never shows, as a login that hangs does.</summary>
 public sealed class HangingLogInFlow : BasePlaywrightFlow<NoConfig>
 {

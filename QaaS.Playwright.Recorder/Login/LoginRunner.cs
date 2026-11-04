@@ -14,19 +14,41 @@ namespace QaaS.Playwright.Recorder.Login;
 /// The recorder found it in the tests, rather than the person giving it: it is found again each time, in the newest
 /// build.
 /// </param>
-internal sealed record LoginFlow(string Flow, string Assembly, string? Settings, bool Found = false);
+/// <param name="Project">The test project it was found in, its .csproj; null when it was given.</param>
+/// <param name="BaseUrlFrom">
+/// The test YAML whose probe runs it as a setup flow and gives its <c>BaseUrl</c>; null when none does, or it was given.
+/// </param>
+internal sealed record LoginFlow(string Flow, string Assembly, string? Settings, bool Found = false, string? Project = null,
+    string? BaseUrlFrom = null)
+{
+    /// <summary>
+    /// The BaseUrl the flow runs with, as the tests give it: the <c>BaseUrl</c> of the probe that runs it in
+    /// <see cref="BaseUrlFrom"/> or in <see cref="Settings"/>, placeholders resolved; else the address of
+    /// <paramref name="startUrl"/>, with no path, as a login flow builds its own (<c>$"{BaseUrl}/login"</c>). With the file
+    /// it came from, or null.
+    /// </summary>
+    public (string Url, string? From) BaseUrlFor(string startUrl)
+    {
+        foreach (var file in new[] { BaseUrlFrom, Settings }.OfType<string>().Distinct())
+            if (LoginSettings.BaseUrlIn(file, Flow) is { } url)
+                return (url, file);
+        return (Uri.TryCreate(startUrl, UriKind.Absolute, out var start) ? start.GetLeftPart(UriPartial.Authority) : startUrl, null);
+    }
+}
 
 /// <summary>
 /// Runs a login flow on the recording's page as the probe runs a setup flow: found by its class name, given BaseUrl and
 /// a QaaS context, its settings bound and checked, then run on the page the recording opened on BaseUrl.
 /// </summary>
-internal static class LoginRunner
+internal static partial class LoginRunner
 {
     /// <summary>
-    /// Returns null when the flow passed, else why it failed, as the probe reports it, its secrets hidden. Once
+    /// Returns null when the flow passed, else why it failed, as the probe reports it, its secrets hidden, with the
+    /// BaseUrl it was given and the page it was on; a flow built against another QaaS.Playwright says so. Once
     /// <paramref name="stopped"/>, what it still logs is not shown: the person logs in by hand.
     /// </summary>
-    public static async Task<string?> RunAsync(LoginFlow login, IPage page, string baseUrl, CancellationToken stopped = default)
+    public static async Task<string?> RunAsync(LoginFlow login, IPage page, string baseUrl, CancellationToken stopped = default,
+        string? baseUrlFrom = null)
     {
         var secrets = Secrets.None;
         try
@@ -51,9 +73,29 @@ internal static class LoginRunner
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
-            return secrets.Scrub(FlowRunner.Describe(failure));
+            if (FlowCheck.Explain(failure, login.Flow) is { } plainly) return secrets.Scrub(plainly);
+            var on = page.IsClosed ? null : page.Url;
+            return secrets.Scrub($"{FlowRunner.Describe(failure)}\n{WhereItWas(login.Flow, failure, on, baseUrl, baseUrlFrom)}");
         }
     }
+
+    /// <summary>
+    /// "LoginFlow waited 15 s on https://app/x/login: was BaseUrl right? It was given https://app (from Tests/Smoke.qaas.yaml)."
+    /// </summary>
+    internal static string WhereItWas(string flow, Exception failure, string? on, string baseUrl, string? baseUrlFrom)
+    {
+        var given = baseUrlFrom is null
+            ? $"It was given BaseUrl {baseUrl}, the address you record on, as no test YAML that runs {flow} gives one"
+            : $"It was given BaseUrl {baseUrl}, from {ConsoleUi.Relative(baseUrlFrom)}";
+        var waited = Timeout().Match(failure.Message) is { Success: true } timeout
+            ? $"{flow} waited {int.Parse(timeout.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) / 1000} s"
+            : $"{flow} stopped";
+        return $"{waited} on {(on is null or "" ? "a page that closed" : on)}: was BaseUrl right? {given}. If it is not, set " +
+               $"BaseUrl in the test YAML that runs {flow} (ProbeConfiguration: BaseUrl:), or log in by hand.";
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"Timeout (\d+)ms")]
+    private static partial System.Text.RegularExpressions.Regex Timeout();
 
     /// <summary>Hides the login's secrets, e.g. its password, in what is shown of it while it runs.</summary>
     public static Func<string, string> Scrubber(LoginFlow login)

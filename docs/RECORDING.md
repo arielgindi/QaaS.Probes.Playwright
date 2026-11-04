@@ -160,12 +160,16 @@ When the recorder starts and finds a recording that did not end in a save (the r
 Ctrl+C, or the flow could not be saved), it asks, before anything else:
 
 ```text
-  ? Found an unsaved recording of NewTicket (12 actions, 5 minutes ago)
-      1  Save it now
-      2  Continue recording
-      3  Discard
-  ? Choose 1, 2 or 3 (1) ›
+  ? Found a recording of NewTicket that was never saved (12 actions, 5 minutes ago): the recorder stopped before you
+    saved it. What should it do with it?
+      1  Save it now as a flow
+      2  Continue recording it: replay its steps, then record more
+      3  Discard it for good
+  ? Type 1, 2 or 3, or the start of a choice (Enter = 1) ›
 ```
+
+Every question says what it asks, why, an example answer, and what Enter does; every warning and error says what
+happened, the likely cause, and what to do next.
 
 An end nobody asked for never goes unsaid: an error the recorder did not expect, Chrome or its driver going away, or a
 signal from outside (`kill`, a closed terminal: SIGTERM, SIGHUP, SIGQUIT) writes the recording as it is then, prints
@@ -186,7 +190,7 @@ qaas-playwright --continue new-ticket                            # Flows/NewTick
 qaas-playwright --continue UiFlows/NewTicket.cs --no-panel       # or the flow's file, with the options of record
 ```
 
-Chrome opens on the page the flow started on, your [login flow](#logging-in-first) runs first as usual, and the flow's
+Chrome opens, your [login flow](#logging-in-first) runs first as usual, then the page the flow started on opens, and the flow's
 steps replay in the recorded window itself, as **Test** runs them: built as saved, through the probe's runner, with its
 timeouts and the flow's values. Nothing is recorded meanwhile; the overlay says `Testing the flow`. Then the recording
 goes on from where they left the app: what you do is added after them, numbered on, and the panel shows a divider
@@ -211,45 +215,90 @@ goes on from where they left the app: what you do is added after them, numbered 
 ### Logging in first
 
 Your tests log in with a flow of their own, e.g. `LoginFlow`, which the probe runs before the others
-(`SetupFlows: [LoginFlow]`). The recorder runs it too, so the recording starts logged in, on the page the login leaves
-the app on. Run the recorder in your test project's folder and it finds the flow by itself, then asks once:
+(`SetupFlows: [LoginFlow]`). The recorder runs it too, so the recording starts logged in. Run the recorder in your test
+project's folder, or in the repository or solution folder above it, and it finds the flow by itself, as QaaS finds it
+when the tests run, then asks once:
 
 ```text
     Your tests log in with LoginFlow, from bin/Debug/net10.0/YourShared.dll: the setup flow of 4 test files.
     Its values (Username, Url) come from Tests/Smoke.qaas.yaml.
-  ? Log in first with LoginFlow (Y/n) ›
+  ? Log in first with LoginFlow? The recorder runs it before you record, so you start signed in, as your tests
+    do (Y/n, Enter = yes) ›
 ```
 
 **What the recorder does by itself:**
 
 - **It finds your test project**: the nearest `.csproj` from the folder the flow is saved in, up; else from the current
-  folder.
-- **It finds its newest build**: `bin/Debug/<tfm>/<Project>.dll`, or `bin/Release/...`. When there is none, or the
-  project changed since, it offers to build it, saying the command (`dotnet build`, or `dotnet build Tests/MyTests.csproj`
-  from another folder), and shows one line while it builds and the errors if it fails. Say no, and it says how to build
-  it.
-- **It finds the flow**: the one your test YAML files (`*.yaml`, `*.yml`, outside `bin` and `obj`) run in `SetupFlows`
-  most, else the one named like a login (`Login`, `LogIn`, `SignIn` or `Auth`), in your project's DLL or a DLL beside it
-  in the bin folder, as the probe finds a setup flow. More than one: it asks which. None: it records without logging
-  in, as before, and says nothing.
-- **It finds its values** in the `FlowConfiguration: LoginFlow:` block of a test that runs it, and says whether it
-  needs any (below).
-- **It asks once per folder**, and remembers the answer in `~/.qaas/recorder-logins.json`. Later runs only say
-  `Logging in with LoginFlow, from bin/Debug/net10.0/YourShared.dll, its values from Tests/Smoke.qaas.yaml…`, and find
-  the flow again in the newest build. Said no: it records without logging in there, until you record once with
-  `--login LoginFlow`, or with `--no-login`, which forgets the answer so the next run asks again.
+  folder, up. Run from a folder above it, e.g. the repository's root or a solution's folder, it looks up to 3 folders
+  down (skipping `bin`, `obj`, `node_modules` and hidden folders) and in the `.sln` and `.slnx` files there, and takes
+  the projects that use QaaS: those whose YAML runs `SetupFlows`, else those whose restore (`obj/project.assets.json`)
+  took a QaaS package. When several do, it asks which, once, and remembers the answer for the folder.
+- **It finds its newest build**: `bin/Debug/<tfm>/<Project>.dll`, or `bin/Release/...`. When there is none there, or it
+  is older than the project, it asks MSBuild where the project builds to (`dotnet msbuild <csproj>
+  -getProperty:TargetPath`, in Debug and Release), so a `Directory.Build.props` with `OutputPath` or `BaseOutputPath`,
+  a repository-level `bin/`, or `UseArtifactsOutput` (`artifacts/bin/<project>/<config>/`) are found too. MSBuild's
+  answer is kept in `~/.qaas/recorder-builds.json` until the project, or a `Directory.Build.props` or `.targets` above
+  it, changes. When there is no build, or the project changed since, it offers to build it, saying the command
+  (`dotnet build`, or `dotnet build Tests/MyTests.csproj` from another folder), and shows one line while it builds and
+  the errors if it fails. Say no, and it says how to build it.
+- **It finds the flow** as QaaS does: in your project's DLL and everything it uses, its dependency closure from its
+  `.deps.json` (a package a library's build does not copy is found in your NuGet package folder) and the DLLs of its
+  output folder; an `IPlaywrightFlow` matched by its class name, case-insensitively. A name two flows have is said, as
+  QaaS refuses it too. It takes the one your test YAML files (`*.yaml`, `*.yml`, outside `bin` and `obj`) run in
+  `SetupFlows` most, else the one named like a login (`Login`, `LogIn`, `SignIn` or `Auth`). More than one: it asks
+  which.
+- **It says when your login flow cannot run in it.** A shared package of your team may be built against another
+  QaaS.Playwright than the recorder's. When the flow uses what the recorder's has not, the recorder says so before
+  Chrome opens, rather than failing in it:
 
-**Where the DLL is.** In your test project's bin folder, once built: `bin/Debug/net10.0/`. Your project's own DLL is
-there, `MyTests.dll`, and the DLL of each package it references, e.g. a shared package of your team that has the login
-flow: `bin/Debug/net10.0/YourShared.dll`. `--login-assembly` takes either one.
+  ```text
+  ▲ LoginFlow (in Acme.Shared.dll) was built against QaaS.Playwright 1.15.1, and the recorder runs 2.0.3: it can't
+    load it (BrowserDefaults.RemoteUrl is gone). Update that package to QaaS.Playwright 2.0.x, then build your tests
+    again. Until then, record with --no-login and log in by hand.
+  ```
+
+- **It finds its values** in the `FlowConfiguration: LoginFlow:` block of a test that runs it, and says whether it
+  needs any (below), and **its BaseUrl** in the same test: the `BaseUrl` of the probe that runs it
+  (`ProbeConfiguration: BaseUrl:`), with `${NAME ?? default}` resolved as QaaS resolves it. When no test gives one, it
+  takes the address of the URL you record on, without its path.
+- **It asks once per folder**, and remembers the answer in `~/.qaas/recorder-logins.json`. Later runs only say
+  `Logging in with LoginFlow, from bin/Debug/net10.0/YourShared.dll, its values from Tests/Smoke.qaas.yaml, BaseUrl
+  https://my-app.com (from Tests/Smoke.qaas.yaml)…`, and find the flow again in the newest build.
+- **It never stays silent.** When it finds no login flow, one dim line says why and where it looked, e.g.
+  `No login flow: no test project in /home/me/repo, above it or up to 3 folders below it.`, until you answered once
+  there. Said no, it records without logging in there, and says so each time:
+  `Not logging in here (you said no on 2026-11-03). --login LoginFlow to log in, --no-login to ask again.`
+- **`qaas-playwright --login-why`** prints the whole search, and records nothing: the projects found and why each was
+  taken or not, the build used and how it was found, the DLLs looked through and the QaaS.Playwright each was built
+  against, the flows found and why each was chosen or not, and what recording here would do.
+
+**Asked for interactively** (`qaas-playwright` with no arguments), when nothing was found or you said no before:
+
+```text
+  ? Do your tests log in first with a flow, e.g. LoginFlow? The recorder can run that login flow before you record,
+    so you start recording already signed in (y/N, Enter = no) ›
+```
+
+Only on yes it asks `Its class name (the login flow, not the one you're recording)`, with the flows it found listed to
+pick by number, and the one found as the default. The name of the flow you record is refused, and a name is checked
+as QaaS finds it. It asks for the DLL only when it found none, and for the values (`Values LoginFlow needs (a YAML with
+FlowConfiguration: LoginFlow:), Enter if it needs none`) only when no test gives them and the flow has any.
+
+**Where the DLL is.** In your test project's bin folder, once built: `bin/Debug/net10.0/`, or where its
+`Directory.Build.props` builds it. Your project's own DLL is there, `MyTests.dll`, and the DLL of each package it
+references, e.g. a shared package of your team that has the login flow: `bin/Debug/net10.0/YourShared.dll`.
+`--login-assembly` takes either one.
 
 **Whether it needs values.** Look for its block in your test YAML, under the probe's `ProbeConfiguration`:
 
 ```yaml
-FlowConfiguration:
-  LoginFlow:
-    Username: smoke-user
-    Password: ${LOGIN_PASSWORD}
+ProbeConfiguration:
+  BaseUrl: ${APP_URL ?? https://my-app.com}
+  SetupFlows: [LoginFlow]
+  FlowConfiguration:
+    LoginFlow:
+      Username: smoke-user
+      Password: ${LOGIN_PASSWORD}
 ```
 
 No block: it needs no values, or keeps its defaults. The recorder says which: `It needs no values`, or
@@ -260,35 +309,43 @@ environment variable, and `${NAME ?? default}` has a default, as in QaaS, so a p
 
 | Option | Is |
 |--------|----|
-| `--login <Flow>` | Logs in with that flow, by its class name as `SetupFlows` names it; its DLL and values are found as above. |
-| `--login-assembly <dll>` | The DLL in your test project's bin folder that has the flow, e.g. `bin/Debug/net10.0/YourShared.dll`, when the recorder does not run in the project's folder. |
-| `--login-settings <yaml>` | The YAML with its values: a test, e.g. `Tests/Smoke.qaas.yaml`, a probe's `ProbeConfiguration`, or the `FlowConfiguration: { LoginFlow: ... }` the recorder writes. Its first `FlowConfiguration:LoginFlow` is taken; a file of none, as `{}` is, keeps the flow's defaults. |
-| `--no-login` | Records without logging in, and forgets the answer for this folder. |
+| `--login <Flow>` | Logs in with that flow, by its class name as `SetupFlows` names it; its DLL, values and BaseUrl are found as above. When it is not found, it says why, as `--login-why` would. |
+| `--login-assembly <dll>` | The DLL that has the flow, e.g. `bin/Debug/net10.0/YourShared.dll`, when the recorder does not find it. |
+| `--login-settings <yaml>` | The YAML with its values: a test, e.g. `Tests/Smoke.qaas.yaml`, a probe's `ProbeConfiguration`, or the `FlowConfiguration: { LoginFlow: ... }` the recorder writes. Its first `FlowConfiguration:LoginFlow` is taken; a file of none, as `{}` is, keeps the flow's defaults. Its probe's `BaseUrl` is the login's. |
+| `--login-why` | Prints the whole search for the login flow, and records nothing. |
+| `--no-login` | Records without logging in, and forgets the answer for this folder, so the next recording asks again. |
 
-The options always win over what is found, and are remembered for the folder in its place. Asked for interactively too
-(`qaas-playwright` with no arguments). The flow is created and run as the probe runs a setup flow: found by its class
-name in that DLL and the ones beside it, given `BaseUrl` (the URL you record) and a QaaS `Context` whose logger writes to
-the console, its values bound and checked as strictly as the probe checks them, then run on the recording's page once
-it opened the URL. The DLLs load from their folder; QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so
-the flow runs on the recorder's pages whatever versions your project was built with (a flow that needs a newer
-Playwright than the recorder has fails with `MissingMethodException`: update the recorder).
+The options always win over what is found, and are remembered for the folder in its place.
+
+**How it runs.** As the probe runs a setup flow: created by its class name, given its `BaseUrl` (above) and a QaaS
+`Context` whose logger writes to the console, its values bound and checked as strictly as the probe checks them, then
+run first, on a page that has loaded nothing yet. A login flow that plants what the app needs before its first page
+loads, e.g. a token with `page.AddInitScriptAsync(...)` that a proxy asks for, has it on every page after, while you
+record too. Once it logged in, the page goes to the URL you record on, unless it is there already; when that URL is
+the app's root and the login left the app on a page of its own, the recording starts there, and the console says so.
+The panel's **Test**, `--continue` and recording a part again run it in the same order. The DLLs load from their
+folder and their dependency closure; QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so the flow
+runs on the recorder's pages whatever versions your project was built with, unless it uses what the recorder's have
+not (above).
 
 - **You see how it goes.** The console, a pill at the top of the page and the panel say
   `Logging in with LoginFlow… 12 s, on /signin`, the page's address without its query, secrets hidden, and what it
   did last there (`typed in “Username”`, `clicked button “Sign in”`, never a value). After 5 seconds they add
-  `Taking long? Press Esc to log in by hand.`
+  `Taking long? Press Esc to stop the login flow and log in by hand in the browser.`
 - **Esc stops it**, in the console or the page, as does **Log in by hand** in the panel: its page is replaced by a
   fresh one at the same address, keeping the login so far, so whatever it waited for fails at once and it does nothing
   more. It also stops by itself after 2 minutes in which no page loaded and nothing went to the app or came back,
-  saying what it waited for, and when the app asks the browser to sign in (with Windows, or a user name and password of
-  HTTP authentication), which a flow cannot answer. Its own timeouts are the probe's.
+  saying what it waited for and the BaseUrl it was given, and when the app asks the browser to sign in (with Windows,
+  or a user name and password of HTTP authentication), which a flow cannot answer. Its own timeouts are the probe's.
 - **Nothing the login flow does is recorded**: not its typing and clicks, the pages it goes to, the pop-ups it opens,
   or the browser dialogs it gets, which Playwright dismisses unless the flow handles them, as in the probe.
 - **The flow you record runs after it.** Its doc comment says so, and the console's YAML hint adds that it needs
   `SetupFlows: [LoginFlow]`, with the login's values, before it in the probe.
 - **When the login flow fails or is stopped**, the console and the panel show why, as the probe reports it, secrets
-  hidden. The recording stays paused: log in by hand, then resume it (`F8`, or **Resume** in the panel), and nothing
-  you did is recorded. To give up, close the browser.
+  hidden, with the BaseUrl it was given and the page it was on: `LoginFlow waited 15 s on https://my-app.com/x/login:
+  was BaseUrl right? It was given BaseUrl https://my-app.com/x, from Tests/Smoke.qaas.yaml.` The recording stays
+  paused: log in by hand, then resume it (`F8`, or **Resume** in the panel), and nothing you did is recorded. To give
+  up, close the browser.
 
 ### Pausing
 
@@ -479,7 +536,8 @@ whether it works and where it fails, before you save it.
   of code that has not changed uses the same build again. Each run loads the build afresh, and unloads it after.
 - **It runs as the probe runs it**, in a window of its own over the recorded one: a browser context of its own in the
   recorder's Chrome, `BaseUrl` the page you started on, your [login flow](#logging-in-first) first when you record with
-  one (as `SetupFlows`), else the login the recording started from (`~/.qaas/auth.json`), and the recorded values as
+  one (as `SetupFlows`, on a page that loaded nothing yet, with its own BaseUrl, then the page you started on), else the
+  login the recording started from (`~/.qaas/auth.json`), and the recorded values as
   the flow's settings (its YAML). It has the probe's timeouts (30 s for an action, 5 s for an `Expect`), page setup and
   failure screenshot, and hides the run's secrets, so a flow that passes here passes in the probe with that YAML.
 - **It really does what the flow does**, in your app: a flow that creates an order creates another one.
@@ -488,8 +546,8 @@ whether it works and where it fails, before you save it.
   the test, or stays paused if it was.
 
 Until the first step runs, the status strip says what is going on, with its time so far and a moving line under it:
-`Building the flow…`, `Opening a window of its own…`, `Opening the start page…`, then `Logging in…` with your login
-flow. Then it says which step runs, with the time, and each step on the left gets a spinner, then a ✓ with how long it
+`Building the flow…`, `Opening a window of its own…`, then `Logging in…` with your login flow and
+`Opening the start page…`, or `Opening the start page…` alone. Then it says which step runs, with the time, and each step on the left gets a spinner, then a ✓ with how long it
 took. When a step fails, the strip says which, the step turns red and opens on why, as the
 probe reports it: what it waited for, on which page and on which line, the screenshot of the page then (click it to
 see it whole), what the recorder listed to check by hand there, and Playwright's call log. The steps after it show
@@ -526,8 +584,8 @@ does in the app, and does it once you confirm:
 1. **The recorded window goes back to the start of the flow and replays it up to the part**, as
    [Test](#testing-the-flow) runs it: built as saved, through the probe's runner, with its timeouts and the flow's
    values, but in the recorded window itself, as [continuing](#continuing-a-flow) does. Its cookies and the start
-   page's storage are cleared first; then your [login flow](#logging-in-first) logs in, or the login the recording
-   started from is put back, and the start page opens. Nothing is recorded meanwhile, and the overlay says
+   page's storage are cleared first; then your [login flow](#logging-in-first) logs in on a blank page and the start
+   page opens, or the login the recording started from is put back and the start page opens. Nothing is recorded meanwhile, and the overlay says
    `Testing the flow · replaying it here`. Like a test, it really does what the flow does in your app.
 2. **Then do the part again.** The status strip says `Re-recording FillNewTicketAsync: do it again, then press Done`,
    with **Done** (`F2`) and **Keep it as it was** (`Esc`), and the pill at the top of the page

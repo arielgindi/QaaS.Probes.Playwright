@@ -63,6 +63,46 @@ internal static class LoginSettings
         return null;
     }
 
+    /// <summary>
+    /// The <c>BaseUrl</c> the tests give <paramref name="flow"/> in <paramref name="path"/>: that of the probe that runs it
+    /// as a setup flow (<c>ProbeConfiguration: BaseUrl:</c> beside <c>SetupFlows: [LoginFlow]</c>), else of the one whose
+    /// <c>FlowConfiguration</c> has its values; its placeholders resolved as QaaS resolves them. Null when none does, or
+    /// the file cannot be read.
+    /// </summary>
+    public static string? BaseUrlIn(string path, string flow)
+    {
+        IConfiguration file;
+        try
+        {
+            file = Open(path);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+
+        return BaseUrlOf(file, flow, setup: true) ?? BaseUrlOf(file, flow, setup: false);
+    }
+
+    // The node, or one under it, that runs the flow (or has its values) and has a BaseUrl.
+    private static string? BaseUrlOf(IConfiguration node, string flow, bool setup)
+    {
+        if (node.GetSection("BaseUrl").Value is { Length: > 0 } url)
+        {
+            var setupFlows = node.GetSection("SetupFlows");
+            var runs = setup
+                ? setupFlows.Value?.Trim().Equals(flow, StringComparison.OrdinalIgnoreCase) == true
+                  || setupFlows.GetChildren().Any(item => item.Value?.Trim().Equals(flow, StringComparison.OrdinalIgnoreCase) == true)
+                : Find(node, flow) is not null;
+            if (runs) return url.Trim();
+        }
+
+        foreach (var child in node.GetChildren())
+            if (BaseUrlOf(child, flow, setup) is { } deeper)
+                return deeper;
+        return null;
+    }
+
     private static bool HasFlowConfiguration(IConfiguration node) => node.GetChildren().Any(child =>
         child.Key.Equals(FlowConfiguration, StringComparison.OrdinalIgnoreCase) || HasFlowConfiguration(child));
 }
