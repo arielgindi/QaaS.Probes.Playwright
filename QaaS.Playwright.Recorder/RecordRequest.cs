@@ -1,21 +1,15 @@
-using System.Text;
-using System.Text.RegularExpressions;
 using QaaS.Playwright.Flows;
 using QaaS.Playwright.Recorder.Login;
 
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>What to record: the flow's class name, the page to start on, and the folder to save the flow in.</summary>
-internal sealed partial record RecordRequest(string ClassName, string Url, string OutputDir)
+internal sealed record RecordRequest(string ClassName, string Url, string OutputDir)
 {
     /// <summary>Save the raw recording beside the flow, with every locator tried for each element.</summary>
     public bool KeepRecording { get; init; }
 
-    private const string DefaultOutputDir = "Flows";
-
-    // A file name has at most 255 bytes, and a re-recording adds ".recorded-<n>.txt" to the flow's name.
-    private const int MaxNameBytes = 200;
-
+    private const string DefaultOutputDir = Setup.SetupRules.DefaultOutputDir;
 
     /// <summary>Whether the recorder's panel shows the flow beside the recorded window as it is written.</summary>
     public bool Panel { get; init; } = true;
@@ -323,36 +317,10 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         : throw new ArgumentException($"There is no {settings}, the YAML with your login flow's values. Give the path of the " +
                                       "test YAML that has them (under FlowConfiguration: <flow>:), or leave out --login-settings.");
 
-    private static RecordRequest Create(string name, string url, string outputDir)
-    {
-        EnsureHttpUrl(url);
-        return new RecordRequest(ClassNameOf(name), url, outputDir);
-    }
+    private static RecordRequest Create(string name, string url, string outputDir) => Setup.SetupRules.For(name, url, outputDir);
 
-    // Checked before recording, so nobody records a flow that cannot be saved or compiled.
-    private static string ClassNameOf(string name)
-    {
-        var className = FlowCodeGenerator.ToPascalCase(name);
-        var clash = Generation.CSharp.Reserved.Contains(className) ? "a type or member its code uses"
-            : WindowsDeviceName().IsMatch(className) ? "a device on Windows"
-            : null;
-        if (clash is not null)
-            throw new ArgumentException($"A flow cannot be named {className}, {clash}. Try {className}Flow.");
-        if (Encoding.UTF8.GetByteCount(className) > MaxNameBytes)
-            throw new ArgumentException($"The flow's name is too long to be a file name: '{className}'. Choose a shorter " +
-                                        "name, e.g. new-order.");
-        return className;
-    }
+    // Checked as the start screen checks a name, so nobody records a flow that cannot be saved or compiled.
+    private static string ClassNameOf(string name) => Setup.SetupRules.ClassName(name);
 
-    [GeneratedRegex("^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$", RegexOptions.IgnoreCase)]
-    private static partial Regex WindowsDeviceName();
-
-    private static void EnsureHttpUrl(string url)
-    {
-        var isHttp = Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                     && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-        if (!isHttp)
-            throw new ArgumentException($"'{url}' is not an address the recorder can open: it must start with http:// or " +
-                                        "https://, e.g. https://my-app.com/login.");
-    }
+    private static void EnsureHttpUrl(string url) => Setup.SetupRules.CheckUrl(url);
 }
