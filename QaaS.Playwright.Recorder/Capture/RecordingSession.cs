@@ -39,6 +39,12 @@ internal sealed record RecordingOptions(string Url)
     /// </summary>
     public Recording? Continues { get; init; }
 
+    /// <summary>
+    /// Whether the login flow runs on a blank page before BaseUrl opens, as the tests' probe runs its setup flows with
+    /// <c>SetupFlowsBeforeBaseUrl</c>; else BaseUrl opens first, as the probe's default.
+    /// </summary>
+    public bool SetupFlowsBeforeBaseUrl { get; init; }
+
     /// <summary>The recorder's lifetime, which ends the run scopes still going however the recording ends; null in tests.</summary>
     public RecorderLifetime? Lifetime { get; init; }
 }
@@ -297,6 +303,8 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         _login = watch;
         WatchNetwork(on: true);
         var scope = CurrentRun ?? new RunScope(nameof(RunKind.Login), _options.Lifetime);
+        // In the probe's order: BaseUrl opened first, unless the tests' probe runs its setup flows before it.
+        if (!_options.SetupFlowsBeforeBaseUrl) await OpenBaseUrlAsync();
         LoginEnd? end;
         try
         {
@@ -660,6 +668,20 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         var stay = StartPage.StaysAfterLogin(Page.Url, _options.Url, _options.LoginBaseUrl);
         if (stay is null) await OpenStartAsync();
         return stay;
+    }
+
+    // The login's BaseUrl, as the probe opens it before its setup flows: a page that does not load is the login's to find.
+    private async Task OpenBaseUrlAsync()
+    {
+        var baseUrl = _options.LoginBaseUrl ?? new Uri(_options.Url).GetLeftPart(UriPartial.Authority);
+        try
+        {
+            await Page.GotoAsync(baseUrl, new() { Timeout = NavigationTimeoutMs });
+        }
+        catch (PlaywrightException)
+        {
+            // The login flow goes on from where the page is.
+        }
     }
 
     // The recording's URL, for a person who logs in by hand there after the login flow failed before it opened a page.

@@ -69,7 +69,14 @@ internal static class LoginSettings
     /// <c>FlowConfiguration</c> has its values; its placeholders resolved as QaaS resolves them. Null when none does, or
     /// the file cannot be read.
     /// </summary>
-    public static string? BaseUrlIn(string path, string flow)
+    public static string? BaseUrlIn(string path, string flow) => ProbeIn(path, flow)?.BaseUrl;
+
+    /// <summary>
+    /// The probe the tests run <paramref name="flow"/> in, in <paramref name="path"/>, found as <see cref="BaseUrlIn"/>
+    /// finds it: its <c>BaseUrl</c>, and whether it runs its setup flows on a blank page before it opens it
+    /// (<c>SetupFlowsBeforeBaseUrl</c>, false unless it says). Null when none does, or the file cannot be read.
+    /// </summary>
+    public static (string BaseUrl, bool SetupFirst)? ProbeIn(string path, string flow)
     {
         IConfiguration file;
         try
@@ -81,24 +88,26 @@ internal static class LoginSettings
             return null;
         }
 
-        return BaseUrlOf(file, flow, setup: true) ?? BaseUrlOf(file, flow, setup: false);
+        return (ProbeOf(file, flow, setup: true) ?? ProbeOf(file, flow, setup: false)) is { } probe
+            ? (probe["BaseUrl"]!.Trim(), bool.TryParse(probe["SetupFlowsBeforeBaseUrl"], out var first) && first)
+            : null;
     }
 
-    // The node, or one under it, that runs the flow (or has its values) and has a BaseUrl.
-    private static string? BaseUrlOf(IConfiguration node, string flow, bool setup)
+    // The node, or one under it, that runs the flow (or has its values) and has a BaseUrl: the probe's settings.
+    private static IConfiguration? ProbeOf(IConfiguration node, string flow, bool setup)
     {
-        if (node.GetSection("BaseUrl").Value is { Length: > 0 } url)
+        if (node.GetSection("BaseUrl").Value is { Length: > 0 })
         {
             var setupFlows = node.GetSection("SetupFlows");
             var runs = setup
                 ? setupFlows.Value?.Trim().Equals(flow, StringComparison.OrdinalIgnoreCase) == true
                   || setupFlows.GetChildren().Any(item => item.Value?.Trim().Equals(flow, StringComparison.OrdinalIgnoreCase) == true)
                 : Find(node, flow) is not null;
-            if (runs) return url.Trim();
+            if (runs) return node;
         }
 
         foreach (var child in node.GetChildren())
-            if (BaseUrlOf(child, flow, setup) is { } deeper)
+            if (ProbeOf(child, flow, setup) is { } deeper)
                 return deeper;
         return null;
     }

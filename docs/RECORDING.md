@@ -321,9 +321,10 @@ The options always win over what is found, and are remembered for the folder in 
 
 **How it runs.** As the probe runs a setup flow: created by its class name, given its `BaseUrl` (above) and a QaaS
 `Context` whose logger writes to the console, its values bound and checked as strictly as the probe checks them, then
-run first, on a page that has loaded nothing yet. A login flow that plants what the app needs before its first page
-loads, e.g. a token with `page.AddInitScriptAsync(...)` that a proxy asks for, has it on every page after, while you
-record too. Once it logged in, the page goes to the URL you record on, unless it is there already; when that URL is
+run first, in the order the probe that runs it in your tests runs its setup flows: on its `BaseUrl`, opened first; or,
+when that probe sets `SetupFlowsBeforeBaseUrl: true`, on a page that has loaded nothing yet, before `BaseUrl` opens. So
+a login flow that plants what the app needs before its first page loads, e.g. a token with
+`page.AddInitScriptAsync(...)` that a proxy asks for, has it on every page after, while you record too. Once it logged in, the page goes to the URL you record on, unless it is there already; when that URL is
 the app's root and the login left the app on a page of its own, the recording starts there, and the console says so.
 The panel's **Test**, `--continue` and recording a part again run it in the same order. The DLLs load from their
 folder and their dependency closure; QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so the flow
@@ -550,7 +551,7 @@ whether it works and where it fails, before you save it.
   of code that has not changed uses the same build again. Each run loads the build afresh, and unloads it after.
 - **It runs as the probe runs it**, in a window of its own over the recorded one: a browser context of its own in the
   recorder's Chrome, `BaseUrl` the page you started on, your [login flow](#logging-in-first) first when you record with
-  one (as `SetupFlows`, on a page that loaded nothing yet, with its own BaseUrl, then the page you started on), else the
+  one (as `SetupFlows`, in its probe's order, with its own BaseUrl, then the page you started on), else the
   login the recording started from (`~/.qaas/auth.json`), and the recorded values as
   the flow's settings (its YAML). It has the probe's timeouts (30 s for an action, 5 s for an `Expect`), page setup and
   failure screenshot, and hides the run's secrets, so a flow that passes here passes in the probe with that YAML.

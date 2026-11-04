@@ -92,7 +92,11 @@ internal static class FlowRecorder
             // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login; so does a flow
             // continued that logs in itself, as it was recorded signed out.
             var options = (request.Login is { } login
-                ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoginBaseUrl = login.BaseUrlFor(request.Url).Url, LoadStorageStatePath = null }
+                ? new RecordingOptions(request.Url)
+                {
+                    LoginFlow = login.Flow, LoginBaseUrl = login.BaseUrlFor(request.Url).Url, SetupFlowsBeforeBaseUrl = login.SetupFlowsBeforeBaseUrl(),
+                    LoadStorageStatePath = null,
+                }
                 : new RecordingOptions(request.Url)) with { Continues = continued?.Recording, Lifetime = lifetime };
             if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
