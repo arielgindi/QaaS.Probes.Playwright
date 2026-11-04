@@ -40,6 +40,10 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   its values only when no test gives them and the flow has any.
 - **Every question says what it asks, why, an example and what Enter does** (`(Enter = Flows)`, `(y/N, Enter = no)`),
   and every warning and error what happened, the likely cause, and what to do next, without jargon.
+- **The recorder's modes hold in every order you press their keys**, as a test that drives a recording through random
+  sequences of them showed:
+  - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as
+    `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
 
 ## 2.0.2
 

@@ -1623,7 +1623,9 @@ internal static class CaptureScript
           }
           function showState() {
             clearTimeout(pillTimer);
-            if (checking || inspecting) return;
+            // Check and inspect mode keep their own pill, back after what a key did there.
+            if (checking) { showCheckPill(); return; }
+            if (inspecting) { showInspectPill(); return; }
             if (state === 'paused') showPill('warn', 'Recording paused', 'nothing is recorded · resume', 'F8');
             else if (state === 'testing') showPill('accent', 'Testing the flow', part ? 'replaying it here · nothing is recorded' : 'in its own window · nothing is recorded');
             else if (state === 'login' && loginText) showPill('info', loginText, loginHint);
@@ -2123,7 +2125,12 @@ internal static class CaptureScript
             checking = true;
             hover = null;
             hideOverlay();
-            // In its place at the top, the pill of the mode the recording was in.
+            showCheckPill();
+            control({ type: 'checking', on: true });
+          }
+
+          // In its place at the top, the pill of the mode the recording was in.
+          function showCheckPill() {
             const pill = showPill('ok', 'Check', 'click what the flow should check · leave', 'Esc');
             const url = pill.insertBefore(document.createElement('button'), pill.lastChild);
             url.className = 'url';
@@ -2131,7 +2138,6 @@ internal static class CaptureScript
             url.textContent = 'URL is…';
             url.addEventListener('click', () => safe(() => openChooser(null)));
             pill.classList.add('interactive');
-            control({ type: 'checking', on: true });
           }
 
           function stopChecking() {
@@ -2843,9 +2849,12 @@ internal static class CaptureScript
             hideOverlay();
             observe();
             sent = new WeakMap();
-            showPill('inspect', 'Inspect', 'point at an element, a click picks it in the panel · leave', 'Esc');
+            showInspectPill();
             hookFrames();
             control({ type: 'inspect', on: true });
+          }
+          function showInspectPill() {
+            showPill('inspect', 'Inspect', 'point at an element, a click picks it in the panel · leave', 'Esc');
           }
           function stopInspecting() {
             if (!inspecting) return;

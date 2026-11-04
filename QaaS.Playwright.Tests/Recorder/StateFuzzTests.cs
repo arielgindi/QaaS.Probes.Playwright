@@ -22,6 +22,9 @@ public class StateFuzzTests
     [
         new TestCaseData("start:/helpdesk | click:New ticket | key:F8 | fill:Title=Printer jammed | key:F8 | save:ctrl-s")
             .SetName("Paused_RecordsNothing_AndRecordsAgainOnResume"),
+        // F4 in check or inspect mode said "Elements frozen" in the pill for good, in place of the mode's.
+        new TestCaseData("start:/helpdesk | key:F6 | key:F4 | key:Control+Shift+C | key:F4 | save:enter")
+            .SetName("AKeyInCheckOrInspectMode_GivesTheModesPillBack"),
     ];
 
     [TestCaseSource(nameof(Regressions))]
