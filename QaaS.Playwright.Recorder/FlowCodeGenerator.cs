@@ -12,6 +12,11 @@ internal static class FlowCodeGenerator
     /// <param name="autoChecks">Whether to check after each action what it did when recorded.</param>
     public static GeneratedFlow Generate(Recording recording, string className, string namespaceName,
         bool autoChecks = true) =>
+        Generate(RecordingReader.Read(recording), className, namespaceName, autoChecks);
+
+    /// <inheritdoc cref="Generate(Recording, string, string, bool)"/>
+    public static GeneratedFlow Generate(ValidRecording recording, string className, string namespaceName,
+        bool autoChecks = true) =>
         FlowWriter.Write(FlowPlanner.Plan(recording, className), namespaceName, autoChecks);
 
     /// <summary>Turns a name such as <c>add-to-cart</c> into a type name (<c>AddToCart</c>).</summary>

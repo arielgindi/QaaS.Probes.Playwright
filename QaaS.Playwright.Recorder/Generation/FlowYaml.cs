@@ -24,11 +24,23 @@ internal static class FlowYaml
         {
             if (setting.Items is not { } items)
             {
-                yaml.Append($"    {setting.Name}: {(setting.Secret && !secrets ? $"'{Placeholder(setting)}'" : Literal(setting))}\n");
+                if (!setting.Secret && Substituted(setting.Value))
+                {
+                    yaml.Append($"    # {setting.Name} holds ${{...}}, which QaaS would read as a variable: the flow types the default in its code.\n");
+                    continue;
+                }
+
+                yaml.Append($"    {setting.Name}: {(setting.Secret ? secrets ? Literal(setting, setting.Hidden?.Reveal()) : $"'{Placeholder(setting)}'" : Literal(setting))}\n");
                 continue;
             }
 
             // A loop's list, an item per line; a record's fields under its dash.
+            if (items.SelectMany(item => item).Any(value => Substituted(value.Value)))
+            {
+                yaml.Append($"    # {setting.Name} holds ${{...}}, which QaaS would read as a variable: the flow uses the list in its code.\n");
+                continue;
+            }
+
             yaml.Append($"    {setting.Name}:{(items.Count == 0 ? " []" : "")}\n");
             foreach (var item in items)
             {
@@ -66,11 +78,14 @@ internal static class FlowYaml
         return Literal(setting);
     }
 
-    private static string Literal(Setting setting)
+    // QaaS reads ${NAME} in a value as the variable NAME, whatever quotes it is in.
+    private static bool Substituted(string? value) => value?.Contains("${", StringComparison.Ordinal) == true;
+
+    private static string Literal(Setting setting, string? text = null)
     {
         if (setting.Flag is { } flag) return flag ? "true" : "false";
         if (setting.IsNumber && setting.Value is { } number) return number;
-        var text = setting.Value ?? "";
+        text ??= setting.Value ?? "";
         if (!text.Any(char.IsControl)) return $"'{text.Replace("'", "''", StringComparison.Ordinal)}'";
         var escaped = new StringBuilder("\"");
         foreach (var character in text)

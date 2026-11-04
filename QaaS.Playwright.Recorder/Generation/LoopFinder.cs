@@ -165,7 +165,8 @@ internal static class LoopFinder
                                 || (value.Text is { Length: > 0 } && (value.Text == own || value.Text == action.Member?.Text
                                                                       || value.Text == action.RowKey?.Text)))
                 .OrderByDescending(value => value.Text!.Length);
-            foreach (var (value, index) in marked) text = text.Replace(value!, $"\u0001{index}\u0001", StringComparison.Ordinal);
+            // As a word of its own, as the writer reads a value into a locator: "TradeCode 9" is in no "TradeCode 99".
+            foreach (var (value, index) in marked) text = Text.ReplaceWords(text, value!, $"\u0001{index}\u0001");
             return text;
         }
 

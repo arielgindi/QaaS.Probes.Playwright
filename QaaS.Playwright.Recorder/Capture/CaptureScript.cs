@@ -2133,7 +2133,9 @@ internal static class CaptureScript
             const toggle = element.matches(TOGGLES);
             const field = !toggle && element.matches(FIELDS);
             const text = field ? '' : textOf(element);
-            if (field) add('value', 'Has value', { value: normalizeValue(element.value ?? ''), edit: true });
+            // A password's value is never read: the flow checks it against the password it typed, which no file keeps.
+            if (field && element.matches('input[type=password]')) add('value', 'Has value', { value: '', shown: 'as typed, never shown' });
+            else if (field) add('value', 'Has value', { value: normalizeValue(element.value ?? ''), edit: true });
             if (text) {
               add('text', 'Has text', { value: text, edit: true });
               add('contains', 'Contains text', { value: text, edit: true });
@@ -2415,9 +2417,11 @@ internal static class CaptureScript
               const id = newId();
               remember(id);
               const labels = [...element.selectedOptions].map((option) => clean(option.label || option.textContent));
+              // The labels as the options have them, marks and asterisks too, which the flow selects by exactly.
+              const exact = [...element.selectedOptions].map((option) => option.label || option.textContent || '');
               const info = describe(element);
               record({ ...info, id, t: now(), kind: 'choose', widget: 'native', field: info.target, value: labels.join(', '),
-                values: labels, opener: openerOf(element) });
+                raw: exact.join(', '), values: labels, opener: openerOf(element) });
             }
           }), true);
 

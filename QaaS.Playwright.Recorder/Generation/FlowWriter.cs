@@ -441,7 +441,7 @@ internal sealed partial class FlowWriter
                 break;
             }
             case "fill":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({AsText(action.Value)});", problem);
                 // A picker that keeps a date only once its OK commits it, as antd's, takes Enter as its OK.
                 if (source.Committed == true) _step.Add($"await {Locate(action, ref problem)}{Break}.PressAsync(\"Enter\");");
                 break;
@@ -840,6 +840,12 @@ internal sealed partial class FlowWriter
     // from run to run, so the words around it are expected, as a message is found.
     private void WriteCheck(CapturedAction check)
     {
+        if (check.Check is "value" or "text" or "contains" && (check.Secret is not null || SecretField.Is(check.Target)))
+        {
+            WriteSecretCheck(check);
+            return;
+        }
+
         var expected = check.Value ?? "";
         string? problem = null;
         string Element() => Located(check, check.Target, ref problem);
@@ -890,6 +896,28 @@ internal sealed partial class FlowWriter
         Expect(new Expectation(check.Id, said, Auto: false)
         {
             Of = check.Check is "url" or "row" ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(check.Group ?? check.Target)),
+        });
+    }
+
+    // What a secret's field holds is checked against the secret's setting the flow typed into that field, never against
+    // its text, which no file keeps; with none, that the field is not empty.
+    private void WriteSecretCheck(CapturedAction check)
+    {
+        string? problem = null;
+        var element = Located(check, check.Target, ref problem);
+        var key = LocatorPolicy.Choose(check.Target) is { } found
+            ? found.Kind == "generator" ? found.Csharp : LocatorPolicy.Render("page", found.Parts)
+            : null;
+        var typed = _plan.Steps.SelectMany(step => step.Actions)
+            .LastOrDefault(action => action is { Kind: "fill", Value.Secret: true } && action.Key == key && _seen.Contains(action.Value!))?.Value;
+        var line = typed is null
+            ? $"await Expect({element}){Break}.Not.ToBeEmptyAsync();"
+            : $"await Expect({element}){Break}.ToHaveValueAsync({Setting(typed)});";
+        _step.Add(line, Join(problem, typed is null ? "a secret's value is never kept: the flow checks only that its field is not empty" : null),
+            mark: ChosenCheck);
+        Expect(new Expectation(check.Id, typed is null ? "is not empty" : $"holds {typed.Name}", Auto: false)
+        {
+            Of = LocatorPolicy.Describe(LocatorPolicy.Choose(check.Target)),
         });
     }
 
@@ -1100,7 +1128,7 @@ internal sealed partial class FlowWriter
     }
 
     // A value as the text a field is filled with: a number in the invariant culture, as YAML writes it.
-    private string Text(Setting? setting) =>
+    private string AsText(Setting? setting) =>
         setting is { IsNumber: true, DateFormat: null } ? $"{Setting(setting)}.ToString(CultureInfo.InvariantCulture)" : Setting(setting);
 
     // A text as pieces: what it says, and the values read so far in it with the C# that reads them.
@@ -1134,15 +1162,11 @@ internal sealed partial class FlowWriter
     private static IEnumerable<(string, string?, Setting?)> Split(string text, (string Text, string Code, Setting? Setting) value)
     {
         var from = 0;
-        for (var at = text.IndexOf(value.Text, StringComparison.Ordinal); at >= 0; at = text.IndexOf(value.Text, at + 1, StringComparison.Ordinal))
+        foreach (var at in Generation.Text.WordsAt(text, value.Text))
         {
-            var end = at + value.Text.Length;
-            var whole = (at == 0 || !char.IsLetterOrDigit(text[at - 1]) || !char.IsLetterOrDigit(value.Text[0]))
-                        && (end == text.Length || !char.IsLetterOrDigit(text[end]) || !char.IsLetterOrDigit(value.Text[^1]));
-            if (!whole || at < from) continue;
             if (at > from) yield return (text[from..at], null, null);
             yield return (value.Text, value.Code, value.Setting);
-            from = end;
+            from = at + value.Text.Length;
         }
 
         if (from < text.Length) yield return (text[from..], null, null);

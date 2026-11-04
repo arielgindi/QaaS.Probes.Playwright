@@ -24,14 +24,18 @@ internal static partial class FlowPlanner
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
 
-    public static FlowPlan Plan(Recording recording, string className)
+    /// <summary>The plan of a recording as <see cref="RecordingReader"/> reads it, the one way the planner reads one.</summary>
+    public static FlowPlan Plan(Recording recording, string className) => Plan(RecordingReader.Read(recording), className);
+
+    public static FlowPlan Plan(ValidRecording valid, string className)
     {
-        Repair.Recording(recording);
+        var recording = valid.Recording;
         var plan = new FlowPlan
         {
             ClassName = className, StartUrl = recording.StartUrl, After = recording.After, AutoChecks = recording.AutoChecks,
         };
         plan.NotRecorded.AddRange((recording.NotRecorded ?? []).Where(missing => !string.IsNullOrWhiteSpace(missing)));
+        plan.NotRecorded.AddRange(valid.Unrecorded);
         var prepared = recording.Actions.Select(Prepare).ToList();
         // A click on no control that only an id made anew on each load finds cannot replay: left out, and said.
         foreach (var lost in prepared.Where(OnlyByGeneratedId).ToList())
@@ -312,7 +316,7 @@ internal static partial class FlowPlanner
                     // it was given to the user reads the same setting, so a case that changes one changes both. Never a
                     // password, nor what a secret's field holds: a demo's password may be its user name too ("demo"),
                     // and the flow would then type the user name as the password, with no setting for the password.
-                    var secret = IsSecretField(field, name);
+                    var secret = source.Secret is not null || IsSecretField(field, name);
                     if (!secret && source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
                             setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value"
                             && !Configuration.Secrets.IsSecretKey(setting.Name)) is { } earlier
@@ -323,9 +327,14 @@ internal static partial class FlowPlanner
                         break;
                     }
 
-                    action.Value = Typed(name, source.Value ?? "", field, qualified);
-                    // A secret is text, whatever its field takes, as its YAML reads it from the environment.
-                    if (secret) (action.Value.Secret, action.Value.Type) = (true, "string");
+                    // A secret is text, whatever its field takes, as its YAML reads it from the environment; it holds what was
+                    // typed as a Secret, no text a locator or a check could read.
+                    action.Value = secret
+                        ? new Setting(name, source.Secret is null ? source.Value ?? "" : null) { Secret = true, Hidden = source.Secret, Qualified = qualified }
+                        : Typed(name, source.Value ?? "", field, qualified);
+                    // What was typed exactly, marks and all, which is what the flow types; a date as its picker gave it.
+                    if (!secret && source.Widget != "date" && Text.Typed(source.Value, source.Raw) is var exact && exact != action.Value.Text)
+                        action.Value.Exact = exact;
                     // A date or a time input takes its value in one format, whatever the browser shows.
                     action.Value.Format = field?.Type switch
                     {
@@ -398,7 +407,7 @@ internal static partial class FlowPlanner
             new(name + suffix, text) { Qualified = qualified is null ? null : qualified + suffix };
         if (source.Widget == "autocomplete")
         {
-            var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
+            var shown = settled?.Raw is { Length: > 0 } raw ? Text.WithoutMarks(raw) : option;
             // What the person typed to find the option is the search, a setting of its own: the flow types it, as a site
             // may find nothing by the option's whole text (react-admin's customers by their first name only), then chooses
             // the option. A search the option's text is all of needs none.
@@ -410,6 +419,8 @@ internal static partial class FlowPlanner
         }
 
         action.Value = Add("", option);
+        // A native select's option by its label exactly, marks and asterisk too, which selecting it needs.
+        if (source.Widget == "native" && source.Raw is { } exact && exact != option) action.Value.Exact = exact;
         // What a select shows after the choice, when it shows more than the option's words; never of a multi-select,
         // whose other choices it shows too, the record's own (Regular as well as Returns).
         if (source.Widget == "select" && settled is { Value: { Length: > 0 } text, Multi: not true } && text != option && source.Field?.Tag != "input")

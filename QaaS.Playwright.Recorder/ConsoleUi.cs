@@ -670,6 +670,7 @@ internal static class ConsoleUi
         "contains" when Terminal.Clean(check.Value) == Terminal.Clean(check.Element?.Text) => "contains this text",
         "text" => $"has text \"{check.Value}\"",
         "contains" => $"contains \"{check.Value}\"",
+        "value" when check.Secret is not null || SecretField.Holds(check) => $"has its value {Secret.Masked}",
         "value" => $"has value \"{check.Value}\"",
         "count" => $"count is {check.Value}",
         "row" => "row exists",
@@ -681,8 +682,7 @@ internal static class ConsoleUi
     // A password or another secret is never shown, as someone may be watching the screen.
     private static Span Value(Terminal t, CapturedAction action)
     {
-        if (action.Kind == "fill" && (action.Element?.Type == "password"
-                                      || QaaS.Playwright.Configuration.Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element))))
+        if (action.Secret is not null || SecretField.Holds(action))
             return new Span(new string(t.Glyph("•", "*")[0], 8), Tone.Accent);
         var value = action.Kind == "upload" ? string.Join(", ", action.Files ?? []) : action.Value ?? "";
         return value.Length == 0 ? new Span("\"\"", Tone.Dim) : Untrusted(value, Tone.Accent, Shrink.Middle, order: 2, min: 8);
