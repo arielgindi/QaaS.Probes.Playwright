@@ -59,10 +59,17 @@ public partial class RecordingReaderTests
                 problems.Add($"{mutant.ClassName} of {mutant.Seed}: reading it again changed it");
         }
 
+        // An action the writer throws on is left out and said, and the rest of the flow written.
+        var plan = FlowPlanner.Plan(GeneratorFuzz.Regression("SecretValues"), "Isolated");
+        var broken = plan.Steps[0].Actions[0];
+        broken.Locator = new CapturedCandidate { Kind = "role", Parts = [new LocatorPart { M = "no such part" }], Matches = true, Count = 1 };
+        var isolated = FlowWriter.Write(plan, "Flows");
         var secret = Secret.Of("swordfish");
         Assert.Multiple(() =>
         {
             Assert.That(problems, Is.Empty);
+            Assert.That(isolated.Checks.Select(check => check.Message), Has.One.StartsWith($"{FlowWriter.NotWritten} {broken.Source.Id}"));
+            Assert.That(isolated.ActionLines.Keys, Does.Not.Contain(broken.Source.Id).And.Contains(plan.Steps[^1].Actions[^1].Source.Id));
             Assert.That(secret.ToString(), Is.EqualTo(Secret.Masked), "a secret is masked wherever it is shown");
             Assert.That($"{secret}", Does.Not.Contain("swordfish"));
             Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(secret), "no JSON holds a secret");

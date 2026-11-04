@@ -697,6 +697,9 @@ internal static partial class GeneratorFuzz
             return new Outcome(null, $"throws {failure.GetType().Name} in {Where(failure)}", failure.ToString());
         }
 
+        // An action the writer had to leave out, as it threw, is the writer's bug still, which the fuzz is to find.
+        if (flow.Checks.FirstOrDefault(check => check.Message.StartsWith(FlowWriter.NotWritten, StringComparison.Ordinal)) is { } left)
+            return new Outcome(flow, $"leaves out an action it threw on: {Generalised(left.Message.Split(':')[0])}", left.Message);
         var lines = flow.Code.Split('\n');
         var count = lines.Length - (lines[^1].Length == 0 ? 1 : 0);
         bool Valid(LineSpan span) => span.First >= 1 && span.First <= span.Last && span.Last <= count;

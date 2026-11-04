@@ -279,7 +279,7 @@ internal sealed partial class FlowWriter
         {
             var action = step.Actions[index];
             _step.Actions = [action.Source.Id];
-            WriteAction(action, step, index == step.Actions.Count - 1, last);
+            WriteIsolated(action, step, index == step.Actions.Count - 1, last);
         }
     }
 
@@ -345,7 +345,7 @@ internal sealed partial class FlowWriter
         {
             _step.Actions = [.. repeats.Select(repeat => repeat[index].Source.Id)];
             _step.Repeats = (repeats, index);
-            WriteAction(template[index], step, isLast: false, last);
+            WriteIsolated(template[index], step, isLast: false, last);
         }
 
         _step.Repeats = null;
@@ -402,6 +402,29 @@ internal sealed partial class FlowWriter
             var alerts = repeats.Select(repeat => FirstAlert(repeat[index])).ToList();
             if (alerts.All(alert => alert is not null) && alerts.Select(alert => alert!.Text).Distinct().Count() == 1)
                 yield return (index, alerts[^1]!);
+        }
+    }
+
+    /// <summary>What to check by hand starts with this for an action the writer could not write, which it left out.</summary>
+    public const string NotWritten = "could not write action";
+
+    // An action the writer cannot write is left out, its lines taken back, and said to redo by hand: the rest of the
+    // flow is written still, as a recording the recorder cannot write whole must still be saved.
+    private void WriteIsolated(PlannedAction action, Step step, bool isLast, bool last)
+    {
+        var (lines, beforeLoop, declared) = (_step.Lines.Count, _step.BeforeLoop.Count, _step.Declared.Keys.ToHashSet());
+        try
+        {
+            WriteAction(action, step, isLast, last);
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            _step.Lines.RemoveRange(lines, _step.Lines.Count - lines);
+            _step.BeforeLoop.RemoveRange(beforeLoop, _step.BeforeLoop.Count - beforeLoop);
+            foreach (var local in _step.Declared.Keys.Where(key => !declared.Contains(key)).ToList()) _step.Declared.Remove(local);
+            if (last)
+                _plan.NotRecorded.Add($"{NotWritten} {action.Source.Id} (a '{action.Kind}') in {step.Name}, as {failure.GetType().Name}: " +
+                                      $"{failure.Message} Redo it by hand.");
         }
     }
 
