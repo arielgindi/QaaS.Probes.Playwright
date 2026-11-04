@@ -10,6 +10,9 @@ using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder;
 
+/// <summary>The recorder's Chrome and its window, which recording after recording runs in.</summary>
+internal sealed record RecorderWindow(RecorderBrowser Browser, PanelHost Host);
+
 /// <summary>The flow's saved files: its class, its recorded values, and the raw recording when it was kept.</summary>
 internal sealed record SavedFlow(string CodePath, string YamlPath, string? RecordingPath = null);
 
@@ -56,12 +59,16 @@ internal static class FlowRecorder
         return null;
     }
 
-    private static async Task<int> RecordAsync(RecordRequest request)
+    /// <summary>
+    /// Records in the recorder's window and Chrome, <paramref name="window"/>, which stay open after it; with none, in a
+    /// Chrome of its own with a window of its own, which close as the recording ends. Returns the exit code.
+    /// </summary>
+    public static async Task<int> RecordAsync(RecordRequest request, RecorderWindow? window = null)
     {
         var lifetime = RecorderLifetime.Current = new RecorderLifetime();
         try
         {
-            return await RecordInAsync(request, lifetime);
+            return await RecordInAsync(request, lifetime, window);
         }
         finally
         {
@@ -71,7 +78,7 @@ internal static class FlowRecorder
     }
 
     // Records until something asks the lifetime to stop, then ends as it says: saved, or kept to save next time.
-    private static async Task<int> RecordInAsync(RecordRequest request, RecorderLifetime lifetime)
+    private static async Task<int> RecordInAsync(RecordRequest request, RecorderLifetime lifetime, RecorderWindow? window)
     {
         KeptRecording? continued = null;
         if (request.Continue && (continued = Continued(ref request)) is null) return 1;
@@ -80,6 +87,7 @@ internal static class FlowRecorder
         var autosave = new Autosave(continued?.Recording, request);
         RecordingSession? recorded = null;
         RecorderPanel? shown = null;
+        RecorderBrowser? ownBrowser = null;
         // However it ends, the recording is first kept as it is then.
         lifetime.OnSnapshot(async _ =>
         {
@@ -94,6 +102,10 @@ internal static class FlowRecorder
             var options = (request.Login is { } login
                 ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoginBaseUrl = login.BaseUrlFor(request.Url).Url, LoadStorageStatePath = null }
                 : new RecordingOptions(request.Url)) with { Continues = continued?.Recording, Lifetime = lifetime };
+            // The recorder's Chrome, or one of the recording's own, ended last, after the recording's browser context.
+            var browser = window?.Browser ?? (ownBrowser = await RecorderBrowser.LaunchAsync([]));
+            if (window is null) lifetime.Own("Chrome", browser.DisposeAsync);
+            options = options with { Browser = browser };
             if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
             var session = await RecordingSession.StartAsync(options, news =>
@@ -107,10 +119,10 @@ internal static class FlowRecorder
             });
             recorded = session;
             lifetime.OnDrain(token => session.DrainAsync(session.Pipeline.Epoch, token));
-            lifetime.Own("the browser", session.DisposeAsync);
+            lifetime.Own("the recording's browser context", session.DisposeAsync);
             // The console numbers each action as the flow, the panel and a test do.
             ConsoleUi.Numbering = () => StepNumbers(session.Build(), (shown?.Request ?? request).ClassName);
-            var panel = shown = request.Panel ? await OpenPanelAsync(session, request) : null;
+            var panel = shown = request.Panel ? await OpenPanelAsync(session, request, window?.Host) : null;
             if (panel is not null) lifetime.Own("the panel", panel.DisposeAsync);
             using var stopWatching = new CancellationTokenSource();
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
@@ -134,6 +146,7 @@ internal static class FlowRecorder
                 autosave.Forget();
                 if (panel is not null) await panel.DisposeAsync();
                 await session.DisposeAsync();
+                if (ownBrowser is not null) await ownBrowser.DisposeAsync();
                 return 1;
             }
 
@@ -173,6 +186,8 @@ internal static class FlowRecorder
         }
         catch (PlaywrightException failure) when (recorded?.Log.Build("").Actions.Count is not > 0)
         {
+            if (recorded is not null) await recorded.DisposeAsync();
+            if (ownBrowser is not null) await ownBrowser.DisposeAsync();
             ConsoleUi.Error($"Could not record: {failure.Message.Split('\n')[0]}\nChrome did not open or the page did not load. " +
                             "Check that Google Chrome is installed and the address answers in your browser, then run the same " +
                             "command again.");
@@ -459,11 +474,11 @@ internal static class FlowRecorder
     }
 
     // The panel helps, but the recording does not need it.
-    private static async Task<RecorderPanel?> OpenPanelAsync(RecordingSession session, RecordRequest request)
+    private static async Task<RecorderPanel?> OpenPanelAsync(RecordingSession session, RecordRequest request, PanelHost? host)
     {
         try
         {
-            return await RecorderPanel.OpenAsync(session, request);
+            return await RecorderPanel.OpenAsync(session, request, host: host);
         }
         catch (PlaywrightException failure)
         {

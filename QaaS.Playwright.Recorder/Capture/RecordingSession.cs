@@ -41,6 +41,12 @@ internal sealed record RecordingOptions(string Url)
 
     /// <summary>The recorder's lifetime, which ends the run scopes still going however the recording ends; null in tests.</summary>
     public RecorderLifetime? Lifetime { get; init; }
+
+    /// <summary>
+    /// The recorder's Chrome, which the recording opens a context of; null to launch a Chrome of its own, with
+    /// <see cref="BrowserArgs"/>, as a test's recording does.
+    /// </summary>
+    public RecorderBrowser? Browser { get; init; }
 }
 
 /// <summary>
@@ -90,11 +96,10 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
     private static readonly TimeSpan SettleTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DevToolsPortTimeout = TimeSpan.FromSeconds(10);
 
-    // A driver reads PWDEBUG from the process as it starts: sessions that start one at the same time take turns, so none
-    // starts with the console API's value, which turns off every timeout, nor leaves it set for the drivers after it.
-    private static readonly SemaphoreSlim DriverStart = new(1, 1);
+    private static SemaphoreSlim DriverStart => RecorderBrowser.DriverStart;
 
-    private readonly IPlaywright _playwright;
+    private readonly RecorderBrowser _shared;
+    private readonly bool _ownsBrowser;
     private IPlaywright? _consoleApi;
     private readonly IBrowser _browser;
     private readonly IBrowserContext _context;
@@ -116,11 +121,11 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
     /// <summary>How long a drain or a page's acknowledgement of a new state may take; a page that does not answer is late.</summary>
     private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(1);
 
-    private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
+    private RecordingSession(RecorderBrowser shared, bool ownsBrowser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
     {
-        _playwright = playwright;
-        _browser = browser;
+        (_shared, _ownsBrowser) = (shared, ownsBrowser);
+        _browser = shared.Browser;
         _context = context;
         _options = options;
         _onNews = onNews;
@@ -232,36 +237,18 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
     /// </summary>
     public static async Task<RecordingSession> StartAsync(RecordingOptions options, Action<object> onNews)
     {
-        IPlaywright playwright;
-        await DriverStart.WaitAsync();
-        try
-        {
-            playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        }
-        finally
-        {
-            DriverStart.Release();
-        }
-
+        // A recording of its own, as a test starts one, launches a Chrome of its own, which it closes as it ends.
+        var owned = options.Browser is null;
+        var shared = options.Browser ?? await RecorderBrowser.LaunchAsync(options.BrowserArgs);
         RecordingSession? session = null;
         try
         {
-            playwright.Selectors.SetTestIdAttribute(BrowserDefaults.TestIdAttribute);
-            var browser = await playwright.Chromium.LaunchAsync(new()
-            {
-                Channel = BrowserDefaults.ChromeChannel, Headless = false, Timeout = NavigationTimeoutMs,
-                // Ctrl+C in the console reaches the driver too, which would close Chrome: the recording ends on it as on
-                // Enter, with Chrome still open, so the login is saved as ever.
-                HandleSIGINT = false,
-                // Port 0: Chrome takes a free one, on this machine only, for the console API's driver below.
-                Args = [.. options.BrowserArgs, "--remote-debugging-port=0"],
-            });
-            var context = await browser.NewContextAsync(new()
+            var context = await shared.Browser.NewContextAsync(new()
             {
                 ViewportSize = Viewport(BrowserDefaults.RecorderViewport),
                 StorageStatePath = options.LoadStorageStatePath,
             });
-            session = new RecordingSession(playwright, browser, context, options, onNews);
+            session = new RecordingSession(shared, owned, context, options, onNews);
             await session.InstallAsync();
             // After a login flow, which then runs alone with the recording's driver, as with the probe's.
             if (options.LoginFlow is null) await session.AttachConsoleApiAsync();
@@ -270,7 +257,8 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         catch
         {
             session?._consoleApi?.Dispose();
-            playwright.Dispose();
+            if (owned) await shared.DisposeAsync();
+            else if (session is not null) await session.CloseContextAsync();
             throw;
         }
     }
@@ -559,20 +547,28 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         return last is not null && PageNamed(last) is not null ? last : "page";
     }
 
+    /// <summary>
+    /// Ends the recording's browser: its context, in the recorder's Chrome, which the recorder's window stays open in;
+    /// or the whole Chrome of a recording that launched its own.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
+        if (_ownsBrowser) await _shared.DisposeAsync();
+        else await CloseContextAsync();
+        _consoleApi?.Dispose();
+    }
+
+    private async Task CloseContextAsync()
+    {
         try
         {
-            await _browser.CloseAsync();
+            await _context.CloseAsync();
         }
         catch (PlaywrightException)
         {
-            // Already closed by the person.
+            // Already closed by the person, or the browser is gone.
         }
-
-        _consoleApi?.Dispose();
-        _playwright.Dispose();
     }
 
     // Each second: how the login goes, for the console and the panel, and in each page's overlay; once it is slow, how
