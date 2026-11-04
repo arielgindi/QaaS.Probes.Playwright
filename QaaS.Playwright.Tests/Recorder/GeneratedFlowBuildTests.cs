@@ -5,6 +5,7 @@ using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.TestRun;
+using QaaS.Playwright.Tests.Recorder.Fuzz;
 using static QaaS.Playwright.Tests.Recorder.Captured;
 using CapturedRecording = QaaS.Playwright.Recorder.Capture.Recording;
 

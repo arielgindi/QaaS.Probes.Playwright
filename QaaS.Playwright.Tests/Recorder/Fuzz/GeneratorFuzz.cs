@@ -9,7 +9,7 @@ using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.TestRun;
 
-namespace QaaS.Playwright.Tests.Recorder;
+namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 
 /// <summary>
 /// Fuzzes the generator with no browser. Each mutant is a real recording of the tests, changed as a person, a paused
@@ -67,7 +67,7 @@ internal static partial class GeneratorFuzz
     public static IEnumerable<Seed> Seeds()
     {
         foreach (var folder in new[] { "Golden", "RealSites" })
-            foreach (var path in Directory.GetFiles(Path.Combine(Here(), folder), "*.recording.json").Order(StringComparer.Ordinal))
+            foreach (var path in Directory.GetFiles(Path.Combine(Here(), "..", folder), "*.recording.json").Order(StringComparer.Ordinal))
                 yield return new Seed($"{folder}/{Path.GetFileName(path)[..^".recording.json".Length]}", File.ReadAllText(path));
         foreach (var (name, recording, _) in GeneratedFlowBuildTests.Recordings())
             yield return new Seed($"Build/{name}", recording.ToJson());
@@ -78,11 +78,11 @@ internal static partial class GeneratorFuzz
 
     /// <summary>The recordings the fuzz cut its failures down to, which the normal suite keeps, by name.</summary>
     public static IEnumerable<string> Regressions() =>
-        Directory.GetFiles(Path.Combine(Here(), "Fuzz"), "*.recording.json").Order(StringComparer.Ordinal)
+        Directory.GetFiles(Here(), "*.recording.json").Order(StringComparer.Ordinal)
             .Select(path => Path.GetFileName(path)[..^".recording.json".Length]);
 
     public static Recording Regression(string name) =>
-        Recording.FromJson(File.ReadAllText(Path.Combine(Here(), "Fuzz", $"{name}.recording.json")));
+        Recording.FromJson(File.ReadAllText(Path.Combine(Here(), $"{name}.recording.json")));
 
     // ── Mutants ──────────────────────────────────────────────────────────────────────────────────────────────────
 

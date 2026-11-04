@@ -5,7 +5,7 @@ using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 
-namespace QaaS.Playwright.Tests.Recorder;
+namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 
 /// <summary>
 /// The generator's foundations, each on its own: the reader, the one way a recording reaches the generator, makes any

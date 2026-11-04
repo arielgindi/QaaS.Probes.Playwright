@@ -4,9 +4,9 @@ using System.Text.Json;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.TestRun;
-using static QaaS.Playwright.Tests.Recorder.GeneratorFuzz;
+using static QaaS.Playwright.Tests.Recorder.Fuzz.GeneratorFuzz;
 
-namespace QaaS.Playwright.Tests.Recorder;
+namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 
 /// <summary>
 /// The generator on recordings no person recorded as such, with no browser (<see cref="GeneratorFuzz"/>): 300 mutants
