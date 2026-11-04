@@ -61,9 +61,6 @@ internal enum PartPhase
     Done,
 }
 
-/// <summary>Why the recording ends (the lifetime's reasons).</summary>
-internal enum StopReason { Saved, Enter, CtrlC, BrowserClosed, Signal, Crash }
-
 /// <summary>A page's document, which check and inspect mode belong to: a reload or a new address is another document.</summary>
 internal sealed record PageDocument(string Page, string Document);
 
@@ -202,7 +199,10 @@ internal sealed record LoginEnded(string? Failure) : Command
 /// <summary>The person's answer to the console's question once the steps of a flow continued did not all replay.</summary>
 internal sealed record KeepRecording(bool Keep) : Command;
 
-/// <summary>Save in the panel, Enter or Ctrl+C in the console, Chrome closed, a signal: the recording ends.</summary>
+/// <summary>
+/// The <see cref="RecorderLifetime"/> ends the recording, for its <see cref="StopReason"/>: nothing more is recorded. The
+/// run going on stays the state's until the lifetime has saved and disposed the scopes, in its order.
+/// </summary>
 internal sealed record Stop(StopReason Reason) : Command;
 
 /// <summary>The recording was saved, or kept, and every scope disposed.</summary>
@@ -448,17 +448,15 @@ internal static class RecorderTable
             case KeepRecording:
                 return Refuse("Nothing is asked.");
 
-            // Saving ends whatever runs, at once: the login, a test, a replay; a flow continued is saved as it was.
+            // From anything: the login, a test or a replay included, which the lifetime ends after the save. A flow
+            // continued while it replays is saved as it was. A second stop is the lifetime's to force.
             case Stop stop when s.Mode != Mode.Saving:
-                return Go(s with { Mode = Mode.Saving, Stop = stop.Reason, Run = null, Check = null, Inspect = null },
-                    [.. Effects(s.Run is not null, Effect.DisposeRun), .. Effects(s.Mode == Mode.Trying, Effect.StopTrying),
-                        .. Effects(s.Mode == Mode.Recording, Effect.PauseLog)]);
-            case Stop when s.Stop is not StopReason.CtrlC && command is Stop { Reason: StopReason.CtrlC }:
-                return Go(s with { Stop = StopReason.CtrlC });
+                return Go(s with { Mode = Mode.Saving, Stop = stop.Reason, Check = null, Inspect = null },
+                    [.. Effects(s.Mode == Mode.Trying, Effect.StopTrying), .. Effects(s.Mode == Mode.Recording, Effect.PauseLog)]);
             case Stop:
                 return Refuse("The recording is being saved.");
             case Ended when s.Mode == Mode.Saving:
-                return Go(s with { Mode = Mode.Ended });
+                return Go(s with { Mode = Mode.Ended, Run = null }, Effects(s.Run is not null, Effect.DisposeRun));
             case Ended:
                 return Refuse("The recording is not being saved.");
         }
