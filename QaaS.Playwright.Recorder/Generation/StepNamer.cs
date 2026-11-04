@@ -498,7 +498,9 @@ internal static partial class StepNamer
         }
     }
 
-    private static string Sentence(string text) => char.ToUpperInvariant(text[0]) + text[1..] + ".";
+    // Of an action of a kind the recorder does not know, and so of nothing to say, what is said of every step.
+    private static string Sentence(string text) =>
+        text.Length == 0 ? "Does what was recorded." : char.ToUpperInvariant(text[0]) + text[1..] + ".";
 
     private static string Join(IEnumerable<string> phrases)
     {

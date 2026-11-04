@@ -26,11 +26,12 @@ internal static partial class FlowPlanner
 
     public static FlowPlan Plan(Recording recording, string className)
     {
+        Repair.Recording(recording);
         var plan = new FlowPlan
         {
             ClassName = className, StartUrl = recording.StartUrl, After = recording.After, AutoChecks = recording.AutoChecks,
         };
-        plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
+        plan.NotRecorded.AddRange((recording.NotRecorded ?? []).Where(missing => !string.IsNullOrWhiteSpace(missing)));
         var prepared = recording.Actions.Select(Prepare).ToList();
         // A click on no control that only an id made anew on each load finds cannot replay: left out, and said.
         foreach (var lost in prepared.Where(OnlyByGeneratedId).ToList())
@@ -173,19 +174,22 @@ internal static partial class FlowPlanner
         kept.Remove(typed);
     }
 
-    // A check goes with the action before it that the flow does; one before every action is a step's action itself.
+    // A check goes with the action before it that the flow does; one before every action is a step's action itself, and
+    // so is one of another page than that action's, as after going back to a tab, which the step of the action has not.
+    // By where each is in the recording, as two actions of one id, an action copied, are two places still.
     private static List<PlannedAction> AttachChecks(List<PlannedAction> recorded, List<PlannedAction> kept)
     {
-        var at = recorded.Select((action, index) => (action.Source.Id, index)).ToDictionary(pair => pair.Id, pair => pair.index);
+        var at = recorded.Select((action, index) => (action, index)).ToDictionary(pair => pair.action, pair => pair.index);
         var leading = new List<PlannedAction>();
+        var after = new Dictionary<PlannedAction, List<PlannedAction>>();
         foreach (var check in recorded.Where(action => action.Kind == "expect"))
         {
-            if (kept.LastOrDefault(action => at[action.Source.Id] < at[check.Source.Id]) is { } before)
-                before.Checks.Add(check.Source);
-            else leading.Add(check);
+            if (kept.LastOrDefault(action => at[action] < at[check]) is not { } before) leading.Add(check);
+            else if (before.Source.Page == check.Source.Page) before.Checks.Add(check.Source);
+            else (after.TryGetValue(before, out var own) ? own : after[before] = []).Add(check);
         }
 
-        return [.. leading, .. kept];
+        return [.. leading, .. kept.SelectMany(action => after.TryGetValue(action, out var own) ? [action, .. own] : new[] { action })];
     }
 
     private static bool ChoiceFollows(List<PlannedAction> actions, int index, CapturedTarget? field)
@@ -348,11 +352,12 @@ internal static partial class FlowPlanner
             }
 
             created.AddRange(action.Values);
-            if (action.Locator?.Kind == "row" || NameHoldsRowKey(action))
+            // A row's locator of an element that says nothing of its row, as a field chosen in has none, reads no setting.
+            if ((action.Locator?.Kind == "row" || NameHoldsRowKey(action)) && source.Target?.Row is { Key.Length: > 0 } row)
             {
                 // Actions on one row read one setting, as does a value typed before that the row shows.
-                var key = source.Target!.Row!.Key;
-                var header = CSharp.Pascal(source.Target.Row.Header) ?? "RowKey";
+                var key = row.Key;
+                var header = CSharp.Pascal(row.Header) ?? "RowKey";
                 var verb = CSharp.Pascal(StepNamer.Label(action, without: key));
                 action.RowKey = created.FirstOrDefault(setting => setting.Text == key
                                                                   && setting.Name.StartsWith(header, StringComparison.Ordinal));

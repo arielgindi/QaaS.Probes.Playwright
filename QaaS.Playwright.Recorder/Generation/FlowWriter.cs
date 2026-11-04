@@ -525,7 +525,7 @@ internal sealed partial class FlowWriter
             ? $"{scope.Page}.Locator({CSharp.Literal(optionCss + ":visible")}){Break}.GetByText({Setting(action.OptionValue ?? action.Value)}, new() {{ Exact = true }})"
             : $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
         var optionProblem = source.Option is null || source.OptionCss is not null || source.Option.Candidates.Any(candidate =>
-            candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
+            candidate is { Kind: "role", Matches: true, Parts: [.., { Exact: true } part] } && part.Name == source.Value)
             ? null
             : "the option's name did not find it alone when recorded";
         switch (source.Widget)
@@ -602,7 +602,8 @@ internal sealed partial class FlowWriter
 
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
         var shownElsewhere = action.Has("dialogOpened") || action.Has("tabSelected") || (closed.Count > 0 && alerts.Count > 0);
-        var changes = action.Effects.Where(effect => _autoChecks && effect.Kind == "urlChanged");
+        // An address change the recorder did not see the address of is no check.
+        var changes = action.Effects.Where(effect => _autoChecks && effect is { Kind: "urlChanged", Url.Length: > 0 });
         // Not one the address before the action matched already, as a sort's query does: it would check nothing.
         foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
                      .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))
