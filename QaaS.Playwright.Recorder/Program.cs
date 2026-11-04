@@ -28,6 +28,14 @@ public static class Program
             return 0;
         }
 
+        // The whole search for the login flow, and nothing else: where it looked, and why it chose what it chose.
+        if (args.Contains("--login-why"))
+        {
+            var outputDir = args.SkipWhile(arg => arg != "--output-dir").Skip(1).FirstOrDefault() ?? "Flows";
+            LoginFinder.Explain(outputDir, Environment.CurrentDirectory);
+            return 0;
+        }
+
         ConsoleUi.CancelOnCtrlC();
         CrashReport.Install();
         RecordRequest request;
@@ -40,7 +48,7 @@ public static class Program
             var remembered = RememberedLogin.In(projectFolder);
             RecordRequest? Find(RecordRequest asked) => LoginFinder.Offer(asked, projectFolder);
             request = args is [] or ["record"]
-                ? RecordRequest.Ask(remembered, Find)
+                ? RecordRequest.Ask(remembered, Find, LoginFinder.Discover)
                 : RecordRequest.Parse(args, remembered, LoginFinder.Named);
             if (args is not ([] or ["record"]) && request is { Login: null, NoLogin: false }) request = Find(request) ?? request;
         }

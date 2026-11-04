@@ -26,11 +26,23 @@ internal sealed record RecordingOptions(string Url)
     public string? LoginFlow { get; init; }
 
     /// <summary>
+    /// The BaseUrl the login flow runs with, as the tests give it; null to take the address of <see cref="Url"/>. A
+    /// recording that starts on its root starts where the login left the app.
+    /// </summary>
+    public string? LoginBaseUrl { get; init; }
+
+    /// <summary>
     /// A recording this one goes on from: its actions come first, and are replayed after the login flow, as in a test
     /// (<see cref="RecordingState.Testing"/>), before anything is recorded. Null to record anew.
     /// </summary>
     public Recording? Continues { get; init; }
 }
+
+/// <summary>
+/// The person acted in the app while the recording was paused, which recorded nothing: told once a pause, the first
+/// time. <paramref name="What"/> is what they did: <c>click</c>, <c>typing</c> or <c>choice</c>.
+/// </summary>
+internal sealed record NotRecordedWhilePaused(string What);
 
 /// <summary>How a login flow ended when it did not log in: why, and whether it was stopped for the person to log in by hand.</summary>
 /// <param name="Why">Why it failed, as the probe says it; or why it was stopped.</param>
@@ -93,6 +105,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     private volatile LoginWatch? _login;
     private RecordingState _beforeTry;
     private string? _rerecording;
+    private bool _notRecordedTold;
 
     private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
@@ -130,6 +143,12 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>Why the recording is paused when the person did not pause it, e.g. the login flow failed; else null.</summary>
     public string? Notice { get; private set; }
+
+    /// <summary>
+    /// Where the recording starts after the login flow when it is not the URL it was given: the app's page the login
+    /// left, for a recording started on the app's root; else null.
+    /// </summary>
+    public string? StartedAfterLogin { get; private set; }
 
     /// <summary>The page's elements as they were when the person last pressed F4, for the panel; null before.</summary>
     public FrozenElements? Frozen { get; private set; }
@@ -203,6 +222,9 @@ internal sealed class RecordingSession : IAsyncDisposable
             var browser = await playwright.Chromium.LaunchAsync(new()
             {
                 Channel = BrowserDefaults.ChromeChannel, Headless = false, Timeout = NavigationTimeoutMs,
+                // Ctrl+C in the console reaches the driver too, which would close Chrome: the recording ends on it as on
+                // Enter, with Chrome still open, so the login is saved as ever.
+                HandleSIGINT = false,
                 // Port 0: Chrome takes a free one, on this machine only, for the console API's driver below.
                 Args = [.. options.BrowserArgs, "--remote-debugging-port=0"],
             });
@@ -227,7 +249,10 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>
     /// Runs the login flow on <see cref="Page"/>, which <paramref name="logIn"/> does and returns why it failed, or null;
-    /// its token is cancelled once it was stopped. While it runs, <see cref="LoginProgress"/> says each second how it
+    /// its token is cancelled once it was stopped. As the probe runs a setup flow, it runs first, on a page that has
+    /// loaded nothing yet: a flow that plants what the app needs before its first page loads, e.g. a token with
+    /// <c>AddInitScriptAsync</c>, has it on every page after. Once it logged in, the page goes to the recording's URL,
+    /// unless it is there already, or that URL is the app's root and the login left the app on a page of its own. While it runs, <see cref="LoginProgress"/> says each second how it
     /// goes, and the pages' overlay shows it. <see cref="LogInByHand"/> stops it, as it stops itself after two minutes
     /// of nothing, or when the app asked the browser to sign in: its page is then replaced by a fresh one at the same
     /// address, the login so far kept, so whatever the flow waited for fails at once, and nothing it does reaches the
@@ -271,6 +296,8 @@ internal sealed class RecordingSession : IAsyncDisposable
             LoginProgress = null;
         }
 
+        if (end is null) StartedAfterLogin = await GoToStartAsync() is { Length: > 0 } note ? note : null;
+        else if (!end.ByHand && Page.Url is "" or "about:blank") await OpenStartAsync();
         await AttachConsoleApiAsync();
         if (end is not null) Pause(end.ByHand ? end.Why : $"{flow} failed: {end.Why}");
         else if (_options.Continues is null) Resume();
@@ -303,6 +330,7 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         try
         {
+            await FlushTypingAsync();
             await Log.SettleAsync(SettleTimeout);
             var recording = Build();
             await SaveLoginAsync();
@@ -312,6 +340,15 @@ internal sealed class RecordingSession : IAsyncDisposable
         {
             await DisposeAsync();
         }
+    }
+
+    // What is being typed as the recording ends is told now, rather than once the person stops typing: it was typed. A
+    // page that does not answer (a browser dialog is open in it) keeps what it told.
+    private async Task FlushTypingAsync()
+    {
+        List<IPage> pages;
+        lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
+        await Task.WhenAny(Task.WhenAll(pages.Select(page => PageElements.CallAsync(page, new { op = "flush" }))), Task.Delay(1000));
     }
 
     /// <summary>The recording so far, as <see cref="StopAsync"/> would return it.</summary>
@@ -338,7 +375,7 @@ internal sealed class RecordingSession : IAsyncDisposable
         {
             if (_state == RecordingState.Paused && notice is null) return _state;
             Log.Pause(Now());
-            (_state, Notice) = (RecordingState.Paused, notice);
+            (_state, Notice, _notRecordedTold) = (RecordingState.Paused, notice, false);
             WatchDialogs();
         }
 
@@ -613,6 +650,28 @@ internal sealed class RecordingSession : IAsyncDisposable
             _login?.AuthAsked(scheme, response.Url);
     }
 
+    // After the login: the recording's URL, unless the page is there, or the recording starts on the app's root and the
+    // login left the app on a page of its own, which is said.
+    private async Task<string?> GoToStartAsync()
+    {
+        var stay = StartPage.StaysAfterLogin(Page.Url, _options.Url, _options.LoginBaseUrl);
+        if (stay is null) await OpenStartAsync();
+        return stay;
+    }
+
+    // The recording's URL, for a person who logs in by hand there after the login flow failed before it opened a page.
+    private async Task OpenStartAsync()
+    {
+        try
+        {
+            await Page.GotoAsync(_options.Url, new() { Timeout = NavigationTimeoutMs });
+        }
+        catch (PlaywrightException)
+        {
+            // The person goes on from where it is.
+        }
+    }
+
     // A fresh page in the old one's place, at the address it was at, and the old one closed: the login flow stopped
     // there fails at once, whatever it waited for, and does nothing more. The login so far is the context's, and stays.
     private async Task ReplacePageAsync()
@@ -730,7 +789,8 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         Page = await _context.NewPageAsync();
         Track(Page);
-        await Page.GotoAsync(_options.Url, new() { Timeout = NavigationTimeoutMs });
+        // A login flow runs first, on a page that loaded nothing, as the probe runs a setup flow; then it goes there.
+        if (_options.LoginFlow is null) await Page.GotoAsync(_options.Url, new() { Timeout = NavigationTimeoutMs });
     }
 
     // What the capture script asks or tells: the state its overlay shows, F8 to pause or resume, F4 with the frozen
@@ -746,6 +806,11 @@ internal sealed class RecordingSession : IAsyncDisposable
                 break;
             case "pause":
                 TogglePause();
+                break;
+            case "ignored" when State == RecordingState.Paused && !_notRecordedTold:
+                _notRecordedTold = true;
+                // A page's own script may call it too: only what the capture script says.
+                _onNews(new NotRecordedWhilePaused(message.What is "click" or "typing" or "choice" ? message.What : "action"));
                 break;
             case "freeze" when message.Tree is { } tree:
                 Frozen = new FrozenElements(AliasOf(page), DateTimeOffset.Now, tree.GetRawText(), message.Described ?? []);
@@ -914,7 +979,8 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            LoginNotSaved = $"The login was not saved to {Path.GetFullPath(path)}: {failure.Message}";
+            LoginNotSaved = $"Your login was not saved to {Path.GetFullPath(path)} ({failure.Message}), so the next " +
+                            "recording starts signed out. Check that you can write to that folder.";
         }
     }
 
@@ -980,5 +1046,8 @@ internal sealed class RecordingSession : IAsyncDisposable
         public string? Role { get; set; }
 
         public string? Name { get; set; }
+
+        /// <summary>For what was done while paused: <c>click</c>, <c>typing</c> or <c>choice</c>.</summary>
+        public string? What { get; set; }
     }
 }

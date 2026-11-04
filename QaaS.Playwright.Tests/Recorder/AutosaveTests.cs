@@ -133,5 +133,30 @@ public class AutosaveTests
         });
     }
 
+    [TestCase("a change of address it does not give")]
+    [TestCase("a field named with underscores alone")]
+    [TestCase("a field in a widget of an id of underscores")]
+    [TestCase("a button of an id of underscores")]
+    public async Task ARecording_SavingFailedOn_IsKeptAndWritten(string what)
+    {
+        // Saving these failed with "ArgumentNullException: Value cannot be null", and so did keeping the field's.
+        var action = what switch
+        {
+            "a change of address it does not give" => Captured.Action("click", Captured.Element("button", "Save", Captured.Role("button", "Save")),
+                null, null, null, new CapturedEffect { Kind = "urlChanged", Page = "page" }),
+            "a field named with underscores alone" => Captured.Action("fill", Captured.Element("textbox", "", Captured.Css("name", "[name='___']", "___")), "text"),
+            "a field in a widget of an id of underscores" => Captured.Action("fill",
+                Captured.Element("textbox", "", Captured.Css("within", "[id='___'] input", "___")), "place"),
+            _ => Captured.Action("click", Captured.Element("button", "Save", Captured.Css("id", "[id='___']", "___"))),
+        };
+        var request = new RecordRequest("Unnamed", "https://app.test/start", Path.Combine(_folder, "Flows"));
+
+        await new Autosave().WriteAsync(Captured.Recording(action), request);
+        var kept = Autosave.NotSaved().Single().Recording;
+        var code = FlowCodeGenerator.Generate(kept, "Unnamed", "Flows").Code;
+
+        Assert.That(code, Does.Contain(action.Kind == "fill" ? "FillAsync(Configuration." : "ClickAsync();").And.Not.Contain("ToHaveURLAsync"));
+    }
+
     private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");
 }

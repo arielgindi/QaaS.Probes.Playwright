@@ -69,13 +69,13 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         if (message is null) return null;
         lock (_gate)
         {
-            // While paused, only an action begun before the pause is completed, e.g. the field being typed into. One begun
-            // while paused stays out when told later, as an action of a replay may be, and so does what it caused.
-            if (_paused && !(message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id)))
-                return null;
+            // While paused, only what began before the pause is taken: the field being typed into, which the page tells
+            // once it learns of a pause the panel made, and what the page did before it. One begun while paused stays
+            // out when told later, as an action of a replay may be, and so does what it caused.
+            var known = message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id);
+            if (_paused && !known && message.T >= _pausedAt) return null;
             var began = message.Type == "effect" ? message.T - (message.SinceAction ?? 0) : message.T;
-            if (began < _resumedAt && !(message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id)))
-                return null;
+            if (began < _resumedAt && !known) return null;
             // Inside the lock, so a Build that saw this version waits for the change.
             Changed();
             if (message.Type == "effect")

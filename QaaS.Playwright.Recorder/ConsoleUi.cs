@@ -32,6 +32,7 @@ internal static class ConsoleUi
     private static bool _recording;
     private static Capture.RecordingState _state;
     private static int _cancelled;
+    private static TaskCompletionSource? _ctrlCEnds;
 
     // The width of the line redrawn in place while the login flow runs, the cursor at its end; 0 when none is.
     private static int _live;
@@ -59,7 +60,7 @@ internal static class ConsoleUi
         t.WriteLine();
         foreach (var line in Terminal.Wrap(
                      "Records what you do in Chrome and saves it as a QaaS flow class, with the values you typed and " +
-                     "chose as its settings.", Math.Min(t.Width - 1, 80) - Margin.Length))
+                     "chose in a YAML file beside it, for your tests to change.", Math.Min(t.Width - 1, 80) - Margin.Length))
             t.WriteLine(Margin + line);
 
         (string, string)[] usage =
@@ -74,13 +75,15 @@ internal static class ConsoleUi
             ("--keep-recording", "Also saves the raw recording, with every locator tried"),
             ("--no-panel", "Records without the panel beside the browser"),
             ("--no-auto-checks", "Writes no Expect of what each action did; waits stay"),
-            ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with that flow of your tests, e.g. LoginFlow. Without it, " +
-                                                     "the recorder finds the one your tests run first and asks once"),
-            ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The DLL in your test project's bin folder that has the flow, e.g. " +
-                                                               Path.Combine("bin", "Debug", "net10.0", "YourShared.dll")),
-            ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "The YAML with its values, if it needs any, e.g. " +
-                                                                Path.Combine("Tests", "Smoke.qaas.yaml")),
-            ("--no-login", "Records without logging in, and forgets this folder's answer"),
+            ($"--login {t.Paint("<flow>", Tone.Dim)}", "Logs in first with that flow of your tests, e.g. LoginFlow, found as QaaS " +
+                                                     "finds it. Without it, the recorder finds the one your tests run first " +
+                                                     "(SetupFlows), in your test project here or below, and asks once"),
+            ($"--login-assembly {t.Paint("<dll>", Tone.Dim)}", "The DLL that has the login flow, when the recorder does not find it, " +
+                                                               "e.g. " + Path.Combine("bin", "Debug", "net10.0", "YourShared.dll")),
+            ($"--login-settings {t.Paint("<yaml>", Tone.Dim)}", "The test YAML with the values your login flow needs (under " +
+                                                                "FlowConfiguration: LoginFlow:), e.g. " + Path.Combine("Tests", "Smoke.qaas.yaml")),
+            ("--login-why", "Shows where the recorder looked for your login flow, and why it took one or none, then exits"),
+            ("--no-login", "Records without logging in, and forgets this folder's answer, so the next recording asks again"),
             ("-h, --help", "Shows this help"),
             ("-v, --version", "Prints the version"),
         ];
@@ -109,6 +112,7 @@ internal static class ConsoleUi
                      "qaas-playwright record login-flow https://my-app.com",
                      "qaas-playwright record login-flow https://my-app.com --output-dir UiFlows",
                      "qaas-playwright record new-ticket https://my-app.com --login LoginFlow",
+                     "qaas-playwright --login-why",
                  ])
             t.WriteLine(Margin + Margin + t.Paint("$ ", Tone.Dim) + example);
 
@@ -122,7 +126,7 @@ internal static class ConsoleUi
     {
         var t = Out;
         t.WriteLine(Margin + t.Paint("Usage: ", Tone.Dim) + "qaas-playwright record <name> <url> "
-                    + t.Paint("[--output-dir <dir>] [--keep-recording] [--no-panel] [--login <flow>] [--no-login]", Tone.Dim));
+                    + t.Paint("[--output-dir <dir>] [--keep-recording] [--no-panel] [--login <flow>] [--no-login] [--login-why]", Tone.Dim));
         t.WriteLine(Margin + t.Paint("Run ", Tone.Dim) + "qaas-playwright --help" + t.Paint(" for more.", Tone.Dim));
         t.WriteLine();
     }
@@ -155,15 +159,17 @@ internal static class ConsoleUi
 
     /// <summary>
     /// Asks until the answer is valid: <paramref name="problem"/> tells what is wrong with one, or null. An empty
-    /// answer takes <paramref name="defaultValue"/>.
+    /// answer takes <paramref name="defaultValue"/>, which the question shows as what Enter does: "(Enter = my-flow)", or
+    /// <paramref name="enter"/>, e.g. "y/N, Enter = no".
     /// </summary>
     /// <exception cref="OperationCanceledException">The input ended (Ctrl+D, or Ctrl+Z and Enter on Windows).</exception>
-    public static string Ask(string prompt, string defaultValue, Func<string, string?>? problem = null)
+    public static string Ask(string prompt, string defaultValue, Func<string, string?>? problem = null, string? enter = null)
     {
         var t = Out;
+        enter ??= defaultValue.Length > 0 ? $"Enter = {defaultValue}" : null;
         while (true)
         {
-            var hint = defaultValue.Length > 0 ? t.Paint($" ({defaultValue})", Tone.Dim) : "";
+            var hint = enter is not null ? t.Paint($" ({enter})", Tone.Dim) : "";
             t.Writer.Write(Margin + t.Paint("?", Tone.Accent) + " " + t.Paint(prompt, Tone.Bold) + hint
                            + t.Paint($" {t.Glyph("›", ">")} ", Tone.Dim) + t.Start(Tone.Accent));
             var typed = Console.ReadLine();
@@ -187,27 +193,37 @@ internal static class ConsoleUi
     {
         var t = Out;
         Status(t, Margin, t.Glyph("?", "?"), Tone.Accent, question, Tone.Bold);
-        for (var index = 0; index < choices.Count; index++)
-            t.WriteLine(Margin + Margin + "  " + t.Paint($"{index + 1}", Tone.Accent) + "  " + choices[index]);
+        Options(choices);
         var numbers = string.Join(", ", Enumerable.Range(1, choices.Count - 1)) + $" or {choices.Count}";
         int? Taken(string answer) => int.TryParse(answer, out var number) && number >= 1 && number <= choices.Count
             ? number - 1
             : choices.Index().FirstOrDefault(choice => choice.Item.StartsWith(answer, StringComparison.OrdinalIgnoreCase)) is
                 { Item: not null } found ? found.Index : null;
-        return Taken(Ask($"Choose {numbers}", "1", answer => Taken(answer) is null ? $"Type {numbers}." : null))!.Value;
+        return Taken(Ask($"Type {numbers}, or the start of a choice", "1",
+            answer => Taken(answer) is null ? $"Type a number, {numbers}, or the first words of a choice." : null))!.Value;
     }
 
-    /// <summary>Asks a question of yes or no until it is answered; an empty answer is yes.</summary>
+    /// <summary>Numbered lines, as a question's choices are shown.</summary>
+    public static void Options(IReadOnlyList<string> choices)
+    {
+        var t = Out;
+        lock (Gate)
+            for (var index = 0; index < choices.Count; index++)
+                t.WriteLine(Margin + Margin + "  " + t.Paint($"{index + 1}", Tone.Accent) + "  " + Terminal.Clean(choices[index]));
+    }
+
+    /// <summary>Asks a question of yes or no until it is answered; an empty answer is <paramref name="yes"/>.</summary>
     /// <exception cref="OperationCanceledException">The input ended.</exception>
-    public static bool Confirm(string question)
+    public static bool Confirm(string question, bool yes = true)
     {
         static bool? Yes(string answer) => answer.ToLowerInvariant() switch
         {
-            "y/n" or "y" or "yes" => true,
+            "y" or "yes" => true,
             "n" or "no" => false,
             _ => null,
         };
-        return Yes(Ask(question, "Y/n", answer => Yes(answer) is null ? "Type y or n." : null)) ?? true;
+        return Yes(Ask(question, yes ? "y" : "n", answer => Yes(answer) is null ? "Type y for yes or n for no." : null,
+            yes ? "Y/n, Enter = yes" : "y/N, Enter = no")) ?? yes;
     }
 
     /// <summary>How long ago <paramref name="when"/> was, as a person says it: "5 minutes ago".</summary>
@@ -224,8 +240,44 @@ internal static class ConsoleUi
     public static string Reason(ArgumentException refused) =>
         refused.ParamName is { } name ? refused.Message.Replace($" (Parameter '{name}')", "") : refused.Message;
 
-    /// <summary>Says goodbye on Ctrl+C instead of leaving a half-written line.</summary>
-    public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, _) => Cancelled();
+    /// <summary>
+    /// Ctrl+C ends a recording as Enter does (<see cref="CtrlCEnds"/>); pressed again, or before the recording began, it
+    /// stops at once, the recording kept (<see cref="CrashReport.Interrupted"/>). With no recording going on, it says
+    /// goodbye instead of leaving a half-written line.
+    /// </summary>
+    public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, pressed) =>
+    {
+        if (CtrlC()) pressed.Cancel = true;
+        else Cancelled();
+    };
+
+    /// <summary>
+    /// Until <see cref="CtrlCStops"/>, the next Ctrl+C ends the recording as Enter does, and completes the task returned,
+    /// rather than stopping the recorder.
+    /// </summary>
+    public static Task CtrlCEnds()
+    {
+        var pressed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Volatile.Write(ref _ctrlCEnds, pressed);
+        return pressed.Task;
+    }
+
+    /// <summary>The recording ended: Ctrl+C stops the recorder from now on, the recording kept.</summary>
+    public static void CtrlCStops() => Volatile.Write(ref _ctrlCEnds, null);
+
+    // Whether the recorder goes on after Ctrl+C: it ends the recording, as Enter does; else, while a recording goes on, the
+    // recording is kept and the recorder stops, never back here.
+    internal static bool CtrlC()
+    {
+        if (Interlocked.Exchange(ref _ctrlCEnds, null) is not { } ends) return CrashReport.Interrupted();
+        var t = Out;
+        t.Writer.Write(t.Stop);
+        t.WriteLine();
+        Mode(t, t.Glyph("›", ">"), Tone.Accent, "Ending",
+            "Ctrl+C: saving what you recorded, as Enter does. Ctrl+C again stops at once, the recording kept to save next time.");
+        ends.TrySetResult();
+        return true;
+    }
 
     public static void Cancelled()
     {
@@ -342,13 +394,21 @@ internal static class ConsoleUi
     public static void Phase(string text) => Status(Out, Margin, Out.Glyph("›", ">"), Tone.Accent, $"{text}{Out.Ellipsis}", Tone.Dim);
 
     public static void Paused() =>
-        Mode(Out, Out.Glyph("║", "="), Tone.Warning, "Paused", "Nothing you do in Chrome is recorded. F8 resumes.");
+        Mode(Out, Out.Glyph("║", "="), Tone.Warning, "Paused", "nothing you do is recorded; F8 resumes.", Tone.Plain);
+
+    /// <summary>The person acted in the app while paused, the first time in this pause: it was not recorded.</summary>
+    /// <param name="what"><c>click</c>, <c>typing</c> or <c>choice</c>.</param>
+    public static void NotRecordedWhilePaused(string what) =>
+        Warning($"Paused: that {what} was not recorded (F8 resumes)");
 
     public static void Resumed() => RecordingState(Out, "Recording", "again, from the page the app is on.");
 
     // ── One line of each kind ───────────────────────────────────────────────────────────────────────────────────
 
     public static void Info(string message) => Status(Out, Margin, " ", Tone.Plain, message);
+
+    /// <summary>A line of less weight, dim: why the recorder does not do something it might, e.g. log in first.</summary>
+    public static void Note(string message) => Status(Out, Margin, " ", Tone.Plain, message, Tone.Dim);
 
     public static void Success(string message) =>
         Status(Out, Margin, Out.Glyph("✓", "√", "+"), Tone.Success, message);
@@ -379,7 +439,7 @@ internal static class ConsoleUi
             var counts = new[]
                 {
                     Count(flow.ActionLines.Count, "action"), Count(flow.StepLines.Count, "step"),
-                    Count(settings, "setting"),
+                    Count(settings, "value"),
                     flow.Checks.Count > 0 ? $"{flow.Checks.Count} to check by hand" : "nothing to check by hand",
                 };
 
@@ -393,7 +453,7 @@ internal static class ConsoleUi
             var files = new List<(string Path, string What)>
             {
                 (saved.CodePath, saved.CodePath.EndsWith(".cs", StringComparison.Ordinal) ? "the flow" : "the new recording"),
-                (saved.YamlPath, "its settings"),
+                (saved.YamlPath, "the values it types and chooses, for your test YAML"),
             };
             if (saved.RecordingPath is { } raw) files.Add((raw, "the raw recording"));
             var shown = files.Select(file => (Path: Terminal.Clean(Relative(file.Path)), file.What)).ToList();
@@ -406,7 +466,8 @@ internal static class ConsoleUi
             if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
             {
                 t.WriteLine();
-                Warning($"{request.ClassName}.cs was kept as it is: merge the new recording into it by hand.");
+                Warning($"{request.ClassName}.cs was kept as it is, as it changed since it was recorded: merge the new " +
+                        "recording, saved beside it, into it by hand.");
             }
 
             if (flow.Checks.Count > 0) ChecksSection(t, saved.CodePath, flow.Checks);
@@ -765,11 +826,17 @@ internal static class ConsoleUi
 
     // ── The login flow, pausing and freezing ────────────────────────────────────────────────────────────────────
 
-    public static void LoggingIn(Login.LoginFlow login, bool remembered)
+    /// <summary>
+    /// "Logging in with LoginFlow, from bin/Debug/net10.0/Acme.Shared.dll, its values from Tests/Smoke.qaas.yaml, BaseUrl
+    /// https://app (from Tests/Smoke.qaas.yaml)…".
+    /// </summary>
+    public static void LoggingIn(Login.LoginFlow login, bool remembered, string baseUrl, string? baseUrlFrom)
     {
         _slowTold = false;
         var values = login.Settings is null ? "" : $", its values from {Relative(login.Settings)}";
-        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, "Logging in", $"with {login.Flow}, from {Relative(login.Assembly)}{values}{Out.Ellipsis}");
+        var from = baseUrlFrom is null ? "the address you record on, as no test YAML that runs it gives one" : $"from {Relative(baseUrlFrom)}";
+        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, "Logging in",
+            $"with {login.Flow}, from {Relative(login.Assembly)}{values}, BaseUrl {baseUrl} ({from}){Out.Ellipsis}");
         if (remembered) Status(Out, UnderMode, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
     }
 
@@ -782,6 +849,17 @@ internal static class ConsoleUi
             ? $"Your tests log in with {flow.Name}, from {Relative(flow.Dll)}: the setup flow of {Count(flow.SetupIn, "test file")}."
             : $"Found {flow.Name}, from {Relative(flow.Dll)}, which looks like the login of your tests.");
         LoginValuesOf(flow.Name, settings, values);
+    }
+
+    /// <summary>The whole search for the login flow, for <c>--login-why</c>, each step further in than the one it is part of.</summary>
+    public static void LoginSearch(Login.LoginSearch search)
+    {
+        var t = Out;
+        t.WriteLine();
+        foreach (var (depth, text) in search.Lines)
+            Status(t, Margin + new string(' ', 2 * depth), depth == 0 ? t.Glyph("›", ">") : t.Glyph("·", "-"),
+                depth == 0 ? Tone.Accent : Tone.Dim, text, depth == 0 ? Tone.Bold : Tone.Plain);
+        t.WriteLine();
     }
 
     /// <summary>A flow found, as a choice: "LoginFlow, from bin/Debug/net10.0/Shared.dll (the setup flow of 2 test files)".</summary>
@@ -803,11 +881,14 @@ internal static class ConsoleUi
         if (!onlyWrong && values.Given.Count > 0) Info($"Its values ({string.Join(", ", values.Given)}) come from {Relative(settings!)}.");
         else if (!onlyWrong && values.Missing.Count == 0 && values.Problems.Count == 0) Info("It needs no values: it uses its own defaults.");
         if (values.Problems.Count > 0)
-            Warning($"Some of its values are not right:\n{string.Join("\n", values.Problems)}");
+            Warning($"Some of the values {flow} needs are not right, so it would fail as your tests run it:\n" +
+                    $"{string.Join("\n", values.Problems)}\nFix them in {(settings is null ? "your test YAML" : Relative(settings))}, " +
+                    $"under FlowConfiguration: {flow}:, then record again.");
         if (values.Missing.Count == 0) return;
 
         var them = values.Missing.Count == 1 ? "it" : "them";
-        Warning($"{flow} needs {List(values.Missing)}, which {(values.Missing.Count == 1 ? "is" : "are")} set nowhere.");
+        Warning($"{flow} needs {List(values.Missing)}, which {(values.Missing.Count == 1 ? "is" : "are")} set nowhere, so it " +
+                "would log in with nothing typed.");
         Info(settings is null
             ? $"Add this to your test YAML, under the ProbeConfiguration of the probe that runs {flow}, or to a " +
               $"{flow}.flow.yaml given with --login-settings:"
@@ -827,7 +908,7 @@ internal static class ConsoleUi
             .Select(line => line.LastIndexOf(" [", StringComparison.Ordinal) is var end and > 0 ? line[..end] : line)
             .Distinct().Take(8).ToList();
         if (errors.Count == 0) errors = [.. log.Split('\n').Select(line => line.Trim()).Where(line => line.Length > 0).TakeLast(8)];
-        Error($"{project} did not build:\n{string.Join("\n", errors)}");
+        Error($"{project} did not build, so the recorder cannot run its login flow:\n{string.Join("\n", errors)}");
         Info(command is null
             ? "Not logging in this time. Fix the build, then record again, or record with --no-login."
             : $"Logging in with its last build. Once fixed, {command} builds it again.");
@@ -849,7 +930,7 @@ internal static class ConsoleUi
             if (progress.Slow && !_slowTold)
             {
                 _slowTold = true;
-                Info("Taking long? Press Esc to log in by hand.");
+                Info("Taking long? Press Esc to stop the login flow and log in by hand in the browser.");
             }
 
             if (Console.IsOutputRedirected) return;
@@ -908,8 +989,12 @@ internal static class ConsoleUi
 
     /// <param name="flow">The login flow.</param>
     /// <param name="url">Where the recording starts; null when the steps of the flow continued replay first.</param>
-    public static void LoggedIn(string flow, string? url) =>
+    /// <param name="stayed">Why the recording starts where the login left the app, not on the URL given; else null.</param>
+    public static void LoggedIn(string flow, string? url, string? stayed = null)
+    {
         Mode(Out, Out.Glyph("✓", "√", "+"), Tone.Success, "Logged in", url is null ? $"with {flow}." : $"with {flow}. Recording from {url}", Tone.Plain);
+        if (stayed is not null) Status(Out, UnderMode, " ", Tone.Plain, stayed, Tone.Dim);
+    }
 
     /// <param name="flow">The login flow.</param>
     /// <param name="reason">Why it failed.</param>
@@ -926,12 +1011,17 @@ internal static class ConsoleUi
     /// <summary>A line the login flow logged.</summary>
     public static void FlowLog(string message) => Status(Out, Margin + Margin, " ", Tone.Plain, message, Tone.Dim);
 
-    public static void StateChanged(Capture.RecordingState state)
+    /// <param name="state">The state the recording went to.</param>
+    /// <param name="say">
+    /// False while the login flow runs, whose way in and out of the pause the login's own lines tell: the state is still
+    /// kept, so resuming after a login that failed says the recording records.
+    /// </param>
+    public static void StateChanged(Capture.RecordingState state, bool say = true)
     {
         var before = _state;
         _state = state;
         // After a test, the recording goes on as before it, and the test's result says so.
-        if (before == Capture.RecordingState.Testing || before == state) return;
+        if (!say || before == Capture.RecordingState.Testing || before == state) return;
         if (state == Capture.RecordingState.Paused) Paused();
         else if (state == Capture.RecordingState.Recording) Resumed();
         else if (state == Capture.RecordingState.Trying)
@@ -1061,7 +1151,9 @@ internal static class ConsoleUi
         var flow = request.ClassName;
         if (!File.Exists(request.CodePath))
         {
-            Error($"There is no {Relative(request.CodePath)} to continue, nor a recording of {flow}.");
+            Error($"There is no {Relative(request.CodePath)} to continue, nor a recording of {flow}: the name or the folder " +
+                  $"may be wrong. Check them (--output-dir for another folder), or record it anew: qaas-playwright record " +
+                  $"{flow} <url>.");
             return;
         }
 
@@ -1074,7 +1166,8 @@ internal static class ConsoleUi
 
     /// <summary>After <see cref="Saved"/>, for a flow recorded after a login flow.</summary>
     public static void RunAfter(string loginFlow) =>
-        Info($"It was recorded after {loginFlow}: run that first, with SetupFlows: [{loginFlow}] and its settings.");
+        Info($"It was recorded after {loginFlow}: in your test YAML, run that first, with SetupFlows: [{loginFlow}], and " +
+             $"give it the values it needs (under FlowConfiguration: {loginFlow}:).");
 
     /// <summary>
     /// Where to set the flow's secrets, once: neither its YAML nor its code holds them, and the YAML reads each from an

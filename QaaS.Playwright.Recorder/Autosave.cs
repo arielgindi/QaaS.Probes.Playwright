@@ -88,7 +88,9 @@ internal sealed class Autosave
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or JsonException)
         {
-            if (!_warned) ConsoleUi.Warning($"The recording is not autosaved in {Folder}: {failure.Message}");
+            if (!_warned) ConsoleUi.Warning($"The recording is not saved as you go in {Folder} ({failure.Message}), so a crash " +
+                                            "would lose it. Recording goes on; free some disk space, or check that you can " +
+                                            "write to that folder.");
             _warned = true;
         }
     }
@@ -114,7 +116,8 @@ internal sealed class Autosave
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            ConsoleUi.Warning($"The recording was not kept in {Folder}, so {request.ClassName} cannot be continued: {failure.Message}");
+            ConsoleUi.Warning($"The recording was not kept in {Folder} ({failure.Message}), so {request.ClassName} cannot be " +
+                              "continued with --continue later; the flow itself is saved. Check that you can write to that folder.");
         }
     }
 
@@ -156,7 +159,8 @@ internal sealed class Autosave
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            ConsoleUi.Warning($"Could not look for unsaved recordings in {Folder}: {failure.Message}");
+            ConsoleUi.Warning($"Could not look for recordings that were never saved, in {Folder} ({failure.Message}). The " +
+                              "recorder goes on; check that you can read that folder.");
             return [];
         }
     }
@@ -250,7 +254,9 @@ internal sealed class Autosave
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
             ConsoleUi.Warning($"Skipped {path}: " +
-                              (failure is JsonException or NotSupportedException ? "it is not a recording." : failure.Message));
+                              (failure is JsonException or NotSupportedException
+                                  ? "it is not a recording the recorder can read, e.g. one of an older version. Delete it if you do not need it."
+                                  : $"{failure.Message}. Check that you can read it, or delete it."));
             return null;
         }
     }

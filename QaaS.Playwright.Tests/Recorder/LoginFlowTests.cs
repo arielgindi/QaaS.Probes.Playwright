@@ -118,6 +118,68 @@ public class LoginFlowTests
     }
 
     [Test]
+    public async Task ALoginThatPlantsATokenFirst_RunsBeforeAnyPageLoads_WithTheTestsBaseUrl_ThenTheRecordingStartsDeepIn()
+    {
+        if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
+        using var site = TestSite.Start();
+        var folder = Directory.CreateTempSubdirectory("qaas-recorder-gate-").FullName;
+        // The tests' probe gives the login its BaseUrl, the app's root; the recording starts on a page deep in it.
+        var yaml = Path.Combine(folder, "Smoke.qaas.yaml");
+        await File.WriteAllTextAsync(yaml, $"""
+            ProbeConfiguration:
+              BaseUrl: '{site.Url}/gate'
+              SetupFlows: [GatedLogInFlow]
+              FlowConfiguration:
+                GatedLogInFlow:
+                  User: carol
+            """);
+        var login = new LoginFlow("GatedLogInFlow", typeof(GatedLogInFlow).Assembly.Location, yaml);
+        var start = $"{site.Url}/gate/orders/42";
+        var (baseUrl, from) = login.BaseUrlFor(start);
+        var session = await RecordingSession.StartAsync(new RecordingOptions(start)
+        {
+            LoginFlow = login.Flow, LoginBaseUrl = baseUrl, LoadStorageStatePath = null, SaveStorageStatePath = null,
+            BrowserArgs = ["--headless=new"],
+        }, _ => { });
+        Recording recording;
+        LoginEnd? end;
+        string startedOn, user;
+        try
+        {
+            end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, baseUrl, stopped, from));
+            startedOn = session.Page.Url;
+            user = await session.Page.Locator("#user").InnerTextAsync();
+            // Later pages load with the token the login planted, and are recorded.
+            await session.Page.GetByRole(AriaRole.Link, new() { Name = "Home" }).ClickAsync();
+            await Expect(session.Page.GetByRole(AriaRole.Heading, new() { Name = "Home" })).ToBeVisibleAsync();
+            await session.Page.GetByRole(AriaRole.Link, new() { Name = "Order 42" }).ClickAsync();
+            await session.Page.GetByRole(AriaRole.Button, new() { Name = "Ship" }).ClickAsync();
+            await Expect(session.Page.Locator("#done")).ToHaveTextAsync("shipped");
+        }
+        finally
+        {
+            recording = await session.StopAsync();
+            Directory.Delete(folder, recursive: true);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((baseUrl, from), Is.EqualTo(($"{site.Url}/gate", yaml)), "the BaseUrl of the probe that runs it");
+            Assert.That(end, Is.Null);
+            Assert.That(site.Blocked, Is.Zero, "no page loaded before the login planted its token");
+            Assert.That(site.Logins, Is.EqualTo(1));
+            Assert.That(startedOn, Is.EqualTo(start), "the recording starts on the URL given, after the login");
+            Assert.That(user, Is.EqualTo("carol"));
+            Assert.That(recording.StartUrl, Is.EqualTo(start));
+            Assert.That(recording.Actions.Select(action => action.Kind), Is.EqualTo(new[] { "click", "click", "click" }),
+                "the capture script records on the pages the login's script runs on, and nothing the login did");
+            Assert.That(LoginRunner.WhereItWas("GatedLogInFlow", new TimeoutException("Timeout 15000ms exceeded."), $"{site.Url}/x/login",
+                    baseUrl, from), Does.StartWith($"GatedLogInFlow waited 15 s on {site.Url}/x/login: was BaseUrl right? It was given " +
+                                                   $"BaseUrl {site.Url}/gate, from {yaml}."));
+        });
+    }
+
+    [Test]
     public async Task ALoginThatHangs_ShowsHowItGoes_AndStops_ForTheLoginByHand()
     {
         if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");

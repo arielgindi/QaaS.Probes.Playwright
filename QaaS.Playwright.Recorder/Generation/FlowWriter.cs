@@ -602,7 +602,8 @@ internal sealed partial class FlowWriter
 
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
         var shownElsewhere = action.Has("dialogOpened") || action.Has("tabSelected") || (closed.Count > 0 && alerts.Count > 0);
-        var changes = action.Effects.Where(effect => _autoChecks && effect.Kind == "urlChanged");
+        // A change of address the recording does not say, as one edited by hand may not, is no address to check.
+        var changes = action.Effects.Where(effect => _autoChecks && effect is { Kind: "urlChanged", Url: not null });
         // Not one the address before the action matched already, as a sort's query does: it would check nothing.
         foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
                      .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))

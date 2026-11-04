@@ -168,7 +168,7 @@
       "target": {
         "tag": "li",
         "role": "menuitem",
-        "text": "فارسیفارسی",
+        "text": "FarsiFarsi",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -178,21 +178,21 @@
               {
                 "m": "role",
                 "role": "menuitem",
-                "name": "فارسیفارسی",
+                "name": "FarsiFarsi",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "فارسیفارسی"
+            "text": "FarsiFarsi"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"فارسیفارسی\" })",
-            "selector": "internal:role=menuitem[name=\"فارسیفارسی\"i]"
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"FarsiFarsi\" })",
+            "selector": "internal:role=menuitem[name=\"FarsiFarsi\"i]"
           }
         ]
       },
@@ -2436,8 +2436,8 @@
       "kind": "fill",
       "page": "page",
       "widget": "text",
-      "value": "Haifa No. 4 Pier",
-      "raw": "Haifa No. 4 Pier",
+      "value": "No. 4 Pier",
+      "raw": "No. 4 Pier",
       "final": true,
       "url": "https://preview.pro.ant.design/form/advanced-form",
       "openDialogs": [],

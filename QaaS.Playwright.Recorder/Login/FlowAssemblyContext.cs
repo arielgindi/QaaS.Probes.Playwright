@@ -3,15 +3,29 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
+using System.Text.Json;
+using QaaS.Playwright.Flows;
 
 namespace QaaS.Playwright.Recorder.Login;
 
+/// <summary>A DLL looked through for flows: where it is, why it was looked at, and what it gave.</summary>
+/// <param name="Path">The file.</param>
+/// <param name="Why">"the build", "beside it", or "a dependency of it" (from its .deps.json).</param>
+/// <param name="BuiltAgainst">The QaaS.Playwright it was built against; null when it references none, so has no flows.</param>
+/// <param name="NotLoaded">Why it could not be loaded; null when it was, or was not loaded, having no flows.</param>
+internal sealed record ScannedDll(string Path, string Why, Version? BuiltAgainst, string? NotLoaded);
+
+/// <summary>The assemblies loaded from a build, the build's first, and every DLL looked through.</summary>
+internal sealed record FlowAssemblies(IReadOnlyList<Assembly> Loaded, IReadOnlyList<ScannedDll> Scanned);
+
 /// <summary>
-/// Loads a test project's built assembly, and what it references from its own folder, while every assembly the recorder
-/// has itself is the recorder's: QaaS.Playwright, Microsoft.Playwright, QaaS's SDK and .NET's own. A flow in it is
-/// then a flow of the recorder's QaaS.Playwright, that runs on the recorder's pages, whatever versions the project
-/// was built with. The flows of the folder's other assemblies load with it, as a shared package's do: the probe finds
-/// a setup flow in any assembly of the test, not only in the project's own.
+/// Loads a test project's built assembly with what it uses, as the test run has it: its dependency closure, from its
+/// <c>.deps.json</c> (through <see cref="AssemblyDependencyResolver"/>, the output folder and the NuGet package folders, as
+/// a library's packages are not copied beside it), and the other DLLs of its folder. Every assembly the recorder has
+/// itself is the recorder's: QaaS.Playwright, Microsoft.Playwright, QaaS's SDK and .NET's own. A flow in it is then a
+/// flow of the recorder's QaaS.Playwright, that runs on the recorder's pages, whatever versions the project was built
+/// with. The flows of all of them load with it, as a shared package's do: the probe finds a setup flow in any assembly
+/// of the test, not only in the project's own.
 /// </summary>
 internal sealed class FlowAssemblyContext : AssemblyLoadContext
 {
@@ -30,63 +44,98 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
     // name could tell apart.
     private static readonly ConcurrentDictionary<string, Lazy<Assembly>> Files = new(StringComparer.Ordinal);
 
+    // The package folders restores wrote to, besides NuGet's own: those of the test projects the recorder looked at.
+    private static readonly ConcurrentDictionary<string, bool> MorePackageFolders = new(StringComparer.Ordinal);
+
     private readonly AssemblyDependencyResolver _resolver;
     private readonly string _folder;
+    private readonly Dictionary<string, string> _closure;
 
     private FlowAssemblyContext(string path) : base($"Flows from {Path.GetFileName(path)}")
     {
         _resolver = new AssemblyDependencyResolver(path);
         _folder = Path.GetDirectoryName(path)!;
+        _closure = ClosureOf(path);
+    }
+
+    /// <summary>The package folders of a project's restore, from its <c>project.assets.json</c>, to find its packages in.</summary>
+    public static void AddPackageFoldersOf(string assetsFile)
+    {
+        try
+        {
+            using var assets = JsonDocument.Parse(File.ReadAllText(assetsFile));
+            if (assets.RootElement.TryGetProperty("packageFolders", out var folders) && folders.ValueKind == JsonValueKind.Object)
+                foreach (var folder in folders.EnumerateObject())
+                    MorePackageFolders.TryAdd(folder.Name, true);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // NuGet's own folder is looked in still.
+        }
     }
 
     /// <summary>
-    /// Loads the assembly at <paramref name="path"/>, and the flows of the assemblies beside it, so they can be found by
+    /// Loads the assembly at <paramref name="path"/>, and the flows of the assemblies it uses, so they can be found by
     /// name; once, so a login flow that runs again, as before each test of the flow, is the same flow.
     /// </summary>
     /// <exception cref="BadImageFormatException">It is not a .NET assembly.</exception>
     /// <exception cref="FileLoadException">It, or an assembly it needs, could not be loaded.</exception>
-    public static Assembly Load(string path) => LoadWithFlows(path)[0];
+    public static Assembly Load(string path) => LoadWithFlows(path).Loaded[0];
 
     /// <summary>
-    /// The assembly at <paramref name="path"/>, then those of its folder that can have flows (the ones that reference
-    /// QaaS.Playwright), all loaded. One of them that cannot be loaded is left out.
+    /// The assembly at <paramref name="path"/>, then those of its dependency closure and of its folder that can have flows
+    /// (the ones that reference QaaS.Playwright), all loaded, and every DLL looked through. One of them that cannot be
+    /// loaded is left out, and why is said.
     /// </summary>
     /// <exception cref="BadImageFormatException">The assembly at <paramref name="path"/> is not a .NET assembly.</exception>
     /// <exception cref="FileLoadException">It, or an assembly it needs, could not be loaded.</exception>
-    public static IReadOnlyList<Assembly> LoadWithFlows(string path)
+    public static FlowAssemblies LoadWithFlows(string path)
     {
         var fullPath = Path.GetFullPath(path);
         var context = Contexts.GetOrAdd(fullPath, root => new FlowAssemblyContext(root));
-        List<Assembly> loaded = [context.LoadFromAssemblyName(AssemblyName.GetAssemblyName(fullPath))];
-        foreach (var beside in Directory.EnumerateFiles(context._folder, "*.dll"))
+        var root = context.LoadFromAssemblyName(AssemblyName.GetAssemblyName(fullPath));
+        List<Assembly> loaded = [root];
+        List<ScannedDll> scanned = [new(fullPath, "the build", BuiltAgainst(fullPath), null)];
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.GetFileNameWithoutExtension(fullPath) };
+        var candidates = context._closure.Select(entry => (Name: entry.Key, Path: entry.Value, Why: "a dependency of it"))
+            .Concat(Directory.EnumerateFiles(context._folder, "*.dll")
+                .Select(file => (Name: Path.GetFileNameWithoutExtension(file), Path: file, Why: "beside it")));
+        foreach (var (name, file, why) in candidates)
         {
-            var name = Path.GetFileNameWithoutExtension(beside);
-            if (string.Equals(beside, fullPath, StringComparison.Ordinal) || Shared.Value.Contains(name) || !HasFlows(beside))
+            if (Shared.Value.Contains(name) || !seen.Add(name)) continue;
+            var builtAgainst = BuiltAgainst(file);
+            if (builtAgainst is null)
+            {
+                scanned.Add(new ScannedDll(file, why, null, null));
                 continue;
+            }
+
             try
             {
                 loaded.Add(context.LoadFromAssemblyName(new AssemblyName(name)));
+                scanned.Add(new ScannedDll(file, why, builtAgainst, null));
             }
             catch (Exception failure) when (failure is FileLoadException or FileNotFoundException or BadImageFormatException)
             {
                 // Its flows cannot run either; the one asked for may be elsewhere.
+                scanned.Add(new ScannedDll(file, why, builtAgainst, failure.Message));
             }
         }
 
-        return loaded;
+        return new FlowAssemblies(loaded, scanned);
     }
 
     /// <summary>The flows of <paramref name="assemblies"/>, as the probe finds them by name.</summary>
-    public static IEnumerable<Type> FlowsIn(IEnumerable<Assembly> assemblies) => assemblies
-        .SelectMany(TypesOf)
-        .Where(type => type is { IsAbstract: false, IsGenericTypeDefinition: false } && typeof(IPlaywrightFlow).IsAssignableFrom(type));
+    public static IEnumerable<Type> FlowsIn(IEnumerable<Assembly> assemblies) => FlowDiscovery.FlowsIn(assemblies);
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
         if (assemblyName.Name is not { } name) return null;
         // By name alone, so a project built with another version gets the recorder's.
         if (Shared.Value.Contains(name)) return Default.LoadFromAssemblyName(new AssemblyName(name));
-        var path = _resolver.ResolveAssemblyToPath(assemblyName) ?? Path.Combine(_folder, $"{name}.dll");
+        var path = _resolver.ResolveAssemblyToPath(assemblyName)
+                   ?? _closure.GetValueOrDefault(name)
+                   ?? Path.Combine(_folder, $"{name}.dll");
         if (!File.Exists(path)) return null;
         var file = Files.GetOrAdd(Path.GetFullPath(path), full => new Lazy<Assembly>(() => LoadFromAssemblyPath(full)));
         try
@@ -104,39 +153,100 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
     protected override IntPtr LoadUnmanagedDll(string unmanagedDllName) =>
         _resolver.ResolveUnmanagedDllToPath(unmanagedDllName) is { } path ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
 
-    // Read without loading it, so a folder of a few hundred assemblies is looked through in a moment.
-    private static bool HasFlows(string path)
+    // The runtime assemblies the .deps.json files of the build's folder list, its own first, each by its name, where it
+    // is: in the folder, else in a NuGet package folder, as a library's packages stay there.
+    private static Dictionary<string, string> ClosureOf(string path)
+    {
+        var closure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var folder = Path.GetDirectoryName(path)!;
+        var own = Path.ChangeExtension(path, ".deps.json");
+        IEnumerable<string> depsFiles;
+        try
+        {
+            depsFiles = [.. (File.Exists(own) ? [own] : Array.Empty<string>())
+                .Concat(Directory.EnumerateFiles(folder, "*.deps.json").Where(file => file != own))];
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return closure;
+        }
+
+        var packageFolders = PackageFolders();
+        foreach (var deps in depsFiles)
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(File.ReadAllText(deps));
+                var root = json.RootElement;
+                if (!root.TryGetProperty("targets", out var targets) || !root.TryGetProperty("libraries", out var libraries)) continue;
+                var target = root.TryGetProperty("runtimeTarget", out var runtimeTarget) && runtimeTarget.TryGetProperty("name", out var name)
+                    ? name.GetString()
+                    : null;
+                if (target is null || !targets.TryGetProperty(target, out var assets)) continue;
+                foreach (var library in assets.EnumerateObject())
+                {
+                    if (!library.Value.TryGetProperty("runtime", out var runtime)) continue;
+                    var package = libraries.TryGetProperty(library.Name, out var about)
+                                  && about.TryGetProperty("type", out var type) && type.GetString() == "package"
+                                  && about.TryGetProperty("path", out var packagePath)
+                        ? packagePath.GetString()
+                        : null;
+                    foreach (var asset in runtime.EnumerateObject())
+                    {
+                        if (!asset.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) continue;
+                        var assembly = Path.GetFileNameWithoutExtension(asset.Name);
+                        if (closure.ContainsKey(assembly)) continue;
+                        var local = Path.Combine(folder, Path.GetFileName(asset.Name));
+                        var found = File.Exists(local) ? local
+                            : package is null ? null
+                            : packageFolders.Select(packages => Path.Combine(packages, package, asset.Name.Replace('/', Path.DirectorySeparatorChar)))
+                                .FirstOrDefault(File.Exists);
+                        if (found is not null) closure[assembly] = found;
+                    }
+                }
+            }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or JsonException
+                                                or InvalidOperationException)
+            {
+                // A .deps.json that cannot be read gives nothing: the folder's DLLs are looked through still.
+            }
+        }
+
+        return closure;
+    }
+
+    // NuGet's own package folder, as NUGET_PACKAGES or the default sets it, and those of the projects looked at.
+    private static List<string> PackageFolders()
+    {
+        var folders = new List<string>(MorePackageFolders.Keys);
+        if (Environment.GetEnvironmentVariable("NUGET_PACKAGES") is { Length: > 0 } set) folders.Add(set);
+        folders.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages"));
+        return [.. folders.Distinct(StringComparer.Ordinal).Where(Directory.Exists)];
+    }
+
+    // The QaaS.Playwright version it references, read without loading it, so a folder of a few hundred assemblies is
+    // looked through in a moment; null when it references none, or is not a .NET assembly.
+    private static Version? BuiltAgainst(string path)
     {
         try
         {
             using var stream = File.OpenRead(path);
             using var image = new PEReader(stream);
-            if (!image.HasMetadata) return false;
+            if (!image.HasMetadata) return null;
             var metadata = image.GetMetadataReader();
-            return metadata.IsAssembly && metadata.AssemblyReferences
-                .Any(reference => metadata.StringComparer.Equals(metadata.GetAssemblyReference(reference).Name, FlowsAssembly));
+            if (!metadata.IsAssembly) return null;
+            foreach (var handle in metadata.AssemblyReferences)
+            {
+                var reference = metadata.GetAssemblyReference(handle);
+                if (metadata.StringComparer.Equals(reference.Name, FlowsAssembly)) return reference.Version;
+            }
+
+            return null;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or BadImageFormatException
                                             or InvalidOperationException)
         {
-            return false;
-        }
-    }
-
-    // An assembly whose types only partly load still offers the ones that did.
-    private static IEnumerable<Type> TypesOf(Assembly assembly)
-    {
-        try
-        {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException partlyLoaded)
-        {
-            return partlyLoaded.Types.OfType<Type>();
-        }
-        catch (Exception failure) when (failure is FileNotFoundException or FileLoadException or TypeLoadException)
-        {
-            return [];
+            return null;
         }
     }
 }

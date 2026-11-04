@@ -2,6 +2,73 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.0.3
+
+- **The recorder finds your login flow as QaaS finds it when your tests run**, and never fails to say why it did not:
+  - **From a folder above your test project**, the repository's root or a solution's folder: it looks up to 3 folders
+    down (skipping `bin`, `obj`, `node_modules` and hidden folders) and in the `.sln` and `.slnx` files there, and takes
+    the projects that use QaaS (a YAML that runs `SetupFlows`, else a QaaS package in `obj/project.assets.json`). When
+    several do, it asks which, once, and remembers the answer for the folder.
+  - **Wherever your project builds to**: a `Directory.Build.props` with `OutputPath` or `BaseOutputPath`, a
+    repository-level `bin/`, or `UseArtifactsOutput`. When the bin folder has no build, or an old one, it asks MSBuild
+    for the project's `TargetPath` (Debug, then Release), and keeps the answer in `~/.qaas/recorder-builds.json` until
+    the project, or a `Directory.Build.props` or `.targets` above it, changes.
+  - **In a referenced package**: your project's DLL loads with its whole dependency closure, from its `.deps.json`
+    (a package a library's build does not copy is found in the NuGet package folder) and its output folder, and the
+    flow is matched as `FlowDiscovery` matches it, by class name, case-insensitively, a name two flows have said as
+    QaaS refuses it.
+  - **Built against another QaaS.Playwright**: a flow of a shared package built against an older version, that uses
+    what this one no longer has, is said plainly before Chrome opens, e.g. `LoginFlow (in Acme.Shared.dll) was built
+    against QaaS.Playwright 1.15.1, and the recorder runs 2.0.3: it can't load it (BrowserDefaults.RemoteUrl is gone).
+    Update that package to QaaS.Playwright 2.0.x, ...`; so is such a failure while it runs.
+  - **Never silent**: with no login flow found, one dim line says why and where it looked, until you answered once in
+    that folder; after a no, `Not logging in here (you said no on 2026-11-03). --login LoginFlow to log in, --no-login
+    to ask again.` `--login LoginFlow` alone finds it the same way, and says why when it does not.
+  - **`qaas-playwright --login-why`** prints the whole search, and records nothing: the projects found, the build used,
+    the DLLs looked through, the flows found, and why each was chosen or not.
+- **The login flow runs first, with the BaseUrl your tests give it.** It runs on a page that has loaded nothing yet,
+  so a login that plants a token with `AddInitScriptAsync` before any page loads, as a proxy may need, works; its
+  scripts go on running on every page while you record. Its `BaseUrl` is that of the probe that runs it in your test
+  YAML (`ProbeConfiguration: BaseUrl:`, `${NAME ?? default}` resolved), else the address of the URL you record on,
+  never the whole URL, which sent a login building `{BaseUrl}/login` to a page deep in the app. Then the page goes to
+  the URL you record on; started on the app's root, the recording starts where the login left the app, and says so.
+  The panel's **Test**, `--continue` and recording a part again run it in the same order. The `Logging in with …`
+  line says the BaseUrl, and a login that fails or times out says the BaseUrl it was given and the page it was on.
+- **The questions cannot be misread.** `qaas-playwright` without arguments asks `Do your tests log in first with a
+  flow, e.g. LoginFlow? (y/N)` first, then its class name, `(the login flow, not the one you're recording)`, among the
+  flows found, refusing the flow being recorded and a name QaaS would not find; the DLL only when none was found, and
+  its values only when no test gives them and the flow has any.
+- **Every question says what it asks, why, an example and what Enter does** (`(Enter = Flows)`, `(y/N, Enter = no)`),
+  and every warning and error what happened, the likely cause, and what to do next, without jargon.
+- **An app whose fields and buttons are named in a non-Latin script is recorded and saved.** A click on a button
+  whose id has no Latin letter, or a fill of a field so named (or of an id of underscores alone), made the flow unwritable: saving said
+  `Could not write the flow …: ArgumentNullException: Value cannot be null`, the panel stopped showing what you did,
+  and the recorder's own copy stopped being kept at such a field. A name with no letter or digit a C# name can
+  have is now passed over, for the next thing that names the setting.
+- **Pausing, and stopping with Ctrl+C**:
+  - **What you do after a pause is recorded on an app that tests with a date of its own.** An app that replaces
+    `Date.now` (a fake date, the server's time) had every action after `F8` dropped, as done before you resumed: the
+    recorder now tells the time by the browser's own clock.
+  - **What you typed just before pausing from the panel is kept**, as with `F8`: the page learns of a pause the
+    panel makes (or Try, or Test) a moment later, and the text being typed then was dropped.
+  - **A pause cannot be missed.** The page's pill, the panel and the console say `Paused: nothing you do is recorded;
+    F8 resumes`; a click, typing or a choice while paused shows a toast beside it, `Paused: that click was not
+    recorded · F8 resumes`, and the first one in a pause prints that line in the console.
+  - **Resuming after a login flow that failed says the recording records**, in the console too: it said nothing, as
+    it had not seen the pause the failed login made.
+  - **`F8` pauses and resumes with the focus in a frame too**, as in an editor or a payment form: the frame never
+    told the recorder, so a pause could not be ended there, and nothing more was recorded. So do `F7` and `F2`.
+  - **Ctrl+C in the console saves what you recorded, as Enter does**, paused or not, and Chrome stays open meanwhile,
+    so your login is saved too. It stopped the recorder at once, saying the recording was not saved. Pressed again
+    before the flow is written, it stops at once, says so, and keeps the recording, to save next time.
+  - **What you were typing as the recording ended is kept**: Enter, Ctrl+C or **Save** within a moment of the last
+    key lost the field's value, which the page told only once you stopped typing.
+  - **A flow the recorder cannot write says where to find why**: `Could not write the flow …` now writes where it
+    happened, with its stack, to `~/.qaas/recorder-error.log`, and says where the recording is kept, rather than
+    printing the stack alone.
+  - **A recording with a change of address it does not give is written**, without checking that address, as one
+    edited by hand may have: saving it failed with `ArgumentNullException: Value cannot be null`.
+
 ## 2.0.2
 
 - **What three more real sites showed, recorded as a messy person does.** react-admin's demo (React and MUI), Ant
