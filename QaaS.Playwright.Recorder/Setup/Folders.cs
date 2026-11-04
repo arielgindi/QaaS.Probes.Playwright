@@ -83,7 +83,9 @@ internal static class Folders
                 entries.AddRange(info.GetFiles(pattern).OrderBy(each => each.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(each => new BrowseEntry(each.Name, each.FullName, false, null)));
             var note = mode != "folder" ? null
-                : TestProject.Near(folder) is { } near ? $"The test project {near.Name} is here."
+                : TestProject.Near(folder) is { } near ? Same(Path.TrimEndingDirectorySeparator(near.Folder), Path.TrimEndingDirectorySeparator(folder))
+                    ? $"The test project {near.Name} is here."
+                    : $"This folder is in the test project {near.Name}, at {near.Folder}."
                 : entries.Any(each => each.Detail is not null) ? "Test projects are below this folder: the recorder finds them, and their login flow."
                 : "No test project here: flows are saved under this folder, and nothing logs in first.";
             return new(folder, Parent(folder), mode, entries, places, note, null);

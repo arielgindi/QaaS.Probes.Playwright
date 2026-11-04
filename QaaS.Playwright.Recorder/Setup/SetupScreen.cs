@@ -517,7 +517,7 @@ internal sealed class SetupScreen
             check.Problems.ContainsKey("url") ? SetupRules.WithScheme(_draft.Url) : null, urls,
             [.. _facts.Flows.Select(FlowViewOf)],
             [.. _facts.NotSaved.Select(kept => new RecoveredView(kept.Path, kept.Recording.Autosave!.Flow,
-                $"{ConsoleUi.Count(kept.Recording.Actions.Count, "action")} · {ConsoleUi.Ago(kept.Changed)} · {kept.Recording.Autosave.Folder}",
+                $"{ConsoleUi.Count(kept.Recording.Actions.Count, "action")} · {ConsoleUi.Ago(kept.Changed)} · {Rel(kept.Recording.Autosave.Folder)}",
                 project is not null && kept.Recording.Autosave.Folder.StartsWith(project, StringComparison.Ordinal)))],
             LoginViewOf(), check.Problems, check.WillDo, check.StartLabel, ready && check.Request is not null, _starting, _notice, _why, _browse, _done);
     }
