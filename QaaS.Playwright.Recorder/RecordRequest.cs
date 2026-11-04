@@ -118,8 +118,9 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var (named, whyNot) = loginFlow is not null && loginAssembly is null && find is not null ? find(loginFlow, outputDir) : (null, null);
         var login = noLogin ? null
             : given is null ? remembered is { Found: false } ? CheckedLogin(remembered.Flow, remembered.Assembly, remembered.Settings) : null
-            : named is not null ? loginSettings is null ? named : named with { Settings = Path.GetFullPath(CheckedFile(loginSettings)) }
-            : CheckedLogin(loginFlow ?? remembered?.Flow, loginAssembly ?? (loginFlow == remembered?.Flow ? remembered?.Assembly : null),
+            : named is not null ? loginSettings is null ? named
+                : CheckedLogin(named.Flow, named.Assembly, loginSettings) with { BaseUrlFrom = named.BaseUrlFrom }
+            : CheckedLogin(loginFlow ?? remembered?.Flow, loginAssembly ?? remembered?.Assembly,
                 loginSettings ?? (loginFlow is null || loginFlow == remembered?.Flow ? remembered?.Settings : null), whyNot);
         // A flow named in the output folder, or its file; the page to start on is its recording's.
         var isFile = continued?.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) == true;
@@ -204,7 +205,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
                 if (SameFlow(answer, request.ClassName))
                     return $"{answer} is the flow you are recording now, so it cannot log you in first. Type the flow your " +
                            "tests run before each test to log in, e.g. LoginFlow; or none to record without logging in.";
-                if (flows.Count == 0 || FlowDiscovery.Named(answer, flows.Select(found => found.Type.Assembly).Distinct()).Count == 1) return null;
+                if (flows.Count == 0 || SameFlow(answer, given?.Flow ?? "")
+                    || FlowDiscovery.Named(answer, flows.Select(found => found.Type.Assembly).Distinct()).Count == 1) return null;
                 return $"There is no flow named {answer} in your tests' build ({ConsoleUi.Relative(discovered!.Build!.Dll)}) or " +
                        "the DLLs it uses, so QaaS could not run it either. Type one of the flows listed above, by its number " +
                        "or its name; build your tests first if the flow is new (dotnet build); or type none.";
