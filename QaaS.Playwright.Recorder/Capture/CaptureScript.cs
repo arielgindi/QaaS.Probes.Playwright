@@ -1565,7 +1565,11 @@ internal static class CaptureScript
               padding: 0 10px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-size: 12px;
               font-weight: 600; }
             .chooser .add kbd { border: 0; background: rgba(255, 255, 255, .2); color: #fff; }
-            .chooser .add:disabled { opacity: .45; cursor: default; }`;
+            .chooser .add:disabled { opacity: .45; cursor: default; }
+            .picker { width: auto; min-width: 260px; max-width: min(440px, calc(100vw - 16px)); padding: 4px; }
+            .picker .option { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; text-align: left; }
+            .picker .loc { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint);
+              font: 11px/1.4 ui-monospace, 'Cascadia Mono', 'JetBrains Mono', Consolas, monospace; }`;
           // Each quoted name keeps its own direction, so a right-to-left name cannot reorder the rest of the line.
           const isolateQuoted = (text) => text.replace(/"[^"]*"/g, (quoted) => range(0x2068) + quoted + range(0x2069));
           const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -2043,6 +2047,109 @@ internal static class CaptureScript
             control({ type: 'done' });
           }), { capture: true });
 
+          // -------------------------------------------------------------------------------------------------- the picker
+          // A click in inspect or check mode offers what is meaningful under the pointer, as the click rules see it: what a
+          // click there records first, then the option, card, row, list or dialog around it, never a wrapper. Each says
+          // its locator and how many it finds; pointing at one boxes it; Enter or a click picks it, Esc none. With one
+          // meaningful element, or one picked with Alt+Up, it is picked at once.
+          const PICK_KINDS = [['dialog', `${DIALOGS}, dialog`], ['row', 'tr, [role=row]'], ['option', 'option, [role=option], [role=menuitem]'],
+            ['list', 'ul, ol, table, [role=listbox], [role=list], [role=menu], [role=grid], [role=table], [role=tablist], [role=radiogroup], [role=tree]']];
+          let offered = null;
+          let offerSeq = 0;
+          const pickedLocators = new WeakMap();
+          function kindOfPick(element) {
+            for (const [kind, selector] of PICK_KINDS) if (element.matches(selector)) return kind;
+            if (element.matches(INTERACTIVE) || element.matches(TOGGLES)) return roleOf(element) ?? element.tagName.toLowerCase();
+            const around = upFrom(element);
+            return (around && holdsSeveral(around, element)) || looksClickable(element) ? 'card' : null;
+          }
+          // A control or a list by its name; a card or a row by the texts it shows.
+          function nameOfPick(element, kind) {
+            const name = kind === 'card' || kind === 'row' ? '' : clean(accessibleName(element));
+            if (name && name.length <= 48) return name;
+            const texts = [];
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            for (let node = walker.nextNode(); node && texts.length < 3; node = walker.nextNode())
+              if (clean(node.textContent) && !SKIPPED.has(node.parentElement?.tagName)) texts.push(clean(node.textContent));
+            const joined = texts.join(' · ');
+            return joined.length > 48 ? `${joined.slice(0, 47)}…` : joined;
+          }
+          function offerPick(hit, first, pick, x, y) {
+            closePicker();
+            const entries = [{ element: first, kind: kindOfPick(first) ?? tagOf(first) }];
+            for (let node = hit; node && entries.length < 5; node = upFrom(node)) {
+              if (node === document.body || node === document.documentElement) break;
+              if (entries.some((entry) => entry.element === node) || !visible(node)) continue;
+              const kind = kindOfPick(node);
+              if (kind) entries.push({ element: node, kind });
+            }
+            if (entries.length === 1) { pick(first); return; }
+            const box = overlayView().root.appendChild(document.createElement('div'));
+            box.className = 'chooser picker';
+            box.setAttribute('role', 'listbox');
+            box.setAttribute('aria-label', 'Pick an element');
+            offered = { entries, index: 0, pick, box, seq: ++offerSeq };
+            entries.forEach((entry, at) => {
+              const row = box.appendChild(document.createElement('button'));
+              row.type = 'button';
+              row.className = 'option';
+              row.setAttribute('role', 'option');
+              for (const [name, text] of [['name', entry.kind], ['value', nameOfPick(entry.element, entry.kind)], ['loc', tagOf(entry.element)]]) {
+                const part = row.appendChild(document.createElement('span'));
+                part.className = name;
+                part.textContent = text;
+              }
+              entry.row = row;
+              row.addEventListener('pointerenter', () => safe(() => markPick(at)));
+              row.addEventListener('click', () => safe(() => choosePick(at)));
+            });
+            markPick(0);
+            const size = box.getBoundingClientRect();
+            Object.assign(box.style, { left: `${Math.max(8, Math.min(x + 8, innerWidth - size.width - 8))}px`,
+              top: `${Math.max(8, Math.min(y + 12, innerHeight - size.height - 8))}px` });
+            // The recorder says each one's locator and count, as the overlay's label does.
+            if (typeof window.__qaasExplain === 'function')
+              call('__qaasExplain', { seq: offered.seq, targets: entries.map((entry) => describe(entry.element).target) });
+          }
+          function pickerLabels(seq, labels) {
+            if (offered?.seq !== seq) return;
+            labels.forEach((label, at) => safe(() => {
+              const answer = JSON.parse(label);
+              const loc = offered.entries[at]?.row.children[2];
+              if (!loc || !answer.locator) return;
+              loc.textContent = `${answer.locator}  ${answer.count === 1 ? '1 match' : `${answer.count ?? '?'} matches`}`;
+              pickedLocators.set(offered.entries[at].element, answer.locator);
+            }));
+          }
+          function markPick(at) {
+            offered.index = at;
+            offered.entries.forEach((entry, index) => entry.row.classList.toggle('on', index === at));
+            marked.hover = offered.entries[at].element;
+            if (!markFrame) drawMarks();
+          }
+          function choosePick(at) {
+            const { entries, pick } = offered;
+            closePicker();
+            pick(entries[at].element);
+          }
+          function closePicker() {
+            if (!offered) return;
+            offered.box.remove();
+            offered = null;
+            marked.hover = null;
+            if (!markFrame) drawMarks();
+          }
+          addEventListener('keydown', (event) => safe(() => {
+            if (!offered || !event.isTrusted) return;
+            const keys = { ArrowDown: 1, ArrowUp: -1 };
+            if (!(event.key in keys) && event.key !== 'Enter' && event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (event.key === 'Escape') closePicker();
+            else if (event.key === 'Enter') choosePick(offered.index);
+            else markPick((offered.index + keys[event.key] + offered.entries.length) % offered.entries.length);
+          }), { capture: true });
+
           // ---------------------------------------------------------------------------------------------- check mode
           // F6, or Check in the recorder's panel, turns check mode on: the box follows the pointer as for a click, in
           // green, and a click picks the element instead of reaching the page. A chooser then offers the checks that fit
@@ -2190,6 +2297,7 @@ internal static class CaptureScript
 
           function stopChecking() {
             if (!checking) return;
+            closePicker();
             closeChooser();
             checking = false;
             hover = null;
@@ -2243,7 +2351,8 @@ internal static class CaptureScript
             const head = make(box, 'div', 'head');
             const badge = make(head, 'span', 'badge');
             badge.append(tick(), 'Check');
-            chooser.what = make(head, 'span', 'what', element ? (hover?.answer?.locator ?? tagOf(element)) : 'this page');
+            const locator = hover?.shown === element ? hover?.answer?.locator : pickedLocators.get(element);
+            chooser.what = make(head, 'span', 'what', element ? (locator ?? tagOf(element)) : 'this page');
             const list = make(box, 'div', 'options');
             list.setAttribute('role', 'listbox');
             kinds.forEach((each, at) => {
@@ -2332,7 +2441,8 @@ internal static class CaptureScript
               }
               if (!hover.answer) scheduleExplain();
               // Once the browser has undone what the click would have changed, such as a checkbox's state.
-              setTimeout(() => safe(() => openChooser(picked)), 0);
+              const [x, y] = [event.clientX, event.clientY];
+              setTimeout(() => safe(() => hover?.picked ? openChooser(picked) : offerPick(hit, picked, openChooser, x, y)), 0);
             }), { capture: true });
           }
 
@@ -2846,7 +2956,8 @@ internal static class CaptureScript
                 view.tipFor = target;
                 view.tipKey = key;
               }
-              view.tip.style.display = 'block';
+              // The picker's menu says what each one is.
+              view.tip.style.display = offered ? 'none' : 'block';
               const at = placeLabel(box, view.tip.getBoundingClientRect());
               view.tip.style.transform = `translate(${at.left}px, ${at.top}px)`;
             } else {
@@ -2910,6 +3021,7 @@ internal static class CaptureScript
           }
           function stopInspecting() {
             if (!inspecting) return;
+            closePicker();
             inspecting = false;
             clearTimeout(inspectTimer);
             inspectTimer = 0;
@@ -2946,11 +3058,16 @@ internal static class CaptureScript
             event.preventDefault();
             event.stopImmediatePropagation();
             if (event.type !== 'click' || event.button !== 0) return;
-            inspectAt(deepTarget(event));
+            const hit = deepTarget(event);
+            inspectAt(hit);
             clearTimeout(inspectTimer);
             inspectTimer = 0;
-            reportInspected(true);
-            stopInspecting();
+            if (!inspected) return;
+            offerPick(hit, inspected, (element) => {
+              inspected = element;
+              reportInspected(true);
+              stopInspecting();
+            }, event.clientX, event.clientY);
           }
           function inspectKeys(event) {
             if (!event.isTrusted) return;
@@ -2993,7 +3110,7 @@ internal static class CaptureScript
             switch (command?.op) {
               case 'state': applyState(command.state, command.part); return null;
               case 'flush': flushTyping(); return null;
-              case 'explained': explained(command.seq, command.label); return null;
+              case 'explained': command.labels ? pickerLabels(command.seq, command.labels) : explained(command.seq, command.label); return null;
               case 'tree': {
                 compact = !!command.compact;
                 sent = new WeakMap();

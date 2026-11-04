@@ -15,9 +15,10 @@ internal static class OverlayLabel
     /// <c>element</c> tells which one the click is recorded on: 0 for the element, n for its n-th equivalent.
     /// </summary>
     /// <exception cref="JsonException">The text is not a description.</exception>
-    public static string For(string json)
+    public static string For(string json) => For(JsonSerializer.Deserialize<Question>(json, Recording.Json) ?? new Question());
+
+    private static string For(Question question)
     {
-        var question = JsonSerializer.Deserialize<Question>(json, Recording.Json) ?? new Question();
         var target = LocatorPolicy.Prefer(question.Target, question.Equivalents);
         var chosen = LocatorPolicy.Choose(target, question.ByName);
         var answer = new Answer(
@@ -31,15 +32,20 @@ internal static class OverlayLabel
     }
 
     /// <summary>
-    /// The capture script's call that shows the label: <see cref="For"/> the question, with the number the script asked
-    /// it under, as it gets no answer from the binding itself.
+    /// The capture script's call that shows the label: the label of the question, with the number the script asked it
+    /// under, as it gets no answer from the binding itself. The picker of inspect and check mode asks of several elements
+    /// at once, and gets a label for each.
     /// </summary>
-    public static object Reply(string json) => new
+    public static object Reply(string json)
     {
-        op = "explained",
-        seq = JsonSerializer.Deserialize<Question>(json, Recording.Json)?.Seq ?? 0,
-        label = For(json),
-    };
+        var question = JsonSerializer.Deserialize<Question>(json, Recording.Json) ?? new Question();
+        return new
+        {
+            op = "explained", seq = question.Seq,
+            label = question.Targets is null ? For(question) : null,
+            labels = question.Targets?.Select(target => For(new Question { Target = target })).ToArray(),
+        };
+    }
 
     private sealed class Question
     {
@@ -52,6 +58,9 @@ internal static class OverlayLabel
 
         /// <summary>A radio, located by its option's name first.</summary>
         public bool ByName { get; set; }
+
+        /// <summary>For the picker: the elements it offers, each answered alone.</summary>
+        public List<CapturedTarget>? Targets { get; set; }
     }
 
     /// <summary>The element it is recorded on, the locator and how many elements it found, and what to say of it.</summary>

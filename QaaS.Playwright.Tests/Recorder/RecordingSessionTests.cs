@@ -142,6 +142,45 @@ public class RecordingSessionTests
     }
 
     [Test]
+    public async Task APick_OffersWhatIsMeaningfulUnderThePointer_MostLikelyFirst_WithItsLocator_AndEscPicksNone()
+    {
+        await using var session = await StartAsync("""
+            <div role="listbox" aria-label="Shipping">
+              <div role="option" class="choice"><div class="card" style="cursor: pointer"><b>Express</b> <span>2 days</span></div></div>
+              <div role="option" class="choice"><div class="card" style="cursor: pointer"><b>Standard</b> <span>5 days</span></div></div>
+            </div>
+            """);
+        var page = session.Page;
+        var express = page.GetByText("Express");
+
+        // F6, and a click on the option's text: what is under it, the option first, never the text's own wrapper.
+        await page.Keyboard.PressAsync("F6");
+        await express.ClickAsync();
+        var offered = await OverlayTextAsync(page, until: "1 match");
+        await page.Keyboard.PressAsync("Escape");
+        var none = await OverlayTextAsync(page, until: "Check");
+        await express.ClickAsync();
+        await OverlayTextAsync(page, until: "1 match");
+        await page.Keyboard.PressAsync("ArrowDown");
+        await page.Keyboard.PressAsync("ArrowDown");
+        await page.Keyboard.PressAsync("Enter");
+        var chooser = await OverlayTextAsync(page, until: "Add check");
+        await page.Keyboard.PressAsync("Enter");
+        await UntilAsync(() => session.Build().Actions.Any(action => action.Kind == "expect"));
+        var recording = await session.StopAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(offered, Does.Contain("option\nExpress 2 days").And.Contain("card\nExpress · 2 days").And.Contain("list\nShipping"));
+            Assert.That(offered.IndexOf("option", StringComparison.Ordinal), Is.LessThan(offered.IndexOf("card", StringComparison.Ordinal)));
+            Assert.That(offered, Does.Contain("listbox \"Shipping\"  1 match"), "each with its locator and what it finds");
+            Assert.That(chooser, Does.Contain("Check\nlistbox \"Shipping\""), "the check is of the list picked");
+            Assert.That(none, Does.Not.Contain("Shipping"), "Esc picks nothing");
+            Assert.That(recording.Actions.Single(action => action.Kind == "expect").Target?.Role, Is.EqualTo("listbox"));
+        });
+    }
+
+    [Test]
     public async Task ABusyIndicatorThatCameAndWent_IsWaitedFor_AndOneThatStays_IsNot()
     {
         // A spinner as MUI's CircularProgress, while "Refresh" loads; "Upload" leaves its progress bar on the page.

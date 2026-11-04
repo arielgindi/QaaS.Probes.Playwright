@@ -4,6 +4,13 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## 2.1.0
 
+- **Pick exactly the element you mean** in check mode (`F6`) and inspect mode (`Ctrl+Shift+C`): a click offers a small
+  menu of what is meaningful under the pointer, the element a click is for first, then the option, card, row, list or
+  dialog around it, each with its locator and how many elements it finds. Pointing at one boxes it; `Enter` or a click
+  picks it, `Esc` none.
+- **`SetupFlowsBeforeBaseUrl`**, a probe setting: `true` runs `SetupFlows` on a blank page before `BaseUrl` is opened,
+  for a login that plants a token with `AddInitScriptAsync` before any page of the app loads, as one behind a proxy
+  must. `BaseUrl` opens after them, unless they left the page on it or on a page under it.
 - **The recorder's modes hold in every order you press their keys**, as a test that drives a recording through random
   sequences of them showed:
   - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as

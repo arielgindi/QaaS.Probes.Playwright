@@ -97,10 +97,7 @@ public sealed class PlaywrightFlowProbe : BaseProbe<PlaywrightFlowConfig>
     private async Task RunOnceAsync(FlowRunner runner, ILogger logger, string[] setupFlows, string[] flows)
     {
         await using var browser = await BrowserSession.OpenAsync(Configuration, logger);
-        logger.LogInformation("Navigating to {BaseUrl}", Configuration.BaseUrl);
-        await browser.OpenBaseUrlAsync(Configuration.BaseUrl);
-
-        await runner.RunAsync(setupFlows, browser);
+        await browser.SetUpAsync(Configuration, () => runner.RunAsync(setupFlows, browser));
         await runner.RunAsync(flows, browser);
 
         // Saved only after every flow passed, so a failed login is never reused.

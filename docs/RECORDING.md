@@ -103,7 +103,7 @@ not in frames, which are not recorded; with the focus in a frame, `F8`, `F7` and
 | `F6` | Checks something on the page: the next click picks an element, then you choose the check (see [Checking what the page shows](#checking-what-the-page-shows)). |
 | `F8` | Pauses or resumes the recording (see [Pausing](#pausing)). |
 | `F4` | Freezes the page's elements for the panel's [Elements view](#the-elements-view), e.g. with a menu open. |
-| `Ctrl+Shift+C` | Picks an element for the panel's [Elements view](#the-elements-view): the box follows the pointer, and a click picks what is under it without clicking it. `Esc` leaves. |
+| `Ctrl+Shift+C` | Picks an element for the panel's [Elements view](#the-elements-view): the box follows the pointer, and a click offers what is under it without clicking it (see [Picking an element](#picking-an-element)). `Esc` leaves. |
 | `F9` | Hides or shows the overlay. Hidden, the recorder records as it would without it. |
 | `F7` | Tries things without recording them: each action shows in the panel as the recorder would write it (see [Trying things](#trying-things)). |
 | `F2` | While a part of the flow is recorded again, ends it and keeps what you did (see [Recording a part again](#recording-a-part-again)). Otherwise it is the page's. |
@@ -427,13 +427,22 @@ it can be undone; so is a command the panel refused, and why. On a screen with n
 recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
 part: move it to another screen, or snap it aside. `--no-panel` records without it.
 
+### Picking an element
+
+A click in check mode (`F6`) or inspect mode (`Ctrl+Shift+C`) is never sent to the app. A small menu beside the pointer
+offers what is meaningful under it, as the recorder finds the element a click is for: that element first, then the
+option, card, row, list or dialog around it, never a wrapper of no meaning, up to five. Each says what it is, its name or
+what it shows, and its locator with how many elements that finds, e.g. `option  Express`, `card  Express · 2 days`,
+`list  Shipping`. Pointing at one, or `↑` and `↓`, boxes it in the page; `Enter` or a click picks it, and `Esc` picks
+nothing. When only one element is meaningful there, it is picked at once.
+
 ### Checking what the page shows
 
 The recorder checks what each action did by itself ([auto checks](#what-each-action-expects)); to check something
 else, press `F6` in the app, or **Check** in the panel. The box over the element under the pointer turns green, and the
-pill at the top of the page and the panel's status strip say `Check`. A click there does nothing in the app: it picks
-the element (`Alt+↑` picks the one around it), and a chooser opens beside it with the checks that fit, the likeliest one
-chosen:
+pill at the top of the page and the panel's status strip say `Check`. A click there does nothing in the app: it offers
+the elements under it to pick one ([Picking an element](#picking-an-element); `Alt+↑` before the click picks the one
+around it at once), and a chooser opens beside the one picked with the checks that fit, the likeliest one chosen:
 
 | Check | Offered for | Is written |
 |---|---|---|

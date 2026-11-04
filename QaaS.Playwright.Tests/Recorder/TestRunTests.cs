@@ -137,7 +137,9 @@ public class TestRunTests
             await app.Keyboard.PressAsync("Enter");
             await Expect(code).ToContainTextAsync("""ToContainTextAsync("created"); // check""");
             await view.GetByRole(AriaRole.Button, new() { Name = "Check something in the app" }).ClickAsync();
+            // In a row, the click offers the button, its row and its table: Enter picks the button, and Enter adds its check.
             await app.GetByRole(AriaRole.Row, new() { Name = "TCK-1042" }).GetByRole(AriaRole.Button).ClickAsync();
+            await app.Keyboard.PressAsync("Enter");
             await app.Keyboard.PressAsync("Enter");
             // Found by the text it is checked to have, it is checked to show: a check of its text would pass while it is there.
             await Expect(code).ToContainTextAsync("""Name = "Assign to me", Exact = true })).ToBeVisibleAsync(); // check""");

@@ -88,7 +88,7 @@ public sealed class TestSite : IDisposable
             return;
         }
 
-        if (path.StartsWith("/gate/", StringComparison.Ordinal))
+        if (path == "/gate" || path.StartsWith("/gate/", StringComparison.Ordinal))
         {
             ServeGate(request, response, path);
             return;
@@ -156,7 +156,7 @@ public sealed class TestSite : IDisposable
         {
             "/gate/blocked" => "<h1>Blocked</h1><script>setTimeout(() => location.replace('/gate/blocked'), 500);</script>",
             "/gate/login" => """<form action="/gate/session"><label>Username <input name="user"></label><button>Log in</button></form>""",
-            "/gate/home" => $"""<h1>Home</h1><p id="user">{user}</p><a href="/gate/orders/42">Order 42</a>""",
+            "/gate/home" or "/gate" => $"""<h1>Home</h1><p id="user">{user}</p><a href="/gate/orders/42">Order 42</a>""",
             _ => $"""<h1>Order 42</h1><p id="user">{user}</p><a href="/gate/home">Home</a><button onclick="done.textContent = 'shipped'">Ship</button><p id="done"></p>""",
         };
         const string gate = "<script>if (localStorage.getItem('gate') !== 'open' && location.pathname !== '/gate/blocked') location.replace('/gate/blocked');</script>";
