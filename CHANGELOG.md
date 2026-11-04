@@ -2,6 +2,28 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.1.0
+
+- **The recorder's modes hold in every order you press their keys**, as a test that drives a recording through random
+  sequences of them showed:
+  - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as
+    `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
+  - **The panel's status strip says when a part recorded again is paused, tried or checked**, with the key that
+    leaves it: it went on saying `Re-recording … do it again, then press Done` while nothing was recorded.
+  - **Done, while trying or while a test runs, pauses the recording** once back from them, as Done always does when
+    the part is not the end of the flow: it recorded on at the end of the flow from where the part left the app.
+    **Keep it as it was**, while trying, ends trying too, and pausing or resuming while a test runs takes effect once
+    it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
+  - **Saving, or closing Chrome, while the steps of a flow continued replay saves the flow as it was.** It asked why
+    its steps did not replay, as if the app had failed them, then saved nothing.
+  - **A tab you open yourself is a tab of its own, however soon after a click**: within 5 seconds, it was that click's
+    pop-up, so the flow waited for a pop-up the click never opens, and did not build when the click opened a dialog.
+    A page is a pop-up when a page opened it, `noopener` links included.
+  - **A recording you deleted every action of is not offered again** when the recorder starts next, after a crash or
+    Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
+  - **Add to flow, clicked twice on a tried action, adds it once**: it added the same action twice, and from then on
+    the flow could not be written, shown or kept.
+
 ## 2.0.4
 
 - The release's source zip leaves out what building does not need, the panel's UI sources (its built `panel.html` is
