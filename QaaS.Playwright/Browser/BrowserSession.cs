@@ -86,6 +86,34 @@ internal sealed class BrowserSession : IAsyncDisposable
         if (status >= 400) _logger.LogWarning("BaseUrl {BaseUrl} answered HTTP {Status}; going on.", baseUrl, status);
     }
 
+    /// <summary>
+    /// Opens BaseUrl and runs <paramref name="setupFlows"/> on it; or, with SetupFlowsBeforeBaseUrl, runs them first on
+    /// the blank page and opens BaseUrl after, unless they left the page on it or under it.
+    /// </summary>
+    public async Task SetUpAsync(PlaywrightFlowConfig config, Func<Task> setupFlows)
+    {
+        if (config.SetupFlowsBeforeBaseUrl) await setupFlows();
+        if (!config.SetupFlowsBeforeBaseUrl || !IsUnder(Page.Url, config.BaseUrl))
+        {
+            _logger.LogInformation("Navigating to {BaseUrl}", config.BaseUrl);
+            await OpenBaseUrlAsync(config.BaseUrl);
+        }
+
+        if (!config.SetupFlowsBeforeBaseUrl) await setupFlows();
+    }
+
+    /// <summary>
+    /// Whether <paramref name="url"/> is <paramref name="baseUrl"/> or a page under it: the same origin, and its path the
+    /// base's or below it.
+    /// </summary>
+    internal static bool IsUnder(string url, string baseUrl)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var page) || !Uri.TryCreate(baseUrl, UriKind.Absolute, out var root)) return false;
+        if (page.GetLeftPart(UriPartial.Authority) != root.GetLeftPart(UriPartial.Authority)) return false;
+        var path = root.AbsolutePath.TrimEnd('/');
+        return page.AbsolutePath == path || page.AbsolutePath.StartsWith(path + "/", StringComparison.Ordinal);
+    }
+
     public Task SaveStorageStateAsync(string path) => StorageState.SaveAsync(_context, path, _logger);
 
     public async ValueTask DisposeAsync()

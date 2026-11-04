@@ -69,7 +69,8 @@ one failed, with a screenshot.
    ```
 
 The probe opens `BaseUrl`, then runs `SetupFlows` and `Flows` in order on one page; the first flow that fails stops
-the run. By default it uses the Chrome at `http://localhost:9222`, and starts one there if none answers; set
+the run. A login that must plant a token before any page of the app loads (with `AddInitScriptAsync`) runs on a blank
+page first with `SetupFlowsBeforeBaseUrl: true`. By default it uses the Chrome at `http://localhost:9222`, and starts one there if none answers; set
 `BrowserUrl` to use another. `ENV=local` or `Headless: false` always run in that local Chrome.
 
 ## A flow

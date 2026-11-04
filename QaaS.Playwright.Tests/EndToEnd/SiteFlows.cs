@@ -43,6 +43,12 @@ public sealed class GatedLogInFlow : BasePlaywrightFlow<UserConfig>
     }
 }
 
+/// <summary>Checks, on the page it is given, that the gated app shows the user logged in.</summary>
+public sealed class GatedUserFlow : BasePlaywrightFlow<UserConfig>
+{
+    public override Task RunAsync(IPage page) => Expect(page.Locator("#user")).ToHaveTextAsync(Configuration.User);
+}
+
 /// <summary>Types the user name, then waits for ever for a button the page never shows, as a login that hangs does.</summary>
 public sealed class HangingLogInFlow : BasePlaywrightFlow<NoConfig>
 {
