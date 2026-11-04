@@ -340,7 +340,7 @@ internal sealed class StateFuzz : IAsyncDisposable
             var at = _random.Next(actions.Count);
             return Pick($"edit:value@{at}={Word()}", $"edit:name@{at}={Word()}", $"edit:reset@{at}", $"edit:unique@{at}",
                 $"edit:relative@{at}", $"edit:drop@{at}", $"edit:step@{at}={Word()}", "edit:autochecks", $"edit:choose@{at}",
-                $"edit:rerecord@{at}", $"edit:after@{at}", $"edit:whole@{at}", "edit:tried", "edit:from", "edit:suggest",
+                $"edit:rerecord@{at}", $"edit:after@{at}", $"edit:whole@{at}", "edit:tried", "edit:tried-twice", "edit:from", "edit:suggest",
                 $"edit:flow={Word()}");
         }
 
@@ -685,7 +685,7 @@ internal sealed class StateFuzz : IAsyncDisposable
                 new { type = "choose", action = id, candidate = usable[index % usable.Count]!["index"]!.GetValue<int>() },
             "rerecord" or "after" or "whole" when id is not null && canRerecord =>
                 new { type = "rerecord", action = id, step = kind == "whole", after = kind == "after", label = kind == "whole" ? StepOf(steps, id) : $"the action {index}" },
-            "tried" when shown["tried"]?.AsArray().LastOrDefault() is { } tried =>
+            "tried" or "tried-twice" when shown["tried"]?.AsArray().LastOrDefault() is { } tried =>
                 new { type = "addTried", action = tried["id"]!.GetValue<string>() },
             "from" when part?["phase"]?.GetValue<string>() == "failed" && part["failedAt"] is not null => new { type = "rerecordFrom" },
             "suggest" when actions.SelectMany(each => each!["suggestions"]?.AsArray() ?? []).FirstOrDefault() is { } suggestion =>
@@ -700,8 +700,11 @@ internal sealed class StateFuzz : IAsyncDisposable
             return;
         }
 
-        // Not waited for, as the panel never does: the browser's other driver answers it too, with an error.
+        // Not waited for, as the panel never does: the browser's other driver answers it too, with an error. Twice, as
+        // a double-click on the button sends it.
         await _view.EvaluateAsync("json => { window.__qaasPanelSend(json); }", JsonSerializer.Serialize(command));
+        if (kind.EndsWith("-twice", StringComparison.Ordinal))
+            await _view.EvaluateAsync("json => { window.__qaasPanelSend(json); }", JsonSerializer.Serialize(command));
     }
 
     private static string StepOf(JsonArray steps, string id) =>

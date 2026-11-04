@@ -21,6 +21,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
     A page is a pop-up when a page opened it, `noopener` links included.
   - **A recording you deleted every action of is not offered again** when the recorder starts next, after a crash or
     Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
+  - **Add to flow, clicked twice on a tried action, adds it once**: it added the same action twice, and from then on
+    the flow could not be written, shown or kept.
 
 ## 2.0.4
 

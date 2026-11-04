@@ -53,7 +53,8 @@ internal sealed partial class RecorderPanel
             case "try" when command.On is null || command.On != (_session.State == RecordingState.Trying):
                 _session.ToggleTry();
                 break;
-            case "addTried" when command.Action is { } id && _session.Tried?.Build(_session.Options.Url) is { } tried:
+            // Once: the same card added twice, as a double-click does, would be one action twice.
+            case "addTried" when command.Action is { } id && !_triedAdded.Contains(id) && _session.Tried?.Build(_session.Options.Url) is { } tried:
                 if (tried.Actions.FirstOrDefault(action => action.Id == id) is not { } action) break;
                 var copy = JsonSerializer.Deserialize<CapturedAction>(JsonSerializer.Serialize(action, Recording.Json), Recording.Json)!;
                 _session.Log.Insert(copy, afterId: null);

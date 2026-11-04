@@ -226,6 +226,8 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     {
         lock (_gate)
         {
+            // An action is in the recording once: a second with its id would make every build of it fail.
+            if (_indexById.ContainsKey(action.Id)) return;
             // While a part is recorded again, last is where what is recorded goes, and so is the start of the part.
             var open = OpenSplice();
             var member = open is not null && (afterId is null || afterId == open.After || open.Members.Contains(afterId));

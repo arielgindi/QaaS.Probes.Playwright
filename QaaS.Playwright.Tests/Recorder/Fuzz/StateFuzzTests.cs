@@ -44,6 +44,9 @@ public class StateFuzzTests
         // Every action deleted, the autosave kept them, for the next start to offer again.
         new TestCaseData("start:/helpdesk | click:New ticket | panel:Delete | panel:Control+z | save:ctrl-c")
             .SetName("EveryActionDeleted_TheAutosaveGoes_AndComesBackWithUndo"),
+        // Add to flow sent twice, as a double-click does, put one action in twice, and no build of the recording worked after.
+        new TestCaseData("start:/helpdesk | key:F7 | click:New ticket | edit:tried-twice | key:F7 | save:enter")
+            .SetName("ATriedActionAddedTwice_IsAddedOnce"),
     ];
 
     [TestCaseSource(nameof(Regressions))]
