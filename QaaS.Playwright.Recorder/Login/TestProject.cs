@@ -1,25 +1,28 @@
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using Microsoft.Extensions.Configuration;
 
 namespace QaaS.Playwright.Recorder.Login;
 
-/// <summary>A build of the test project: the DLL in its bin folder, and when it was built.</summary>
-internal sealed record ProjectBuild(string Dll, DateTime BuiltAt)
-{
-    /// <summary>Debug or Release, as the folder it is in says.</summary>
-    public string Configuration => new DirectoryInfo(Path.GetDirectoryName(Dll)!).Parent?.Name ?? "Debug";
-}
+/// <summary>
+/// A build of the test project: its DLL, when it was built, its configuration, and how it was found (in its bin folder,
+/// or where MSBuild says it builds to).
+/// </summary>
+internal sealed record ProjectBuild(string Dll, DateTime BuiltAt, string Configuration, string How);
 
 /// <summary>A YAML file of the tests, read as QaaS reads a test's, and the flows it runs as setup flows.</summary>
 internal sealed record TestFile(string Path, IConfiguration Yaml, IReadOnlySet<string> SetupFlows);
 
 /// <summary>
-/// The test project the recorder runs in: the nearest .csproj from a folder up, the newest build of it, and its YAML
-/// files, as a person would find them.
+/// The test project the recorder runs in: found from a folder up, else below it or in its solution; the newest build of
+/// it, where MSBuild builds it; and its YAML files, as a person would find them.
 /// </summary>
-internal sealed record TestProject(string ProjectFile, string AssemblyName)
+internal sealed partial record TestProject(string ProjectFile, string AssemblyName)
 {
+    /// <summary>How many folders below the one the recorder runs in it looks for a test project.</summary>
+    public const int Depth = 3;
+
     private static readonly HashSet<string> NotLooked = new(["bin", "obj", "node_modules"], StringComparer.OrdinalIgnoreCase);
 
     public string Folder => Path.GetDirectoryName(ProjectFile)!;
@@ -34,32 +37,150 @@ internal sealed record TestProject(string ProjectFile, string AssemblyName)
             // The output folder is made when the flow is saved, so it may not be there yet.
             if (!ancestor.Exists) continue;
             if (ancestor.GetFiles("*.csproj").OrderBy(file => file.Name, StringComparer.Ordinal).FirstOrDefault() is { } project)
-                return new TestProject(project.FullName, AssemblyNameOf(project));
+                return Of(project.FullName);
         }
 
         return null;
     }
 
-    /// <summary>The newest <c>bin/&lt;Debug|Release&gt;/&lt;tfm&gt;/&lt;AssemblyName&gt;.dll</c>; null when it is not built.</summary>
-    public ProjectBuild? NewestBuild()
+    /// <summary>The project of <paramref name="projectFile"/>.</summary>
+    public static TestProject Of(string projectFile) => new(Path.GetFullPath(projectFile), AssemblyNameOf(new FileInfo(projectFile)));
+
+    /// <summary>
+    /// The projects up to <see cref="Depth"/> folders below <paramref name="folder"/>, and those of its .sln or .slnx files,
+    /// each once, and where each was found; bin, obj, node_modules and hidden folders are skipped.
+    /// </summary>
+    public static List<(TestProject Project, string Where)> Below(string folder)
+    {
+        var found = new Dictionary<string, (TestProject, string)>(OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal);
+        var root = new DirectoryInfo(Path.GetFullPath(folder));
+        if (!root.Exists) return [];
+        foreach (var solution in Files(root, "*.sln").Concat(Files(root, "*.slnx")))
+        foreach (var project in ProjectsOf(solution))
+            found.TryAdd(project, (Of(project), $"in {solution.Name}"));
+
+        var level = new List<DirectoryInfo> { root };
+        for (var depth = 0; depth <= Depth && level.Count > 0; depth++)
+        {
+            var next = new List<DirectoryInfo>();
+            foreach (var at in level)
+            {
+                foreach (var project in Files(at, "*.csproj"))
+                    found.TryAdd(project.FullName, (Of(project.FullName), depth == 0 ? "here" : "below"));
+                if (depth < Depth) next.AddRange(Folders(at).Where(inner => !NotLooked.Contains(inner.Name) && !inner.Name.StartsWith('.')));
+            }
+
+            level = next;
+        }
+
+        return [.. found.Values.OrderBy(entry => entry.Item1.ProjectFile, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Why the project is one of QaaS tests, or null when it is not: a YAML file of it runs a setup flow, the surest sign;
+    /// else its restore took a QaaS package (QaaS.Framework.*, QaaS.Playwright), as a shared package of the team's brings
+    /// them. <paramref name="runsSetupFlows"/> tells which.
+    /// </summary>
+    public string? UsesQaaS(out bool runsSetupFlows)
+    {
+        runsSetupFlows = Look().Files.Any(file => file.SetupFlows.Count > 0);
+        if (runsSetupFlows) return "a YAML file of it runs SetupFlows";
+        foreach (var assets in AssetsFiles())
+        {
+            try
+            {
+                using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(assets));
+                if (json.RootElement.TryGetProperty("libraries", out var libraries)
+                    && libraries.EnumerateObject().FirstOrDefault(library => IsQaaSPackage(library)) is { Name: { Length: > 0 } name })
+                    return $"its restore took {name.Split('/')[0]} ({ConsoleUi.Relative(assets)})";
+            }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or System.Text.Json.JsonException
+                                                or InvalidOperationException)
+            {
+                // Not restored, or not readable.
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsQaaSPackage(System.Text.Json.JsonProperty library) =>
+        (library.Name.StartsWith("QaaS.Framework", StringComparison.OrdinalIgnoreCase)
+         || library.Name.StartsWith("QaaS.Playwright/", StringComparison.OrdinalIgnoreCase))
+        && library.Value.TryGetProperty("type", out var type) && type.GetString() == "package";
+
+    /// <summary>
+    /// Where the project's restore wrote what it took: <c>obj/project.assets.json</c>, or under an <c>artifacts</c> folder
+    /// above it, as <c>UseArtifactsOutput</c> has it; those that are there.
+    /// </summary>
+    public IEnumerable<string> AssetsFiles()
+    {
+        var own = Path.Combine(Folder, "obj", "project.assets.json");
+        if (File.Exists(own)) yield return own;
+        for (var ancestor = new DirectoryInfo(Folder); ancestor is not null; ancestor = ancestor.Parent)
+        {
+            var artifacts = Path.Combine(ancestor.FullName, "artifacts", "obj", Name, "project.assets.json");
+            if (File.Exists(artifacts)) yield return artifacts;
+        }
+    }
+
+    /// <summary>The newest <c>bin/&lt;Debug|Release&gt;/&lt;tfm&gt;/&lt;AssemblyName&gt;.dll</c>; null when there is none.</summary>
+    public ProjectBuild? NewestInBin()
     {
         var bin = new DirectoryInfo(Path.Combine(Folder, "bin"));
         if (!bin.Exists) return null;
         var dll = $"{AssemblyName}.dll";
         try
         {
-            return bin.EnumerateDirectories().SelectMany(configuration => configuration.EnumerateDirectories())
-                .SelectMany(framework => (DirectoryInfo[])[framework, .. framework.EnumerateDirectories()])
-                .Select(folder => new FileInfo(Path.Combine(folder.FullName, dll)))
-                .Where(file => file.Exists)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .Select(file => new ProjectBuild(file.FullName, file.LastWriteTimeUtc))
+            return bin.EnumerateDirectories().SelectMany(configuration => configuration.EnumerateDirectories()
+                    .SelectMany(framework => (DirectoryInfo[])[framework, .. framework.EnumerateDirectories()])
+                    .Select(folder => (Configuration: configuration.Name, File: new FileInfo(Path.Combine(folder.FullName, dll)))))
+                .Where(found => found.File.Exists)
+                .OrderByDescending(found => found.File.LastWriteTimeUtc)
+                .Select(found => new ProjectBuild(found.File.FullName, found.File.LastWriteTimeUtc, found.Configuration,
+                    $"in its bin folder ({found.Configuration})"))
                 .FirstOrDefault();
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// The newest build: the one in its bin folder, else, when there is none there or it is older than
+    /// <paramref name="changed"/>, the one where MSBuild says the project builds to (its <c>TargetPath</c>, in Debug and
+    /// Release), as a <c>Directory.Build.props</c> or <c>UseArtifactsOutput</c> moves it. Null when it is not built.
+    /// <paramref name="search"/> is told what was looked at.
+    /// </summary>
+    public ProjectBuild? NewestBuild(DateTime changed = default, LoginSearch? search = null)
+    {
+        var inBin = NewestInBin();
+        if (inBin is not null && inBin.BuiltAt >= changed)
+        {
+            search?.Say($"Build: {ConsoleUi.Relative(inBin.Dll)}, {inBin.How}, built {ConsoleUi.Ago(inBin.BuiltAt.ToLocalTime())}.", 1);
+            return inBin;
+        }
+
+        search?.Say(inBin is null
+            ? $"Build: none in {ConsoleUi.Relative(Path.Combine(Folder, "bin"))}; asking MSBuild where it builds to."
+            : $"Build: {ConsoleUi.Relative(inBin.Dll)} is older than the project; asking MSBuild where it builds to.", 1);
+        var targets = ProjectBuilds.Of(this, search);
+        var elsewhere = targets.Targets
+            .Select(target => (target.Key, File: new FileInfo(target.Value)))
+            .Where(target => target.File.Exists)
+            .OrderByDescending(target => target.File.LastWriteTimeUtc)
+            .Select(target => new ProjectBuild(target.File.FullName, target.File.LastWriteTimeUtc, target.Key,
+                $"where MSBuild builds it ({target.Key})"))
+            .FirstOrDefault();
+        foreach (var (configuration, dll) in targets.Targets)
+            search?.Say($"{configuration}: {ConsoleUi.Relative(dll)}{(File.Exists(dll) ? "" : ", not built")}", 2);
+        var newest = elsewhere is not null && (inBin is null || elsewhere.BuiltAt > inBin.BuiltAt) ? elsewhere : inBin;
+        if (newest is not null)
+            search?.Say($"Taken: {ConsoleUi.Relative(newest.Dll)}, built {ConsoleUi.Ago(newest.BuiltAt.ToLocalTime())}.", 2);
+        return newest;
     }
 
     /// <summary>
@@ -129,22 +250,61 @@ internal sealed record TestProject(string ProjectFile, string AssemblyName)
 
     private static IEnumerable<FileInfo> FilesUnder(DirectoryInfo folder)
     {
-        FileInfo[] files;
-        DirectoryInfo[] folders;
+        foreach (var file in Files(folder, "*")) yield return file;
+        foreach (var inner in Folders(folder).Where(inner => !NotLooked.Contains(inner.Name) && !inner.Name.StartsWith('.')))
+        foreach (var file in FilesUnder(inner))
+            yield return file;
+    }
+
+    private static FileInfo[] Files(DirectoryInfo folder, string pattern)
+    {
         try
         {
-            (files, folders) = (folder.GetFiles(), folder.GetDirectories());
+            return folder.GetFiles(pattern);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static DirectoryInfo[] Folders(DirectoryInfo folder)
+    {
+        try
+        {
+            return folder.GetDirectories();
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    // The C# projects a solution lists, that are there: a .sln's Project(...) lines, a .slnx's <Project Path="..."/>.
+    private static IEnumerable<string> ProjectsOf(FileInfo solution)
+    {
+        IEnumerable<string> paths;
+        try
+        {
+            paths = solution.Extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
+                ? XDocument.Load(solution.FullName).Descendants("Project").Select(project => (string?)project.Attribute("Path")).OfType<string>()
+                : SolutionProject().Matches(File.ReadAllText(solution.FullName)).Select(match => match.Groups[1].Value);
+            paths = [.. paths];
+        }
+        catch (Exception failure) when (failure is XmlException or IOException or UnauthorizedAccessException)
         {
             yield break;
         }
 
-        foreach (var file in files) yield return file;
-        foreach (var inner in folders.Where(inner => !NotLooked.Contains(inner.Name) && !inner.Name.StartsWith('.')))
-        foreach (var file in FilesUnder(inner))
-            yield return file;
+        foreach (var path in paths.Where(path => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)))
+        {
+            var full = Path.GetFullPath(Path.Combine(solution.DirectoryName!, path.Replace('\\', Path.DirectorySeparatorChar)));
+            if (File.Exists(full)) yield return full;
+        }
     }
+
+    [GeneratedRegex("""^Project\("[^"]*"\)\s*=\s*"[^"]*",\s*"([^"]+)"\s*,""", RegexOptions.Multiline)]
+    private static partial Regex SolutionProject();
 
     private static string AssemblyNameOf(FileInfo project)
     {

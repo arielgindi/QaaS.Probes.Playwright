@@ -155,15 +155,17 @@ internal static class ConsoleUi
 
     /// <summary>
     /// Asks until the answer is valid: <paramref name="problem"/> tells what is wrong with one, or null. An empty
-    /// answer takes <paramref name="defaultValue"/>.
+    /// answer takes <paramref name="defaultValue"/>, which the question shows as what Enter does: "(Enter = my-flow)", or
+    /// <paramref name="enter"/>, e.g. "y/N, Enter = no".
     /// </summary>
     /// <exception cref="OperationCanceledException">The input ended (Ctrl+D, or Ctrl+Z and Enter on Windows).</exception>
-    public static string Ask(string prompt, string defaultValue, Func<string, string?>? problem = null)
+    public static string Ask(string prompt, string defaultValue, Func<string, string?>? problem = null, string? enter = null)
     {
         var t = Out;
+        enter ??= defaultValue.Length > 0 ? $"Enter = {defaultValue}" : null;
         while (true)
         {
-            var hint = defaultValue.Length > 0 ? t.Paint($" ({defaultValue})", Tone.Dim) : "";
+            var hint = enter is not null ? t.Paint($" ({enter})", Tone.Dim) : "";
             t.Writer.Write(Margin + t.Paint("?", Tone.Accent) + " " + t.Paint(prompt, Tone.Bold) + hint
                            + t.Paint($" {t.Glyph("›", ">")} ", Tone.Dim) + t.Start(Tone.Accent));
             var typed = Console.ReadLine();
@@ -187,27 +189,37 @@ internal static class ConsoleUi
     {
         var t = Out;
         Status(t, Margin, t.Glyph("?", "?"), Tone.Accent, question, Tone.Bold);
-        for (var index = 0; index < choices.Count; index++)
-            t.WriteLine(Margin + Margin + "  " + t.Paint($"{index + 1}", Tone.Accent) + "  " + choices[index]);
+        Options(choices);
         var numbers = string.Join(", ", Enumerable.Range(1, choices.Count - 1)) + $" or {choices.Count}";
         int? Taken(string answer) => int.TryParse(answer, out var number) && number >= 1 && number <= choices.Count
             ? number - 1
             : choices.Index().FirstOrDefault(choice => choice.Item.StartsWith(answer, StringComparison.OrdinalIgnoreCase)) is
                 { Item: not null } found ? found.Index : null;
-        return Taken(Ask($"Choose {numbers}", "1", answer => Taken(answer) is null ? $"Type {numbers}." : null))!.Value;
+        return Taken(Ask($"Type {numbers}, or the start of a choice", "1",
+            answer => Taken(answer) is null ? $"Type a number, {numbers}, or the first words of a choice." : null))!.Value;
     }
 
-    /// <summary>Asks a question of yes or no until it is answered; an empty answer is yes.</summary>
+    /// <summary>Numbered lines, as a question's choices are shown.</summary>
+    public static void Options(IReadOnlyList<string> choices)
+    {
+        var t = Out;
+        lock (Gate)
+            for (var index = 0; index < choices.Count; index++)
+                t.WriteLine(Margin + Margin + "  " + t.Paint($"{index + 1}", Tone.Accent) + "  " + Terminal.Clean(choices[index]));
+    }
+
+    /// <summary>Asks a question of yes or no until it is answered; an empty answer is <paramref name="yes"/>.</summary>
     /// <exception cref="OperationCanceledException">The input ended.</exception>
-    public static bool Confirm(string question)
+    public static bool Confirm(string question, bool yes = true)
     {
         static bool? Yes(string answer) => answer.ToLowerInvariant() switch
         {
-            "y/n" or "y" or "yes" => true,
+            "y" or "yes" => true,
             "n" or "no" => false,
             _ => null,
         };
-        return Yes(Ask(question, "Y/n", answer => Yes(answer) is null ? "Type y or n." : null)) ?? true;
+        return Yes(Ask(question, yes ? "y" : "n", answer => Yes(answer) is null ? "Type y for yes or n for no." : null,
+            yes ? "Y/n, Enter = yes" : "y/N, Enter = no")) ?? yes;
     }
 
     /// <summary>How long ago <paramref name="when"/> was, as a person says it: "5 minutes ago".</summary>
@@ -349,6 +361,9 @@ internal static class ConsoleUi
     // ── One line of each kind ───────────────────────────────────────────────────────────────────────────────────
 
     public static void Info(string message) => Status(Out, Margin, " ", Tone.Plain, message);
+
+    /// <summary>A line of less weight, dim: why the recorder does not do something it might, e.g. log in first.</summary>
+    public static void Note(string message) => Status(Out, Margin, " ", Tone.Plain, message, Tone.Dim);
 
     public static void Success(string message) =>
         Status(Out, Margin, Out.Glyph("✓", "√", "+"), Tone.Success, message);
@@ -765,11 +780,17 @@ internal static class ConsoleUi
 
     // ── The login flow, pausing and freezing ────────────────────────────────────────────────────────────────────
 
-    public static void LoggingIn(Login.LoginFlow login, bool remembered)
+    /// <summary>
+    /// "Logging in with LoginFlow, from bin/Debug/net10.0/Acme.Shared.dll, its values from Tests/Smoke.qaas.yaml, BaseUrl
+    /// https://app (from Tests/Smoke.qaas.yaml)…".
+    /// </summary>
+    public static void LoggingIn(Login.LoginFlow login, bool remembered, string baseUrl, string? baseUrlFrom)
     {
         _slowTold = false;
         var values = login.Settings is null ? "" : $", its values from {Relative(login.Settings)}";
-        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, "Logging in", $"with {login.Flow}, from {Relative(login.Assembly)}{values}{Out.Ellipsis}");
+        var from = baseUrlFrom is null ? "the address you record on, as no test YAML that runs it gives one" : $"from {Relative(baseUrlFrom)}";
+        Mode(Out, Out.Glyph("›", ">"), Tone.Accent, "Logging in",
+            $"with {login.Flow}, from {Relative(login.Assembly)}{values}, BaseUrl {baseUrl} ({from}){Out.Ellipsis}");
         if (remembered) Status(Out, UnderMode, " ", Tone.Plain, "as last time in this folder; --no-login records without it", Tone.Dim);
     }
 
@@ -782,6 +803,17 @@ internal static class ConsoleUi
             ? $"Your tests log in with {flow.Name}, from {Relative(flow.Dll)}: the setup flow of {Count(flow.SetupIn, "test file")}."
             : $"Found {flow.Name}, from {Relative(flow.Dll)}, which looks like the login of your tests.");
         LoginValuesOf(flow.Name, settings, values);
+    }
+
+    /// <summary>The whole search for the login flow, for <c>--login-why</c>, each step further in than the one it is part of.</summary>
+    public static void LoginSearch(Login.LoginSearch search)
+    {
+        var t = Out;
+        t.WriteLine();
+        foreach (var (depth, text) in search.Lines)
+            Status(t, Margin + new string(' ', 2 * depth), depth == 0 ? t.Glyph("›", ">") : t.Glyph("·", "-"),
+                depth == 0 ? Tone.Accent : Tone.Dim, text, depth == 0 ? Tone.Bold : Tone.Plain);
+        t.WriteLine();
     }
 
     /// <summary>A flow found, as a choice: "LoginFlow, from bin/Debug/net10.0/Shared.dll (the setup flow of 2 test files)".</summary>
@@ -908,8 +940,12 @@ internal static class ConsoleUi
 
     /// <param name="flow">The login flow.</param>
     /// <param name="url">Where the recording starts; null when the steps of the flow continued replay first.</param>
-    public static void LoggedIn(string flow, string? url) =>
+    /// <param name="stayed">Why the recording starts where the login left the app, not on the URL given; else null.</param>
+    public static void LoggedIn(string flow, string? url, string? stayed = null)
+    {
         Mode(Out, Out.Glyph("✓", "√", "+"), Tone.Success, "Logged in", url is null ? $"with {flow}." : $"with {flow}. Recording from {url}", Tone.Plain);
+        if (stayed is not null) Status(Out, UnderMode, " ", Tone.Plain, stayed, Tone.Dim);
+    }
 
     /// <param name="flow">The login flow.</param>
     /// <param name="reason">Why it failed.</param>

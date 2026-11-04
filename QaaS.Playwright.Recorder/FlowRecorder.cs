@@ -70,7 +70,7 @@ internal static class FlowRecorder
             // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login; so does a flow
             // continued that logs in itself, as it was recorded signed out.
             var options = (request.Login is { } login
-                ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoadStorageStatePath = null }
+                ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoginBaseUrl = login.BaseUrlFor(request.Url).Url, LoadStorageStatePath = null }
                 : new RecordingOptions(request.Url)) with { Continues = continued?.Recording };
             if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
@@ -328,20 +328,22 @@ internal static class FlowRecorder
         return report.Outcome == TestOutcome.Passed ? Replayed.All : Replayed.LeftOut;
     }
 
-    // The login flow runs on the page the recording opened on the URL, before anything is recorded. When it fails, or the
-    // person stops it (Esc here or in the page, or the panel) or it hangs, the recording stays paused for the person to
-    // log in by hand and resume it, or to close the browser. Returns why it did not log in, or null.
+    // The login flow runs first, on a page that loaded nothing yet, with the BaseUrl the tests give it, before anything is
+    // recorded; then the page goes to the URL. When it fails, or the person stops it (Esc here or in the page, or the
+    // panel) or it hangs, the recording stays paused for the person to log in by hand and resume it, or to close the
+    // browser. Returns why it did not log in, or null.
     private static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
     {
         var login = request.Login!;
-        ConsoleUi.LoggingIn(login, request.LoginRemembered);
+        var (baseUrl, baseUrlFrom) = login.BaseUrlFor(request.Url);
+        ConsoleUi.LoggingIn(login, request.LoginRemembered, baseUrl, baseUrlFrom);
         using var watching = new CancellationTokenSource();
         var escape = ConsoleUi.EscapePressedAsync(watching.Token);
         _ = escape.ContinueWith(pressed => { if (pressed.Result) session.LogInByHand(); }, TaskScheduler.Default);
         LoginEnd? end;
         try
         {
-            end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, request.Url, stopped),
+            end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, baseUrl, stopped, baseUrlFrom),
                 LoginRunner.Scrubber(login));
         }
         finally
@@ -351,7 +353,7 @@ internal static class FlowRecorder
         }
 
         var continued = request.Continue ? request.ClassName : null;
-        if (end is null) ConsoleUi.LoggedIn(login.Flow, request.Continue ? null : session.Page.Url);
+        if (end is null) ConsoleUi.LoggedIn(login.Flow, request.Continue ? null : session.Page.Url, session.StartedAfterLogin);
         else if (end.ByHand) ConsoleUi.LoginStopped(end.Why, continued);
         else ConsoleUi.LoginFailed(login.Flow, end.Why, continued);
         return end?.Why;

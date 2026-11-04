@@ -253,19 +253,34 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         string? inLogin = null;
         try
         {
-            if (!report.Replay || report.FromStart)
-            {
-                if (report.Phase != TestPhase.StartPage) report = Enter(report, TestPhase.StartPage, times);
-                await run.OpenBaseUrlAsync(config.BaseUrl);
-            }
-
+            // The login flow runs first, on a page that loaded nothing, with the BaseUrl the tests give it, as the
+            // recording ran it; then the page goes to the recording's URL, as the recording did.
             if (login is not null)
             {
+                if (run.Page.Url is not ("" or "about:blank")) await run.Page.GotoAsync("about:blank");
                 report = Enter(report, TestPhase.LoggingIn, times);
                 inLogin = login.Flow;
                 FlowAssemblyContext.Load(login.Assembly);
-                await new FlowRunner(context, null, null, config, flowConfiguration, secrets, log).RunAsync([login.Flow], run);
+                var startUrl = config.BaseUrl;
+                var (loginUrl, _) = login.BaseUrlFor(startUrl);
+                config.BaseUrl = loginUrl;
+                try
+                {
+                    await new FlowRunner(context, null, null, config, flowConfiguration, secrets, log).RunAsync([login.Flow], run);
+                }
+                finally
+                {
+                    config.BaseUrl = startUrl;
+                }
+
                 inLogin = null;
+                report = Enter(report, TestPhase.StartPage, times);
+                if (StartPage.StaysAfterLogin(run.Page.Url, startUrl, loginUrl) is null) await run.OpenBaseUrlAsync(startUrl);
+            }
+            else if (!report.Replay || report.FromStart)
+            {
+                if (report.Phase != TestPhase.StartPage) report = Enter(report, TestPhase.StartPage, times);
+                await run.OpenBaseUrlAsync(config.BaseUrl);
             }
 
             report = Enter(report, TestPhase.Running, times);
@@ -286,7 +301,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
-            var described = Describe(failure, context, flow, built, steps, secrets, inLogin, login);
+            var described = Describe(failure, context, flow, built, steps, secrets, inLogin, login, config.BaseUrl);
             steps.Ended(failed: described.Action);
             return report with { Outcome = TestOutcome.Failed, Failure = described };
         }
@@ -322,7 +337,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     // told it, a loop's repeat among them; the line of its stack frame in the code as saved, else of the statement
     // running; and what the writer listed to check by hand in the action's lines.
     private static TestFailure Describe(Exception failure, Context context, GeneratedFlow flow, BuiltFlow? built, Steps steps,
-        Secrets secrets, string? inLogin, LoginFlow? login)
+        Secrets secrets, string? inLogin, LoginFlow? login, string startUrl)
     {
         var outcome = PlaywrightFlowResults.Read(context, null).LastOrDefault(recorded => !recorded.Passed);
         var message = outcome?.FailureMessage ?? secrets.Scrub(FlowRunner.Describe(failure));
@@ -339,8 +354,13 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         if (message.Contains("strict mode violation", StringComparison.Ordinal))
             hints.Add("Its locator finds more than one element now: choose another one for this step in the inspector.");
         if (inLogin is not null && login is not null)
+        {
+            if (FlowCheck.Explain(failure, inLogin) is { } plainly) hints.Add(plainly);
+            var (baseUrl, from) = login.BaseUrlFor(startUrl);
+            hints.Add(secrets.Scrub(LoginRunner.WhereItWas(inLogin, failure, outcome?.FailureUrl, baseUrl, from)));
             hints.Add($"{inLogin} is your tests' own flow, from {ConsoleUi.Relative(login.Assembly)}: check it, its values " +
                       "and its build, or record with --no-login.");
+        }
 
         return new TestFailure(FlowReport.Summarize(message))
         {
