@@ -31,6 +31,14 @@ public sealed class TestSite : IDisposable
     /// <summary>How often someone logged in.</summary>
     public int Logins => _logins;
 
+    /// <summary>
+    /// How often a page under <c>/gate/</c> loaded without its token in localStorage, and was sent to the blocked page,
+    /// as a proxy sends a first load that lacks its token into a sign-in loop.
+    /// </summary>
+    public int Blocked => _blocked;
+
+    private int _blocked;
+
     /// <summary>The tickets created so far.</summary>
     public ConcurrentQueue<string> Tickets { get; } = new();
 
@@ -80,6 +88,12 @@ public sealed class TestSite : IDisposable
             return;
         }
 
+        if (path.StartsWith("/gate/", StringComparison.Ordinal))
+        {
+            ServeGate(request, response, path);
+            return;
+        }
+
         if (path.StartsWith("/pickers/", StringComparison.Ordinal))
         {
             ServePicker(response, path["/pickers/".Length..]);
@@ -121,6 +135,32 @@ public sealed class TestSite : IDisposable
             _ => "<h1>Home</h1>",
         };
         Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><body>{body}</body></html>"));
+    }
+
+    // An app behind a gate: a page that loads without the token its login plants in localStorage goes to a page that
+    // never lets it in, as a proxy's sign-in loop. Its login form, its home and a deep page of an order.
+    private void ServeGate(HttpListenerRequest request, HttpListenerResponse response, string path)
+    {
+        if (path == "/gate/session")
+        {
+            Interlocked.Increment(ref _logins);
+            response.AppendCookie(new Cookie("gate-user", request.QueryString["user"]) { Path = "/gate" });
+            response.Redirect("/gate/home");
+            response.Close();
+            return;
+        }
+
+        if (path == "/gate/blocked") Interlocked.Increment(ref _blocked);
+        var user = WebUtility.HtmlEncode(request.Cookies["gate-user"]?.Value ?? "nobody");
+        var body = path switch
+        {
+            "/gate/blocked" => "<h1>Blocked</h1><script>setTimeout(() => location.replace('/gate/blocked'), 500);</script>",
+            "/gate/login" => """<form action="/gate/session"><label>Username <input name="user"></label><button>Log in</button></form>""",
+            "/gate/home" => $"""<h1>Home</h1><p id="user">{user}</p><a href="/gate/orders/42">Order 42</a>""",
+            _ => $"""<h1>Order 42</h1><p id="user">{user}</p><a href="/gate/home">Home</a><button onclick="done.textContent = 'shipped'">Ship</button><p id="done"></p>""",
+        };
+        const string gate = "<script>if (localStorage.getItem('gate') !== 'open' && location.pathname !== '/gate/blocked') location.replace('/gate/blocked');</script>";
+        Send(response, "text/html; charset=utf-8", Encoding.UTF8.GetBytes($"<!doctype html><html><head>{gate}</head><body>{body}</body></html>"));
     }
 
     // A button with a generated id, three buttons of one name told apart by their row, and a dialog whose form saves to
