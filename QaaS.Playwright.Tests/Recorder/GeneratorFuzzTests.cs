@@ -9,10 +9,11 @@ using static QaaS.Playwright.Tests.Recorder.GeneratorFuzz;
 namespace QaaS.Playwright.Tests.Recorder;
 
 /// <summary>
-/// The generator on recordings no person recorded as such, with no browser (<see cref="GeneratorFuzz"/>). The fuzz itself
-/// runs with <c>QAAS_FUZZ=1</c>: <c>QAAS_FUZZ_COUNT</c> mutants (5000), from <c>QAAS_FUZZ_SEED</c>, each failure cut
-/// down to its smallest recording in <c>QAAS_FUZZ_OUT</c>; <c>QAAS_FUZZ_BUILD=0</c> leaves out the builds, and
-/// <c>QAAS_FUZZ_REPLAY</c> checks and cuts down one recording. The recordings it was cut down to stay in the suite.
+/// The generator on recordings no person recorded as such, with no browser (<see cref="GeneratorFuzz"/>): 300 mutants
+/// checked without a build in every run, and with <c>QAAS_FUZZ=1</c> the whole fuzz: <c>QAAS_FUZZ_COUNT</c> mutants
+/// (5000) from <c>QAAS_FUZZ_SEED</c>, built, each failure cut down to its smallest recording in <c>QAAS_FUZZ_OUT</c>;
+/// <c>QAAS_FUZZ_BUILD=0</c> leaves out the builds, and <c>QAAS_FUZZ_REPLAY</c> checks and cuts down one recording. The
+/// recordings failures were cut down to stay in the suite.
 /// </summary>
 [TestFixture]
 [Category("EndToEnd")]
@@ -21,17 +22,16 @@ public class GeneratorFuzzTests
     [Test]
     public async Task Fuzz_MutantsOfEveryRecording_GiveFlowsThatBuild_WithLinesThatMatch_AndYamlThatBinds()
     {
-        if (Environment.GetEnvironmentVariable("QAAS_FUZZ") != "1") Assert.Ignore("Set QAAS_FUZZ=1 to fuzz the generator.");
+        // Without QAAS_FUZZ=1, a few hundred mutants, checked without a build, in seconds.
+        var full = Environment.GetEnvironmentVariable("QAAS_FUZZ") == "1";
         // QAAS_FUZZ_REPLAY names one recording to check and cut down, as a failure's smallest.
         var replay = Environment.GetEnvironmentVariable("QAAS_FUZZ_REPLAY") is { Length: > 0 } given ? given : null;
-        var count = replay is null ? Number("QAAS_FUZZ_COUNT", 5000) : 1;
+        var count = replay is not null ? 1 : full ? Number("QAAS_FUZZ_COUNT", 5000) : 300;
         var batch = Number("QAAS_FUZZ_BATCH", 500);
         // QAAS_FUZZ_BUILD=0 checks only what needs no build, in seconds.
-        var build = Environment.GetEnvironmentVariable("QAAS_FUZZ_BUILD") != "0";
+        var build = full && Environment.GetEnvironmentVariable("QAAS_FUZZ_BUILD") != "0";
         var random = new Random(Number("QAAS_FUZZ_SEED", 1104));
-        var output = Environment.GetEnvironmentVariable("QAAS_FUZZ_OUT") is { Length: > 0 } named
-            ? Directory.CreateDirectory(named).FullName
-            : Directory.CreateTempSubdirectory("qaas-fuzz-").FullName;
+        var named = Environment.GetEnvironmentVariable("QAAS_FUZZ_OUT") is { Length: > 0 } asked ? asked : null;
         var folder = Directory.CreateTempSubdirectory("qaas-fuzz-build-").FullName;
         var seeds = Seeds().ToList();
         var failures = new Dictionary<string, List<(Mutant Mutant, string Detail)>>();
@@ -65,6 +65,10 @@ public class GeneratorFuzzTests
                 TestContext.Progress.WriteLine($"{number + 1} mutants, {failures.Values.Sum(list => list.Count)} failing");
             }
 
+            // Where the smallest recordings and the report go: the folder named, else one of its own once anything failed.
+            var output = named is not null ? Directory.CreateDirectory(named).FullName
+                : failures.Count > 0 || full ? Directory.CreateTempSubdirectory("qaas-fuzz-").FullName
+                : null;
             var report = new StringBuilder($"{count} mutants of {seeds.Count} recordings: {rejected} not a recording, {built} built, " +
                                            $"{failures.Values.Sum(list => list.Count)} failing in {failures.Count} ways.\n");
             foreach (var (problem, failed) in failures.OrderByDescending(pair => pair.Value.Count))
@@ -74,7 +78,7 @@ public class GeneratorFuzzTests
                 var budget = !problem.StartsWith("does not build", StringComparison.Ordinal) && !problem.StartsWith("its ", StringComparison.Ordinal) ? 3000
                     : ByTheCompiler(problem) ? 600 : 60;
                 var smallest = await MinimiseAsync(mutant.Json, json => FailsAsync(json, mutant, problem, folder), budget);
-                var file = Path.Combine(output, $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(problem)))[..8]}.recording.json");
+                var file = Path.Combine(output!, $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(problem)))[..8]}.recording.json");
                 await File.WriteAllTextAsync(file, smallest);
                 var renamed = failed.Select(each => each.Mutant.ClassName).Where(name => !name.StartsWith("Fuzz", StringComparison.Ordinal)).Distinct().Order().ToList();
                 report.Append($"\n{failed.Count} × {problem}{(renamed.Count > 0 ? $" (flows named {string.Join(", ", renamed)})" : "")}\n" +
@@ -82,7 +86,7 @@ public class GeneratorFuzzTests
                               $"  smallest: {file}\n  {detail.Split('\n')[0]}\n");
             }
 
-            await File.WriteAllTextAsync(Path.Combine(output, "report.txt"), report.ToString());
+            if (output is not null) await File.WriteAllTextAsync(Path.Combine(output, "report.txt"), report.ToString());
             TestContext.Out.WriteLine(report);
             Assert.That(failures, Is.Empty, report.ToString());
         }

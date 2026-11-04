@@ -2,6 +2,32 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.1.0
+
+- **The recorder writes a flow from any recording, and the flow builds.** A recording with data missing, empty,
+  repeated or of a kind the recorder does not know, as one edited by hand, one of another version or one after a
+  pause, no longer stops it with an exception such as `ArgumentNullException: Value cannot be null`: what it cannot
+  write is left out and listed to check by hand. A page no step opened (its opening click deleted) is opened in a new
+  tab at its address, a pop-up opened by Enter or a choice is waited for as one opened by a click, a tab opened again
+  is the same variable, a step that opened a dialog and a pop-up returns the dialog, a step of nothing is no method, a
+  doc comment stays on one line, and a flow named like a type or member its code uses (`RunAsync`, `ILocator`) is
+  refused when you name it.
+- **No password or other secret is in any file, nor shown.** A "Has value" check of a password field never reads the
+  password: the flow checks the field against the password it typed, else that it is not empty, said to check by hand.
+  A loop never goes over passwords, so no list in the YAML holds one. The recording autosave and `--keep-recording`
+  keep holds no secret, typed, checked or given as a setting's default.
+- **Values are typed exactly as recorded.** A value typed with bidi marks keeps them; a native select's option is
+  chosen by its exact label, marks and asterisk too; a radio's value read from a setting is escaped in its CSS
+  selector, quotes and backslashes too; a text holding `${...}` stays in the code, as QaaS would read it as a variable
+  in the YAML; a list with an empty text keeps it.
+- **Addresses and dates**: a path segment that is not ASCII is no record's id, and a URL check matches it as the
+  browser shows it, encoded or not. A date is offered relative to today only when its order of day and month is
+  known, from its field's placeholder (`dd/mm/yyyy`) or because it cannot be read the other way.
+- **Loops**: a round is found only where the flow can write it, a value as a word of its own ("TradeCode 9" is in no
+  "TradeCode 99"); a value made unique per run or relative to today is never an item of a list; a step after a loop
+  that shows what its last round typed reads it from the list; a record's field is never named like a member every
+  record has (`Equals`).
+
 ## 2.0.4
 
 - The release's source zip leaves out what building does not need, the panel's UI sources (its built `panel.html` is

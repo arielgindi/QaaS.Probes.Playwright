@@ -8,3 +8,4 @@ QaaS.Playwright.Recorder/Panel/ui/** export-ignore
 QaaS.Playwright.Tests/Recorder/RealSites/** export-ignore
 QaaS.Playwright.Tests/Recorder/Sites/** export-ignore
 QaaS.Playwright.Tests/Recorder/Pickers/** export-ignore
+QaaS.Playwright.Tests/Recorder/Fuzz/** export-ignore

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
@@ -99,14 +100,18 @@ internal static partial class GeneratorFuzz
         public string Namespace => $"{GeneratorFuzz.Namespace}.{Folder}";
     }
 
-    // Flow names a person may give, which the recorder takes, that name what a flow's code uses or has.
+    // Flow names a person may give, which the recorder takes, that name what a flow's code uses or has; those it refuses,
+    // as the types and members of the code, left out.
     private static readonly string[] ClassNames =
     [
+        .. new[]
+        {
         "ILocator", "SelectOptionValue", "CultureInfo", "Uri", "DateTime", "NotImplementedException", "IBrowserContext",
         "Configuration", "BaseUrl", "Unique", "RunAsync", "Item", "ItemIndex", "Context", "Page", "Dialog", "Flow", "Login",
         "Microsoft", "System", "QaaS", "Assertions", "Playwright", "Math", "String", "Object", "Exception", "Line", "Lines",
         "FileToUpload", "AcceptBrowserDialog", "OpenOrdersAsync", "Value", "Search", "Globalization", "StringComparison",
         "Flow2faLogin", "LoadAndValidateConfiguration", "Keyboard", "Mouse", "Name", "Exact", "Timeout", "Force",
+        }.Where(name => !CSharp.Reserved.Contains(name)),
     ];
 
     /// <summary>The seed changed one to six times, the same for the same random state.</summary>
@@ -192,7 +197,7 @@ internal static partial class GeneratorFuzz
             case 10 when Pick() is { } action:
             {
                 var page = NewPage(actions);
-                Effects(action).Add(new JsonObject { ["kind"] = "popup", ["page"] = random.Next(8) == 0 ? null : page, ["t"] = action["t"]?.DeepClone() });
+                Effects(action).Add(new JsonObject { ["kind"] = "popup", ["page"] = random.Next(8) == 0 ? null : page, ["t"] = action["t"]?.GetValue<long>() ?? 0 });
                 var moved = MoveTo(actions, actions.IndexOf(action) + 1, page, random);
                 return $"{action["id"]} opens pop-up {page}, {moved} actions in it";
             }
@@ -222,7 +227,7 @@ internal static partial class GeneratorFuzz
                 Effects(action).Add(new JsonObject
                 {
                     ["kind"] = "urlChanged", ["url"] = random.Next(6) == 0 ? null : One(random, Addresses),
-                    ["page"] = random.Next(6) == 0 ? null : action["page"]?.DeepClone(), ["t"] = action["t"]?.DeepClone(),
+                    ["page"] = random.Next(6) == 0 ? null : action["page"]?.DeepClone(), ["t"] = action["t"]?.GetValue<long>() ?? 0,
                 });
                 return $"{action["id"]} changes the address";
             }
@@ -241,13 +246,29 @@ internal static partial class GeneratorFuzz
                 var fill = fills[random.Next(fills.Count)];
                 var target = fill["target"] as JsonObject ?? [];
                 fill["target"] = target;
-                switch (random.Next(3))
+                switch (random.Next(4))
                 {
                     case 0: target["type"] = "password"; break;
                     case 1: target["name"] = One(random, ["password", "apiToken", "client_secret", "Password"]); break;
-                    default: target["label"] = "API key"; break;
+                    case 2: target["label"] = "API key"; break;
+                    default:
+                        var edit = fill["edit"] as JsonObject ?? [];
+                        fill["edit"] = edit;
+                        edit["values"] = new JsonObject { ["value"] = new JsonObject { ["name"] = "ApiToken" } };
+                        break;
                 }
 
+                // A value no file may hold, typed, then maybe checked, once typed while paused, so only its check is left.
+                var secret = $"{SecretMark}{stamp}";
+                (fill["value"], fill["raw"]) = (secret, secret);
+                var at = actions.IndexOf(fill);
+                if (random.Next(2) == 0)
+                    actions.Insert(at + 1, new JsonObject
+                    {
+                        ["id"] = $"{id}-check", ["t"] = (fill["t"]?.GetValue<long>() ?? 0) + 1, ["kind"] = "expect", ["check"] = "value",
+                        ["value"] = secret, ["page"] = fill["page"]?.DeepClone(), ["target"] = target.DeepClone(),
+                    });
+                if (random.Next(4) == 0) actions.Remove(fill);
                 return $"{fill["id"]} is a secret";
             }
             case 17:
@@ -661,6 +682,9 @@ internal static partial class GeneratorFuzz
     /// </summary>
     public static Outcome Check(Recording recording, string className, bool autoChecks, string namespaceName = Namespace)
     {
+        var secrets = Secrets(recording);
+        // As autosave keeps it, before anything reads it.
+        var kept = Autosave.WithoutSecrets(recording).ToJson();
         FlowPlan plan;
         GeneratedFlow flow;
         try
@@ -706,7 +730,27 @@ internal static partial class GeneratorFuzz
             problems.Add($"the test build cannot instrument it: {failure.GetType().Name} in {Where(failure)}");
         }
 
+        // No file, nor what the panel and the console show, holds a secret: the code, the YAML, what to check by hand, the
+        // checks and suggestions, and the recording autosave keeps.
+        var shown = new[] { flow.Code, flow.Yaml, kept }
+            .Concat(flow.Checks.Select(check => check.Message)).Concat(flow.Suggestions.Select(suggestion => suggestion.Text))
+            .Concat(flow.Expects.Values.SelectMany(expects => expects).Select(expect => expect.Text));
+        if (secrets.FirstOrDefault(secret => shown.Any(text => text.Contains(secret, StringComparison.Ordinal))) is { } leaked)
+            problems.Insert(0, $"a secret is in what the flow writes or shows: {leaked}");
         return problems.Count == 0 ? new Outcome(flow, null) : new Outcome(flow, Generalised(problems[0]), string.Join("\n", problems));
+    }
+
+    /// <summary>What marks a value the fuzz plants as a secret, which nothing written or shown may hold.</summary>
+    public const string SecretMark = "qaas-secret-";
+
+    // The secrets planted that only actions holding a secret hold, as a copy of one into a field of no secret holds its
+    // value as text, rightly.
+    private static List<string> Secrets(Recording recording)
+    {
+        string[] Texts(CapturedAction action) => [action.Value ?? "", action.Raw ?? "", action.Edit?.Values?.GetValueOrDefault("value")?.Value ?? ""];
+        var open = recording.Actions.Where(action => !SecretField.Holds(action)).SelectMany(Texts).ToHashSet();
+        return [.. recording.Actions.Where(SecretField.Holds).SelectMany(Texts).Where(text => text.StartsWith(SecretMark, StringComparison.Ordinal))
+            .Where(text => !open.Any(other => other.Contains(text, StringComparison.Ordinal))).Distinct()];
     }
 
     // The first frame of the recorder's own code, without its line: where it threw, the same for the same bug.
