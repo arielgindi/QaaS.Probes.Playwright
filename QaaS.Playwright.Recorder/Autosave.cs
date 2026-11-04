@@ -190,19 +190,27 @@ internal sealed class Autosave
     /// secret. Each is taken from <paramref name="yaml"/>, the flow's values as saved, when it is there; the others are
     /// returned.
     /// </summary>
-    public static IReadOnlyList<string> Unkept(Recording recording, string flow, string? yaml = null)
+    /// <param name="recording">The recording, as kept.</param>
+    /// <param name="flow">The flow's class name.</param>
+    /// <param name="yaml">The flow's values as saved, if any.</param>
+    /// <param name="planner">Plans the recording, for its settings' names; <see cref="FlowPlanner.Plan(Recording, string)"/> unless a test says otherwise.</param>
+    public static IReadOnlyList<string> Unkept(Recording recording, string flow, string? yaml = null, Func<Recording, string, FlowPlan>? planner = null)
     {
-        var unkept = FlowPlanner.Plan(recording, flow).Steps.SelectMany(step => step.Actions)
-            .Where(action => action.Kind == "fill" && action.Source is { Value: null, Secret: null } && action.Value is { Items: null })
-            .ToList();
+        // Which fills hold no value is told by what was captured, as the reader reads it, never by a plan; the plan only
+        // names their settings as the flow's YAML has them, when it can be made, and each field names its own otherwise.
+        var unkept = RecordingReader.Read(recording).Actions.Where(action => action is { Kind: "fill", Value: null, Secret: null }).ToList();
+        if (unkept.Count == 0) return [];
+        var named = SettingsOf(recording, flow, planner ?? FlowPlanner.Plan);
+        if (named is not null) unkept = [.. unkept.Where(action => named.ContainsKey(action.Id))];
+        string NameOf(CapturedAction action) => named?.GetValueOrDefault(action.Id) ?? FlowPlanner.SettingName(action.Element);
         if (unkept.Count > 0 && File.Exists(yaml))
         {
             try
             {
                 var saved = LoginSettings.Read(yaml, flow);
                 foreach (var action in unkept)
-                    if (saved[$"{flow}:{action.Value!.Name}"] is { } value)
-                        (action.Source.Value, action.Source.Raw) = (value, value);
+                    if (saved[$"{flow}:{NameOf(action)}"] is { } value)
+                        (action.Value, action.Raw) = (value, value);
             }
             catch (InvalidOperationException)
             {
@@ -210,7 +218,22 @@ internal sealed class Autosave
             }
         }
 
-        return [.. unkept.Where(action => action.Source is { Value: null, Secret: null }).Select(action => action.Value!.Name).Distinct()];
+        return [.. unkept.Where(action => action is { Value: null, Secret: null }).Select(NameOf).Distinct()];
+    }
+
+    // The setting each fill of one value types, by the fill's id, as the flow names it; null when it cannot be planned.
+    private static Dictionary<string, string>? SettingsOf(Recording recording, string flow, Func<Recording, string, FlowPlan> planner)
+    {
+        try
+        {
+            return planner(recording, flow).Steps.SelectMany(step => step.Actions)
+                .Where(action => action is { Kind: "fill", Value.Items: null }).DistinctBy(action => action.Source.Id)
+                .ToDictionary(action => action.Source.Id, action => action.Value!.Name);
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            return null;
+        }
     }
 
     // The recording as kept: of the flow the request names, without the values the recorder hides.

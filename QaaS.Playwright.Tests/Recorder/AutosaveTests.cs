@@ -160,7 +160,7 @@ public class AutosaveTests
     }
 
     [Test]
-    public void AnActionThePlannerFailsOn_IsLeftOutAndSaid_AndTheRestIsWritten()
+    public void AnActionThePlannerFailsOn_IsLeftOutAndSaid_TheRestIsWritten_AndKeepingNeedsNoPlan()
     {
         var token = Captured.Element("textbox", "Token", Captured.Css("name", "[name='apiToken']", "apiToken"));
         var recording = Captured.Recording(
@@ -174,11 +174,13 @@ public class AutosaveTests
             valid.Actions.Any(action => action.Id == broken) ? throw new InvalidOperationException("a bug") : FlowPlanner.Plan(valid, name);
 
         var (plan, flow) = FlowCodeGenerator.PlanAndWrite(RecordingReader.Read(recording), "Isolated", "Flows", planner: Planner);
+        var unkept = Autosave.Unkept(recording, "Isolated", planner: (_, _) => throw new InvalidOperationException("a bug"));
 
         Assert.Multiple(() =>
         {
             Assert.That(flow.Code, Does.Contain("\"Open\"").And.Contain("\"Save\"").And.Not.Contain("\"Broken\""));
             Assert.That(plan.NotRecorded, Has.One.StartWith($"{FlowCodeGenerator.NotPlanned} {broken} (a 'click'), as InvalidOperationException"));
+            Assert.That(unkept, Is.EqualTo(new[] { "ApiToken" }), "the value kept without its secret, named by its field as no plan is made");
         });
     }
 
