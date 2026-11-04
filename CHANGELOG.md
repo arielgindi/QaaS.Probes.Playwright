@@ -73,6 +73,9 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   - **Stop, Log in by hand and the end end what runs, at once.** A test, a replay and the login flow each run in a
     scope of their own, which leaving their mode ends: the recording goes on as soon as you press Stop, and the pages
     a login flow opened close when you log in by hand, so it clicks nothing more in them.
+  - **A pop-up while your login flow runs ends nothing**: a page opened then, by the app or by you, stopped the
+    recorder's connection to Chrome, as the first request of a pop-up comes before its page does, and the recorder
+    asked which frame it was for. Every handler of what the browser tells now keeps its errors to itself.
 - **Your files are safe**, as every file is written in one place:
   - **A flow and its YAML are replaced together, or not at all**: when one could not be written, as a YAML another
     program holds on Windows, the flow kept its YAML, rather than new code with old settings; a pair left half

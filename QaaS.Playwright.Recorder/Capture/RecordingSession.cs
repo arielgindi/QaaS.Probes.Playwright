@@ -623,16 +623,34 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         }
     }
 
+    // Guarded as every handler of Playwright's events is: one that throws ends Playwright's connection, the browser's
+    // and the recording's with it.
     private void OnRequest(object? sender, IRequest request) =>
-        _login?.Requested(request, request.Url, request.IsNavigationRequest && request.Frame.ParentFrame is null);
+        Guarded("a request of the login", () => _login?.Requested(request, request.Url, OpensADocument(request)));
 
-    private void OnAnswered(object? sender, IRequest request) => _login?.Answered(request);
+    private void OnAnswered(object? sender, IRequest request) => Guarded("an answer to the login", () => _login?.Answered(request));
 
-    private void OnResponse(object? sender, IResponse response)
+    private void OnResponse(object? sender, IResponse response) => Guarded("an answer to the login", () =>
     {
-        if (response.Status == 401 && response.Request.IsNavigationRequest && response.Frame.ParentFrame is null
-            && response.Headers.TryGetValue("www-authenticate", out var scheme))
+        if (response.Status == 401 && OpensADocument(response.Request) && response.Headers.TryGetValue("www-authenticate", out var scheme))
             _login?.AuthAsked(scheme, response.Url);
+    });
+
+    // Whether the request is for the document of a page, not of a frame in it.
+    private static bool OpensADocument(IRequest request) => request.IsNavigationRequest && FrameOf(request) is not { ParentFrame: not null };
+
+    // The frame a request is for. The first document of a page that opens, a pop-up, is asked for before the page has
+    // its frame, and Playwright then throws rather than say: it is that page's own, its main frame, so null.
+    private static IFrame? FrameOf(IRequest request)
+    {
+        try
+        {
+            return request.Frame;
+        }
+        catch (PlaywrightException)
+        {
+            return null;
+        }
     }
 
     // After the login: the recording's URL, unless the page is there, or the recording starts on the app's root and the
@@ -939,7 +957,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
         });
         page.Request += (_, request) => Guarded("a page's request", () =>
         {
-            if (!request.IsNavigationRequest || request.RedirectedFrom is not null || request.Frame != page.MainFrame) return;
+            if (!request.IsNavigationRequest || request.RedirectedFrom is not null || FrameOf(request) is { } frame && frame != page.MainFrame) return;
             var byThePerson = StartedByThePersonAsync(request);
             Log.NavigationRequested(AliasOf(page), byThePerson);
             Tried?.NavigationRequested(AliasOf(page), byThePerson);
