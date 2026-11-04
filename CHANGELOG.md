@@ -11,6 +11,10 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 - **What you do right after Pause or Try in the panel is never recorded**, and what you typed just before them always
   is: the recorder first takes what each page still holds, then waits until every page knows the new mode. Each action
   is kept by the mode it began in, however late the page tells it.
+- **Every end of a recording takes one path**: Enter, Save, Chrome closed and Ctrl+C save it; Ctrl+C again, a signal or
+  an error keep it to save next time. Each step is bounded, so a page or a run that does not answer never keeps the
+  recorder from ending, and the builds it started for Test or a login flow end with it, on Windows too, where they went
+  on after Ctrl+C.
 - **`SetupFlowsBeforeBaseUrl`**, a probe setting: `true` runs `SetupFlows` on a blank page before `BaseUrl` is opened,
   for a login that plants a token with `AddInitScriptAsync` before any page of the app loads, as one behind a proxy
   must. `BaseUrl` opens after them, unless they left the page on it or on a page under it.

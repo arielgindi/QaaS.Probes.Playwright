@@ -32,7 +32,6 @@ internal static class ConsoleUi
     private static bool _recording;
     private static Capture.RecordingState _state;
     private static int _cancelled;
-    private static TaskCompletionSource? _ctrlCEnds;
 
     // The width of the line redrawn in place while the login flow runs, the cursor at its end; 0 when none is.
     private static int _live;
@@ -241,42 +240,33 @@ internal static class ConsoleUi
         refused.ParamName is { } name ? refused.Message.Replace($" (Parameter '{name}')", "") : refused.Message;
 
     /// <summary>
-    /// Ctrl+C ends a recording as Enter does (<see cref="CtrlCEnds"/>); pressed again, or before the recording began, it
-    /// stops at once, the recording kept (<see cref="CrashReport.Interrupted"/>). With no recording going on, it says
-    /// goodbye instead of leaving a half-written line.
+    /// Ctrl+C asks the recording going on to stop (<see cref="RecorderLifetime"/>): the first time it ends as Enter does,
+    /// and again it stops at once, the recording kept. With no recording going on, it says goodbye instead of leaving a
+    /// half-written line.
     /// </summary>
     public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, pressed) =>
     {
-        if (CtrlC()) pressed.Cancel = true;
+        if (RecorderLifetime.Current is { } lifetime)
+        {
+            pressed.Cancel = true;
+            CtrlC(lifetime);
+        }
         else Cancelled();
     };
 
-    /// <summary>
-    /// Until <see cref="CtrlCStops"/>, the next Ctrl+C ends the recording as Enter does, and completes the task returned,
-    /// rather than stopping the recorder.
-    /// </summary>
-    public static Task CtrlCEnds()
+    // Says what Ctrl+C does to the recording; before anything listens for its end, it stops it at once, the recording kept.
+    internal static void CtrlC(RecorderLifetime lifetime)
     {
-        var pressed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Volatile.Write(ref _ctrlCEnds, pressed);
-        return pressed.Task;
-    }
-
-    /// <summary>The recording ended: Ctrl+C stops the recorder from now on, the recording kept.</summary>
-    public static void CtrlCStops() => Volatile.Write(ref _ctrlCEnds, null);
-
-    // Whether the recorder goes on after Ctrl+C: it ends the recording, as Enter does; else, while a recording goes on, the
-    // recording is kept and the recorder stops, never back here.
-    internal static bool CtrlC()
-    {
-        if (Interlocked.Exchange(ref _ctrlCEnds, null) is not { } ends) return CrashReport.Interrupted();
+        var outcome = lifetime.RequestStop(StopReason.CtrlC);
         var t = Out;
         t.Writer.Write(t.Stop);
         t.WriteLine();
-        Mode(t, t.Glyph("›", ">"), Tone.Accent, "Ending",
-            "Ctrl+C: saving what you recorded, as Enter does. Ctrl+C again stops at once, the recording kept to save next time.");
-        ends.TrySetResult();
-        return true;
+        if (outcome == RecorderLifetime.Outcome.Ending && lifetime.Stopped.Result == StopReason.CtrlC)
+            Mode(t, t.Glyph("›", ">"), Tone.Accent, "Ending",
+                "Ctrl+C: saving what you recorded, as Enter does. Ctrl+C again stops at once, the recording kept to save next time.");
+        else if (outcome == RecorderLifetime.Outcome.Ending) CrashReport.Stop(lifetime, StopReason.Interrupted);
+        else if (outcome == RecorderLifetime.Outcome.Forced)
+            Mode(t, t.Glyph("›", ">"), Tone.Accent, "Stopping", "at once: what is not saved yet is kept, to save the next time the recorder starts.");
     }
 
     public static void Cancelled()

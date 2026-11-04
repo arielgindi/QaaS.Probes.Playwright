@@ -56,16 +56,30 @@ internal static class FlowRecorder
 
     private static async Task<int> RecordAsync(RecordRequest request)
     {
+        var lifetime = RecorderLifetime.Current = new RecorderLifetime();
+        try
+        {
+            return await RecordInAsync(request, lifetime);
+        }
+        finally
+        {
+            lifetime.Children.KillAll();
+            RecorderLifetime.Current = null;
+        }
+    }
+
+    // Records until something asks the lifetime to stop, then ends as it says: saved, or kept to save next time.
+    private static async Task<int> RecordInAsync(RecordRequest request, RecorderLifetime lifetime)
+    {
         KeptRecording? continued = null;
         if (request.Continue && (continued = Continued(ref request)) is null) return 1;
         ConsoleUi.Recording(request, continued is null ? null
             : $"{ActionsIn(continued.Recording, request.ClassName)}, recorded {ConsoleUi.Ago(continued.Changed)}");
         var autosave = new Autosave(continued?.Recording, request);
-        Recording recording;
         RecordingSession? recorded = null;
         RecorderPanel? shown = null;
-        // An end nobody asked for, an error or a signal from outside, keeps the recording as it is then.
-        using var keeping = CrashReport.Keeping(async () =>
+        // However it ends, the recording is first kept as it is then.
+        lifetime.OnSnapshot(async _ =>
         {
             if (recorded?.Build() is not { Actions.Count: > 0 } now) return false;
             await autosave.WriteAsync(now, shown?.Request ?? request);
@@ -90,9 +104,12 @@ internal static class FlowRecorder
                 else ConsoleUi.Captured(news);
             });
             recorded = session;
+            lifetime.OnDrain(token => session.DrainAsync(session.Pipeline.Epoch, token));
+            lifetime.Own("the browser", session.DisposeAsync);
             // The console numbers each action as the flow, the panel and a test do.
             ConsoleUi.Numbering = () => StepNumbers(session.Build(), (shown?.Request ?? request).ClassName);
             var panel = shown = request.Panel ? await OpenPanelAsync(session, request) : null;
+            if (panel is not null) lifetime.Own("the panel", panel.DisposeAsync);
             using var stopWatching = new CancellationTokenSource();
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
             var loginFailure = request.Login is not null ? await LogInAsync(session, request) : null;
@@ -118,20 +135,39 @@ internal static class FlowRecorder
                 return 1;
             }
 
-            // Ctrl+C ends the recording as Enter does; pressed again, it stops at once, the recording kept.
-            await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), ConsoleUi.CtrlCEnds(), panel?.SaveRequested ?? session.Closed);
-            ConsoleUi.CtrlCStops();
-            if (panel is not null)
+            // What ends the recording asks the lifetime to; so does Ctrl+C, which ends it as Enter does, and again stops it at
+            // once, the recording kept.
+            lifetime.Listening = true;
+            _ = session.Closed.ContinueWith(_ => lifetime.RequestStop(StopReason.BrowserClosed), TaskScheduler.Default);
+            _ = ConsoleUi.EnterPressedAsync().ContinueWith(_ => lifetime.RequestStop(StopReason.Enter), TaskScheduler.Default);
+            _ = panel?.SaveRequested.ContinueWith(_ => lifetime.RequestStop(StopReason.Saved), TaskScheduler.Default);
+            await lifetime.Stopped;
+            return await lifetime.ShutdownAsync(async forced =>
             {
-                await panel.DisposeAsync();
-                request = panel.Request;
-            }
+                Recording recording;
+                try
+                {
+                    if (panel is not null)
+                    {
+                        await panel.DisposeAsync();
+                        request = panel.Request;
+                    }
 
-            recording = await session.StopAsync();
-            ConsoleUi.Numbering = null;
-            await stopWatching.CancelAsync();
-            await watching;
-            if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
+                    recording = await session.StopAsync();
+                    ConsoleUi.Numbering = null;
+                    await stopWatching.CancelAsync();
+                    await watching;
+                    if (session.LoginNotSaved is { } problem) ConsoleUi.Warning(problem);
+                }
+                catch (Exception failure) when (failure is not OutOfMemoryException)
+                {
+                    return await KeptAsync(failure);
+                }
+
+                // Forced meanwhile, the recording is kept rather than written.
+                forced.ThrowIfCancellationRequested();
+                return await SaveEndedAsync(request, recording, autosave);
+            });
         }
         catch (PlaywrightException failure) when (recorded?.Log.Build("").Actions.Count is not > 0)
         {
@@ -142,7 +178,12 @@ internal static class FlowRecorder
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
-            // Chrome or its driver went away, or a recorder bug: what was recorded is kept, to save or continue it next time.
+            return await KeptAsync(failure);
+        }
+
+        // Chrome or its driver went away, or a recorder bug: what was recorded is kept, to save or continue it next time.
+        async Task<int> KeptAsync(Exception failure)
+        {
             try
             {
                 await autosave.WriteAsync(recorded!.Log.Build(request.Url), request);
@@ -155,7 +196,11 @@ internal static class FlowRecorder
             CrashReport.Report(failure);
             return 1;
         }
+    }
 
+    // The recording ended as asked: nothing to save, or the flow written from it.
+    private static async Task<int> SaveEndedAsync(RecordRequest request, Recording recording, Autosave autosave)
+    {
         if (recording.Actions.Count == 0)
         {
             autosave.Forget();

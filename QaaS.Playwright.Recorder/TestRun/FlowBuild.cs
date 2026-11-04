@@ -416,6 +416,8 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
             throw new FlowBuildException(NoSdk);
         }
 
+        // The recording's lifetime kills it, with its tree unless it is the compiler alone, should the recorder end first.
+        using var owned = RecorderLifetime.Current?.Children.Own(process, alone);
         using (process)
         {
             if (quiet && OperatingSystem.IsWindows()) LowerPriority(process);

@@ -77,6 +77,9 @@ internal sealed class RecorderLifetime
         _stepTimeout = stepTimeout ?? StepTimeout;
     }
 
+    /// <summary>The lifetime of the recording going on, which Ctrl+C, a signal and an error nothing caught stop; else null.</summary>
+    public static RecorderLifetime? Current { get; set; }
+
     /// <summary>The child processes the recording started, killed as it ends.</summary>
     public ChildProcesses Children { get; } = new();
 
@@ -171,11 +174,13 @@ internal sealed class RecorderLifetime
         await BoundedAsync("drain", _drain, forced);
         await SnapshotAsync();
         var exit = plan.ExitCode;
+        var saved = false;
         if (plan.Save && !forced.IsCancellationRequested)
         {
             try
             {
                 exit = await save(forced);
+                saved = true;
             }
             catch (OperationCanceledException) when (forced.IsCancellationRequested)
             {
@@ -183,7 +188,8 @@ internal sealed class RecorderLifetime
             }
         }
 
-        if (_forcedBy is { } by)
+        // Forced once the save was done, it ends as the save says.
+        if (_forcedBy is { } by && !saved)
         {
             reason = by;
             plan = PlanFor(by);

@@ -58,23 +58,18 @@ public class ConsoleUiTests
     }
 
     [Test]
-    public void CtrlC_WhileRecording_EndsItAsEnterDoes()
+    public void CtrlC_WhileRecording_EndsItAsEnterDoes_AndAgainStopsAtOnce()
     {
-        Task ends = Task.CompletedTask;
-        var went = false;
-        var said = Said(() =>
-        {
-            ends = ConsoleUi.CtrlCEnds();
-            went = ConsoleUi.CtrlC();
-        });
-        ConsoleUi.CtrlCStops();
+        var lifetime = new RecorderLifetime(exit: _ => { }, log: (_, _) => true) { Listening = true };
+
+        var said = Said(() => ConsoleUi.CtrlC(lifetime));
+        var again = Said(() => ConsoleUi.CtrlC(lifetime));
 
         Assert.Multiple(() =>
         {
-            Assert.That(went && ends.IsCompletedSuccessfully, Is.True, "the recorder goes on, to save what was recorded");
+            Assert.That(lifetime.Stopped.IsCompletedSuccessfully && lifetime.Stopped.Result == StopReason.CtrlC, "the recording ends as on Enter");
             Assert.That(said, Does.Contain("Ctrl+C: saving what you recorded, as Enter does"));
-            // Once the recording ended, Ctrl+C stops the recorder; with no recording, the console says it was cancelled.
-            Assert.That(ConsoleUi.CtrlC(), Is.False);
+            Assert.That(again, Does.Contain("at once: what is not saved yet is kept"));
         });
     }
 
