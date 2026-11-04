@@ -18,6 +18,8 @@ internal interface IFileSystem
 
     void Append(string path, string text);
     void Move(string from, string to, bool overwrite);
+    void Copy(string from, string to);
+    void MoveFolder(string from, string to);
     void Delete(string path);
     void CreateFolder(string path, bool ownerOnly);
     void DeleteFolder(string path);
@@ -94,6 +96,34 @@ internal sealed class FileStore(IFileSystem files, int attempts = 8)
     public void Delete(string path)
     {
         if (files.Exists(path)) Retried(() => files.Delete(path));
+    }
+
+    /// <summary>
+    /// Copies <paramref name="names"/>, relative to <paramref name="from"/>, to <paramref name="to"/>, whole or not at
+    /// all: into a folder beside it, then renamed; false when another run made it first, which is as good.
+    /// </summary>
+    public bool CopyFolder(string from, IEnumerable<string> names, string to)
+    {
+        var building = $"{to}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            foreach (var name in names)
+            {
+                files.CreateFolder(Path.GetDirectoryName(Path.Combine(building, name))!, ownerOnly: false);
+                Retried(() => files.Copy(Path.Combine(from, name), Path.Combine(building, name)));
+            }
+
+            files.MoveFolder(building, to);
+            return true;
+        }
+        catch (IOException) when (files.Folders(Path.GetDirectoryName(to)!, Path.GetFileName(to)).Any())
+        {
+            return false;
+        }
+        finally
+        {
+            if (files.Folders(Path.GetDirectoryName(building)!, Path.GetFileName(building)).Any()) files.DeleteFolder(building);
+        }
     }
 
     /// <summary>
@@ -309,6 +339,8 @@ internal sealed class MachineFiles : IFileSystem
 
     public void Append(string path, string text) => File.AppendAllText(path, text);
     public void Move(string from, string to, bool overwrite) => File.Move(from, to, overwrite);
+    public void Copy(string from, string to) => File.Copy(from, to, overwrite: true);
+    public void MoveFolder(string from, string to) => Directory.Move(from, to);
     public void Delete(string path) => File.Delete(path);
 
     public void CreateFolder(string path, bool ownerOnly)

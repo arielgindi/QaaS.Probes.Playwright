@@ -93,7 +93,7 @@ public class FileStoreTests
         ["QaaS.Playwright.Recorder/Login/ProjectBuilds.cs"] = 1, ["QaaS.Playwright.Recorder/Login/RememberedLogin.cs"] = 1,
         ["QaaS.Playwright.Recorder/Panel/PanelPrefs.cs"] = 1, ["QaaS.Playwright.Recorder/TestRun/FlowBuild.cs"] = 7,
         ["QaaS.Playwright/Browser/AtomicFileWriter.cs"] = 3, ["QaaS.Playwright/Browser/LocalChromeLauncher.cs"] = 1,
-        ["QaaS.Playwright/Browser/StorageState.cs"] = 1, ["QaaS.Playwright/Files/FileStore.cs"] = 5,
+        ["QaaS.Playwright/Browser/StorageState.cs"] = 1, ["QaaS.Playwright/Files/FileStore.cs"] = 6,
     };
 
     [Test]
@@ -187,6 +187,21 @@ internal sealed class SimulatedFiles(bool ignoresCase) : IFileSystem
     {
         Touch(path);
         _files.Remove(path);
+    }
+
+    public void Copy(string from, string to)
+    {
+        Touch(to);
+        _files[to] = Read(from);
+    }
+
+    public void MoveFolder(string from, string to)
+    {
+        if (_folders.Contains(to)) throw new IOException($"{to} exists.");
+        foreach (var file in _files.Keys.Where(file => file.StartsWith(from + "/", StringComparison.Ordinal)).ToList())
+            Move(file, to + file[from.Length..], overwrite: false);
+        _folders.Remove(from);
+        _folders.Add(to);
     }
 
     public void CreateFolder(string path, bool ownerOnly) => _folders.Add(path);
