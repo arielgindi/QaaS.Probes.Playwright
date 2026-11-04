@@ -2,6 +2,12 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.0.4
+
+- The release's source zip leaves out what building does not need, the panel's UI sources (its built `panel.html` is
+  in) and the fixtures the tests record on sites: 525 KB instead of 726 KB, for size-limited transfers. A test keeps it
+  under 650 KB.
+
 ## 2.0.3
 
 - **The recorder finds your login flow as QaaS finds it when your tests run**, and never fails to say why it did not:
