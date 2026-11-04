@@ -2057,7 +2057,7 @@ internal static class CaptureScript
           addEventListener('keydown', (event) => safe(() => {
             if (!event.isTrusted || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             if (event.key === 'F7') event.preventDefault();
-            if (event.key !== 'F2' || !part || state !== 'recording' || checking) return;
+            if (event.key !== 'F2' || !part || checking || !['recording', 'paused', 'trying'].includes(state)) return;
             event.preventDefault();
             event.stopImmediatePropagation();
             if (event.repeat) return;

@@ -5,6 +5,7 @@ using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.Panel;
+using QaaS.Playwright.Recorder.State;
 using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder;
@@ -92,7 +93,7 @@ internal static class FlowRecorder
             // continued that logs in itself, as it was recorded signed out.
             var options = (request.Login is { } login
                 ? new RecordingOptions(request.Url) { LoginFlow = login.Flow, LoginBaseUrl = login.BaseUrlFor(request.Url).Url, LoadStorageStatePath = null }
-                : new RecordingOptions(request.Url)) with { Continues = continued?.Recording };
+                : new RecordingOptions(request.Url)) with { Continues = continued?.Recording, Lifetime = lifetime };
             if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
             var session = await RecordingSession.StartAsync(options, news =>
@@ -154,7 +155,7 @@ internal static class FlowRecorder
                         request = panel.Request;
                     }
 
-                    recording = await session.StopAsync();
+                    recording = await session.StopAsync(await lifetime.Stopped);
                     ConsoleUi.Numbering = null;
                     await stopWatching.CancelAsync();
                     await watching;
@@ -360,6 +361,8 @@ internal static class FlowRecorder
     {
         if (loginFailure is not null) return Replayed.Stopped;
         var tester = panel?.Tester ?? new FlowTester(session);
+        // The replay is the state the recording started in, or went to once the login flow logged in.
+        var run = session.Snapshot.Run;
         TestReport report;
         try
         {
@@ -372,6 +375,7 @@ internal static class FlowRecorder
         }
 
         var ending = session.Closed.IsCompleted || session.Page.IsClosed || panel?.SaveRequested.IsCompleted == true;
+        if (!ending && run is not null) await session.RequestAsync(new RunEnded(run.Id, FlowTester.OutcomeOf(report)));
         if (report.Outcome != TestOutcome.Passed && !ending)
         {
             var notReplayed = report.NotReplayed(session.Build());
@@ -393,11 +397,11 @@ internal static class FlowRecorder
 
             if (choice == 1) return Replayed.Stopped;
             session.Log.Remove(notReplayed);
+            await session.RequestAsync(new KeepRecording(true));
         }
 
         panel?.ShowBanner(null);
         ConsoleUi.NumberAfter(session.Build());
-        session.EndTest();
         return report.Outcome == TestOutcome.Passed || ending ? Replayed.All : Replayed.LeftOut;
     }
 

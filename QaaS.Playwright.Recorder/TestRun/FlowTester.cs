@@ -11,6 +11,7 @@ using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.Panel;
+using QaaS.Playwright.Recorder.State;
 using QaaS.Playwright.Reporting;
 
 namespace QaaS.Playwright.Recorder.TestRun;
@@ -81,7 +82,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
     /// Replays the flow from the recording's start in the recorded window, as a test runs it: the page back to how the
     /// recording started (<see cref="RecordingSession.ResetToStartAsync"/>), BaseUrl, the login flow, then the flow up to
     /// the action <paramref name="upTo"/>, that one too, or none of it when null; the app is then where a part after it
-    /// starts. The session is in its Testing state already (<see cref="RecordingSession.BeginTest"/>), and stays in it.
+    /// starts. The session is in its Testing state already (<see cref="State.Rerecord"/>), and stays in it.
     /// It never throws.
     /// </summary>
     public Task<TestReport> ReplayFromStartAsync(RecordRequest request, string namespaceName, string? upTo) =>
@@ -105,6 +106,14 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
             return _running = Task.Run(() => RunOnceAsync(request, namespaceName, upTo, slowMotion, front, replay, fromStart, stop.Token));
         }
     }
+
+    /// <summary>How a run ended, as the state machine takes it.</summary>
+    public static RunOutcome OutcomeOf(TestReport report) => report.Outcome switch
+    {
+        TestOutcome.Passed => RunOutcome.Passed,
+        TestOutcome.Stopped => RunOutcome.Stopped,
+        _ => RunOutcome.Failed,
+    };
 
     /// <summary>Stops the run going on, and completes once it ended.</summary>
     public async Task StopAsync()
@@ -153,8 +162,12 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         };
         if (order.Count == 0)
             return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Record a step first: there is nothing to test yet." });
-        if (!replay && !session.BeginTest())
-            return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = "Wait for the login flow: the flow can be tested once the recording starts." });
+        // A test is a state of the recorder's, whose scope Stop ends; a replay runs in the state that asked for it.
+        var asked = replay ? null : await session.RequestAsync(new Test());
+        if (asked is { Accepted: false })
+            return Publish(report with { Phase = TestPhase.Done, Outcome = TestOutcome.NotRun, Problem = asked.Refused });
+        var run = (asked?.State ?? session.Snapshot).Run;
+        using var stopped = (session.CurrentRun?.Token ?? CancellationToken.None).Register(() => _stop?.Cancel());
 
         var times = new PhaseTimes();
         times.Begin(TestPhase.Building);
@@ -170,7 +183,8 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         }
         finally
         {
-            if (!replay) session.EndTest();
+            // Stopped first, the run ended already, and this changes nothing.
+            if (!replay && run is not null) await session.RequestAsync(new RunEnded(run.Id, OutcomeOf(report)));
         }
 
         report = Publish(report with { Phase = TestPhase.Done, Times = times.End() });

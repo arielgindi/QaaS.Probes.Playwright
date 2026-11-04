@@ -187,11 +187,14 @@ internal sealed record ReturnedToStart(bool Back) : Command
 /// <summary>The panel's ✕ on a part done.</summary>
 internal sealed record PartDismiss : Command;
 
-/// <summary>Esc while the login flow runs, or Log in by hand in the panel.</summary>
-internal sealed record LogInByHand : Command;
+/// <summary>Esc while the login flow runs, or Log in by hand in the panel; <paramref name="Why"/> it stopped, as the pause says.</summary>
+internal sealed record LogInByHand(string? Why = null) : Command;
 
-/// <summary>The login flow ended by itself: null when it logged in, else why not.</summary>
-internal sealed record LoginEnded(string? Failure) : Command
+/// <summary>
+/// The login flow ended by itself: <paramref name="Failure"/> null when it logged in, else why not; then the steps of a
+/// flow it <paramref name="Continues"/> replay.
+/// </summary>
+internal sealed record LoginEnded(string? Failure, bool Continues = false) : Command
 {
     public override bool ByThePerson => false;
 }
@@ -294,7 +297,7 @@ internal static class RecorderTable
             new RunEnded(state.Run?.Id ?? 0, RunOutcome.Failed), new RunEnded(state.Run?.Id ?? 0, RunOutcome.Stopped),
             new Rerecord("FillAsync", After: false, AtEnd: false), new Rerecord("SaveAsync", After: true, AtEnd: true),
             new RerecordFromFailure(), new PartDone(), new PartCancel(), new ReturnedToStart(true), new ReturnedToStart(false),
-            new PartDismiss(), new LogInByHand(), new LoginEnded(null), new LoginEnded("It waited 30 s."),
+            new PartDismiss(), new LogInByHand(), new LoginEnded(null), new LoginEnded(null, Continues: true), new LoginEnded("It waited 30 s."),
             new KeepRecording(true), new KeepRecording(false), new Stop(StopReason.Saved), new Stop(StopReason.CtrlC), new Ended(),
         ];
     }
@@ -312,13 +315,13 @@ internal static class RecorderTable
                 return Refuse("The recording started already.");
 
             case LoginEnded ended when s.Mode == Mode.LoggingIn:
-                return ended.Failure is { } why
-                    ? Go(s with { Mode = Mode.Paused, Then = Mode.Paused, Run = null, Notice = why }, Effect.DisposeRun)
+                return ended.Failure is { } why ? Go(s with { Mode = Mode.Paused, Then = Mode.Paused, Run = null, Notice = why }, Effect.DisposeRun)
+                    : ended.Continues ? Go(s with { Mode = Mode.Testing, Then = Mode.Recording, Run = NewRun(s, RunKind.ContinueReplay) }, Effect.DisposeRun, Effect.StartRun)
                     : Go(s with { Mode = Mode.Recording, Run = null, Notice = null }, Effect.DisposeRun, Effect.ResumeLog);
             case LoginEnded:
                 return Refuse("No login flow runs.");
-            case LogInByHand when s.Mode == Mode.LoggingIn:
-                return Go(s with { Mode = Mode.Paused, Then = Mode.Paused, Run = null, Notice = "You stopped the login flow: log in by hand in the app, then resume." },
+            case LogInByHand byHand when s.Mode == Mode.LoggingIn:
+                return Go(s with { Mode = Mode.Paused, Then = Mode.Paused, Run = null, Notice = byHand.Why ?? "You stopped the login flow." },
                     Effect.DisposeRun, Effect.ReplaceLoginPage);
             case LogInByHand:
                 return Refuse("No login flow runs.");
@@ -343,6 +346,8 @@ internal static class RecorderTable
             case ToggleTry:
                 return Refuse(Why(s, "try things"));
 
+            case CheckOn check when s.Check == check.Page:
+                return Refuse("In check mode already.");
             case CheckOn check when s.Mode == Mode.Recording:
                 return Go(s with { Check = check.Page, Inspect = null });
             case CheckOn:
@@ -356,6 +361,8 @@ internal static class RecorderTable
             case CheckOff:
                 return Go(s with { Check = null });
 
+            case InspectOn inspect when s.Inspect == inspect.Page:
+                return Refuse("In inspect mode already.");
             case InspectOn inspect when s.Mode is Mode.Recording or Mode.Paused or Mode.Trying:
                 return Go(s with { Inspect = inspect.Page, Check = null });
             case InspectOn:
@@ -552,10 +559,10 @@ internal interface IEffects
 /// panel and each page's overlay render from the snapshot only, and a page drops a snapshot older than the one it has.
 /// A subscriber of <see cref="Published"/> only renders: a request from it would wait for the request publishing.
 /// </summary>
-internal sealed class RecorderStateMachine(ICaptureDrain drain, IEffects effects)
+internal sealed class RecorderStateMachine(ICaptureDrain drain, IEffects effects, RecorderState? start = null)
 {
     private readonly SemaphoreSlim _turn = new(1, 1);
-    private volatile RecorderState _state = RecorderState.Initial;
+    private volatile RecorderState _state = start ?? RecorderState.Initial;
 
     public RecorderState State => _state;
 

@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
+using QaaS.Playwright.Recorder.State;
 using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder.Panel;
@@ -52,7 +53,6 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     private string? _namespace;
     private IPage? _highlighted;
     private string? _error;
-    private bool _saving;
     private bool _refresh = true;
     private Picked? _picked;
     private bool _watching;
@@ -104,6 +104,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
             session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
+            session.PartEffects = panel.PartEffectAsync;
             session.PaletteAsked += () => panel._commands.Writer.TryWrite(new PanelCommand("palette", null, null, null));
             session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
             panel._worker = Task.Run(panel.RunAsync);
@@ -198,7 +199,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         {
             if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
             else if (IsPartCommand(command)) await PartAsync(command);
-            else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
+            else if (command.Type == "checkMode" && !Ending) await _session.CheckModeAsync(command.On ?? !_session.Checking);
             else await CarryAsync(command);
         }
         catch (Exception failure) when (failure is not (PlaywrightException or OutOfMemoryException))
@@ -227,7 +228,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     {
         if (command.Type == "refresh") _refresh = true;
         // Once saving, the recording is what it is.
-        if (_saving) return;
+        if (Ending) return;
         switch (command.Type)
         {
             case "ready":
@@ -290,7 +291,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 _refresh = true;
                 break;
             case "save":
-                _saving = _refresh = true;
+                // Nothing more is recorded, nor changed here; then the lifetime ends the recording, and saves it.
+                await _session.RequestAsync(new Stop(StopReason.Saved));
+                _refresh = true;
                 // Before the test or the replay it stops ends, so the replay of a recording continued knows why.
                 _saveRequested.TrySetResult();
                 _ = _tester.StopAsync();
@@ -299,7 +302,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 _namespace ??= ProjectNamespace.Of(Request.OutputDir);
                 _ = _tester.RunAsync(Request, _namespace, command.Action, command.Slow == true, _page);
                 break;
+            // The run's state ends at once, its scope with it, whatever the step running waits for.
             case "stopTest":
+                Said(await _session.RequestAsync(new StopRun()));
                 _ = _tester.StopAsync();
                 break;
             case "clearTest":
@@ -552,12 +557,16 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         await _page.EvaluateAsync<bool>(ShowFunction, json);
     }
 
-    private string Status() => _saving ? "saving" : _session.State switch
+    // Once saving, the recording is what it is: the panel changes nothing more.
+    private bool Ending => _session.Snapshot.Mode is Mode.Saving or Mode.Ended;
+
+    private string Status() => _session.Snapshot.Mode switch
     {
-        RecordingState.Paused => "paused",
-        RecordingState.LoggingIn => "login",
-        RecordingState.Testing => "testing",
-        RecordingState.Trying => "trying",
+        Mode.Saving or Mode.Ended => "saving",
+        Mode.Paused => "paused",
+        Mode.LoggingIn or Mode.Starting => "login",
+        Mode.Testing or Mode.Asking => "testing",
+        Mode.Trying => "trying",
         _ => "recording",
     };
 

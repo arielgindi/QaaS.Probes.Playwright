@@ -6,6 +6,7 @@ using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Panel;
 using QaaS.Playwright.Recorder.TestRun;
 using QaaS.Playwright.Tests.EndToEnd;
+using QaaS.Playwright.Recorder.State;
 using static Microsoft.Playwright.Assertions;
 
 namespace QaaS.Playwright.Tests.Recorder;
@@ -217,7 +218,8 @@ public class TestRunTests
             // As the person keeps recording from where it stopped.
             notReplayed = report.NotReplayed(session.Build());
             session.Log.Remove(notReplayed);
-            session.EndTest();
+            await session.RequestAsync(new RunEnded(session.Snapshot.Run!.Id, RunOutcome.Failed));
+            await session.RequestAsync(new KeepRecording(true));
             await session.Page.GetByRole(AriaRole.Button, new() { Name = "Create ticket" }).ClickAsync();
             for (var wait = 0; wait < 50 && session.Build().Actions.Count < 3; wait++) await Task.Delay(100);
             windows = session.Page.Context.Browser!.Contexts.Sum(context => context.Pages.Count);
@@ -278,7 +280,7 @@ public class TestRunTests
             await view.Keyboard.PressAsync("Control+z");
             await Expect(code).ToContainTextAsync("\"Printer jammed\"");
             // Recorded again once more, then cancelled: the app goes back where it was, and the recording records again.
-            session.Resume();
+            if (session.State == RecordingState.Paused) await session.TogglePauseAsync();
             var before = app.Url;
             await card.ClickAsync();
             await card.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Re-record") }).ClickAsync();

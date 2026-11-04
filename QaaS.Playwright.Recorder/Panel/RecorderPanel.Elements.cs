@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
+using QaaS.Playwright.Recorder.State;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -80,7 +81,7 @@ internal sealed partial class RecorderPanel
         var view = PanelSnapshot.Element(picked.Node, picked.Page, picked.Description, picked.Gone, picked.Fillable);
         var checks = ChecksOf(picked);
         var check = checks.FirstOrDefault(each => each.Kind == _elementCheck) ?? checks.ElementAtOrDefault(picked.Check) ?? checks.FirstOrDefault();
-        var before = _part is { Phase: "recording" } part ? part.Part.Before : null;
+        var before = _session.Snapshot.Part?.Phase == PartPhase.Recording && _part is { } part ? part.Part.Before : null;
         var key = string.Join('|', _session.Log.Version, picked.Node, picked.Description.Target?.Chosen, _elementStep, check?.Kind, before,
             Request.ClassName);
         if (key != _previewKey) (_previews, _previewKey) = (Previews(picked, shown, check, before), key);

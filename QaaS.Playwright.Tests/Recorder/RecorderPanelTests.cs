@@ -133,8 +133,8 @@ public class RecorderPanelTests
             recording = await session.StopAsync();
         }
 
-        Assert.That(recording.Actions.Select(action => action.Target?.Text), Is.EqualTo(new[] { "New ticket", "Create ticket" }),
-            "undone actions are left out, and nothing done in the panel is recorded");
+        Assert.That(recording.Actions.Select(action => action.Target?.Text), Is.EqualTo(new[] { "New ticket" }),
+            "undone actions are left out, nothing done in the panel is recorded, and nothing once it saves");
     }
 
     [Test]

@@ -22,7 +22,7 @@ internal sealed record RecordingOptions(string Url)
     public IReadOnlyList<string> BrowserArgs { get; init; } = [];
 
     /// <summary>
-    /// The login flow that runs first, by its class name: nothing is recorded until <see cref="RecordingSession.Resume"/>,
+    /// The login flow that runs first, by its class name: nothing is recorded until it logged in,
     /// and the recording starts on the page the login left. Null to record at once.
     /// </summary>
     public string? LoginFlow { get; init; }
@@ -38,6 +38,9 @@ internal sealed record RecordingOptions(string Url)
     /// (<see cref="RecordingState.Testing"/>), before anything is recorded. Null to record anew.
     /// </summary>
     public Recording? Continues { get; init; }
+
+    /// <summary>The recorder's lifetime, which ends the run scopes still going however the recording ends; null in tests.</summary>
+    public RecorderLifetime? Lifetime { get; init; }
 }
 
 /// <summary>
@@ -78,7 +81,7 @@ internal enum RecordingState
 /// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), choose checks of the page
 /// (F6), try things without recording them (F7), and test the flow so far, or replay it up to a part they record again.
 /// </summary>
-internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
+internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffects
 {
     private const string Binding = "__qaasRecord";
     private const string ExplainBinding = "__qaasExplain";
@@ -102,11 +105,10 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     private readonly HashSet<IPage> _watchingDialogs = [];
     private readonly Lock _gate = new();
     private Recording? _result;
-    private RecordingState _state;
-    private RecordingState _beforeTest;
+    private readonly RecorderStateMachine _machine;
+    private readonly Dictionary<IPage, int> _documents = [];
+    private readonly List<IPage> _loginPages = [];
     private volatile LoginWatch? _login;
-    private RecordingState _beforeTry;
-    private string? _rerecording;
     private bool _notRecordedTold;
     private Task _published = Task.CompletedTask;
     private int _disposed;
@@ -122,13 +124,24 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         _context = context;
         _options = options;
         _onNews = onNews;
-        _state = options.LoginFlow is not null ? RecordingState.LoggingIn
-            : options.Continues is not null ? RecordingState.Testing
-            : RecordingState.Recording;
-        _beforeTest = RecordingState.Recording;
-        Pipeline = new CapturePipeline(recording: _state == RecordingState.Recording);
-        Log = new CaptureLog(paused: _state != RecordingState.Recording, options.Continues, Pipeline);
+        // As the table starts it: the login flow first, else the replay of the flow continued, else recording.
+        var start = RecorderTable.Apply(RecorderState.Initial, new Started(options.LoginFlow is not null, options.Continues is not null)).State;
+        Pipeline = new CapturePipeline(recording: start.LogOpen);
+        Pipeline.Commit(start.Epoch, start.LogOpen);
+        Log = new CaptureLog(paused: !start.LogOpen, options.Continues, Pipeline);
+        if (start.Run is { } run) CurrentRun = new RunScope(run.Kind.ToString(), options.Lifetime);
+        _machine = new RecorderStateMachine(this, this, start);
+        _machine.Published += Publish;
     }
+
+    /// <summary>The recorder's state: the one snapshot the console, the panel and every page render.</summary>
+    public RecorderState Snapshot => _machine.State;
+
+    /// <summary>The scope of the login, the test or the replay that runs now; null when none does.</summary>
+    public RunScope? CurrentRun { get; private set; }
+
+    /// <summary>What the panel does of a part recorded again as the state machine moves it on: begin it, keep it, drop it, go back.</summary>
+    public Func<Effect, RecorderState, RecorderState, Task>? PartEffects { get; set; }
 
     /// <summary>The capture pipeline: the epochs of the states, which every page's action carries, and what each page told.</summary>
     public CapturePipeline Pipeline { get; }
@@ -153,19 +166,14 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     /// <summary>Why the login could not be saved when the recording ended; null when it was, or nothing was to save.</summary>
     public string? LoginNotSaved { get; private set; }
 
-    public RecordingState State
-    {
-        get { lock (_gate) return _state; }
-    }
+    /// <summary>The main mode, as the console and the panel name it.</summary>
+    public RecordingState State => Named(Snapshot.Mode);
 
     /// <summary>What the recording does once the test running ends; when none runs, what it does now.</summary>
-    public RecordingState AfterTest
-    {
-        get { lock (_gate) return _state == RecordingState.Testing ? _beforeTest : _state; }
-    }
+    public RecordingState AfterTest => Snapshot is { Mode: Mode.Testing } testing ? Named(testing.Then) : State;
 
     /// <summary>Why the recording is paused when the person did not pause it, e.g. the login flow failed; else null.</summary>
-    public string? Notice { get; private set; }
+    public string? Notice => Snapshot.Notice;
 
     /// <summary>
     /// Where the recording starts after the login flow when it is not the URL it was given: the app's page the login
@@ -189,7 +197,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     /// A page is in check mode (F6, or Check in the panel): a click there picks an element to check, and does nothing
     /// else.
     /// </summary>
-    public bool Checking { get; private set; }
+    public bool Checking => Snapshot.Check is not null;
 
     /// <summary>Raised, on Playwright's thread, when a page went in or out of check mode.</summary>
     public event Action? CheckingChanged;
@@ -208,12 +216,9 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
 
     /// <summary>
     /// What the overlay says of the part being recorded again, e.g. <c>Re-recording FillNewTicketAsync</c>
-    /// (<see cref="Rerecording"/>); else null.
+    /// (<see cref="State.PartState"/>); else null.
     /// </summary>
-    public string? RerecordingPart
-    {
-        get { lock (_gate) return _rerecording; }
-    }
+    public string? RerecordingPart => PartLabel(Snapshot);
 
     /// <summary>Raised, on Playwright's thread, when the person pressed F2 in the app while recording a part again.</summary>
     public event Action? PartDone;
@@ -280,7 +285,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     /// of nothing, or when the app asked the browser to sign in: its page is then replaced by a fresh one at the same
     /// address, the login so far kept, so whatever the flow waited for fails at once, and nothing it does reaches the
     /// app. The recording then starts on the page the login left, or stays paused with why, for the person to log in
-    /// by hand. A recording that continues another goes on to replay it (<see cref="EndTest"/> ends that).
+    /// by hand. A recording that continues another goes on to replay it (<see cref="RunEnded"/> ends that).
     /// </summary>
     /// <param name="logIn">Runs the flow on the page.</param>
     /// <param name="scrub">Hides the login's secrets in what is shown of it, e.g. a page's address.</param>
@@ -291,11 +296,11 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         watch.Navigated(Page.Url);
         _login = watch;
         WatchNetwork(on: true);
-        using var stopped = new CancellationTokenSource();
+        var scope = CurrentRun ?? new RunScope(nameof(RunKind.Login), _options.Lifetime);
         LoginEnd? end;
         try
         {
-            var running = logIn(Page, stopped.Token);
+            var running = logIn(Page, scope.Token);
             using var ticking = new CancellationTokenSource();
             var ticker = TickAsync(watch, ticking.Token);
             var first = await Task.WhenAny((Task)running, watch.ByHand);
@@ -307,9 +312,9 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
             }
             else
             {
-                await stopped.CancelAsync();
+                // Its scope ends as the state leaves logging in: its token, and the pages it opened, which it acts on no more.
                 end = new LoginEnd(await watch.ByHand, ByHand: true);
-                await ReplacePageAsync();
+                _ = running.ContinueWith(task => _ = task.Exception, TaskScheduler.Default);
             }
         }
         finally
@@ -322,13 +327,8 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         if (end is null) StartedAfterLogin = await GoToStartAsync() is { Length: > 0 } note ? note : null;
         else if (!end.ByHand && Page.Url is "" or "about:blank") await OpenStartAsync();
         await AttachConsoleApiAsync();
-        if (end is not null) Pause(end.ByHand ? end.Why : $"{flow} failed: {end.Why}");
-        else if (_options.Continues is null) Resume();
-        else
-        {
-            lock (_gate) _state = RecordingState.Testing;
-            Announce(RecordingState.Testing);
-        }
+        await RequestAsync(end is null ? new LoginEnded(null, Continues: _options.Continues is not null)
+            : end.ByHand ? new LogInByHand(end.Why) : new LoginEnded($"{flow} failed: {end.Why}"));
 
         // The panel shows the state it went to.
         LoginChanged?.Invoke();
@@ -345,7 +345,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     /// Ends the recording: saves the login, closes the browser, and returns what was recorded. A login that cannot be
     /// saved is told in <see cref="LoginNotSaved"/>, and never costs the recording.
     /// </summary>
-    public async Task<Recording> StopAsync()
+    public async Task<Recording> StopAsync(StopReason reason = StopReason.Saved)
     {
         lock (_gate)
             if (_result is not null)
@@ -353,7 +353,8 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
 
         try
         {
-            await DrainAsync(Pipeline.Epoch, CancellationToken.None);
+            // Nothing more is recorded; the pages drained first, as every transition does.
+            await RequestAsync(new Stop(reason));
             await Log.SettleAsync(SettleTimeout);
             var recording = Build();
             await SaveLoginAsync();
@@ -390,182 +391,97 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         return drained.Complete;
     }
 
-    /// <summary>Pauses or resumes once the pages are drained, and returns once they have the state it went to.</summary>
-    public Task<RecordingState> TogglePauseAsync() => TransitionAsync(TogglePause);
-
-    /// <summary>Tries things, or stops trying, once the pages are drained, and returns once they have the state.</summary>
-    public Task<RecordingState> ToggleTryAsync(bool resume = true) => TransitionAsync(() => ToggleTry(resume));
-
-    // A transition as the capture pipeline has it: the pages drained, then the state changed, then every page told it.
-    private async Task<T> TransitionAsync<T>(Func<T> commit)
+    /// <summary>
+    /// Asks the state machine for <paramref name="command"/>: refused, nothing changes; taken, the pages were drained, its
+    /// effects carried out, and the new state committed as the capture pipeline's epoch and told to every page. It returns
+    /// once the pages have it, or did not answer in time.
+    /// </summary>
+    public async Task<Outcome> RequestAsync(Command command)
     {
-        await DrainAsync(Pipeline.Epoch, CancellationToken.None);
-        var result = commit();
-        await Published;
-        return result;
+        var outcome = await _machine.RequestAsync(command);
+        if (outcome.Accepted) await Published;
+        return outcome;
     }
+
+    /// <summary>F8: pauses or resumes; returns the state it is in then.</summary>
+    public async Task<RecordingState> TogglePauseAsync() => Named((await RequestAsync(new TogglePause())).State.Mode);
+
+    /// <summary>F7: tries things, or stops trying; returns the state it is in then.</summary>
+    public async Task<RecordingState> ToggleTryAsync() => Named((await RequestAsync(new ToggleTry())).State.Mode);
 
     /// <summary>The recording so far, as <see cref="StopAsync"/> would return it.</summary>
     public Recording Build() => Log.Build(_options.Url) with { After = _options.LoginFlow };
 
-    /// <summary>
-    /// Pauses a recording that records, and resumes one that is paused; returns the state it went to. While the login
-    /// flow runs, the flow is tested, or the person tries things, it stays as it is.
-    /// </summary>
-    public RecordingState TogglePause() => State switch
+    // What a transition does beside its new state, as the table says, once the pages were drained.
+    async Task IEffects.ApplyAsync(Effect effect, RecorderState before, RecorderState after)
     {
-        RecordingState.Recording => Pause(),
-        RecordingState.Paused => Resume(),
-        var other => other,
+        switch (effect)
+        {
+            case Effect.PauseLog:
+                Log.Pause(Now());
+                break;
+            case Effect.ResumeLog or Effect.ResumeLogRebased:
+                lock (_gate) Log.Resume(OpenPages(), Now(), rebase: effect == Effect.ResumeLogRebased);
+                break;
+            case Effect.StartTrying:
+                var tried = new CaptureLog(paused: true);
+                // From the pages as they are: where they go from here is what the person tried.
+                lock (_gate) tried.Resume(OpenPages(), Now());
+                Tried = tried;
+                break;
+            case Effect.StopTrying:
+                Tried = null;
+                break;
+            case Effect.StartRun:
+                CurrentRun = new RunScope(after.Run!.Kind.ToString(), _options.Lifetime);
+                break;
+            case Effect.DisposeRun when CurrentRun is { } run:
+                CurrentRun = null;
+                await run.DisposeAsync();
+                break;
+            case Effect.ReplaceLoginPage:
+                await ReplacePageAsync();
+                break;
+            case Effect.OpenPart or Effect.KeepPart or Effect.DropPart or Effect.GoBack when PartEffects is { } part:
+                await part(effect, before, after);
+                break;
+        }
+    }
+
+    // The state committed as the next epoch, which the log takes what began in while it is open, then told to every page.
+    private void Publish(RecorderState state)
+    {
+        Pipeline.Commit(state.Epoch, state.LogOpen);
+        lock (_gate)
+        {
+            if (state.Mode == Mode.Paused) _notRecordedTold = false;
+            if (state.Mode != Mode.LoggingIn)
+            {
+                WatchDialogs();
+                _loginPages.Clear();
+            }
+
+            _published = ShowStateAsync(state);
+        }
+
+        CheckingChanged?.Invoke();
+        // The end is the summary's to say.
+        if (state.Mode is not (Mode.Saving or Mode.Ended)) _onNews(Named(state.Mode));
+    }
+
+    private static RecordingState Named(Mode mode) => mode switch
+    {
+        Mode.Paused or Mode.Saving or Mode.Ended => RecordingState.Paused,
+        Mode.LoggingIn or Mode.Starting => RecordingState.LoggingIn,
+        Mode.Testing or Mode.Asking => RecordingState.Testing,
+        Mode.Trying => RecordingState.Trying,
+        _ => RecordingState.Recording,
     };
 
-    /// <summary>
-    /// Stops recording until <see cref="Resume"/>; <paramref name="notice"/> tells the person why when they did not
-    /// pause it themselves, e.g. the login flow failed. Trying, it stops trying too; while the flow is tested, it pauses
-    /// once the test ended.
-    /// </summary>
-    public RecordingState Pause(string? notice = null)
-    {
-        lock (_gate)
-        {
-            if (_state == RecordingState.Paused && notice is null) return _state;
-            if (_state == RecordingState.Testing)
-            {
-                (_beforeTest, Notice) = (RecordingState.Paused, notice);
-                return _state;
-            }
-
-            Log.Pause(Now());
-            (_state, Notice, Tried, _notRecordedTold) = (RecordingState.Paused, notice, null, false);
-            WatchDialogs();
-        }
-
-        return Announce(RecordingState.Paused);
-    }
-
-    /// <summary>
-    /// Records again, from the page the app is on now. After a pause, a page the app went to meanwhile is opened by its
-    /// address, so the next step runs where the person left it; after the login flow, the recording starts where it
-    /// left the page. Trying, it stops trying; while the flow is tested, it records once the test ended.
-    /// </summary>
-    public RecordingState Resume()
-    {
-        lock (_gate)
-        {
-            if (_state == RecordingState.Recording) return _state;
-            if (_state == RecordingState.Testing)
-            {
-                (_beforeTest, Notice) = (RecordingState.Recording, null);
-                return _state;
-            }
-
-            var open = _aliases.Where(pair => !pair.Key.IsClosed).Select(pair => (pair.Value, pair.Key.Url)).ToList();
-            Log.Resume(open, Now());
-            (_state, Notice, Tried) = (RecordingState.Recording, null, null);
-            WatchDialogs();
-        }
-
-        return Announce(RecordingState.Recording);
-    }
-
-    /// <summary>
-    /// Stops recording while the flow is tested in a window of its own, as a pause does, so nothing the person does in
-    /// the app meanwhile is recorded either. Returns false while the login flow runs, or a test already does.
-    /// </summary>
-    public bool BeginTest()
-    {
-        lock (_gate)
-        {
-            if (_state is RecordingState.LoggingIn or RecordingState.Testing) return false;
-            _beforeTest = _state;
-            Log.Pause(Now());
-            _state = RecordingState.Testing;
-        }
-
-        Announce(RecordingState.Testing);
-        return true;
-    }
-
-    /// <summary>
-    /// Goes back to what the recording did before the test: records again, as after a pause, or stays paused; or, with
-    /// <paramref name="paused"/>, stays paused anyway, as after a replay that left the app elsewhere.
-    /// </summary>
-    public RecordingState EndTest(bool paused = false)
-    {
-        RecordingState state;
-        lock (_gate)
-        {
-            if (_state != RecordingState.Testing) return _state;
-            var to = paused && _beforeTest != RecordingState.Trying ? RecordingState.Paused : _beforeTest;
-            if (to == RecordingState.Recording) Log.Resume(OpenPages(), Now());
-            if (to != RecordingState.Trying) Tried = null;
-            state = _state = to;
-        }
-
-        return Announce(state);
-    }
-
-    /// <summary>
-    /// After a replay up to a part of the flow, which the person records again (<see cref="CaptureLog.BeginSplice"/>):
-    /// records from the pages as the replay left them, the overlay saying <paramref name="part"/>, until
-    /// <see cref="Rerecording"/> is given null. The pages went where the flow goes, so nothing is gone to by its address.
-    /// </summary>
-    public RecordingState ResumeAfterReplay(string part)
-    {
-        lock (_gate)
-        {
-            if (_state != RecordingState.Testing) return _state;
-            Log.Resume(OpenPages(), Now(), rebase: true);
-            (_state, Notice, _rerecording) = (RecordingState.Recording, null, part);
-            WatchDialogs();
-        }
-
-        return Announce(RecordingState.Recording);
-    }
-
-    /// <summary>Says in the overlay what part the person records again, and how to end it; null, none.</summary>
-    public void Rerecording(string? part)
-    {
-        lock (_gate) _rerecording = part;
-        _ = ShowStateAsync(State);
-    }
-
-    /// <summary>
-    /// Has the person try things in the app, or go back to what the recording did before (F7, or Try in the panel):
-    /// while trying, nothing is recorded, as when paused, and what they do is collected in <see cref="Tried"/> instead.
-    /// Returns the state it went to; while the login flow runs or the flow is tested, it stays as it is. Not
-    /// <paramref name="resume"/>, it goes from trying to paused, e.g. before the flow is replayed up to a part.
-    /// </summary>
-    public RecordingState ToggleTry(bool resume = true)
-    {
-        RecordingState state;
-        lock (_gate)
-        {
-            switch (_state)
-            {
-                case RecordingState.Recording or RecordingState.Paused:
-                    _beforeTry = _state;
-                    Log.Pause(Now());
-                    var tried = new CaptureLog(paused: true);
-                    // From the pages as they are: where they go from here is what the person tried.
-                    tried.Resume(OpenPages(), Now());
-                    (Tried, _state) = (tried, RecordingState.Trying);
-                    break;
-                case RecordingState.Trying:
-                    var back = resume ? _beforeTry : RecordingState.Paused;
-                    if (back == RecordingState.Recording) Log.Resume(OpenPages(), Now());
-                    (Tried, _state) = (null, back);
-                    break;
-                default:
-                    return _state;
-            }
-
-            state = _state;
-            WatchDialogs();
-        }
-
-        return Announce(state);
-    }
+    // What the overlay says of a part recorded again, while it replays and while it is recorded.
+    private static string? PartLabel(RecorderState state) => state.Part is { Phase: PartPhase.Replaying or PartPhase.Recording } part
+        ? $"{(part.After ? "Recording after" : "Re-recording")} {part.Label}"
+        : null;
 
     /// <summary>
     /// Brings the recorded page back to how the recording started, before it is replayed from there: its cookies and the
@@ -746,6 +662,21 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     private async Task ReplacePageAsync()
     {
         var old = Page;
+        // The pages the login flow opened go too: it acts in them no more.
+        List<IPage> opened;
+        lock (_gate) opened = [.. _loginPages.Where(page => page != old)];
+        foreach (var popup in opened)
+        {
+            try
+            {
+                await popup.CloseAsync(new() { RunBeforeUnload = false });
+            }
+            catch (PlaywrightException)
+            {
+                // Closed already.
+            }
+        }
+
         var url = old.IsClosed || old.Url is "" or "about:blank" ? _options.Url : old.Url;
         var fresh = await _context.NewPageAsync();
         Track(fresh, "page");
@@ -872,7 +803,8 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         switch (message?.Type)
         {
             case "state" when page is not null:
-                _ = PageElements.CallAsync(page, new { op = "state", state = StateName(State), part = RerecordingPart, epoch = Pipeline.Epoch });
+                var now = Snapshot;
+                _ = PageElements.CallAsync(page, new { op = "state", state = StateName(Named(now.Mode)), part = PartLabel(now), epoch = now.Epoch });
                 break;
             case "pause":
                 _ = TogglePauseAsync();
@@ -891,11 +823,12 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
                 ElementsChanged?.Invoke();
                 break;
             case "inspect":
+                if (message.On == false) _ = RequestAsync(new InspectOff());
+                else if (Snapshot.Inspect is null) _ = RequestAsync(new InspectOn(DocumentOf(page)));
                 Inspected?.Invoke(AliasOf(page), json);
                 break;
             case "checking":
-                Checking = message.On == true;
-                CheckingChanged?.Invoke();
+                _ = RequestAsync(message.On == true ? new CheckOn(DocumentOf(page)) : new CheckOff());
                 break;
             case "loginByHand":
                 LogInByHand();
@@ -909,7 +842,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
             case "try":
                 _ = ToggleTryAsync();
                 break;
-            case "done" when RerecordingPart is not null:
+            case "done" when Snapshot.Part is { Phase: PartPhase.Recording }:
                 PartDone?.Invoke();
                 break;
             case "palette":
@@ -918,26 +851,13 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         }
     }
 
-    // The state is committed as the next epoch, which records only while recording, then told to every page.
-    private RecordingState Announce(RecordingState state)
-    {
-        lock (_gate)
-        {
-            Pipeline.Commit(recording: _state == RecordingState.Recording);
-            _published = ShowStateAsync(_state);
-        }
-
-        _onNews(state);
-        return state;
-    }
-
     // Each page's overlay shows the state, with its epoch: paused, or nothing while the login flow runs. A page loading
     // meanwhile asks.
-    private Task ShowStateAsync(RecordingState state)
+    private Task ShowStateAsync(RecorderState state)
     {
         List<IPage> pages;
         lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
-        var shown = new { op = "state", state = StateName(state), part = RerecordingPart, epoch = Pipeline.Epoch };
+        var shown = new { op = "state", state = StateName(Named(state.Mode)), part = PartLabel(state), epoch = state.Epoch };
         return Task.WhenAll(pages.Select(async page =>
         {
             try
@@ -949,6 +869,12 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
                 // A page a browser dialog blocks learns it once the dialog is answered.
             }
         }));
+    }
+
+    // A page's document, as check and inspect mode belong to: numbered anew each time it loads one.
+    private PageDocument DocumentOf(IPage? page)
+    {
+        lock (_gate) return new PageDocument(AliasOf(page), $"{(page is null ? 0 : _documents.GetValueOrDefault(page))}");
     }
 
     private static string StateName(RecordingState state) => state switch
@@ -992,9 +918,18 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
 
             opened = alias is null && _aliases.Count > 0;
             _aliases[page] = alias ?? (opened ? $"page{_aliases.Count}" : "page");
-            if (_state != RecordingState.LoggingIn) WatchDialogs(page);
+            if (Snapshot.Mode != Mode.LoggingIn) WatchDialogs(page);
+            else _loginPages.Add(page);
         }
 
+        // A new document leaves the check or inspect mode of the one before, which it does not have.
+        page.DOMContentLoaded += (_, _) => Guarded("a page that loaded", () =>
+        {
+            lock (_gate) _documents[page] = _documents.GetValueOrDefault(page) + 1;
+            var held = Snapshot;
+            var alias = AliasOf(page);
+            if (held.Check?.Page == alias || held.Inspect?.Page == alias) _ = RequestAsync(new DocumentChanged(DocumentOf(page)));
+        });
         page.FrameNavigated += (_, frame) => Guarded("a page that went elsewhere", () =>
         {
             if (frame != page.MainFrame) return;

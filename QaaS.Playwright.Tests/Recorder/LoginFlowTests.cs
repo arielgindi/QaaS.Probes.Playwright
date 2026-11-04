@@ -204,7 +204,7 @@ public class LoginFlowTests
             session.LogInByHand();
             end = await loggingIn;
             // The person logs in in the page put in its place, and then records.
-            session.Resume();
+            await session.TogglePauseAsync();
             await session.Page.GetByLabel("Username").FillAsync("bob");
             await session.Page.GetByRole(AriaRole.Button, new() { Name = "Log in" }).ClickAsync();
             await Expect(session.Page.Locator("#user")).ToHaveTextAsync("bob");
