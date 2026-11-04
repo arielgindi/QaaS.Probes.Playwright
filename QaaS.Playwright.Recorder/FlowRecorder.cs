@@ -291,12 +291,12 @@ internal static class FlowRecorder
     /// </summary>
     internal static RecordRequest LeftOut(RecordRequest request) => request with { Replaces = null };
 
-    private enum Replayed { All, LeftOut, Stopped }
+    internal enum Replayed { All, LeftOut, Stopped }
 
     // The steps of the recording continued replay in the recorded window, as a test runs them. When they cannot, or the
     // login flow before them failed, the person keeps recording from where they stopped, without the steps from there
     // on, or stops.
-    private static async Task<Replayed> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
+    internal static async Task<Replayed> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
         string? loginFailure)
     {
         if (loginFailure is not null) return Replayed.Stopped;
@@ -345,7 +345,7 @@ internal static class FlowRecorder
     // recorded; then the page goes to the URL. When it fails, or the person stops it (Esc here or in the page, or the
     // panel) or it hangs, the recording stays paused for the person to log in by hand and resume it, or to close the
     // browser. Returns why it did not log in, or null.
-    private static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
+    internal static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
     {
         var login = request.Login!;
         var (baseUrl, baseUrlFrom) = login.BaseUrlFor(request.Url);
