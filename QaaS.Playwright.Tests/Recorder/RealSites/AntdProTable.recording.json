@@ -1481,8 +1481,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 这是一段描述 5740000\" }).GetByLabel(\"\")",
-            "selector": "internal:role=row[name=\"TradeCode 98 这是一段描述 5740000\"i] >> internal:label=\"\"i"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 This is a description 5740000\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\"TradeCode 98 This is a description 5740000\"i] >> internal:label=\"\"i"
           }
         ]
       },
@@ -1506,7 +1506,7 @@
       "target": {
         "tag": "tr",
         "role": "row",
-        "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "text": "TradeCode 98 This is a description 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
         "groupLabel": "abnormal",
         "interactive": true,
         "item": true,
@@ -1521,13 +1521,13 @@
               {
                 "m": "role",
                 "role": "row",
-                "name": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "name": "TradeCode 98 This is a description 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 98 This is a description 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "row",
@@ -1543,7 +1543,7 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 98 This is a description 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "group",
@@ -1559,7 +1559,7 @@
               {
                 "m": "role",
                 "role": "row",
-                "name": "TradeCode 98 这是一段描述 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "name": "TradeCode 98 This is a description 5740000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
                 "exact": true
               }
             ],
@@ -1572,8 +1572,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 这是一段描述 5740000\" })",
-            "selector": "internal:role=row[name=\"TradeCode 98 这是一段描述 5740000\"i]"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 98 This is a description 5740000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 98 This is a description 5740000\"i]"
           }
         ]
       },
@@ -1591,7 +1591,7 @@
       "target": {
         "tag": "tr",
         "role": "row",
-        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
         "interactive": true,
         "item": true,
         "row": {
@@ -1605,13 +1605,13 @@
               {
                 "m": "role",
                 "role": "row",
-                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "name": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "row",
@@ -1627,15 +1627,15 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
-            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 This is a description 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 This is a description 6960000\"i]"
           }
         ]
       },
@@ -1653,7 +1653,7 @@
       "target": {
         "tag": "tr",
         "role": "row",
-        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
         "interactive": true,
         "item": true,
         "row": {
@@ -1667,13 +1667,13 @@
               {
                 "m": "role",
                 "role": "row",
-                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "name": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "row",
@@ -1689,15 +1689,15 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
-            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 This is a description 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 This is a description 6960000\"i]"
           }
         ]
       },
@@ -1751,8 +1751,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" }).GetByLabel(\"\")",
-            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i] >> internal:label=\"\"i"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 This is a description 6960000\" }).GetByLabel(\"\")",
+            "selector": "internal:role=row[name=\"TradeCode 99 This is a description 6960000\"i] >> internal:label=\"\"i"
           }
         ]
       },
@@ -2429,8 +2429,8 @@
         "type": "radio",
         "name": "type",
         "value": "1",
-        "text": "弱",
-        "label": "弱",
+        "text": "Weak",
+        "label": "Weak",
         "groupLabel": "Rule Type",
         "interactive": true,
         "candidates": [
@@ -2478,13 +2478,13 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "弱",
+                "name": "Weak",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "弱"
+            "text": "Weak"
           },
           {
             "kind": "roleInGroup",
@@ -2501,13 +2501,13 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "弱",
+                "name": "Weak",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "弱"
+            "text": "Weak"
           },
           {
             "kind": "group",
@@ -2528,7 +2528,7 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "弱",
+                "name": "Weak",
                 "exact": true
               }
             ],
@@ -2541,8 +2541,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"弱\" })",
-            "selector": "internal:role=radio[name=\"弱\"i]"
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"Weak\" })",
+            "selector": "internal:role=radio[name=\"Weak\"i]"
           }
         ]
       },
@@ -2579,8 +2579,8 @@
         "type": "radio",
         "name": "type",
         "value": "0",
-        "text": "强",
-        "label": "强",
+        "text": "Strong",
+        "label": "Strong",
         "groupLabel": "Rule Type",
         "interactive": true,
         "candidates": [
@@ -2628,13 +2628,13 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "强",
+                "name": "Strong",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "强"
+            "text": "Strong"
           },
           {
             "kind": "roleInGroup",
@@ -2651,13 +2651,13 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "强",
+                "name": "Strong",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "强"
+            "text": "Strong"
           },
           {
             "kind": "group",
@@ -2678,7 +2678,7 @@
               {
                 "m": "role",
                 "role": "radio",
-                "name": "强",
+                "name": "Strong",
                 "exact": true
               }
             ],
@@ -2691,8 +2691,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"强\" })",
-            "selector": "internal:role=radio[name=\"强\"i]"
+            "csharp": "GetByRole(AriaRole.Radio, new() { Name = \"Strong\" })",
+            "selector": "internal:role=radio[name=\"Strong\"i]"
           }
         ]
       },
@@ -2828,8 +2828,8 @@
       ],
       "target": {
         "tag": "div",
-        "text": "表二",
-        "groupLabel": "表一",
+        "text": "Table two",
+        "groupLabel": "Table one",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -2842,7 +2842,7 @@
               },
               {
                 "m": "has",
-                "text": "表一"
+                "text": "Table one"
               },
               {
                 "m": "css",
@@ -2850,27 +2850,27 @@
               }
             ],
             "count": 2,
-            "text": "表一"
+            "text": "Table one"
           },
           {
             "kind": "text",
             "parts": [
               {
                 "m": "text",
-                "text": "表二"
+                "text": "Table two"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "表二"
+            "text": "Table two"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"表二\")",
-            "selector": "internal:attr=[title=\"表二\"i]"
+            "csharp": "GetByTitle(\"Table two\")",
+            "selector": "internal:attr=[title=\"Table two\"i]"
           }
         ]
       },
@@ -3220,7 +3220,7 @@
       "target": {
         "tag": "tr",
         "role": "row",
-        "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+        "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -3230,21 +3230,21 @@
               {
                 "m": "role",
                 "role": "row",
-                "name": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
+                "name": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "TradeCode 99 这是一段描述 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
+            "text": "TradeCode 99 This is a description 6960000 abnormal 1970-01-01 00:00:00 Configuration Subscribe to alerts"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 这是一段描述 6960000\" })",
-            "selector": "internal:role=row[name=\"TradeCode 99 这是一段描述 6960000\"i]"
+            "csharp": "GetByRole(AriaRole.Row, new() { Name = \"TradeCode 99 This is a description 6960000\" })",
+            "selector": "internal:role=row[name=\"TradeCode 99 This is a description 6960000\"i]"
           }
         ]
       },
@@ -3266,7 +3266,7 @@
               },
               {
                 "m": "filter",
-                "hasText": "这是一段描述"
+                "hasText": "This is a description"
               },
               {
                 "m": "filter",

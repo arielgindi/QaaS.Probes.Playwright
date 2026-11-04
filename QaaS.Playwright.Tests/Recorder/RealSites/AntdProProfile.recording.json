@@ -11,7 +11,7 @@
       "target": {
         "tag": "a",
         "role": "link",
-        "text": "催一下",
+        "text": "Send a reminder",
         "interactive": true,
         "candidates": [
           {
@@ -20,13 +20,13 @@
               {
                 "m": "role",
                 "role": "link",
-                "name": "催一下",
+                "name": "Send a reminder",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "催一下"
+            "text": "Send a reminder"
           },
           {
             "kind": "item",
@@ -37,26 +37,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "部门初审"
+                "hasText": "Department review"
               },
               {
                 "m": "role",
                 "role": "link",
-                "name": "催一下",
+                "name": "Send a reminder",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "部门初审"
+            "text": "Department review"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"催一下\" })",
-            "selector": "internal:role=link[name=\"催一下\"i]"
+            "csharp": "GetByRole(AriaRole.Link, new() { Name = \"Send a reminder\" })",
+            "selector": "internal:role=link[name=\"Send a reminder\"i]"
           }
         ]
       },
@@ -75,7 +75,7 @@
       "target": {
         "tag": "li",
         "role": "menuitem",
-        "text": "skin 主题设置",
+        "text": "skin Theme settings",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -85,21 +85,21 @@
               {
                 "m": "role",
                 "role": "menuitem",
-                "name": "skin 主题设置",
+                "name": "skin Theme settings",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "skin 主题设置"
+            "text": "skin Theme settings"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin 主题设置\" })",
-            "selector": "internal:role=menuitem[name=\"skin 主题设置\"i]"
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin Theme settings\" })",
+            "selector": "internal:role=menuitem[name=\"skin Theme settings\"i]"
           }
         ]
       },

@@ -92,8 +92,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByText(\"Ant DesignAnt Design 是西湖区最具影响力的 Web 设计规范账户密码登录手机号登录自动登录忘记密码 ?登 录其他登录方式 :\")",
-            "selector": "internal:text=\"Ant DesignAnt Design 是西湖区最具影响力的 Web 设计规范账户密码登录手机号登录自动登录忘记密码 ?登 录其他登录方式 :\"i"
+            "csharp": "GetByText(\"Ant DesignAnt Design is the Westlake District's most influential Web design specificationAccount loginPhone loginAuto loginForgot password ?Log inOther login methods :\")",
+            "selector": "internal:text=\"Ant DesignAnt Design is the Westlake District's most influential Web design specificationAccount loginPhone loginAuto loginForgot password ?Log inOther login methods :\"i"
           }
         ]
       },
@@ -802,10 +802,10 @@
         "role": "textbox",
         "type": "text",
         "id": "name",
-        "text": "仓库名",
-        "label": "仓库名",
-        "groupLabel": "仓库名",
-        "placeholder": "请输入仓库名称",
+        "text": "Warehouse name",
+        "label": "Warehouse name",
+        "groupLabel": "Warehouse name",
+        "placeholder": "Enter the warehouse name",
         "editable": true,
         "interactive": true,
         "candidates": [
@@ -827,13 +827,13 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库名",
+                "name": "Warehouse name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库名"
+            "text": "Warehouse name"
           },
           {
             "kind": "group",
@@ -844,18 +844,18 @@
               },
               {
                 "m": "has",
-                "text": "仓库名"
+                "text": "Warehouse name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库名",
+                "name": "Warehouse name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库名"
+            "text": "Warehouse name"
           },
           {
             "kind": "item",
@@ -866,26 +866,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "仓库名"
+                "hasText": "Warehouse name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库名",
+                "name": "Warehouse name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库名"
+            "text": "Warehouse name"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"仓库名\" })",
-            "selector": "internal:role=textbox[name=\"仓库名\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Warehouse name\" })",
+            "selector": "internal:role=textbox[name=\"Warehouse name\"i]"
           }
         ]
       },
@@ -907,10 +907,10 @@
         "role": "textbox",
         "type": "text",
         "id": "url",
-        "text": "仓库域名",
-        "label": "仓库域名",
+        "text": "Warehouse domain",
+        "label": "Warehouse domain",
         "groupLabel": "http://",
-        "placeholder": "请输入",
+        "placeholder": "Type a value",
         "editable": true,
         "interactive": true,
         "candidates": [
@@ -932,13 +932,13 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库域名",
+                "name": "Warehouse domain",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库域名"
+            "text": "Warehouse domain"
           },
           {
             "kind": "group",
@@ -954,7 +954,7 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库域名",
+                "name": "Warehouse domain",
                 "exact": true
               }
             ],
@@ -976,7 +976,7 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "仓库域名",
+                "name": "Warehouse domain",
                 "exact": true
               }
             ],
@@ -989,8 +989,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"仓库域名\" })",
-            "selector": "internal:role=textbox[name=\"仓库域名\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Warehouse domain\" })",
+            "selector": "internal:role=textbox[name=\"Warehouse domain\"i]"
           }
         ]
       },
@@ -1008,9 +1008,9 @@
         "role": "combobox",
         "type": "search",
         "id": "owner",
-        "text": "仓库管理员",
-        "label": "仓库管理员",
-        "groupLabel": "仓库管理员",
+        "text": "Warehouse manager",
+        "label": "Warehouse manager",
+        "groupLabel": "Warehouse manager",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -1032,13 +1032,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "group",
@@ -1049,18 +1049,18 @@
               },
               {
                 "m": "has",
-                "text": "仓库管理员"
+                "text": "Warehouse manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "item",
@@ -1071,26 +1071,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "请选择管理员"
+                "hasText": "Select a manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "请选择管理员"
+            "text": "Select a manager"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
-            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Warehouse manager\" })",
+            "selector": "internal:role=combobox[name=\"Warehouse manager\"i]"
           }
         ]
       },
@@ -1119,9 +1119,9 @@
         "role": "combobox",
         "type": "search",
         "id": "owner",
-        "text": "仓库管理员",
-        "label": "仓库管理员",
-        "groupLabel": "仓库管理员",
+        "text": "Warehouse manager",
+        "label": "Warehouse manager",
+        "groupLabel": "Warehouse manager",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -1143,13 +1143,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "group",
@@ -1160,18 +1160,18 @@
               },
               {
                 "m": "has",
-                "text": "仓库管理员"
+                "text": "Warehouse manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "item",
@@ -1182,26 +1182,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "请选择管理员"
+                "hasText": "Select a manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "请选择管理员"
+            "text": "Select a manager"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
-            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Warehouse manager\" })",
+            "selector": "internal:role=combobox[name=\"Warehouse manager\"i]"
           }
         ]
       },
@@ -1219,9 +1219,9 @@
         "role": "combobox",
         "type": "search",
         "id": "owner",
-        "text": "仓库管理员",
-        "label": "仓库管理员",
-        "groupLabel": "仓库管理员",
+        "text": "Warehouse manager",
+        "label": "Warehouse manager",
+        "groupLabel": "Warehouse manager",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -1243,13 +1243,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "group",
@@ -1260,18 +1260,18 @@
               },
               {
                 "m": "has",
-                "text": "仓库管理员"
+                "text": "Warehouse manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "仓库管理员"
+            "text": "Warehouse manager"
           },
           {
             "kind": "item",
@@ -1282,26 +1282,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "请选择管理员"
+                "hasText": "Select a manager"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "仓库管理员",
+                "name": "Warehouse manager",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "请选择管理员"
+            "text": "Select a manager"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"仓库管理员\" })",
-            "selector": "internal:role=combobox[name=\"仓库管理员\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Warehouse manager\" })",
+            "selector": "internal:role=combobox[name=\"Warehouse manager\"i]"
           }
         ]
       },
@@ -1325,8 +1325,8 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "周毛毛",
-        "groupLabel": "付晓晓",
+        "text": "Martin Ward",
+        "groupLabel": "Laura Fisher",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1339,7 +1339,7 @@
               },
               {
                 "m": "has",
-                "text": "付晓晓"
+                "text": "Laura Fisher"
               },
               {
                 "m": "css",
@@ -1347,27 +1347,27 @@
               }
             ],
             "count": 2,
-            "text": "付晓晓"
+            "text": "Laura Fisher"
           },
           {
             "kind": "text",
             "parts": [
               {
                 "m": "text",
-                "text": "周毛毛"
+                "text": "Martin Ward"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "周毛毛"
+            "text": "Martin Ward"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"周毛毛\")",
-            "selector": "internal:attr=[title=\"周毛毛\"i]"
+            "csharp": "GetByTitle(\"Martin Ward\")",
+            "selector": "internal:attr=[title=\"Martin Ward\"i]"
           }
         ]
       },
@@ -1394,9 +1394,9 @@
         "role": "combobox",
         "type": "search",
         "id": "approver",
-        "text": "审批人",
-        "label": "审批人",
-        "groupLabel": "审批人",
+        "text": "Approver",
+        "label": "Approver",
+        "groupLabel": "Approver",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -1418,13 +1418,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "审批人",
+                "name": "Approver",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "审批人"
+            "text": "Approver"
           },
           {
             "kind": "group",
@@ -1435,18 +1435,18 @@
               },
               {
                 "m": "has",
-                "text": "审批人"
+                "text": "Approver"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "审批人",
+                "name": "Approver",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "审批人"
+            "text": "Approver"
           },
           {
             "kind": "item",
@@ -1457,26 +1457,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "请选择审批员"
+                "hasText": "Select an approver"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "审批人",
+                "name": "Approver",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "请选择审批员"
+            "text": "Select an approver"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"审批人\" })",
-            "selector": "internal:role=combobox[name=\"审批人\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Approver\" })",
+            "selector": "internal:role=combobox[name=\"Approver\"i]"
           }
         ]
       },
@@ -1500,7 +1500,7 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "付晓晓",
+        "text": "Laura Fisher",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1509,19 +1509,19 @@
             "parts": [
               {
                 "m": "text",
-                "text": "付晓晓"
+                "text": "Laura Fisher"
               }
             ],
             "count": 2,
-            "text": "付晓晓"
+            "text": "Laura Fisher"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"付晓晓\").Nth(1)",
-            "selector": "internal:attr=[title=\"付晓晓\"i] >> nth=1"
+            "csharp": "GetByTitle(\"Laura Fisher\").Nth(1)",
+            "selector": "internal:attr=[title=\"Laura Fisher\"i] >> nth=1"
           }
         ]
       },
@@ -1555,8 +1555,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByText(\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\")",
-            "selector": "internal:text=\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\"i"
+            "csharp": "GetByText(\"Member managementMember nameEmployee IDDepartmentActionMember nameEmployee IDDepartmentAction\")",
+            "selector": "internal:text=\"Member managementMember nameEmployee IDDepartmentActionMember nameEmployee IDDepartmentAction\"i"
           }
         ]
       },
@@ -1587,9 +1587,9 @@
         "role": "textbox",
         "type": "text",
         "id": "name2",
-        "text": "任务名",
-        "label": "任务名",
-        "groupLabel": "任务名",
+        "text": "Task name",
+        "label": "Task name",
+        "groupLabel": "Task name",
         "placeholder": "Please enter",
         "editable": true,
         "interactive": true,
@@ -1612,13 +1612,13 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务名",
+                "name": "Task name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务名"
+            "text": "Task name"
           },
           {
             "kind": "group",
@@ -1629,18 +1629,18 @@
               },
               {
                 "m": "has",
-                "text": "任务名"
+                "text": "Task name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务名",
+                "name": "Task name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务名"
+            "text": "Task name"
           },
           {
             "kind": "item",
@@ -1651,26 +1651,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "任务名"
+                "hasText": "Task name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务名",
+                "name": "Task name",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务名"
+            "text": "Task name"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"任务名\" })",
-            "selector": "internal:role=textbox[name=\"任务名\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Task name\" })",
+            "selector": "internal:role=textbox[name=\"Task name\"i]"
           }
         ]
       },
@@ -1692,9 +1692,9 @@
         "role": "textbox",
         "type": "text",
         "id": "url2",
-        "text": "任务描述",
-        "label": "任务描述",
-        "groupLabel": "任务描述",
+        "text": "Task description",
+        "label": "Task description",
+        "groupLabel": "Task description",
         "placeholder": "Please enter",
         "editable": true,
         "interactive": true,
@@ -1717,13 +1717,13 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务描述",
+                "name": "Task description",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务描述"
+            "text": "Task description"
           },
           {
             "kind": "group",
@@ -1734,18 +1734,18 @@
               },
               {
                 "m": "has",
-                "text": "任务描述"
+                "text": "Task description"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务描述",
+                "name": "Task description",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务描述"
+            "text": "Task description"
           },
           {
             "kind": "item",
@@ -1756,26 +1756,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "任务描述"
+                "hasText": "Task description"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "任务描述",
+                "name": "Task description",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务描述"
+            "text": "Task description"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"任务描述\" })",
-            "selector": "internal:role=textbox[name=\"任务描述\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Task description\" })",
+            "selector": "internal:role=textbox[name=\"Task description\"i]"
           }
         ]
       },
@@ -1793,9 +1793,9 @@
         "role": "combobox",
         "type": "search",
         "id": "owner2",
-        "text": "执行人",
-        "label": "执行人",
-        "groupLabel": "执行人",
+        "text": "Assignee",
+        "label": "Assignee",
+        "groupLabel": "Assignee",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -1817,13 +1817,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "执行人",
+                "name": "Assignee",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "执行人"
+            "text": "Assignee"
           },
           {
             "kind": "group",
@@ -1834,18 +1834,18 @@
               },
               {
                 "m": "has",
-                "text": "执行人"
+                "text": "Assignee"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "执行人",
+                "name": "Assignee",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "执行人"
+            "text": "Assignee"
           },
           {
             "kind": "item",
@@ -1861,7 +1861,7 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "执行人",
+                "name": "Assignee",
                 "exact": true
               }
             ],
@@ -1874,8 +1874,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"执行人\" })",
-            "selector": "internal:role=combobox[name=\"执行人\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Assignee\" })",
+            "selector": "internal:role=combobox[name=\"Assignee\"i]"
           }
         ]
       },
@@ -1899,8 +1899,8 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "周毛毛",
-        "groupLabel": "付晓晓",
+        "text": "Martin Ward",
+        "groupLabel": "Laura Fisher",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1913,7 +1913,7 @@
               },
               {
                 "m": "has",
-                "text": "付晓晓"
+                "text": "Laura Fisher"
               },
               {
                 "m": "css",
@@ -1922,26 +1922,26 @@
             ],
             "count": 6,
             "hidden": 4,
-            "text": "付晓晓"
+            "text": "Laura Fisher"
           },
           {
             "kind": "text",
             "parts": [
               {
                 "m": "text",
-                "text": "周毛毛"
+                "text": "Martin Ward"
               }
             ],
             "count": 4,
-            "text": "周毛毛"
+            "text": "Martin Ward"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"周毛毛\").Nth(3)",
-            "selector": "internal:attr=[title=\"周毛毛\"i] >> nth=3"
+            "csharp": "GetByTitle(\"Martin Ward\").Nth(3)",
+            "selector": "internal:attr=[title=\"Martin Ward\"i] >> nth=3"
           }
         ]
       },
@@ -1972,10 +1972,10 @@
         "tag": "input",
         "role": "textbox",
         "id": "dateRange2",
-        "text": "生效日期",
-        "label": "生效日期",
-        "groupLabel": "生效日期",
-        "placeholder": "提醒时间",
+        "text": "Effective date",
+        "label": "Effective date",
+        "groupLabel": "Effective date",
+        "placeholder": "Reminder time",
         "editable": true,
         "interactive": true,
         "candidates": [
@@ -1997,12 +1997,12 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "生效日期",
+                "name": "Effective date",
                 "exact": true
               }
             ],
             "count": 2,
-            "text": "生效日期"
+            "text": "Effective date"
           },
           {
             "kind": "role",
@@ -2010,11 +2010,11 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "生效日期"
+                "name": "Effective date"
               }
             ],
             "count": 2,
-            "text": "生效日期"
+            "text": "Effective date"
           },
           {
             "kind": "group",
@@ -2025,16 +2025,16 @@
               },
               {
                 "m": "has",
-                "text": "生效日期"
+                "text": "Effective date"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "生效日期"
+                "name": "Effective date"
               }
             ],
             "count": 2,
-            "text": "生效日期"
+            "text": "Effective date"
           },
           {
             "kind": "item",
@@ -2045,24 +2045,24 @@
               },
               {
                 "m": "filter",
-                "hasText": "生效日期"
+                "hasText": "Effective date"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "生效日期"
+                "name": "Effective date"
               }
             ],
             "count": 2,
-            "text": "生效日期"
+            "text": "Effective date"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByPlaceholder(\"提醒时间\")",
-            "selector": "internal:attr=[placeholder=\"提醒时间\"i]"
+            "csharp": "GetByPlaceholder(\"Reminder time\")",
+            "selector": "internal:attr=[placeholder=\"Reminder time\"i]"
           }
         ]
       },
@@ -2080,9 +2080,9 @@
         "role": "combobox",
         "type": "search",
         "id": "type2",
-        "text": "任务类型",
-        "label": "任务类型",
-        "groupLabel": "任务类型",
+        "text": "Task type",
+        "label": "Task type",
+        "groupLabel": "Task type",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -2104,13 +2104,13 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "任务类型",
+                "name": "Task type",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务类型"
+            "text": "Task type"
           },
           {
             "kind": "group",
@@ -2121,18 +2121,18 @@
               },
               {
                 "m": "has",
-                "text": "任务类型"
+                "text": "Task type"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "任务类型",
+                "name": "Task type",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "任务类型"
+            "text": "Task type"
           },
           {
             "kind": "item",
@@ -2143,26 +2143,26 @@
               },
               {
                 "m": "filter",
-                "hasText": "请选择仓库类型"
+                "hasText": "Select a warehouse type"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "任务类型",
+                "name": "Task type",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "请选择仓库类型"
+            "text": "Select a warehouse type"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"任务类型\" })",
-            "selector": "internal:role=combobox[name=\"任务类型\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"Task type\" })",
+            "selector": "internal:role=combobox[name=\"Task type\"i]"
           }
         ]
       },
@@ -2186,8 +2186,8 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "公开",
-        "groupLabel": "私密",
+        "text": "Public",
+        "groupLabel": "Private",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -2200,7 +2200,7 @@
               },
               {
                 "m": "has",
-                "text": "私密"
+                "text": "Private"
               },
               {
                 "m": "css",
@@ -2208,27 +2208,27 @@
               }
             ],
             "count": 2,
-            "text": "私密"
+            "text": "Private"
           },
           {
             "kind": "text",
             "parts": [
               {
                 "m": "text",
-                "text": "公开"
+                "text": "Public"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "公开"
+            "text": "Public"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"公开\")",
-            "selector": "internal:attr=[title=\"公开\"i]"
+            "csharp": "GetByTitle(\"Public\")",
+            "selector": "internal:attr=[title=\"Public\"i]"
           }
         ]
       },
@@ -2280,7 +2280,7 @@
               },
               {
                 "m": "filter",
-                "hasText": "成员管理"
+                "hasText": "Member management"
               },
               {
                 "m": "role",
@@ -2291,7 +2291,7 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "成员管理"
+            "text": "Member management"
           },
           {
             "kind": "generator",
@@ -2559,11 +2559,11 @@
       "openDialogs": [],
       "target": {
         "tag": "a",
-        "text": "编辑",
+        "text": "Edit",
         "interactive": true,
         "row": {
           "key": "00001",
-          "header": "工号"
+          "header": "Employee ID"
         },
         "candidates": [
           {
@@ -2586,11 +2586,11 @@
             "parts": [
               {
                 "m": "text",
-                "text": "编辑"
+                "text": "Edit"
               }
             ],
             "count": 4,
-            "text": "编辑"
+            "text": "Edit"
           },
           {
             "kind": "generator",
@@ -2770,7 +2770,7 @@
               },
               {
                 "m": "filter",
-                "hasText": "成员管理"
+                "hasText": "Member management"
               },
               {
                 "m": "role",
@@ -2781,7 +2781,7 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "成员管理"
+            "text": "Member management"
           },
           {
             "kind": "generator",
@@ -2885,8 +2885,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByText(\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\")",
-            "selector": "internal:text=\"成员管理成员姓名工号所属部门操作成员姓名工号所属部门操作\"i"
+            "csharp": "GetByText(\"Member managementMember nameEmployee IDDepartmentActionMember nameEmployee IDDepartmentAction\")",
+            "selector": "internal:text=\"Member managementMember nameEmployee IDDepartmentActionMember nameEmployee IDDepartmentAction\"i"
           }
         ]
       },
@@ -2909,7 +2909,7 @@
         "item": true,
         "row": {
           "key": "00004",
-          "header": "工号"
+          "header": "Employee ID"
         },
         "candidates": [
           {

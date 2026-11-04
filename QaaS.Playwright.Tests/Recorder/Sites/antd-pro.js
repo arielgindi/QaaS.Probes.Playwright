@@ -49,7 +49,7 @@
           <button type="button" class="ant-btn" id="query"><span>Query</span></button></form></div>
       <div class="ant-card"><button type="button" class="ant-btn ant-btn-primary" id="new"><span role="img" aria-label="plus" class="anticon anticon-plus">+</span><span>New</span></button>
         <table class="ant-table"><thead><tr><th>Rule Name</th><th>Description</th><th>Number of Service Calls</th><th>Status</th></tr></thead>
-          <tbody>${rules.map((rule) => `<tr class="ant-table-row" data-row-key="${rule.name}"><td><a>${rule.name}</a></td><td>这是一段描述</td>
+          <tbody>${rules.map((rule) => `<tr class="ant-table-row" data-row-key="${rule.name}"><td><a>${rule.name}</a></td><td>This is a description</td>
             <td>${rule.calls}</td><td><span class="ant-badge-status-text">${rule.status}</span></td></tr>`).join('')}</tbody></table></div>
       <div class="ant-card"><h3>Page style setting</h3><ul class="ant-list">${['Fixed Header', 'Split Menus', 'Weak Mode'].map((label) =>
         `<li class="ant-list-item"><span>${label}</span><button type="button" role="switch" aria-checked="false" class="ant-switch"><span class="ant-switch-handle"></span></button></li>`).join('')}</ul></div>
