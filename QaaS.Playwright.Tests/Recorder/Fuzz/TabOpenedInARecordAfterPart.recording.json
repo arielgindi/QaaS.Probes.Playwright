@@ -1,0 +1,75 @@
+{
+  "startUrl": "https://app.test/helpdesk",
+  "after": "LogInFlow",
+  "actions": [
+    {
+      "id": "p1-1",
+      "t": 1000,
+      "kind": "click",
+      "page": "page1",
+      "url": "https://app.test/order",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Submit",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "testid",
+            "parts": [
+              {
+                "m": "testid",
+                "value": "submit-order"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "submit-order"
+          }
+        ]
+      },
+      "watched": true,
+      "effects": []
+    },
+    {
+      "id": "opened-1001-page1",
+      "t": 1001,
+      "kind": "newTab",
+      "page": "page1",
+      "url": "https://app.test/order"
+    },
+    {
+      "id": "p1-2",
+      "t": 1002,
+      "kind": "click",
+      "page": "page1",
+      "url": "https://app.test/order",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Probe",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='fuzz-probe']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "fuzz-probe"
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed"
+        }
+      ]
+    }
+  ]
+}

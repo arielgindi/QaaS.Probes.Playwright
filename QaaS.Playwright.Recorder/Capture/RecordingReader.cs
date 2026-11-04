@@ -28,7 +28,7 @@ internal sealed class ValidRecording
 /// The one way a recording reaches the generator, from a file (autosave, <c>--continue</c>, <c>--keep-recording</c>), the
 /// capture or the panel's edits. It repairs what another version of the recorder, a hand or a bug left: a list or a text
 /// null as empty, an item null left out, an id given twice made unique, a page of no name the page, one named otherwise
-/// a <c>pageN</c> of its own. A tab or pop-up of the page itself is a navigation, or nothing. An action of a kind it
+/// a <c>pageN</c> of its own. A tab or pop-up of the page itself is a navigation, or nothing; a tab is opened before what is done in it. An action of a kind it
 /// does not know is left out and said; an effect or a locator of one, left out. A secret typed or checked moves into
 /// <see cref="CapturedAction.Secret"/>, out of every text the recording serialises. Reading again reads the same: the
 /// actions are repaired in place, so a recording read twice, or its actions read in another, stay as read.
@@ -62,7 +62,39 @@ internal static partial class RecordingReader
                 unrecorded.Add($"action {index + 1}, a '{action.Kind}' the recorder does not know, was left out: redo it by hand");
         }
 
-        return ValidRecording.Of(kept.Count == recording.Actions.Count ? recording : recording with { Actions = kept }, unrecorded);
+        var moved = OpenTabsFirst(kept);
+        return ValidRecording.Of(kept.Count == recording.Actions.Count && !moved ? recording : recording with { Actions = kept }, unrecorded);
+    }
+
+    // A tab is opened before anything is done in it, whatever order its events came in, as a tab opened while a part
+    // was recorded after a step gives: its opening goes before the first action on it that nothing else opened it for.
+    private static bool OpenTabsFirst(List<CapturedAction> actions)
+    {
+        var moved = false;
+        for (var index = 0; index < actions.Count; index++)
+        {
+            if (actions[index] is not { Kind: "newTab" } tab) continue;
+            var first = actions.FindIndex(action => action.Page == tab.Page);
+            if (first >= index || actions.Take(index).Any(action => action is { Kind: "newTab" } && action.Page == tab.Page
+                                                                    || action.Effects.Any(effect => effect is { Kind: "popup" } && effect.Page == tab.Page)))
+                continue;
+            actions.RemoveAt(index);
+            actions.Insert(first, tab);
+            moved = true;
+        }
+
+        return moved;
+    }
+
+    /// <summary>
+    /// One action as the capture reports it, read as <see cref="Read"/> reads each: made whole, of a page named as the
+    /// recorder names them, its secret a <see cref="Secret"/>. What only the whole recording tells (ids given twice, kinds
+    /// not known, tabs opened late) <see cref="Read"/> tells.
+    /// </summary>
+    public static CapturedAction ReadAction(CapturedAction action)
+    {
+        Repair(action, Pages([action]));
+        return action;
     }
 
     // A second action of an id seen, as one added twice, is told apart by a number.
