@@ -11,7 +11,7 @@ using QaaS.Playwright.Recorder.Panel;
 using QaaS.Playwright.Recorder.TestRun;
 using QaaS.Playwright.Tests.EndToEnd;
 
-namespace QaaS.Playwright.Tests.Recorder;
+namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 
 /// <summary>
 /// Drives a real recording with its panel, in a headless Chrome on the tests' own site, through a sequence of what a

@@ -1,7 +1,7 @@
 using System.Globalization;
 using QaaS.Playwright.Browser;
 
-namespace QaaS.Playwright.Tests.Recorder;
+namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 
 /// <summary>
 /// The recorder's modes in every order a person may press them (<see cref="StateFuzz"/>): the sequences that broke it
