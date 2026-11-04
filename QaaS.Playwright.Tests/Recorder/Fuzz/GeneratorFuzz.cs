@@ -134,7 +134,7 @@ internal static partial class GeneratorFuzz
         JsonObject? Pick() => actions.Count == 0 ? null : actions[random.Next(actions.Count)] as JsonObject;
         int At(int extra = 0) => random.Next(actions.Count + extra);
         var id = $"fuzz-{stamp}";
-        switch (random.Next(26))
+        switch (random.Next(27))
         {
             case 0 when actions.Count > 0:
             {
@@ -338,6 +338,17 @@ internal static partial class GeneratorFuzz
                 if (parent is JsonObject owner) owner[(string)key] = translated;
                 else ((JsonArray)parent)[(int)key] = translated;
                 return $"{action["id"]}: {key} = {translated}";
+            }
+            // A tab opened in a part recorded after a step: the part's actions go where the part goes, the tab where its
+            // time falls, after what was done in it.
+            case 26 when actions.OfType<JsonObject>().Where(action => action["kind"]?.GetValue<string>() == "newTab").ToList() is [_, ..] tabs:
+            {
+                var tab = tabs[random.Next(tabs.Count)];
+                var from = actions.IndexOf(tab);
+                var to = random.Next(from, actions.Count);
+                actions.RemoveAt(from);
+                actions.Insert(to, tab);
+                return $"{tab["id"]} opened after #{to}";
             }
             case 25 when Pick() is { } action:
             {

@@ -141,8 +141,16 @@ public partial class RecordingReaderTests
     private static IEnumerable<string> Whole(ValidRecording read)
     {
         var ids = new HashSet<string>(StringComparer.Ordinal);
+        // A tab is opened before anything is done in it, as the flow declares its page there: the capture builds a part
+        // recorded after a step from its own actions, and puts a tab it opened where the time it opened falls.
+        var opened = new HashSet<string>(StringComparer.Ordinal) { "page" };
         foreach (var action in read.Actions)
         {
+            if (action.Kind == "newTab") opened.Add(action.Page);
+            else if (!opened.Contains(action.Page) && read.Actions.Any(other => other is { Kind: "newTab" } && other.Page == action.Page)
+                     && !read.Actions.TakeWhile(other => other != action).Any(other => other.Effects.Any(effect => effect is { Kind: "popup" } && effect.Page == action.Page)))
+                yield return $"{action.Id}: on {action.Page} before the tab that opens it";
+            foreach (var effect in action.Effects ?? []) if (effect is { Kind: "popup", Page: { } popup }) opened.Add(popup);
             if (!ids.Add(action.Id) || action.Id.Length == 0) yield return $"id '{action.Id}' empty or given twice";
             if (!Kinds.Contains(action.Kind)) yield return $"{action.Id}: kind '{action.Kind}'";
             if (!PageName().IsMatch(action.Page)) yield return $"{action.Id}: page '{action.Page}'";
