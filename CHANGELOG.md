@@ -50,6 +50,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
     the part is not the end of the flow: it recorded on at the end of the flow from where the part left the app.
     **Keep it as it was**, while trying, ends trying too, and pausing or resuming while a test runs takes effect once
     it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
+  - **Saving, or closing Chrome, while the steps of a flow continued replay saves the flow as it was.** It asked why
+    its steps did not replay, as if the app had failed them, then saved nothing.
 
 ## 2.0.2
 

@@ -187,8 +187,6 @@ internal sealed class StateFuzz : IAsyncDisposable
             _site ??= TestSite.Start();
             _folder ??= Directory.CreateTempSubdirectory("qaas-state-fuzz-").FullName;
             Autosave.Folder = Path.Combine(_folder, "recordings");
-            // The console's questions, as a person answers them with Enter: keep recording.
-            Console.SetIn(new EnterForever());
             return (_site, _folder);
         }
         finally
@@ -282,7 +280,8 @@ internal sealed class StateFuzz : IAsyncDisposable
         {
             var failure = request.Login is not null ? await FlowRecorder.LogInAsync(_session, request) : null;
             return continued is null ? FlowRecorder.Replayed.All
-                : await FlowRecorder.ReplayAsync(_session, _panel, request, failure);
+                // The console's question, answered as a person does with Enter: keep recording.
+                : await FlowRecorder.ReplayAsync(_session, _panel, request, failure, (_, _) => 0);
         });
         Log($"start {how} on {url}");
     }
@@ -740,6 +739,8 @@ internal sealed class StateFuzz : IAsyncDisposable
         await _watching;
         if (recording.Actions.Count == 0)
         {
+            if (before.Actions.Count > 0)
+                throw new Broken("saved-changed", $"Nothing was saved, and the recording had {before.Actions.Count} actions when it was saved");
             _autosave.Forget();
             return;
         }
@@ -1085,15 +1086,5 @@ internal sealed class StateFuzz : IAsyncDisposable
     private void Log(string line)
     {
         lock (_log) _log.Add($"{DateTime.Now:HH:mm:ss.fff} {line}");
-    }
-
-    // Enter, again and again, as a person answers every question of the console with its default.
-    private sealed class EnterForever : TextReader
-    {
-        public override string ReadLine() => "";
-
-        public override int Read() => '\n';
-
-        public override int Peek() => '\n';
     }
 }

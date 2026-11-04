@@ -33,6 +33,9 @@ public class StateFuzzTests
         new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
                          "key:F7 | panel:F2 | key:F7 | key:F8 | edit:rerecord@1 | wait | !panel:F5 | panel:F2 | wait | save:enter")
             .SetName("APartDoneWhileTryingOrTesting_PausesOnceBackFromThem"),
+        // Saving, or closing Chrome, while a recording continued replayed asked why its steps did not replay, then saved nothing.
+        new TestCaseData("start:continue | !sleep:50 | save:now-ctrl-s").SetName("SavedWhileAContinuedFlowReplays_SavesItAsItWas"),
+        new TestCaseData("start:continue | !sleep:50 | save:now-close").SetName("ClosedWhileAContinuedFlowReplays_SavesItAsItWas"),
     ];
 
     [TestCaseSource(nameof(Regressions))]
@@ -60,6 +63,7 @@ public class StateFuzzTests
             if (Environment.GetEnvironmentVariable("QAAS_FUZZ_SEQUENCE") is { Length: > 0 } given)
             {
                 var once = await StateFuzz.RunAsync(given);
+                if (once is not null && Environment.GetEnvironmentVariable("QAAS_FUZZ_MINIMIZE") == "1") once = await MinimizeAsync(once, 0);
                 await File.WriteAllTextAsync(report, once?.ToString() ?? $"passed\n  {string.Join("\n  ", StateFuzz.LastLog)}\n");
                 Assert.That(once, Is.Null, once?.ToString());
                 return;
