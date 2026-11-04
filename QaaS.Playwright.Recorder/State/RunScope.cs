@@ -7,19 +7,33 @@ namespace QaaS.Playwright.Recorder.State;
 /// the pages it opened, its event subscriptions, its flow instances and its processes. Disposing it, as leaving the state
 /// that runs it does, cancels the token, then ends what it owns, newest first, in bounded time: whatever the code waits
 /// for fails at once, and nothing it does reaches the recording after. What failed, or did not end in time, is in
-/// <see cref="Faults"/>; disposing never throws, and never waits longer than it was given.
+/// <see cref="Faults"/>; disposing never throws, and never waits longer than it was given. Owned by the
+/// <see cref="RecorderLifetime"/> too, it ends with the recording, however that ends.
 /// </summary>
-internal sealed class RunScope(string name, TimeSpan? within = null) : IAsyncDisposable
+internal sealed class RunScope : IAsyncDisposable
 {
+    private readonly string _name;
     private readonly CancellationTokenSource _stop = new();
-    private readonly TimeSpan _within = within ?? TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _within;
+    private readonly ChildProcesses _processes = new();
     private readonly Lock _gate = new();
     private readonly List<(string What, Func<ValueTask> End)> _owned = [];
     private readonly List<Task> _work = [];
     private readonly List<string> _faults = [];
     private Task? _disposing;
 
-    public string Name => name;
+    public RunScope(string name, RecorderLifetime? lifetime = null, TimeSpan? within = null)
+    {
+        (_name, _within) = (name, within ?? TimeSpan.FromSeconds(5));
+        lifetime?.Own(name, DisposeAsync);
+        OnEnd("its processes", () =>
+        {
+            _processes.KillAll();
+            return ValueTask.CompletedTask;
+        });
+    }
+
+    public string Name => _name;
 
     /// <summary>Cancelled as the scope ends.</summary>
     public CancellationToken Token => _stop.Token;
@@ -73,22 +87,13 @@ internal sealed class RunScope(string name, TimeSpan? within = null) : IAsyncDis
         return resource;
     }
 
-    /// <summary>Kills <paramref name="process"/>, and what it started, with the scope.</summary>
-    public Process Own(Process process)
+    /// <summary>
+    /// Kills <paramref name="process"/>, with what it started unless it is <paramref name="alone"/>, with the scope, as
+    /// <see cref="ChildProcesses"/> owns it: on Windows, in a job that ends with the recorder.
+    /// </summary>
+    public Process Own(Process process, bool alone = false)
     {
-        OnEnd($"process {process.StartInfo.FileName}", () =>
-        {
-            try
-            {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-                // It ended meanwhile.
-            }
-
-            return ValueTask.CompletedTask;
-        });
+        _processes.Own(process, alone);
         return process;
     }
 
@@ -129,20 +134,26 @@ internal sealed class RunScope(string name, TimeSpan? within = null) : IAsyncDis
         }
         catch (AggregateException failure)
         {
-            Fault($"{name}: a callback of its cancellation threw: {failure.InnerException?.Message}");
+            Fault($"{_name}: a callback of its cancellation threw: {failure.InnerException?.Message}");
         }
 
         List<(string What, Func<ValueTask> End)> owned;
         List<Task> work;
-        lock (_gate) (owned, work) = ([.. _owned], [.. _work]);
+        lock (_gate)
+        {
+            (owned, work) = ([.. _owned], [.. _work]);
+            // A scope the lifetime still holds holds nothing once it ended.
+            _owned.Clear();
+        }
+
         owned.Reverse();
         foreach (var (what, end) in owned) await EndOneAsync(what, end, Left(until));
 
         var all = Task.WhenAll(work);
         if (await Task.WhenAny(all, Task.Delay(Left(until))) != all)
-            Fault($"{name} did not end within {_within.TotalSeconds:0.#} s; what it does now reaches nothing it owned.");
+            Fault($"{_name} did not end within {_within.TotalSeconds:0.#} s; what it does now reaches nothing it owned.");
         foreach (var failed in work.Where(task => task.IsFaulted))
-            Fault($"{name} failed: {failed.Exception!.InnerException?.Message}");
+            Fault($"{_name} failed: {failed.Exception!.InnerException?.Message}");
         foreach (var going in work.Where(task => !task.IsCompleted))
             _ = going.ContinueWith(task => _ = task.Exception, TaskScheduler.Default);
     }
@@ -154,7 +165,7 @@ internal sealed class RunScope(string name, TimeSpan? within = null) : IAsyncDis
             var ending = end().AsTask();
             if (await Task.WhenAny(ending, Task.Delay(left)) != ending)
             {
-                Fault($"{what} of {name} did not end in time.");
+                Fault($"{what} of {_name} did not end in time.");
                 _ = ending.ContinueWith(task => _ = task.Exception, TaskScheduler.Default);
                 return;
             }
@@ -163,7 +174,7 @@ internal sealed class RunScope(string name, TimeSpan? within = null) : IAsyncDis
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
-            Fault($"{what} of {name}: {failure.Message}");
+            Fault($"{what} of {_name}: {failure.Message}");
         }
     }
 

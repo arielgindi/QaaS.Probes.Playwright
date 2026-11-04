@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.State;
 
 namespace QaaS.Playwright.Tests.Recorder;
@@ -164,6 +165,11 @@ public class RecorderStateTests
         await scope.DisposeAsync();
         scope.OnEnd("a page opened after it ended", () => { ended.Add("late"); return ValueTask.CompletedTask; });
         await Task.Delay(50);
+        // However the recording ends, the lifetime ends the scopes still going.
+        var lifetime = new RecorderLifetime(_ => { }, (_, _) => true, TimeSpan.FromSeconds(1));
+        var going = new RunScope("a test run", lifetime);
+        lifetime.RequestStop(StopReason.Enter);
+        await lifetime.ShutdownAsync(_ => Task.FromResult(0));
 
         Assert.Multiple(() =>
         {
@@ -173,6 +179,7 @@ public class RecorderStateTests
             Assert.That(ended, Is.EqualTo(new[] { "subscribed", "unsubscribed", "page", "late" }), "newest first, and the late one at once");
             Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(2)), "within the time it was given");
             Assert.That(scope.Faults, Has.Some.Contains("a page that hangs").And.Some.Contains("disposed twice").And.Some.Contains("did not end within"));
+            Assert.That(going.Ended, Is.True, "ended with the recording");
         });
     }
 
