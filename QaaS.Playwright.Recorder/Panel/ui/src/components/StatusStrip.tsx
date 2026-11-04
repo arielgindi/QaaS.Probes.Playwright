@@ -176,7 +176,8 @@ function modeOf(props: Props, now: number): Shown | null {
   }
   const test = state.test;
   if (test && isGoing(test)) return null;
-  if (part?.phase === 'recording') {
+  // Only while it records: paused, trying or checking in the part says that, with the key that leaves it.
+  if (part?.phase === 'recording' && state.status === 'recording' && !state.checking && !props.inspecting) {
     const so = part.fresh.length > 0 ? ` · ${plural(part.fresh.length, 'action')} so far` : '';
     const loop = part.loop && !part.after ? ' · the whole loop' : '';
     return {
@@ -233,7 +234,8 @@ function modeOf(props: Props, now: number): Shown | null {
   if (state.status === 'paused')
     return {
       name: 'Paused', tone: 'warn', label: 'Paused', tinted: true,
-      message: state.notice ? `${state.notice} Log in by hand in the app, then resume.` : 'Nothing you do in the app is recorded',
+      message: state.notice ? `${state.notice} Log in by hand in the app, then resume.`
+        : part?.phase === 'recording' ? `Nothing you do in the app is recorded: resume to go on with ${part.part}` : 'Nothing you do in the app is recorded',
       full: state.notice,
       actions: leave('Resume', 'F8', props.onPause, 'Record again, from the page the app is on'),
     };

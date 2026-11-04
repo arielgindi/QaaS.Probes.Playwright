@@ -44,6 +44,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   sequences of them showed:
   - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as
     `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
+  - **The panel's status strip says when a part recorded again is paused, tried or checked**, with the key that
+    leaves it: it went on saying `Re-recording … do it again, then press Done` while nothing was recorded.
 
 ## 2.0.2
 

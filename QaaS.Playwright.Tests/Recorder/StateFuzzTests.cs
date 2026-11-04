@@ -25,6 +25,10 @@ public class StateFuzzTests
         // F4 in check or inspect mode said "Elements frozen" in the pill for good, in place of the mode's.
         new TestCaseData("start:/helpdesk | key:F6 | key:F4 | key:Control+Shift+C | key:F4 | save:enter")
             .SetName("AKeyInCheckOrInspectMode_GivesTheModesPillBack"),
+        // The status strip said "Re-recording: do it again, then press Done" while the part was paused, tried or checked.
+        new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
+                         "key:F7 | key:F7 | key:F8 | key:F8 | key:F6 | key:F6 | key:F2 | save:enter")
+            .SetName("PausedTriedOrCheckedInAPartRecordedAgain_TheStripSaysSo"),
     ];
 
     [TestCaseSource(nameof(Regressions))]
