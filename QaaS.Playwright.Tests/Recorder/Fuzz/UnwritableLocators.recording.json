@@ -1,0 +1,82 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "kind": "click",
+      "target": {
+        "interactive": true,
+        "item": true,
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "filter"
+              }
+            ],
+            "matches": true
+          }
+        ]
+      }
+    },
+    {
+      "kind": "fill",
+      "target": {
+        "candidates": [
+          {
+            "kind": "generator",
+            "matches": true,
+            "csharp": "1.5"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "click",
+      "target": {
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "generator",
+            "matches": true,
+            "csharp": "<c>x</c>"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "click",
+      "target": {
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "-1"
+              }
+            ]
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "urlChanged"
+        }
+      ]
+    },
+    {
+      "kind": "choose",
+      "widget": "autocomplete",
+      "field": {
+        "candidates": [
+          {
+            "kind": "generator",
+            "matches": true,
+            "csharp": "Order 5521 saved"
+          }
+        ]
+      }
+    }
+  ]
+}

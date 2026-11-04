@@ -1,0 +1,23 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "id": "fuzz-41401",
+      "t": 1000000,
+      "kind": "navigate",
+      "page": "-1",
+      "url": "https://app.test/",
+      "afterPause": null
+    },
+    {
+      "page": "page1",
+      "effects": [
+        {
+          "kind": "urlChanged",
+          "url": "https://app.test/#/orders/5",
+          "page": "page"
+        }
+      ]
+    }
+  ]
+}

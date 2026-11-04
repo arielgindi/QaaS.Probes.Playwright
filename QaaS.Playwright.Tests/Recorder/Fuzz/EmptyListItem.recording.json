@@ -1,0 +1,484 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "id": "f0",
+      "t": 1000,
+      "kind": "fill",
+      "value": "Desk",
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "product",
+        "text": "Product",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='product']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "product"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c0",
+      "t": 1005,
+      "kind": "click",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Add line",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add line",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Add line"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "changed"
+        }
+      ]
+    },
+    {
+      "id": "f1",
+      "t": 1010,
+      "kind": "fill",
+      "value": "",
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "product",
+        "text": "Product",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='product']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "product"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c1",
+      "t": 1015,
+      "kind": "click",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Add line",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add line",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Add line"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "changed"
+        }
+      ]
+    },
+    {
+      "id": "f2",
+      "t": 1020,
+      "kind": "fill",
+      "value": "Chair",
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "product",
+        "text": "Product",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "name",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[name='product']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "product"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c2",
+      "t": 1025,
+      "kind": "click",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Add line",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Add line",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "Add line"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "kind": "changed"
+        }
+      ]
+    },
+    {
+      "kind": "fill",
+      "widget": "text",
+      "value": "Pay the electricity bill",
+      "target": {
+        "label": "New task",
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "matches": true,
+            "value": "new-task"
+          }
+        ]
+      },
+      "edit": {
+        "values": {
+          "value": {
+            "value": ""
+          }
+        }
+      }
+    },
+    {
+      "kind": "press",
+      "key": "Enter",
+      "onPage": false,
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-5",
+      "t": 1793706206380,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Book a dentist appointment",
+      "raw": "Book a dentist appointment",
+      "final": true,
+      "url": "https://app.test/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-6",
+      "t": 1793706206786,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://app.test/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-7",
+      "t": 1793706207191,
+      "kind": "fill",
+      "page": "page",
+      "widget": "text",
+      "value": "Return library books",
+      "raw": "Return library books",
+      "final": true,
+      "url": "https://app.test/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    },
+    {
+      "id": "f6ueex-8",
+      "t": 1793706207596,
+      "kind": "press",
+      "page": "page",
+      "key": "Enter",
+      "onPage": false,
+      "url": "https://app.test/todos",
+      "openDialogs": [],
+      "target": {
+        "tag": "input",
+        "role": "textbox",
+        "id": "new-task",
+        "text": "New task",
+        "label": "New task",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='new-task']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "new-task"
+          },
+          {
+            "kind": "role",
+            "parts": [
+              {
+                "m": "role",
+                "role": "textbox",
+                "name": "New task",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "text": "New task"
+          },
+          {
+            "kind": "generator",
+            "parts": [],
+            "count": 1,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"New task\" })",
+            "selector": "internal:role=textbox[name=\"New task\"i]"
+          }
+        ]
+      },
+      "effects": []
+    }
+  ]
+}

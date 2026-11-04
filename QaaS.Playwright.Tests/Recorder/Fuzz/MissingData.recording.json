@@ -1,0 +1,138 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "kind": "click",
+      "target": {
+        "text": "Remove Physics",
+        "interactive": true
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "item",
+            "parts": null,
+            "matches": true
+          }
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": null,
+            "matches": true,
+            "value": "new-task"
+          }
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "role",
+            "parts": null,
+            "matches": true
+          }
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          null
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              null
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "row",
+            "matches": true
+          }
+        ]
+      }
+    },
+    {
+      "id": null
+    },
+    {
+      "target": {
+        "candidates": null
+      }
+    },
+    {
+      "target": {
+        "candidates": [
+          {
+            "kind": "generator",
+            "parts": null,
+            "matches": true,
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Upload\" })"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "click",
+      "effects": [
+        {
+          "kind": "urlChanged"
+        }
+      ]
+    },
+    {
+      "effects": null
+    },
+    {
+      "effects": [
+        null
+      ]
+    },
+    {},
+    {
+      "kind": "choose",
+      "option": {
+        "candidates": [
+          {
+            "kind": "role",
+            "matches": true
+          }
+        ]
+      }
+    }
+  ],
+  "notRecorded": [
+    " "
+  ]
+}

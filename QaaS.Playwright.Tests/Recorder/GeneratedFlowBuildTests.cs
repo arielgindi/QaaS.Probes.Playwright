@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
+using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
 using QaaS.Playwright.Recorder.TestRun;
 using static QaaS.Playwright.Tests.Recorder.Captured;
@@ -31,12 +32,12 @@ public class GeneratedFlowBuildTests
     {
         await FlowCompiler.CreateProjectAsync(_folder, "GeneratedFlows");
         var flows = FlowCompiler.FlowsFolder(_folder);
-        var generated = new Dictionary<string, string>();
+        var generated = new Dictionary<string, GeneratedFlow>();
         foreach (var (name, recording, _) in Recordings())
         {
             var flow = FlowCodeGenerator.Generate(recording, name, ProjectNamespace.Of(flows));
             await File.WriteAllTextAsync(Path.Combine(flows, $"{name}.cs"), flow.Code);
-            generated[name] = flow.Yaml;
+            generated[name] = flow;
         }
 
         var withoutChecks = new List<string>();
@@ -54,8 +55,8 @@ public class GeneratedFlowBuildTests
         {
             Assert.That(withoutChecks, Has.All.Not.Contain("// auto check"), "without auto checks, a flow checks only what the person chose");
             Assert.That(withoutChecks, Has.Some.Contain("Expect(").And.Contain("// check"));
-            foreach (var (name, yaml) in generated)
-                Assert.That(Bind(assembly.GetTypes().Single(type => type.Name == name), yaml), Is.EqualTo(Defaults(assembly, name)),
+            foreach (var (name, flow) in generated)
+                Assert.That(GeneratorFuzz.Binds(assembly.GetTypes().Single(type => type.Name == name), flow, _folder), Is.Null,
                     $"{name}: its YAML binds to the values it recorded");
             // A list of fewer items than recorded is that list, not the recorded one with the first items replaced.
             Assert.That(Bind(assembly.GetTypes().Single(type => type.Name == "AddOrderLines"), """
@@ -118,13 +119,7 @@ public class GeneratedFlowBuildTests
             : JsonSerializer.Serialize(type.GetProperty("Configuration")!.GetValue(flow));
     }
 
-    private static string Defaults(System.Reflection.Assembly assembly, string name)
-    {
-        var type = assembly.GetTypes().Single(type => type.Name == name);
-        return JsonSerializer.Serialize(type.GetProperty("Configuration")!.GetValue(Activator.CreateInstance(type)));
-    }
-
-    private static IEnumerable<(string Name, CapturedRecording Recording, bool Golden)> Recordings()
+    internal static IEnumerable<(string Name, CapturedRecording Recording, bool Golden)> Recordings()
     {
         foreach (var path in Directory.GetFiles(GoldenFolder(), "*.recording.json"))
             yield return (Path.GetFileName(path)[..^".recording.json".Length], CapturedRecording.FromJson(File.ReadAllText(path)), true);
@@ -205,6 +200,10 @@ public class GeneratedFlowBuildTests
             Action("click", Element("button", "Place order", Role("button", "Place order")), effects: Alert("Order placed")),
         ];
         yield return ("AddOrderLines", Recording(lines), false);
+
+        // The recordings the generator's fuzz cut its failures down to (GeneratorFuzz): each builds, and binds, as any.
+        foreach (var name in GeneratorFuzz.Regressions())
+            yield return (name, GeneratorFuzz.Regression(name), false);
     }
 
     private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");

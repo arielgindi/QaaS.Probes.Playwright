@@ -1,0 +1,27 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "id": "fuzz-22402",
+      "t": 1000000,
+      "kind": "newTab",
+      "page": "page",
+      "url": null,
+      "afterPause": true
+    },
+    {
+      "kind": "newTab"
+    },
+    {
+      "kind": "newTab",
+      "page": "page1"
+    },
+    {
+      "kind": "newTab",
+      "page": "page1"
+    },
+    {
+      "page": "page1"
+    }
+  ]
+}
