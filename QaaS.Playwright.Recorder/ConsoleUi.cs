@@ -32,6 +32,7 @@ internal static class ConsoleUi
     private static bool _recording;
     private static Capture.RecordingState _state;
     private static int _cancelled;
+    private static TaskCompletionSource? _ctrlCEnds;
 
     // The width of the line redrawn in place while the login flow runs, the cursor at its end; 0 when none is.
     private static int _live;
@@ -239,8 +240,44 @@ internal static class ConsoleUi
     public static string Reason(ArgumentException refused) =>
         refused.ParamName is { } name ? refused.Message.Replace($" (Parameter '{name}')", "") : refused.Message;
 
-    /// <summary>Says goodbye on Ctrl+C instead of leaving a half-written line.</summary>
-    public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, _) => Cancelled();
+    /// <summary>
+    /// Ctrl+C ends a recording as Enter does (<see cref="CtrlCEnds"/>); pressed again, or before the recording began, it
+    /// stops at once, the recording kept (<see cref="CrashReport.Interrupted"/>). With no recording going on, it says
+    /// goodbye instead of leaving a half-written line.
+    /// </summary>
+    public static void CancelOnCtrlC() => Console.CancelKeyPress += (_, pressed) =>
+    {
+        if (CtrlC()) pressed.Cancel = true;
+        else Cancelled();
+    };
+
+    /// <summary>
+    /// Until <see cref="CtrlCStops"/>, the next Ctrl+C ends the recording as Enter does, and completes the task returned,
+    /// rather than stopping the recorder.
+    /// </summary>
+    public static Task CtrlCEnds()
+    {
+        var pressed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Volatile.Write(ref _ctrlCEnds, pressed);
+        return pressed.Task;
+    }
+
+    /// <summary>The recording ended: Ctrl+C stops the recorder from now on, the recording kept.</summary>
+    public static void CtrlCStops() => Volatile.Write(ref _ctrlCEnds, null);
+
+    // Whether the recorder goes on after Ctrl+C: it ends the recording, as Enter does; else, while a recording goes on, the
+    // recording is kept and the recorder stops, never back here.
+    internal static bool CtrlC()
+    {
+        if (Interlocked.Exchange(ref _ctrlCEnds, null) is not { } ends) return CrashReport.Interrupted();
+        var t = Out;
+        t.Writer.Write(t.Stop);
+        t.WriteLine();
+        Mode(t, t.Glyph("›", ">"), Tone.Accent, "Ending",
+            "Ctrl+C: saving what you recorded, as Enter does. Ctrl+C again stops at once, the recording kept to save next time.");
+        ends.TrySetResult();
+        return true;
+    }
 
     public static void Cancelled()
     {
@@ -357,7 +394,12 @@ internal static class ConsoleUi
     public static void Phase(string text) => Status(Out, Margin, Out.Glyph("›", ">"), Tone.Accent, $"{text}{Out.Ellipsis}", Tone.Dim);
 
     public static void Paused() =>
-        Mode(Out, Out.Glyph("║", "="), Tone.Warning, "Paused", "Nothing you do in Chrome is recorded. F8 resumes.");
+        Mode(Out, Out.Glyph("║", "="), Tone.Warning, "Paused", "nothing you do is recorded; F8 resumes.", Tone.Plain);
+
+    /// <summary>The person acted in the app while paused, the first time in this pause: it was not recorded.</summary>
+    /// <param name="what"><c>click</c>, <c>typing</c> or <c>choice</c>.</param>
+    public static void NotRecordedWhilePaused(string what) =>
+        Warning($"Paused: that {what} was not recorded (F8 resumes)");
 
     public static void Resumed() => RecordingState(Out, "Recording", "again, from the page the app is on.");
 
@@ -969,12 +1011,17 @@ internal static class ConsoleUi
     /// <summary>A line the login flow logged.</summary>
     public static void FlowLog(string message) => Status(Out, Margin + Margin, " ", Tone.Plain, message, Tone.Dim);
 
-    public static void StateChanged(Capture.RecordingState state)
+    /// <param name="state">The state the recording went to.</param>
+    /// <param name="say">
+    /// False while the login flow runs, whose way in and out of the pause the login's own lines tell: the state is still
+    /// kept, so resuming after a login that failed says the recording records.
+    /// </param>
+    public static void StateChanged(Capture.RecordingState state, bool say = true)
     {
         var before = _state;
         _state = state;
         // After a test, the recording goes on as before it, and the test's result says so.
-        if (before == Capture.RecordingState.Testing || before == state) return;
+        if (!say || before == Capture.RecordingState.Testing || before == state) return;
         if (state == Capture.RecordingState.Paused) Paused();
         else if (state == Capture.RecordingState.Recording) Resumed();
         else if (state == Capture.RecordingState.Trying)

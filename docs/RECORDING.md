@@ -90,13 +90,13 @@ text, or while the pointer is on a scrollbar, and comes back as you let go; once
 until the pointer moves onto another one, as a menu or a list the click opens shows where the label was.
 
 When the recording is in another mode than recording, a pill at the top of the page says which, in its colour, and the
-key that leaves it: `Recording paused · F8`, `Trying · F7`, `Check · Esc`, `Inspect · Esc`, the part being recorded
+key that leaves it: `Paused: nothing you do is recorded; F8 resumes`, `Trying · F7`, `Check · Esc`, `Inspect · Esc`, the part being recorded
 again with `F2`, or the login flow's progress; while the flow is tested or replayed, it is at the bottom, off the app's
 header. It fades as the pointer comes near it, so what is under it can be seen and clicked.
 
 The overlay never changes the page: it is drawn in a closed shadow root on an element of its own outside `<body>`,
 takes no pointer events, no focus and no room, and Playwright's selectors do not see into it. It shows in the main page,
-not in frames, which are not recorded.
+not in frames, which are not recorded; with the focus in a frame, `F8`, `F7` and `F2` still work.
 
 | Key, in the browser | Does |
 |---------------------|------|
@@ -123,7 +123,9 @@ Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the fo
 frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
 When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console (or
-send it a line, when a script gives the console its input through a pipe; the input's end finishes nothing). The
+send it a line, when a script gives the console its input through a pipe; the input's end finishes nothing). Ctrl+C
+in the console saves too, as Enter does; pressed again before the flow is written, it stops at once, and the recording
+is kept, to save the next time the recorder starts. The
 recorder saves two files: `Flows/LoginFlow.cs`
 (the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints a
 summary: the files it wrote, how many actions, steps and settings the flow has, each line to check by hand as
@@ -157,7 +159,7 @@ edits in the panel, so a recording recovered or continued has them too. Once the
 [continuing](#continuing-a-flow) the flow; the newest 30 are kept.
 
 When the recorder starts and finds a recording that did not end in a save (the recorder crashed or was stopped with
-Ctrl+C, or the flow could not be saved), it asks, before anything else:
+Ctrl+C twice, or the flow could not be saved), it asks, before anything else:
 
 ```text
   ? Found a recording of NewTicket that was never saved (12 actions, 5 minutes ago): the recorder stopped before you
@@ -351,9 +353,12 @@ not (above).
 
 Press `F8` in the recorded window, or **Pause** in the panel, to stop recording for a while, e.g. to look something up,
 or to get the app where the next step starts without those clicks in the flow. While paused, nothing you do in the app
-is recorded, and the panel and the console say so; the pill at the top of the page says `Recording paused` with `F8`,
-and the overlay shows no box, as it suggests no locator. `F8` again, or **Resume**, records from the page the app is on
-then. A page opened, an address gone to or a browser dialog shown while paused is no later action's doing.
+is recorded, and the page, the panel and the console all say `Paused: nothing you do is recorded; F8 resumes`; the
+overlay shows no box, as it suggests no locator. A click, typing or a choice made while paused shows a toast beside it,
+`Paused: that click was not recorded · F8 resumes`, and the first one in a pause prints a line in the console too.
+`F8` again, or **Resume**, records from the page the app is on then. What you typed just before pausing is kept, from
+the panel as with `F8`. A page opened, an address gone to or a browser dialog shown while paused is no later action's
+doing.
 
 If the app is on another page when you resume (you went there while paused), the flow goes to that address itself, as
 if you had typed it (`await page.GotoAsync($"{BaseUrl}/orders/5")`), and lists the line under "Check by hand": the step

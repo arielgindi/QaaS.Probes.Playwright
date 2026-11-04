@@ -73,10 +73,11 @@ internal static partial class Names
             return itemLabel;
 
         // A form's field named by the index of the form it is in, as antd's step forms are (0_receiverAccount), by its
-        // name; a name of a letter or two (q) by what a person reads beside it.
+        // name; a name of a letter or two (q) by what a person reads beside it; one with no letter or digit of a C# name
+        // (a name in a non-Latin script, an id of underscores) by what comes after.
         var said = label ?? English(field.Placeholder) ?? (field.Role is "combobox" ? null : English(field.Text));
         var path = new[] { select, field.Name, id, field.TestId }.Select(value => value is null ? null : StepIndex().Replace(value, ""))
-            .FirstOrDefault(value => !UnstableId.IsUnstable(value) && !(value!.Length <= 2 && said is not null));
+            .FirstOrDefault(value => !UnstableId.IsUnstable(value) && !(value!.Length <= 2 && said is not null) && CSharp.Pascal(value) is not null);
         if (path is null && said is not null && new[] { field.Name, id }.Any(value => value is { Length: <= 2 })) return said;
         if (path is not null)
         {
@@ -89,7 +90,8 @@ internal static partial class Names
         // The widget the field is part of: the input of react-select's #state is the state. Not a container of the page
         // (#root, #app, #main-content), nor what holds a switch or a checkbox, which its label names.
         if (!toggle && field.Candidates.FirstOrDefault(candidate => candidate.Kind == "within" && !UnstableId.IsUnstable(candidate.Value)
-                                                                    && !PageContainer().IsMatch(candidate.Value ?? "")) is { } within)
+                                                                    && !PageContainer().IsMatch(candidate.Value ?? "")
+                                                                    && CSharp.Pascal(candidate.Value) is not null) is { } within)
             return WithoutKindWords(CSharp.Pascal(within.Value)!);
         if (label is not null) return label;
         // An option chosen with no field of its own is no name for the choice: the next choice changes it.

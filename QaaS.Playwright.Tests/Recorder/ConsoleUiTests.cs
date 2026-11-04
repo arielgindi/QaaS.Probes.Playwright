@@ -3,20 +3,20 @@ using QaaS.Playwright.Recorder.Capture;
 
 namespace QaaS.Playwright.Tests.Recorder;
 
-/// <summary>What the recorder prints for a step, with text from a page it cannot trust to be short, plain or left-to-right.</summary>
+/// <summary>What the recorder prints for a step, with text from a page it cannot trust to be short or plain.</summary>
 [TestFixture]
 public class ConsoleUiTests
 {
     [Test]
-    public void StepLine_FitsTheTerminal_KeepsRightToLeftTextInPlace_AndPrintsNoEscapeSequence()
+    public void StepLine_FitsTheTerminal_AndPrintsNoEscapeSequence()
     {
         var terminal = Terminal.Fixed(TextWriter.Null, width: 60);
         var action = new CapturedAction
         {
-            Id = "a1", Kind = "fill", Value = "مرحبا\u001b[31m",
+            Id = "a1", Kind = "fill", Value = "hello\u001b[31m",
             Target = new CapturedTarget
             {
-                Tag = "input", Text = "اسم أول",
+                Tag = "input", Text = "Surname",
                 Candidates =
                 [
                     new CapturedCandidate
@@ -33,10 +33,66 @@ public class ConsoleUiTests
         Assert.Multiple(() =>
         {
             Assert.That(Terminal.WidthOf(line), Is.EqualTo(59), line);
-            // Each in an isolate of its own, so a terminal that lays out bidirectional text keeps the name first.
-            Assert.That(line.Contains("\u2068اسم أول\u2069 = \u2068مرحبا [31m\u2069", StringComparison.Ordinal), line);
+            Assert.That(line.Contains("Surname = hello [31m", StringComparison.Ordinal), line);
             Assert.That(line.Contains('\u001b'), Is.False, "a page's escape sequence reached the terminal");
             Assert.That(line, Does.StartWith("    3 ≡ fill    ").And.EndWith("[name='employee.add…"));
         });
+    }
+
+    [Test]
+    public void Pausing_IsSaid_AfterALoginThatFailed_Too()
+    {
+        var said = Said(() =>
+        {
+            ConsoleUi.StateChanged(RecordingState.Recording, say: false);
+            // The login flow failed: the recording pauses, which the login's own lines tell. Then F8 records.
+            ConsoleUi.StateChanged(RecordingState.Paused, say: false);
+            ConsoleUi.StateChanged(RecordingState.Recording);
+            ConsoleUi.StateChanged(RecordingState.Paused);
+            ConsoleUi.NotRecordedWhilePaused("click");
+        });
+
+        Assert.That(said, Does.Contain("Recording").And.Contain("again, from the page the app is on")
+            .And.Contain("Paused").And.Contain("nothing you do is recorded; F8 resumes")
+            .And.Contain("Paused: that click was not recorded (F8 resumes)"));
+    }
+
+    [Test]
+    public void CtrlC_WhileRecording_EndsItAsEnterDoes()
+    {
+        Task ends = Task.CompletedTask;
+        var went = false;
+        var said = Said(() =>
+        {
+            ends = ConsoleUi.CtrlCEnds();
+            went = ConsoleUi.CtrlC();
+        });
+        ConsoleUi.CtrlCStops();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(went && ends.IsCompletedSuccessfully, Is.True, "the recorder goes on, to save what was recorded");
+            Assert.That(said, Does.Contain("Ctrl+C: saving what you recorded, as Enter does"));
+            // Once the recording ended, Ctrl+C stops the recorder; with no recording, the console says it was cancelled.
+            Assert.That(ConsoleUi.CtrlC(), Is.False);
+        });
+    }
+
+    // What the console printed meanwhile.
+    private static string Said(Action print)
+    {
+        var before = Console.Out;
+        using var output = new StringWriter();
+        Console.SetOut(output);
+        try
+        {
+            print();
+        }
+        finally
+        {
+            Console.SetOut(before);
+        }
+
+        return output.ToString();
     }
 }

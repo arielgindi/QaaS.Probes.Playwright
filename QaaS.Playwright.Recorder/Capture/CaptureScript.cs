@@ -25,7 +25,22 @@ internal static class CaptureScript
           // person. Each action is described when the pointer goes down, before the page reacts to it, and reported to the
           // recorder through window.__qaasRecord as JSON. Only in check mode (F6), which the person turns on to pick what to
           // check, are clicks and keys kept from the page.
-          if (window.__qaasCaptureInstalled || window !== window.top) return;
+          if (window.__qaasCaptureInstalled) return;
+          // A frame records nothing; but with the focus in one (an editor, a payment form), the keys whose meaning the
+          // recorder decides still reach it: F8 pauses or resumes, F7 tries, F2 ends a part recorded again.
+          if (window !== window.top) {
+            window.__qaasCaptureInstalled = true;
+            const keys = { F8: 'pause', F7: 'try', F2: 'done' };
+            addEventListener('keydown', (event) => {
+              if (!event.isTrusted || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !keys[event.key]) return;
+              if (event.key === 'F7') event.preventDefault();
+              if (event.repeat) return;
+              try {
+                Promise.resolve(window.__qaasControl?.(JSON.stringify({ type: keys[event.key] }))).catch(() => { /* answered elsewhere */ });
+              } catch { /* the recorder is gone */ }
+            }, { capture: true });
+            return;
+          }
           window.__qaasCaptureInstalled = true;
 
           const TEST_ID = '__TEST_ID_ATTRIBUTE__';
@@ -74,7 +89,10 @@ internal static class CaptureScript
             try { return work(); } catch { return fallback; }
           };
           const newId = () => `${page}-${++counter}`;
-          const now = () => Date.now();
+          // The browser's own clock, as it was before the page's scripts ran: a page may replace Date.now, e.g. to test
+          // with a date of its own, and the recorder tells by its own clock what was done before a pause or after it.
+          const dateNow = Date.now;
+          const now = () => dateNow();
 
           // ---------------------------------------------------------------------------------------------- text and names
           const normalize = (text) => (text ?? '').replace(INVISIBLE, '').replace(/\s+/g, ' ').trim();
@@ -967,9 +985,10 @@ internal static class CaptureScript
           }
 
           addEventListener('input', (event) => safe(() => {
-            if (!event.isTrusted || !recording()) return;
+            if (!event.isTrusted) return;
             const element = deepTarget(event);
             if (!element || !isTextual(element)) return;
+            if (!recording()) { notRecordedAt('typing', element); return; }
             let entry = typing.get(element);
             if (!entry) {
               entry = { id: newId(), t: now(), element, description: describe(element) };
@@ -1304,7 +1323,11 @@ internal static class CaptureScript
           addEventListener('pointerdown', (event) => safe(() => {
             if (!event.isTrusted || event.button !== 0) return;
             lastPointer = now();
-            if (!recording()) { pending = null; return; }
+            if (!recording()) {
+              pending = null;
+              if (!view?.host.contains(event.target)) notRecorded('click', event.clientX, event.clientY);
+              return;
+            }
             flushTyping();
             const hit = deepTarget(event);
             if (!hit) return;
@@ -1417,7 +1440,7 @@ internal static class CaptureScript
             :host { all: initial !important; display: block !important; position: fixed !important; top: 0 !important;
               left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important;
               pointer-events: none !important; }
-            .box, .label, .mark, .tip, .extra { position: fixed; top: 0; left: 0; display: none; box-sizing: border-box;
+            .box, .label, .mark, .tip, .extra, .toast { position: fixed; top: 0; left: 0; display: none; box-sizing: border-box;
               pointer-events: none; }
             [data-mode] { --mode: #4f55e0; }
             [data-mode=picked] { --mode: #d97706; }
@@ -1428,7 +1451,7 @@ internal static class CaptureScript
               background: color-mix(in srgb, var(--mode) 10%, transparent);
               box-shadow: 0 0 0 1px rgba(255, 255, 255, .85), 0 0 0 3px color-mix(in srgb, var(--mode) 16%, transparent); }
             .extra { border-width: 1.5px; border-style: dashed; box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); }
-            .label, .tip { max-width: min(460px, calc(100vw - 12px)); padding: 6px 9px 7px; border-radius: 8px;
+            .label, .tip, .toast { max-width: min(460px, calc(100vw - 12px)); padding: 6px 9px 7px; border-radius: 8px;
               background: rgba(20, 22, 27, .97); color: #d6dae0; direction: ltr; unicode-bidi: isolate; text-align: left;
               font: 12px/1.45 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, -apple-system, Roboto, sans-serif;
               overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(0, 0, 0, .26), 0 1px 3px rgba(0, 0, 0, .3),
@@ -1436,6 +1459,7 @@ internal static class CaptureScript
             .glide { transition: transform 90ms cubic-bezier(.2, .7, .2, 1), width 90ms cubic-bezier(.2, .7, .2, 1),
               height 90ms cubic-bezier(.2, .7, .2, 1); }
             @media (prefers-reduced-motion: reduce) { .glide { transition: none; } }
+            .toast { border-left: 3px solid #d68f00; color: #f4f5f7; font-weight: 600; white-space: nowrap; }
             .stale .head, .stale .loc, .stale .problem { opacity: .5; }
             .head { display: flex; align-items: center; gap: 7px; min-width: 0; }
             .head::before { content: attr(data-tag); flex: none; padding: 0 6px; border-radius: 4px; color: #fff;
@@ -1493,7 +1517,7 @@ internal static class CaptureScript
             .pill[data-tone=inspect] { --tone: #8b5cf6; }
             .pill b { font-weight: 600; }
             .pill .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-            .pill kbd:last-child { margin-right: 4px; }
+            .pill kbd:last-child, .pill .hint:last-child { margin-right: 4px; }
             .chooser button, .pill button { font: inherit; color: inherit; cursor: pointer; }
             .pill .url { height: 24px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--strong);
               background: var(--raised); font-size: 12px; font-weight: 500; }
@@ -1587,7 +1611,7 @@ internal static class CaptureScript
             const problem = part(label, 'problem');
             const more = part(label, 'more');
             view = { host, root, box, label, head, what, loc, locator, count, problem, more, reasons: part(more, 'reasons'),
-              note: part(more, 'note'), pick: part(more, 'pick'), pill: part(root, 'pill') };
+              note: part(more, 'note'), pick: part(more, 'pick'), pill: part(root, 'pill'), toast: part(root, 'toast') };
             box.dataset.mode = label.dataset.mode = 'record';
             // What is done in the chooser and the pill stays in them: the page sees none of it.
             for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'keydown', 'keyup', 'input'])
@@ -1621,10 +1645,34 @@ internal static class CaptureScript
             if (transient) pillTimer = setTimeout(() => safe(showState), 2500);
             return pill;
           }
+          // While paused, an action is not recorded: a toast by it says so, at most every second or so, and the recorder,
+          // told, says it in the console once a pause.
+          const PAUSED = 'nothing you do is recorded; F8 resumes';
+          let toastTimer = 0;
+          let toastShown = 0;
+          function notRecorded(what, x, y) {
+            if (state !== 'paused' || checking || inspecting || now() - toastShown < 1200) return;
+            toastShown = now();
+            control({ type: 'ignored', what });
+            const { toast } = overlayView();
+            toast.textContent = `Paused: that ${what} was not recorded · F8 resumes`;
+            toast.style.display = 'block';
+            const width = toast.offsetWidth, height = toast.offsetHeight;
+            const left = Math.max(6, Math.min(x + 12, innerWidth - width - 6));
+            const top = y + 18 + height < innerHeight - 6 ? y + 18 : Math.max(6, y - height - 12);
+            toast.style.transform = `translate(${left}px, ${top}px)`;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 1800);
+          }
+          const notRecordedAt = (what, element) => safe(() => {
+            const box = element?.getBoundingClientRect?.();
+            notRecorded(what, box ? box.left : pointer.x, box ? box.bottom - 12 : pointer.y);
+          });
+
           function showState() {
             clearTimeout(pillTimer);
             if (checking || inspecting) return;
-            if (state === 'paused') showPill('warn', 'Recording paused', 'nothing is recorded · resume', 'F8');
+            if (state === 'paused') showPill('warn', 'Paused:', PAUSED);
             else if (state === 'testing') showPill('accent', 'Testing the flow', part ? 'replaying it here · nothing is recorded' : 'in its own window · nothing is recorded');
             else if (state === 'login' && loginText) showPill('info', loginText, loginHint);
             else if (state === 'trying') showPill('try', 'Trying', 'nothing is recorded · record again', 'F7');
@@ -2113,9 +2161,9 @@ internal static class CaptureScript
           function startChecking() {
             if (checking) return;
             if (state !== 'recording') {
-              showPill(state === 'paused' ? 'warn' : state === 'trying' ? 'try' : 'warn', state === 'paused' ? 'Recording paused' : state === 'trying' ? 'Trying' : 'Not now',
-                state === 'paused' ? 'resume first, then check' : state === 'trying' ? 'record again first, then check' : 'the recording is busy',
-                state === 'paused' ? 'F8' : state === 'trying' ? 'F7' : '', true);
+              showPill(state === 'paused' ? 'warn' : state === 'trying' ? 'try' : 'warn', state === 'paused' ? 'Paused:' : state === 'trying' ? 'Trying' : 'Not now',
+                state === 'paused' ? `${PAUSED}, then check` : state === 'trying' ? 'record again first, then check' : 'the recording is busy',
+                state === 'paused' ? '' : state === 'trying' ? 'F7' : '', true);
               return;
             }
             flushTyping();
@@ -2350,9 +2398,13 @@ internal static class CaptureScript
 
           // ---------------------------------------------------------------------------------------- selects and files
           addEventListener('change', (event) => safe(() => {
-            if (!event.isTrusted || !recording()) return;
+            if (!event.isTrusted) return;
             const element = deepTarget(event);
             if (!element) return;
+            if (!recording()) {
+              if (element.tagName === 'SELECT') notRecordedAt('choice', element);
+              return;
+            }
             if (element.matches('input[type=file]')) {
               flushTyping();
               const id = newId();

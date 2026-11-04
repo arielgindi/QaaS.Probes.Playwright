@@ -65,7 +65,12 @@ internal static class FlowRecorder
         RecordingSession? recorded = null;
         RecorderPanel? shown = null;
         // An end nobody asked for, an error or a signal from outside, keeps the recording as it is then.
-        using var keeping = CrashReport.Keeping(() => recorded is { } now ? autosave.WriteAsync(now.Build(), shown?.Request ?? request) : Task.CompletedTask);
+        using var keeping = CrashReport.Keeping(async () =>
+        {
+            if (recorded?.Build() is not { Actions.Count: > 0 } now) return false;
+            await autosave.WriteAsync(now, shown?.Request ?? request);
+            return true;
+        });
         try
         {
             // A login flow logs in afresh, as in the probe, rather than from the recorder's saved login; so does a flow
@@ -78,9 +83,10 @@ internal static class FlowRecorder
             var session = await RecordingSession.StartAsync(options, news =>
             {
                 // The login's own way in and out of the pause is told by LogInAsync.
-                if (news is RecordingState state) { if (!Volatile.Read(ref loggingIn)) ConsoleUi.StateChanged(state); }
+                if (news is RecordingState state) ConsoleUi.StateChanged(state, say: !Volatile.Read(ref loggingIn));
                 else if (news is LoginProgress progress) ConsoleUi.LoginProgressed(progress);
                 else if (news is FrozenElements frozen) ConsoleUi.Froze(frozen);
+                else if (news is NotRecordedWhilePaused ignored) ConsoleUi.NotRecordedWhilePaused(ignored.What);
                 else ConsoleUi.Captured(news);
             });
             recorded = session;
@@ -112,7 +118,9 @@ internal static class FlowRecorder
                 return 1;
             }
 
-            await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), panel?.SaveRequested ?? session.Closed);
+            // Ctrl+C ends the recording as Enter does; pressed again, it stops at once, the recording kept.
+            await Task.WhenAny(session.Closed, ConsoleUi.EnterPressedAsync(), ConsoleUi.CtrlCEnds(), panel?.SaveRequested ?? session.Closed);
+            ConsoleUi.CtrlCStops();
             if (panel is not null)
             {
                 await panel.DisposeAsync();
@@ -205,11 +213,16 @@ internal static class FlowRecorder
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
         {
-            // A recorder bug, not the person's: the recording stays kept, to save once the recorder is fixed.
+            // A recorder bug, not the person's: the recording stays kept, to save once the recorder is fixed, and where it
+            // happened is logged, to report it.
+            var logged = CrashReport.Log($"Could not write the flow {request.ClassName}", failure);
             ConsoleUi.Error($"Could not write the flow {request.ClassName}: {failure.GetType().Name}: {failure.Message}\n" +
-                            "  This is a bug of the recorder, not of what you did. The recording is kept: update the recorder " +
-                            "(dotnet tool update -g QaaS.Playwright.Recorder), then run qaas-playwright to save it.\n" +
-                            $"  Please report it, with where it happened:\n{failure.StackTrace}");
+                            $"  This is a bug of the recorder, not of what you did. The recording is kept in {Autosave.Folder}: " +
+                            "update the recorder (dotnet tool update -g QaaS.Playwright.Recorder), then run qaas-playwright " +
+                            "to save it.\n" +
+                            (logged
+                                ? $"  Please report it with {CrashReport.LogPath}, which says where it happened."
+                                : $"  Please report it, with where it happened:\n{failure.StackTrace}"));
             return 1;
         }
 

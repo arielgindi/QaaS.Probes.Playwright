@@ -2,6 +2,12 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.0.4
+
+- The release's source zip leaves out what building does not need, the panel's UI sources (its built `panel.html` is
+  in) and the fixtures the tests record on sites: 525 KB instead of 726 KB, for size-limited transfers. A test keeps it
+  under 650 KB.
+
 ## 2.0.3
 
 - **The recorder finds your login flow as QaaS finds it when your tests run**, and never fails to say why it did not:
@@ -40,6 +46,34 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   its values only when no test gives them and the flow has any.
 - **Every question says what it asks, why, an example and what Enter does** (`(Enter = Flows)`, `(y/N, Enter = no)`),
   and every warning and error what happened, the likely cause, and what to do next, without jargon.
+- **An app whose fields and buttons are named in a non-Latin script is recorded and saved.** A click on a button
+  whose id has no Latin letter, or a fill of a field so named (or of an id of underscores alone), made the flow unwritable: saving said
+  `Could not write the flow …: ArgumentNullException: Value cannot be null`, the panel stopped showing what you did,
+  and the recorder's own copy stopped being kept at such a field. A name with no letter or digit a C# name can
+  have is now passed over, for the next thing that names the setting.
+- **Pausing, and stopping with Ctrl+C**:
+  - **What you do after a pause is recorded on an app that tests with a date of its own.** An app that replaces
+    `Date.now` (a fake date, the server's time) had every action after `F8` dropped, as done before you resumed: the
+    recorder now tells the time by the browser's own clock.
+  - **What you typed just before pausing from the panel is kept**, as with `F8`: the page learns of a pause the
+    panel makes (or Try, or Test) a moment later, and the text being typed then was dropped.
+  - **A pause cannot be missed.** The page's pill, the panel and the console say `Paused: nothing you do is recorded;
+    F8 resumes`; a click, typing or a choice while paused shows a toast beside it, `Paused: that click was not
+    recorded · F8 resumes`, and the first one in a pause prints that line in the console.
+  - **Resuming after a login flow that failed says the recording records**, in the console too: it said nothing, as
+    it had not seen the pause the failed login made.
+  - **`F8` pauses and resumes with the focus in a frame too**, as in an editor or a payment form: the frame never
+    told the recorder, so a pause could not be ended there, and nothing more was recorded. So do `F7` and `F2`.
+  - **Ctrl+C in the console saves what you recorded, as Enter does**, paused or not, and Chrome stays open meanwhile,
+    so your login is saved too. It stopped the recorder at once, saying the recording was not saved. Pressed again
+    before the flow is written, it stops at once, says so, and keeps the recording, to save next time.
+  - **What you were typing as the recording ended is kept**: Enter, Ctrl+C or **Save** within a moment of the last
+    key lost the field's value, which the page told only once you stopped typing.
+  - **A flow the recorder cannot write says where to find why**: `Could not write the flow …` now writes where it
+    happened, with its stack, to `~/.qaas/recorder-error.log`, and says where the recording is kept, rather than
+    printing the stack alone.
+  - **A recording with a change of address it does not give is written**, without checking that address, as one
+    edited by hand may have: saving it failed with `ArgumentNullException: Value cannot be null`.
 
 ## 2.0.2
 
