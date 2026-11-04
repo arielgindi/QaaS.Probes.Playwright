@@ -252,8 +252,10 @@ public class RecorderPanelTests
             await assign.HoverAsync();
             await Expect(view.GetByRole(AriaRole.Treeitem, new() { Name = "button “Assign to me”" })).ToBeVisibleAsync();
 
-            // A click picks the button: the app never sees it, and it is not recorded.
+            // A click offers the button, its row and its table, the button first; Enter picks it. The app never sees
+            // the click, and it is not recorded.
             await assign.ClickAsync();
+            await app.Keyboard.PressAsync("Enter");
             await Expect(view.GetByRole(AriaRole.Treeitem, new() { Selected = true })).ToContainTextAsync("Assign to me");
             await Expect(view.GetByText("Point at an element in the app")).ToBeHiddenAsync();
             await Expect(app.GetByRole(AriaRole.Alert)).ToHaveCountAsync(0);
