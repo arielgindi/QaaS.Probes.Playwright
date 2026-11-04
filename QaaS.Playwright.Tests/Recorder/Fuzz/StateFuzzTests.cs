@@ -9,6 +9,8 @@ namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 /// </summary>
 [TestFixture]
 [Category("EndToEnd")]
+// Each sequence in a Chrome of its own: they run side by side, so the suite takes as long as the longest.
+[Parallelizable(ParallelScope.Children)]
 public class StateFuzzTests
 {
     [SetUp]
