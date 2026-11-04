@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Recorder.State;
 
 namespace QaaS.Playwright.Recorder.Capture;
 
@@ -76,7 +77,7 @@ internal enum RecordingState
 /// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), choose checks of the page
 /// (F6), try things without recording them (F7), and test the flow so far, or replay it up to a part they record again.
 /// </summary>
-internal sealed class RecordingSession : IAsyncDisposable
+internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
 {
     private const string Binding = "__qaasRecord";
     private const string ExplainBinding = "__qaasExplain";
@@ -106,6 +107,11 @@ internal sealed class RecordingSession : IAsyncDisposable
     private RecordingState _beforeTry;
     private string? _rerecording;
     private bool _notRecordedTold;
+    private Task _published = Task.CompletedTask;
+    private int _disposed;
+
+    /// <summary>How long a drain or a page's acknowledgement of a new state may take; a page that does not answer is late.</summary>
+    private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(1);
 
     private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
@@ -119,7 +125,17 @@ internal sealed class RecordingSession : IAsyncDisposable
             : options.Continues is not null ? RecordingState.Testing
             : RecordingState.Recording;
         _beforeTest = RecordingState.Recording;
-        Log = new CaptureLog(paused: _state != RecordingState.Recording, options.Continues);
+        Pipeline = new CapturePipeline(recording: _state == RecordingState.Recording);
+        Log = new CaptureLog(paused: _state != RecordingState.Recording, options.Continues, Pipeline);
+    }
+
+    /// <summary>The capture pipeline: the epochs of the states, which every page's action carries, and what each page told.</summary>
+    public CapturePipeline Pipeline { get; }
+
+    /// <summary>Completes once every page has the latest state, or did not answer in time.</summary>
+    public Task Published
+    {
+        get { lock (_gate) return _published; }
     }
 
     /// <summary>The page the recording started on; tests drive it, and a login flow runs on it.</summary>
@@ -336,7 +352,7 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         try
         {
-            await FlushTypingAsync();
+            await DrainAsync(Pipeline.Epoch, CancellationToken.None);
             await Log.SettleAsync(SettleTimeout);
             var recording = Build();
             await SaveLoginAsync();
@@ -348,13 +364,44 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
     }
 
-    // What is being typed as the recording ends is told now, rather than once the person stops typing: it was typed. A
-    // page that does not answer (a browser dialog is open in it) keeps what it told.
-    private async Task FlushTypingAsync()
+    /// <summary>
+    /// Drains every page: what it holds back (a field being typed) is told now, and every action it began before is
+    /// waited for. True when every page acknowledged in time; a page that does not answer (a browser dialog is open in
+    /// it) is late, and what it tells later is still judged by the epoch it began in.
+    /// </summary>
+    public async Task<bool> DrainAsync(long epoch, CancellationToken cancel)
     {
-        List<IPage> pages;
-        lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
-        await Task.WhenAny(Task.WhenAll(pages.Select(page => PageElements.CallAsync(page, new { op = "flush" }))), Task.Delay(1000));
+        List<(IPage Page, string Alias)> pages;
+        lock (_gate) pages = [.. _aliases.Where(pair => !pair.Key.IsClosed).Select(pair => (pair.Key, pair.Value))];
+        var drained = await Pipeline.DrainAsync(async token =>
+        {
+            var answers = await Task.WhenAll(pages.Select(async each =>
+                (each.Alias, Answer: await PageElements.CallAsync(each.Page, new { op = "flush" }).WaitAsync(token))));
+            var marks = new Dictionary<string, long?>();
+            foreach (var (alias, answer) in answers)
+            {
+                var flushed = answer is null ? null : JsonSerializer.Deserialize<Flushed>(answer, Recording.Json);
+                marks[flushed?.Doc ?? alias] = flushed?.Seq;
+            }
+
+            return marks;
+        }, AnswerTimeout, cancel);
+        return drained.Complete;
+    }
+
+    /// <summary>Pauses or resumes once the pages are drained, and returns once they have the state it went to.</summary>
+    public Task<RecordingState> TogglePauseAsync() => TransitionAsync(TogglePause);
+
+    /// <summary>Tries things, or stops trying, once the pages are drained, and returns once they have the state.</summary>
+    public Task<RecordingState> ToggleTryAsync(bool resume = true) => TransitionAsync(() => ToggleTry(resume));
+
+    // A transition as the capture pipeline has it: the pages drained, then the state changed, then every page told it.
+    private async Task<T> TransitionAsync<T>(Func<T> commit)
+    {
+        await DrainAsync(Pipeline.Epoch, CancellationToken.None);
+        var result = commit();
+        await Published;
+        return result;
     }
 
     /// <summary>The recording so far, as <see cref="StopAsync"/> would return it.</summary>
@@ -597,6 +644,7 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
         try
         {
             await _browser.CloseAsync();
@@ -823,10 +871,10 @@ internal sealed class RecordingSession : IAsyncDisposable
         switch (message?.Type)
         {
             case "state" when page is not null:
-                _ = PageElements.CallAsync(page, new { op = "state", state = StateName(State), part = RerecordingPart });
+                _ = PageElements.CallAsync(page, new { op = "state", state = StateName(State), part = RerecordingPart, epoch = Pipeline.Epoch });
                 break;
             case "pause":
-                TogglePause();
+                _ = TogglePauseAsync();
                 break;
             case "ignored" when State == RecordingState.Paused && !_notRecordedTold:
                 _notRecordedTold = true;
@@ -858,7 +906,7 @@ internal sealed class RecordingSession : IAsyncDisposable
                     : $"clicked{(message.Role is { Length: > 0 } role ? $" {role}" : "")}{name}");
                 break;
             case "try":
-                ToggleTry();
+                _ = ToggleTryAsync();
                 break;
             case "done" when RerecordingPart is not null:
                 PartDone?.Invoke();
@@ -869,20 +917,37 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
     }
 
+    // The state is committed as the next epoch, which records only while recording, then told to every page.
     private RecordingState Announce(RecordingState state)
     {
+        lock (_gate)
+        {
+            Pipeline.Commit(recording: _state == RecordingState.Recording);
+            _published = ShowStateAsync(_state);
+        }
+
         _onNews(state);
-        _ = ShowStateAsync(state);
         return state;
     }
 
-    // Each page's overlay shows the state: paused, or nothing while the login flow runs. A page loading meanwhile asks.
-    private async Task ShowStateAsync(RecordingState state)
+    // Each page's overlay shows the state, with its epoch: paused, or nothing while the login flow runs. A page loading
+    // meanwhile asks.
+    private Task ShowStateAsync(RecordingState state)
     {
         List<IPage> pages;
         lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
-        var part = RerecordingPart;
-        foreach (var page in pages) await PageElements.CallAsync(page, new { op = "state", state = StateName(state), part });
+        var shown = new { op = "state", state = StateName(state), part = RerecordingPart, epoch = Pipeline.Epoch };
+        return Task.WhenAll(pages.Select(async page =>
+        {
+            try
+            {
+                await PageElements.CallAsync(page, shown).WaitAsync(AnswerTimeout);
+            }
+            catch (TimeoutException)
+            {
+                // A page a browser dialog blocks learns it once the dialog is answered.
+            }
+        }));
     }
 
     private static string StateName(RecordingState state) => state switch
@@ -1060,6 +1125,9 @@ internal sealed class RecordingSession : IAsyncDisposable
         public string Name { get; set; } = "";
         public string Value { get; set; } = "";
     }
+
+    // A page's answer to a drain: its document, and the number of the last action it began.
+    private sealed record Flushed(string? Doc, long? Seq);
 
     private sealed class ControlMessage
     {

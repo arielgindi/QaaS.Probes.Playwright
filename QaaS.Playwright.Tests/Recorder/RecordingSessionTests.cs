@@ -107,21 +107,20 @@ public class RecordingSessionTests
         await page.Locator("#first").ClickAsync();
         // Typed just before the panel's Pause, which the page learns of a moment later: it was typed before the pause.
         await page.Locator("[name='note']").FillAsync("typed before");
-        session.TogglePause();
-        await UntilAsync(() => session.State == RecordingState.Paused);
+        await session.TogglePauseAsync();
         await page.Locator("[name='note']").FillAsync("not recorded");
         var toast = await OverlayTextAsync(page, until: "was not recorded");
         await page.GetByText("Second page").ClickAsync();
         var overlay = await OverlayTextAsync(page, until: "nothing you do is recorded");
         await page.Keyboard.PressAsync("F8");
-        await UntilAsync(() => session.State == RecordingState.Recording);
+        await StateIsAsync(session, RecordingState.Recording);
         await page.Locator("#last").ClickAsync();
         // With the focus in a frame, which records nothing, F8 pauses and resumes all the same.
         await page.FrameLocator("iframe").Locator("[name='inner']").ClickAsync();
         await page.Keyboard.PressAsync("F8");
-        await UntilAsync(() => session.State == RecordingState.Paused);
+        await StateIsAsync(session, RecordingState.Paused);
         await page.Keyboard.PressAsync("F8");
-        await UntilAsync(() => session.State == RecordingState.Recording);
+        await StateIsAsync(session, RecordingState.Recording);
         // Stopped as soon as it is typed, as Enter or Ctrl+C may: what is being typed is part of the recording.
         await page.Locator("[name='later']").PressSequentiallyAsync("just typed");
         var recording = await session.StopAsync();
@@ -212,6 +211,13 @@ public class RecordingSessionTests
             Assert.That(code, Does.Contain(
                 "await Expect(page.GetByRole(AriaRole.Progressbar)).ToHaveCountAsync(0, new() { Timeout = 30_000 });"));
         });
+    }
+
+    // The session went to the state, and every page has it: what is done in the page from now on is done in it.
+    private static async Task StateIsAsync(RecordingSession session, RecordingState state)
+    {
+        await UntilAsync(() => session.State == state);
+        await session.Published;
     }
 
     private static async Task UntilAsync(Func<bool> condition)

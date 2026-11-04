@@ -12,7 +12,7 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// (<see cref="BeginSplice"/>): what is recorded then goes in place of the part, before the actions after it. Safe to
 /// call from any thread.
 /// </summary>
-internal sealed class CaptureLog(bool paused = false, Recording? from = null)
+internal sealed class CaptureLog(bool paused = false, Recording? from = null, CapturePipeline? pipeline = null)
 {
     // An action causes what follows it this soon; later, the page changed by itself or the person did something else.
     private const long DialogWindowMs = 5_000;
@@ -69,13 +69,21 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         if (message is null) return null;
         lock (_gate)
         {
-            // While paused, only what began before the pause is taken: the field being typed into, which the page tells
-            // once it learns of a pause the panel made, and what the page did before it. One begun while paused stays
-            // out when told later, as an action of a replay may be, and so does what it caused.
+            // What began in an epoch that records is the recording's, however late it is told; nothing else is. A message
+            // of no epoch (a page that has not learned one yet, a test's) is taken by the time it began: while paused,
+            // only what began before the pause, as the field being typed into; never what began before the resume.
             var known = message.Type == "action" && message.Id is not null && _indexById.ContainsKey(message.Id);
-            if (_paused && !known && message.T >= _pausedAt) return null;
-            var began = message.Type == "effect" ? message.T - (message.SinceAction ?? 0) : message.T;
-            if (began < _resumedAt && !known) return null;
+            switch (pipeline?.Take(message.Doc ?? page, message.Epoch, message.Seq) ?? Verdict.Unstamped)
+            {
+                case Verdict.Drop when !known:
+                    return null;
+                case Verdict.Unstamped:
+                    if (_paused && !known && message.T >= _pausedAt) return null;
+                    var began = message.Type == "effect" ? message.T - (message.SinceAction ?? 0) : message.T;
+                    if (began < _resumedAt && !known) return null;
+                    break;
+            }
+
             // Inside the lock, so a Build that saw this version waits for the change.
             Changed();
             if (message.Type == "effect")
@@ -688,6 +696,13 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     {
         public string Type { get; set; } = "";
         public string? Id { get; set; }
+
+        /// <summary>The page's document, the epoch its action began in, and the number it began as there.</summary>
+        public string? Doc { get; set; }
+
+        public long? Epoch { get; set; }
+        public long? Seq { get; set; }
+
         public long T { get; set; }
         public string? Kind { get; set; }
         public string? Widget { get; set; }

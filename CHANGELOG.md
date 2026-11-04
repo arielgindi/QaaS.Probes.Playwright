@@ -8,6 +8,9 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   menu of what is meaningful under the pointer, the element a click is for first, then the option, card, row, list or
   dialog around it, each with its locator and how many elements it finds. Pointing at one boxes it; `Enter` or a click
   picks it, `Esc` none.
+- **What you do right after Pause or Try in the panel is never recorded**, and what you typed just before them always
+  is: the recorder first takes what each page still holds, then waits until every page knows the new mode. Each action
+  is kept by the mode it began in, however late the page tells it.
 - **`SetupFlowsBeforeBaseUrl`**, a probe setting: `true` runs `SetupFlows` on a blank page before `BaseUrl` is opened,
   for a login that plants a token with `AddInitScriptAsync` before any page of the app loads, as one behind a proxy
   must. `BaseUrl` opens after them, unless they left the page on it or on a page under it.

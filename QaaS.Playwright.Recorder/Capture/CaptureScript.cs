@@ -83,12 +83,27 @@ internal static class CaptureScript
           const call = (binding, message) => safe(() => {
             Promise.resolve(window[binding]?.(JSON.stringify(message))).catch(() => { /* answered elsewhere, or gone */ });
           });
-          const send = (message) => { if (state === 'recording' || state === 'trying') call('__qaasRecord', message); };
+          // An action carries the epoch of the recorder's state it began in, as this page knew it, and the number it began
+          // as in this document, whenever it is told: the recorder keeps what began while recording, and a drain waits for
+          // every action begun before it. Its effects and later reports carry the same.
+          const send = (message) => {
+            if (state !== 'recording' && state !== 'trying') return;
+            const begun = beganAs.get(message.id ?? message.actionId);
+            call('__qaasRecord', begun ? { ...message, doc: page, epoch: begun.epoch, seq: message.type === 'action' ? begun.seq : undefined } : message);
+          };
           const control = (message) => call('__qaasControl', message);
           const safe = (work, fallback) => {
             try { return work(); } catch { return fallback; }
           };
-          const newId = () => `${page}-${++counter}`;
+          // The epoch the recorder last told this page, null until it does; and each action's, as it began.
+          let stateEpoch = null;
+          const beganAs = new Map();
+          const newId = () => {
+            const id = `${page}-${++counter}`;
+            beganAs.set(id, { epoch: stateEpoch, seq: counter });
+            if (beganAs.size > 500) beganAs.delete(beganAs.keys().next().value);
+            return id;
+          };
           // The browser's own clock, as it was before the page's scripts ran: a page may replace Date.now, e.g. to test
           // with a date of its own, and the recorder tells by its own clock what was done before a pause or after it.
           const dateNow = Date.now;
@@ -1693,8 +1708,11 @@ internal static class CaptureScript
             const near = pointer.x > box.left - 24 && pointer.x < box.right + 24 && pointer.y < box.bottom + 24;
             pill.classList.toggle('near', near && !pill.classList.contains('interactive'));
           }
-          function applyState(next, nextPart) {
+          function applyState(next, nextPart, nextEpoch) {
             if (!['recording', 'paused', 'login', 'testing', 'trying'].includes(next)) return;
+            // An older state, told late, changes nothing.
+            if (typeof nextEpoch === 'number' && stateEpoch !== null && nextEpoch < stateEpoch) return;
+            if (typeof nextEpoch === 'number' && nextEpoch !== stateEpoch) { flushTyping(); stateEpoch = nextEpoch; }
             const changed = next !== state;
             part = nextPart || null;
             if (!changed) { showState(); return; }
@@ -3108,8 +3126,9 @@ internal static class CaptureScript
           // The recorder's calls, each answered as JSON. Not enumerable, and not writable by the page.
           Object.defineProperty(window, '__qaasRecorder', { value: (command) => safe(() => {
             switch (command?.op) {
-              case 'state': applyState(command.state, command.part); return null;
-              case 'flush': flushTyping(); return null;
+              case 'state': applyState(command.state, command.part, command.epoch); return null;
+              // What is being typed is told, then how far this document's actions go, for the drain to wait for.
+              case 'flush': flushTyping(); return JSON.stringify({ doc: page, seq: counter });
               case 'explained': command.labels ? pickerLabels(command.seq, command.labels) : explained(command.seq, command.label); return null;
               case 'tree': {
                 compact = !!command.compact;

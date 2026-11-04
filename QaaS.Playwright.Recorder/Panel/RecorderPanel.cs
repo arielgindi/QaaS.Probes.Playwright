@@ -63,6 +63,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     private readonly HashSet<string>? _continued;
     private readonly string _continuedLabel;
     private volatile string? _banner;
+    private int _disposed;
 
     private RecorderPanel(RecordingSession session, RecordRequest request, IPage page, TestOptions? testOptions)
     {
@@ -133,6 +134,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     /// <summary>Stops updating the panel, and a test run going on; the window closes with the browser.</summary>
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
         await _stop.CancelAsync();
         await _worker;
         await _tester.DisposeAsync();
@@ -291,7 +293,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 _tester.Clear();
                 break;
             case "pause":
-                _session.TogglePause();
+                await _session.TogglePauseAsync();
                 break;
             case "loginByHand":
                 _session.LogInByHand();

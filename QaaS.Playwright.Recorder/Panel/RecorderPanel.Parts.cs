@@ -51,7 +51,7 @@ internal sealed partial class RecorderPanel
                 _part = null;
                 break;
             case "try" when command.On is null || command.On != (_session.State == RecordingState.Trying):
-                _session.ToggleTry();
+                await _session.ToggleTryAsync();
                 break;
             // Once: the same card added twice, as a double-click does, would be one action twice.
             case "addTried" when command.Action is { } id && !_triedAdded.Contains(id) && _session.Tried?.Build(_session.Options.Url) is { } tried:
