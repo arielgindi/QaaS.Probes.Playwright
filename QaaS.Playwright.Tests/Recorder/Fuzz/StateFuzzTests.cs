@@ -49,6 +49,8 @@ public class StateFuzzTests
         // Add to flow sent twice, as a double-click does, put one action in twice, and no build of the recording worked after.
         new TestCaseData("start:/helpdesk | key:F7 | click:New ticket | edit:tried-twice | key:F7 | save:enter")
             .SetName("ATriedActionAddedTwice_IsAddedOnce"),
+        // A pop-up opened while the login flow ran ended Playwright's connection: its first request has no frame yet.
+        new TestCaseData("start:hang | sleep:1500 | popup | save:enter").SetName("APopUpWhileTheLoginFlowRuns_EndsNothing"),
     ];
 
     [TestCaseSource(nameof(Regressions))]

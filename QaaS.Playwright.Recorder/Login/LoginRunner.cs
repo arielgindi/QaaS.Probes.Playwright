@@ -30,10 +30,19 @@ internal sealed record LoginFlow(string Flow, string Assembly, string? Settings,
     public (string Url, string? From) BaseUrlFor(string startUrl)
     {
         foreach (var file in new[] { BaseUrlFrom, Settings }.OfType<string>().Distinct())
-            if (LoginSettings.BaseUrlIn(file, Flow) is { } url)
-                return (url, file);
+            if (LoginSettings.ProbeIn(file, Flow) is { } probe)
+                return (probe.BaseUrl, file);
         return (Uri.TryCreate(startUrl, UriKind.Absolute, out var start) ? start.GetLeftPart(UriPartial.Authority) : startUrl, null);
     }
+
+    /// <summary>
+    /// Whether the probe that runs it, found where its BaseUrl is, runs its setup flows on a blank page before it opens
+    /// BaseUrl (<c>SetupFlowsBeforeBaseUrl</c>), as a login that plants a token first needs; else, as the probe does by
+    /// default, BaseUrl opens first. The recording, a test and a replay run it in the same order.
+    /// </summary>
+    public bool SetupFlowsBeforeBaseUrl() =>
+        new[] { BaseUrlFrom, Settings }.OfType<string>().Distinct().Select(file => LoginSettings.ProbeIn(file, Flow))
+            .FirstOrDefault(probe => probe is not null)?.SetupFirst ?? false;
 }
 
 /// <summary>

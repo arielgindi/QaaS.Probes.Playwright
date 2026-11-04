@@ -266,24 +266,25 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         string? inLogin = null;
         try
         {
-            // The login flow runs first, on a page that loaded nothing, with the BaseUrl the tests give it, as the
-            // recording ran it; then the page goes to the recording's URL, as the recording did.
+            // The login flow runs with the BaseUrl the tests give it, in the order their probe runs its setup flows: on
+            // BaseUrl, or on a blank page before it with SetupFlowsBeforeBaseUrl, as the recording ran it; then the page
+            // goes to the recording's URL, as the recording did.
             if (login is not null)
             {
-                if (run.Page.Url is not ("" or "about:blank")) await run.Page.GotoAsync("about:blank");
                 report = Enter(report, TestPhase.LoggingIn, times);
                 inLogin = login.Flow;
                 FlowAssemblyContext.Load(login.Assembly);
                 var startUrl = config.BaseUrl;
                 var (loginUrl, _) = login.BaseUrlFor(startUrl);
-                config.BaseUrl = loginUrl;
+                (config.BaseUrl, config.SetupFlowsBeforeBaseUrl) = (loginUrl, login.SetupFlowsBeforeBaseUrl());
                 try
                 {
-                    await new FlowRunner(context, null, null, config, flowConfiguration, secrets, log).RunAsync([login.Flow], run);
+                    if (config.SetupFlowsBeforeBaseUrl && run.Page.Url is not ("" or "about:blank")) await run.Page.GotoAsync("about:blank");
+                    await run.SetUpAsync(config, () => new FlowRunner(context, null, null, config, flowConfiguration, secrets, log).RunAsync([login.Flow], run));
                 }
                 finally
                 {
-                    config.BaseUrl = startUrl;
+                    (config.BaseUrl, config.SetupFlowsBeforeBaseUrl) = (startUrl, false);
                 }
 
                 inLogin = null;

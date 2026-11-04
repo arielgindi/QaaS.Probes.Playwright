@@ -123,27 +123,34 @@ public class LoginFlowTests
         if (ChromeExecutable.Find() is null) Assert.Ignore("Google Chrome is not installed.");
         using var site = TestSite.Start();
         var folder = Directory.CreateTempSubdirectory("qaas-recorder-gate-").FullName;
-        // The tests' probe gives the login its BaseUrl, the app's root; the recording starts on a page deep in it.
+        // The tests' probe gives the login its BaseUrl, the app's root, and runs it before BaseUrl opens, as its token must
+        // be there first; the recording starts on a page deep in it.
         var yaml = Path.Combine(folder, "Smoke.qaas.yaml");
         await File.WriteAllTextAsync(yaml, $"""
             ProbeConfiguration:
               BaseUrl: '{site.Url}/gate'
               SetupFlows: [GatedLogInFlow]
+              SetupFlowsBeforeBaseUrl: true
               FlowConfiguration:
                 GatedLogInFlow:
                   User: carol
             """);
         var login = new LoginFlow("GatedLogInFlow", typeof(GatedLogInFlow).Assembly.Location, yaml);
+        var asTheProbeDefaults = Path.Combine(folder, "Default.qaas.yaml");
+        await File.WriteAllTextAsync(asTheProbeDefaults, (await File.ReadAllTextAsync(yaml)).Replace("  SetupFlowsBeforeBaseUrl: true\n", ""));
         var start = $"{site.Url}/gate/orders/42";
         var (baseUrl, from) = login.BaseUrlFor(start);
+        var first = (login.SetupFlowsBeforeBaseUrl(), new LoginFlow(login.Flow, login.Assembly, asTheProbeDefaults).SetupFlowsBeforeBaseUrl());
         var session = await RecordingSession.StartAsync(new RecordingOptions(start)
         {
-            LoginFlow = login.Flow, LoginBaseUrl = baseUrl, LoadStorageStatePath = null, SaveStorageStatePath = null,
-            BrowserArgs = ["--headless=new"],
+            LoginFlow = login.Flow, LoginBaseUrl = baseUrl, SetupFlowsBeforeBaseUrl = first.Item1,
+            LoadStorageStatePath = null, SaveStorageStatePath = null, BrowserArgs = ["--headless=new"],
         }, _ => { });
         Recording recording;
         LoginEnd? end;
         string startedOn, user;
+        TestReport tested;
+        int blocked, blockedInTheDefaultOrder;
         try
         {
             end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, baseUrl, stopped, from));
@@ -155,6 +162,13 @@ public class LoginFlowTests
             await session.Page.GetByRole(AriaRole.Link, new() { Name = "Order 42" }).ClickAsync();
             await session.Page.GetByRole(AriaRole.Button, new() { Name = "Ship" }).ClickAsync();
             await Expect(session.Page.Locator("#done")).ToHaveTextAsync("shipped");
+            // Tested, the login runs in the same order, before BaseUrl, and the flow after it.
+            await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
+            tested = await tester.RunAsync(new RecordRequest("ShipOrder", start, folder) { Login = login }, "Flows");
+            blocked = site.Blocked;
+            // Without it, BaseUrl opens first, as the probe opens it, and the gate sends it to its page of no entry.
+            await tester.RunAsync(new RecordRequest("ShipOrder", start, folder) { Login = new LoginFlow(login.Flow, login.Assembly, asTheProbeDefaults) }, "Flows");
+            blockedInTheDefaultOrder = site.Blocked;
         }
         finally
         {
@@ -166,8 +180,11 @@ public class LoginFlowTests
         {
             Assert.That((baseUrl, from), Is.EqualTo(($"{site.Url}/gate", yaml)), "the BaseUrl of the probe that runs it");
             Assert.That(end, Is.Null);
-            Assert.That(site.Blocked, Is.Zero, "no page loaded before the login planted its token");
-            Assert.That(site.Logins, Is.EqualTo(1));
+            Assert.That(blocked, Is.Zero, "no page loaded before the login planted its token, recording or testing");
+            Assert.That(blockedInTheDefaultOrder, Is.GreaterThan(0), "in the probe's default order, BaseUrl first");
+            Assert.That(first, Is.EqualTo((true, false)), "read beside the probe's BaseUrl, false as the probe's default");
+            Assert.That(tested.Outcome, Is.EqualTo(TestOutcome.Passed), tested.Failure?.Headline ?? tested.Problem);
+            Assert.That(site.Logins, Is.EqualTo(3), "once to record, once for each test");
             Assert.That(startedOn, Is.EqualTo(start), "the recording starts on the URL given, after the login");
             Assert.That(user, Is.EqualTo("carol"));
             Assert.That(recording.StartUrl, Is.EqualTo(start));
