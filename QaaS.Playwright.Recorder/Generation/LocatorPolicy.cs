@@ -228,7 +228,7 @@ internal static partial class LocatorPolicy
     /// </summary>
     public static bool IsJunk(string? text) => text is not null && JunkText().IsMatch(text);
 
-    private static string PatternOf(string text) => RegexSpecialCharacter().Replace(text, @"\$0");
+    private static string PatternOf(string text) => CSharp.Pattern(text);
 
     /// <summary>Whether the candidate is stable enough to be a locator at all, whatever it found.</summary>
     public static bool CanUse(CapturedCandidate candidate) => IsUsable(candidate);
@@ -349,8 +349,6 @@ internal static partial class LocatorPolicy
     [GeneratedRegex(@"""\[object \w+\]""|""undefined""")]
     private static partial Regex JunkInCode();
 
-    [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
-    private static partial Regex RegexSpecialCharacter();
 
     // A price, a date, a time, a percentage; a weekday or a month's day, as a calendar's event names its time.
     [GeneratedRegex(@"[-+]?(\p{Sc}|\b[A-Z]{1,3}\$)\s?\d|\d[\d.,]*\s?\p{Sc}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\b\d{1,2}:\d{2}|\b\d+([.,]\d+)?\s?%" +

@@ -16,9 +16,6 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     // A file name has at most 255 bytes, and a re-recording adds ".recorded-<n>.txt" to the flow's name.
     private const int MaxNameBytes = 200;
 
-    // Types a flow's code uses, which a flow of the same name would hide.
-    private static readonly string[] TypesAFlowUses =
-        ["Task", "IPage", "BasePlaywrightFlow", "Expect", "AriaRole", "Regex", "IDialog", "Console", "Array"];
 
     /// <summary>Whether the recorder's panel shows the flow beside the recorded window as it is written.</summary>
     public bool Panel { get; init; } = true;
@@ -336,7 +333,7 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
     private static string ClassNameOf(string name)
     {
         var className = FlowCodeGenerator.ToPascalCase(name);
-        var clash = TypesAFlowUses.Contains(className) ? "a type its code uses"
+        var clash = Generation.CSharp.Reserved.Contains(className) ? "a type or member its code uses"
             : WindowsDeviceName().IsMatch(className) ? "a device on Windows"
             : null;
         if (clash is not null)

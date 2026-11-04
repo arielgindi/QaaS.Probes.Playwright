@@ -220,7 +220,8 @@ internal static class LoopFinder
                     { Type = fields[0].Type + "[]", Items = items, Fields = fields },
             };
 
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Never a member every record has, as Equals.
+        var names = new HashSet<string>(CSharp.RecordMembers, StringComparer.OrdinalIgnoreCase);
         foreach (var field in fields)
         {
             var name = field.Name;

@@ -37,7 +37,8 @@ internal static partial class StepNamer
     public static void Name(FlowPlan plan)
     {
         var subjects = new Dictionary<string, string>();
-        var used = new HashSet<string>(StringComparer.Ordinal) { "RunAsync", "FileToUpload" };
+        // Never a name of the flow's own members, nor the flow's own name.
+        var used = new HashSet<string>(CSharp.Reserved.Append(plan.ClassName), StringComparer.Ordinal);
         var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
         var openers = new Dictionary<string, string?>();

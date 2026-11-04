@@ -16,10 +16,6 @@ internal static partial class FlowPlanner
     private static readonly HashSet<string> Boundaries = ["dialogOpened", "dialogClosed", "urlChanged", "popup"];
     private static readonly HashSet<string> ValueKinds = ["fill", "choose", "check", "uncheck", "upload"];
 
-    // Members every record has, which a setting must not hide.
-    private static readonly string[] RecordMembers =
-        ["Equals", "GetHashCode", "ToString", "GetType", "EqualityContract", "Deconstruct", "PrintMembers", "Finalize"];
-
     // A step of the values the person filled in keeps the click that sends them when it has this many at most, as a
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
@@ -613,7 +609,7 @@ internal static partial class FlowPlanner
     private static void CollectSettings(FlowPlan plan)
     {
         plan.Settings.AddRange(SettingsByStep(plan).Select(read => read.Setting));
-        var taken = new HashSet<string>(RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
+        var taken = new HashSet<string>(CSharp.RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
         // A list of texts that holds an empty one, recorded or as the person changed it, is a list of records: QaaS reads
         // an empty item of a list as none, so the list would lose it and the loop a round; an empty field it keeps.
         foreach (var list in plan.Settings.Where(setting => setting is { ItemType: null, Items: { } items, Fields: [{ Type: "string" } field] }
