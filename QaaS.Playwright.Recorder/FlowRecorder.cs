@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Playwright;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
@@ -45,7 +46,7 @@ internal static class FlowRecorder
                 case 1:
                     return request with { Continue = true };
                 default:
-                    File.Delete(path);
+                    FileStore.Machine.Delete(path);
                     ConsoleUi.Info($"Discarded the unsaved recording of {flow.Flow}; nothing else changed.");
                     break;
             }
@@ -280,14 +281,14 @@ internal static class FlowRecorder
         {
             // Recording it again would take as long as the first time; the recorder offers it again when it starts.
             var kept = Path.Combine(Path.GetTempPath(), $"{request.ClassName}-{Guid.NewGuid():N}.cs.txt");
-            await File.WriteAllTextAsync(kept, flow.Code + "\n/*\n" + flow.Yaml + "*/\n");
+            FileStore.Machine.Write(kept, flow.Code + "\n/*\n" + flow.Yaml + "*/\n");
             ConsoleUi.Error($"Could not save the flow: {failure.Message}\n  The folder may be read-only, or a file in it " +
                             $"open in another program. The recorded flow is kept in {kept}: copy it into your project, or " +
                             "free the folder and run qaas-playwright, which offers to save it again.");
             return 1;
         }
 
-        if (request.KeepRecording) saved = saved with { RecordingPath = await KeepAsync(saved, recording) };
+        if (request.KeepRecording) saved = saved with { RecordingPath = Keep(saved, recording) };
         await autosave.SavedAsync(recording, request, saved, flow.Code);
         ConsoleUi.Saved(request, saved, flow);
         ConsoleUi.Secrets(flow, saved.YamlPath);
@@ -437,12 +438,12 @@ internal static class FlowRecorder
 
     // The raw recording, beside the flow and named after it, for a person to share when an element was located badly:
     // without its secrets, as it may well be shared.
-    private static async Task<string?> KeepAsync(SavedFlow saved, Recording recording)
+    private static string? Keep(SavedFlow saved, Recording recording)
     {
         var path = Path.ChangeExtension(saved.CodePath, ".recording.json");
         try
         {
-            await File.WriteAllTextAsync(path, Autosave.WithoutSecrets(recording).ToJson());
+            FileStore.Machine.Write(path, Autosave.WithoutSecrets(recording).ToJson());
             return path;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
@@ -472,25 +473,23 @@ internal static class FlowRecorder
     // overwritten but the file a request replaces, unchanged since: a re-recording is saved beside the flow as
     // <Name>.recorded.txt, then <Name>.recorded-2.txt and so on, to merge by hand, each with its values beside it. Not
     // as .cs, which would declare the flow's class twice and break the project's build.
+    // The flow and its YAML are written together or not at all, and a pair a crash left half replaced is put back first.
     internal static SavedFlow Save(RecordRequest request, GeneratedFlow flow)
     {
-        Directory.CreateDirectory(request.OutputDir);
+        var store = FileStore.Machine;
         var flowPath = Path.GetFullPath(request.CodePath);
+        store.Recover(Path.GetDirectoryName(flowPath)!);
         // The flow continued, or the one the person chose to overwrite, as it was then.
         if (request.Replaces is { } replaced && File.Exists(flowPath) && Autosave.Hash(File.ReadAllText(flowPath)) == replaced)
         {
             var yamlPath = Path.ChangeExtension(flowPath, ".flow.yaml");
-            File.WriteAllText(flowPath, flow.Code);
-            File.WriteAllText(yamlPath, flow.Yaml);
+            store.ReplaceTogether([(flowPath, flow.Code), (yamlPath, flow.Yaml)]);
             return new SavedFlow(flowPath, yamlPath);
         }
 
         foreach (var (code, yaml) in PathsFor(flowPath))
-        {
-            if (File.Exists(code) || File.Exists(yaml) || !TryCreate(code, flow.Code)) continue;
-            if (TryCreate(yaml, flow.Yaml)) return new SavedFlow(code, yaml);
-            File.Delete(code);
-        }
+            if (store.CreateTogether([(code, flow.Code), (yaml, flow.Yaml)]))
+                return new SavedFlow(code, yaml);
 
         throw new UnreachableException("There is always another file name to try.");
     }
@@ -502,20 +501,5 @@ internal static class FlowRecorder
         for (var copy = 2; ; copy++)
             yield return (Path.ChangeExtension(flowPath, $".recorded-{copy}.txt"),
                 Path.ChangeExtension(flowPath, $".recorded-{copy}.flow.yaml"));
-    }
-
-    // Only as a new file, so one that appeared since is not overwritten either.
-    private static bool TryCreate(string path, string text)
-    {
-        try
-        {
-            using var file = new StreamWriter(new FileStream(path, FileMode.CreateNew));
-            file.Write(text);
-            return true;
-        }
-        catch (IOException) when (File.Exists(path))
-        {
-            return false;
-        }
     }
 }

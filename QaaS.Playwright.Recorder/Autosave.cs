@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
@@ -70,7 +71,7 @@ internal sealed class Autosave
     /// Writes the recording as not saved yet, unless it is as last written. One of no action is not kept: the copy this
     /// recording made goes, e.g. once the person deleted every action, so none is offered when the recorder starts next.
     /// </summary>
-    public async Task WriteAsync(Recording recording, RecordRequest request)
+    public Task WriteAsync(Recording recording, RecordRequest request)
     {
         if (recording.Actions.Count == 0)
         {
@@ -80,23 +81,19 @@ internal sealed class Autosave
                 _written = null;
             }
 
-            return;
+            return Task.CompletedTask;
         }
 
         var path = PathOf(request.OutputDir, request.ClassName, saved: false);
         try
         {
             var text = Stored(recording, request).ToJson();
-            if (text == _written) return;
-            if (path != _path)
-            {
-                // The flow was renamed in the panel.
-                Forget();
-                _created = !File.Exists(path);
-            }
-
-            await WriteFileAsync(path, text);
-            (_written, _path) = (text, path);
+            if (text == _written) return Task.CompletedTask;
+            var created = path == _path ? _created : !File.Exists(path);
+            WriteFile(path, text);
+            // Renamed in the panel: the copy under the old name goes once the new one is written, never before.
+            if (path != _path) Forget();
+            (_written, _path, _created) = (text, path, created);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -113,25 +110,27 @@ internal sealed class Autosave
                                   $"recorder: recording goes on, and saving still writes the flow. What happened is in {CrashReport.LogPath}.");
             _warned = true;
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// The flow was saved, <paramref name="code"/> in <paramref name="saved"/>: its recording is kept, to continue it,
     /// unless it was saved beside a flow that was there, to merge by hand. The copy not saved yet goes.
     /// </summary>
-    public async Task SavedAsync(Recording recording, RecordRequest request, SavedFlow saved, string code)
+    public Task SavedAsync(Recording recording, RecordRequest request, SavedFlow saved, string code)
     {
         try
         {
             if (saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
             {
-                await WriteFileAsync(PathOf(request.OutputDir, request.ClassName, saved: true),
+                WriteFile(PathOf(request.OutputDir, request.ClassName, saved: true),
                     Stored(recording, request with { Replaces = Hash(code) }).ToJson());
                 Prune();
             }
 
             foreach (var path in new[] { _path, PathOf(request.OutputDir, request.ClassName, saved: false) }.OfType<string>())
-                File.Delete(path);
+                FileStore.Machine.Delete(path);
             _path = null;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
@@ -139,6 +138,8 @@ internal sealed class Autosave
             ConsoleUi.Warning($"The recording was not kept in {Folder} ({failure.Message}), so {request.ClassName} cannot be " +
                               "continued with --continue later; the flow itself is saved. Check that you can write to that folder.");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -149,7 +150,7 @@ internal sealed class Autosave
     {
         try
         {
-            if (_path is not null && _created) File.Delete(_path);
+            if (_path is not null && _created) FileStore.Machine.Delete(_path);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
@@ -164,8 +165,12 @@ internal sealed class Autosave
     /// newer of the one kept here and the one <c>--keep-recording</c> saved beside the flow. Null when there is none.
     /// </summary>
     public static KeptRecording? Find(string folder, string flow) =>
-        Read(PathOf(folder, flow, saved: false))
-        ?? new[] { Read(PathOf(folder, flow, saved: true)), Read(Path.Combine(folder, $"{flow}.recording.json")) }
+        Read(PathOf(folder, flow, saved: false)) ?? ReadLegacy(PathOf(folder, flow, saved: false, legacy: true))
+        ?? new[]
+            {
+                Read(PathOf(folder, flow, saved: true)), ReadLegacy(PathOf(folder, flow, saved: true, legacy: true)),
+                Read(Path.Combine(folder, $"{flow}.recording.json")),
+            }
             .OfType<KeptRecording>().MaxBy(kept => kept.Changed);
 
     /// <summary>The recordings that did not end in a save (the recorder crashed, or was stopped), newest first.</summary>
@@ -256,19 +261,20 @@ internal sealed class Autosave
         return copy;
     }
 
-    private static string PathOf(string folder, string flow, bool saved)
+    // The folder by its one key, in one case where the file system ignores case; legacy, as spelled, as recorders before
+    // 2.1.0 named it, which a recording kept by one of them is found by.
+    private static string PathOf(string folder, string flow, bool saved, bool legacy = false)
     {
-        var whole = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        var whole = legacy ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) : FileStore.Machine.Key(folder);
         var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{whole}\n{flow}")))[..12];
         return Path.Combine(Folder, $"{flow}-{key}{(saved ? ".json" : Unsaved)}");
     }
 
     // The folder too is its owner's alone; the file is written whole or not at all.
-    private static Task WriteFileAsync(string path, string text)
+    private static void WriteFile(string path, string text)
     {
-        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(Folder);
-        else Directory.CreateDirectory(Folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        return AtomicFileWriter.WriteAsync(path, text);
+        FileStore.Machine.Files.CreateFolder(Folder, ownerOnly: true);
+        FileStore.Machine.Write(path, text, ownerOnly: true);
     }
 
     // The newest saved recordings are kept; one not saved yet stays until the person said what to do with it.
@@ -276,8 +282,10 @@ internal sealed class Autosave
     {
         foreach (var old in new DirectoryInfo(Folder).GetFiles("*.json").Where(file => !file.Name.EndsWith(Unsaved, StringComparison.Ordinal))
                      .OrderByDescending(file => file.LastWriteTimeUtc).Skip(SavedKept))
-            old.Delete();
+            FileStore.Machine.Delete(old.FullName);
     }
+
+    private static KeptRecording? ReadLegacy(string path) => FileStore.Machine.Files.IgnoresCase ? Read(path) : null;
 
     private static KeptRecording? Read(string path)
     {

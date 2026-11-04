@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Recorder.State;
 
 namespace QaaS.Playwright.Recorder.Capture;
@@ -1084,7 +1085,7 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
         if (_options.SaveStorageStatePath is not { } path || !_browser.IsConnected) return;
         try
         {
-            await AtomicFileWriter.WriteAsync(path, await _context.StorageStateAsync());
+            FileStore.Machine.Write(path, await _context.StorageStateAsync(), ownerOnly: true);
         }
         catch (PlaywrightException)
         {

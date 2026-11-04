@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 
 namespace QaaS.Playwright.Recorder.Login;
 
@@ -71,7 +72,7 @@ internal static class RememberedLogin
         else entries[key] = now;
         try
         {
-            AtomicFileWriter.WriteAsync(FilePath, JsonSerializer.Serialize(entries, Json)).GetAwaiter().GetResult();
+            FileStore.Machine.Write(FilePath, JsonSerializer.Serialize(entries, Json), ownerOnly: true);
             return null;
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)

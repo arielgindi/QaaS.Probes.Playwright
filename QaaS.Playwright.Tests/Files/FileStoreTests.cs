@@ -85,15 +85,10 @@ public class FileStoreTests
         });
     }
 
-    /// <summary>The files that still write by themselves, until they write through the store; none may be added.</summary>
+    /// <summary>What writes by itself, and why: the store, and Chrome's profile lock, which is held, never written.</summary>
     private static readonly Dictionary<string, int> NotYetThroughTheStore = new()
     {
-        ["QaaS.Playwright.Recorder/Autosave.cs"] = 3, ["QaaS.Playwright.Recorder/Capture/RecordingSession.cs"] = 1,
-        ["QaaS.Playwright.Recorder/CrashReport.cs"] = 1, ["QaaS.Playwright.Recorder/FlowRecorder.cs"] = 8,
-        ["QaaS.Playwright.Recorder/Login/ProjectBuilds.cs"] = 1, ["QaaS.Playwright.Recorder/Login/RememberedLogin.cs"] = 1,
-        ["QaaS.Playwright.Recorder/Panel/PanelPrefs.cs"] = 1, ["QaaS.Playwright.Recorder/TestRun/FlowBuild.cs"] = 7,
-        ["QaaS.Playwright/Browser/AtomicFileWriter.cs"] = 3, ["QaaS.Playwright/Browser/LocalChromeLauncher.cs"] = 1,
-        ["QaaS.Playwright/Browser/StorageState.cs"] = 1, ["QaaS.Playwright/Files/FileStore.cs"] = 6,
+        ["QaaS.Playwright/Files/FileStore.cs"] = 6, ["QaaS.Playwright/Browser/LocalChromeLauncher.cs"] = 1,
     };
 
     [Test]

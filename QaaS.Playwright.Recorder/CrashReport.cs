@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 
 namespace QaaS.Playwright.Recorder;
 
@@ -91,8 +92,7 @@ internal static class CrashReport
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath, $"{DateTimeOffset.Now:O}  {what}\n{failure?.ToString() ?? Environment.StackTrace}\n\n");
+            FileStore.Machine.Append(LogPath, $"{DateTimeOffset.Now:O}  {what}\n{failure?.ToString() ?? Environment.StackTrace}\n\n");
             return true;
         }
         catch (Exception failed) when (failed is IOException or UnauthorizedAccessException)

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using QaaS.Playwright.Configuration;
+using QaaS.Playwright.Files;
 
 namespace QaaS.Playwright.Browser;
 
@@ -34,7 +35,10 @@ internal static class StorageState
     /// <summary>Writes the context's cookies and localStorage to <paramref name="path"/>.</summary>
     public static async Task SaveAsync(IBrowserContext context, string path, ILogger logger)
     {
-        var savedPath = await AtomicFileWriter.WriteAsync(path, await context.StorageStateAsync());
-        logger.LogInformation("Saved storage state to {Path}", savedPath);
+        // A saved login is as good as a password: for its owner's eyes only, and whole or not at all, as parallel
+        // sessions may read it while one saves it.
+        var state = await context.StorageStateAsync();
+        FileStore.Machine.Write(path, state, ownerOnly: true);
+        logger.LogInformation("Saved storage state to {Path}", Path.GetFullPath(path));
     }
 }

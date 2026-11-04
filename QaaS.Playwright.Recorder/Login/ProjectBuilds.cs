@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Recorder.TestRun;
 
 namespace QaaS.Playwright.Recorder.Login;
@@ -50,7 +50,7 @@ internal static class ProjectBuilds
         kept[project.ProjectFile] = new Targets(stamp, dlls, assets);
         try
         {
-            AtomicFileWriter.WriteAsync(FilePath, JsonSerializer.Serialize(kept, Json)).GetAwaiter().GetResult();
+            FileStore.Machine.Write(FilePath, JsonSerializer.Serialize(kept, Json), ownerOnly: true);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {

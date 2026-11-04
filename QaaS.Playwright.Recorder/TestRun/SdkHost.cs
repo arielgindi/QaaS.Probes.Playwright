@@ -10,7 +10,7 @@ namespace QaaS.Playwright.Recorder.TestRun;
 /// </summary>
 internal static class SdkHost
 {
-    /// <summary>The host, or null; and each host looked at, with what it lacked.</summary>
+    /// <summary>The host, or null; and each host looked at, with what it lacked. An SDK of a later .NET builds too.</summary>
     public static (string? Host, IReadOnlyList<string> Checked) Find(IEnumerable<string> candidates, int major, IFileSystem files)
     {
         var checkedHosts = new List<string>();
@@ -18,7 +18,8 @@ internal static class SdkHost
         {
             if (!files.Exists(host)) continue;
             var sdks = Path.Combine(Path.GetDirectoryName(host)!, "sdk");
-            if (files.Folders(sdks, $"{major}.*").Any()) return (host, checkedHosts);
+            if (files.Folders(sdks, "*").Any(sdk => Version.TryParse(Path.GetFileName(sdk).Split('-')[0], out var version) && version.Major >= major))
+                return (host, checkedHosts);
             checkedHosts.Add($"{host}: no .NET {major} SDK in {sdks}");
         }
 

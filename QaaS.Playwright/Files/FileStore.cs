@@ -251,7 +251,10 @@ internal sealed class FileStore(IFileSystem files, int attempts = 8)
     /// Whether <paramref name="failure"/> says another program holds the file for now (Windows' sharing and lock
     /// violations), which passes, rather than that it cannot be written.
     /// </summary>
-    public static bool Held(Exception failure) => failure is IOException { HResult: var result } && (result & 0xFFFF) is 32 or 33;
+    public static bool Held(Exception failure) =>
+        failure is IOException { HResult: var result } && (result & 0xFFFF) is 32 or 33
+        // Windows also says so of a file being replaced while another program has it open.
+        || failure is UnauthorizedAccessException && OperatingSystem.IsWindows();
 
     private void Retried(Action write)
     {

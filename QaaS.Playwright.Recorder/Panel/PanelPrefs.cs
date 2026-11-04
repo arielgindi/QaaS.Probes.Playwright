@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using QaaS.Playwright.Browser;
+using QaaS.Playwright.Files;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -68,7 +69,7 @@ internal sealed class PanelPrefs
         {
             string text;
             lock (_values) text = JsonSerializer.Serialize(_values, Json);
-            await AtomicFileWriter.WriteAsync(_path, text);
+            FileStore.Machine.Write(_path, text, ownerOnly: true);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {

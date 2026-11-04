@@ -18,7 +18,14 @@ internal static class ShadowCopy
 {
     private const int Kept = 10;
 
-    public static string Root => Path.Combine(Path.GetDirectoryName(BrowserDefaults.AuthStatePath)!, "shadow");
+    private static string? _root;
+
+    /// <summary>Where the copies are: <c>~/.qaas/shadow</c>, or another folder for the recorder's tests.</summary>
+    public static string Root
+    {
+        get => _root ??= Path.Combine(Path.GetDirectoryName(BrowserDefaults.AuthStatePath)!, "shadow");
+        set => _root = value;
+    }
 
     /// <summary>Where the copy of <paramref name="assembly"/> is: made now, unless this build was copied already.</summary>
     public static string Of(string assembly, FileStore store, string? root = null)

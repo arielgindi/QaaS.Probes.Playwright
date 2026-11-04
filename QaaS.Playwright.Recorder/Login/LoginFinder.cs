@@ -332,7 +332,7 @@ internal static class LoginFinder
             }
 
             var type = named.Single();
-            flows.Add(new FoundFlow(type, string.IsNullOrEmpty(type.Assembly.Location) ? build.Dll : type.Assembly.Location,
+            flows.Add(new FoundFlow(type, string.IsNullOrEmpty(type.Assembly.Location) ? build.Dll : FlowAssemblyContext.Original(type.Assembly.Location),
                 discovered.SetupIn.GetValueOrDefault(type.Name)));
         }
 
@@ -416,7 +416,7 @@ internal static class LoginFinder
         build is null || Same(Path.GetDirectoryName(flow.Dll)!, Path.GetDirectoryName(build.Dll)!) ? flow.Dll : build.Dll;
 
     private static string FileOf(Assembly assembly, ProjectBuild build) =>
-        Path.GetFileName(string.IsNullOrEmpty(assembly.Location) ? build.Dll : assembly.Location);
+        Path.GetFileName(string.IsNullOrEmpty(assembly.Location) ? build.Dll : FlowAssemblyContext.Original(assembly.Location));
 
     private static RecordRequest Take(RecordRequest request, string folder, FoundFlow flow, Discovered discovered, Told told)
     {

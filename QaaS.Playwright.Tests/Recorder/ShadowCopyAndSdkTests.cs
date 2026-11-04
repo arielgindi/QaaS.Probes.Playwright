@@ -63,14 +63,14 @@ public class ShadowCopyAndSdkTests
         var candidates = SdkHost.Candidates("/machine/dotnet/shared/Microsoft.NETCore.App/10.0.0", name => environment.GetValueOrDefault(name), windows: true).ToList();
 
         var (host, looked) = SdkHost.Find(candidates, 10, files);
-        var (none, lookedForNine) = SdkHost.Find(candidates, 9, files);
+        var (none, lookedForEleven) = SdkHost.Find(candidates, 11, files);
 
         Assert.Multiple(() =>
         {
             Assert.That(candidates[0], Is.EqualTo("/machine/dotnet/dotnet.exe"), "beside the runtime first");
             Assert.That(host, Is.EqualTo("/home/me/.dotnet/dotnet.exe"));
             Assert.That(looked, Is.EqualTo(new[] { "/machine/dotnet/dotnet.exe: no .NET 10 SDK in /machine/dotnet/sdk" }));
-            Assert.That((none, lookedForNine.Count), Is.EqualTo(((string?)null, 2)), "none, and each host it looked at");
+            Assert.That((none, lookedForEleven.Count), Is.EqualTo(((string?)null, 2)), "none, and each host it looked at");
         });
     }
 

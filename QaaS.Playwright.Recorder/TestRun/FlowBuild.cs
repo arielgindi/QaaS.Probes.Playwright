@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using QaaS.Framework.SDK.ContextObjects;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Recorder.TestRun;
@@ -105,8 +106,8 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)))[..16];
         if (_built.TryGetValue(key, out var built) && File.Exists(built.Assembly)) return built;
 
-        var folder = await PrepareAsync(cancel);
-        await File.WriteAllTextAsync(Path.Combine(folder, "Flow.cs"), source, cancel);
+        var folder = Prepare();
+        FileStore.Machine.Write(Path.Combine(folder, "Flow.cs"), source);
         var output = Path.Combine(folder, "out", key);
         built = _direct ? await CompileAsync(folder, output, quiet: false, cancel) : null;
         if (built is null)
@@ -133,8 +134,8 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
                 try
                 {
                     using var build = new FlowBuild();
-                    var folder = await build.PrepareAsync(CancellationToken.None);
-                    await File.WriteAllTextAsync(Path.Combine(folder, "Flow.cs"), Instrument(flow()));
+                    var folder = build.Prepare();
+                    FileStore.Machine.Write(Path.Combine(folder, "Flow.cs"), Instrument(flow()));
                     await CompileAsync(folder, Path.Combine(folder, "out", "warm-up"), quiet: true, CancellationToken.None);
                 }
                 catch (Exception failure) when (failure is not OutOfMemoryException)
@@ -148,11 +149,12 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
     /// Writes the flow's settings, its recorded values with its secrets, for the run to read as the probe reads its YAML,
     /// in the build's folder, which only the person can read.
     /// </summary>
-    public async Task<string> WriteSettingsAsync(GeneratedFlow flow, CancellationToken cancel)
+    public Task<string> WriteSettingsAsync(GeneratedFlow flow, CancellationToken cancel)
     {
-        var path = Path.Combine(await PrepareAsync(cancel), "Flow.flow.yaml");
-        await File.WriteAllTextAsync(path, flow.Values, cancel);
-        return path;
+        cancel.ThrowIfCancellationRequested();
+        var path = Path.Combine(Prepare(), "Flow.flow.yaml");
+        FileStore.Machine.Write(path, flow.Values, ownerOnly: true);
+        return Task.FromResult(path);
     }
 
     /// <summary>
@@ -162,21 +164,16 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
     public async Task<string?> CopyLoginAsync(string? path, CancellationToken cancel)
     {
         if (path is null || !File.Exists(path)) return null;
-        var copy = Path.Combine(await PrepareAsync(cancel), "login.json");
-        await File.WriteAllBytesAsync(copy, await File.ReadAllBytesAsync(path, cancel), cancel);
+        var copy = Path.Combine(Prepare(), "login.json");
+        FileStore.Machine.Write(copy, await File.ReadAllTextAsync(path, cancel), ownerOnly: true);
         return copy;
     }
 
+    // The folder holds the run's secrets: deleted file by file, tried again while a program holds one, and at the next
+    // start when it still could not be.
     public void Dispose()
     {
-        try
-        {
-            if (_folder is not null && Directory.Exists(_folder)) Directory.Delete(_folder, recursive: true);
-        }
-        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
-        {
-            // A file still in use: the system cleans its temporary folder.
-        }
+        if (_folder is not null) FileStore.Machine.DeleteOwned(_folder);
     }
 
     /// <summary>
@@ -206,10 +203,10 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
     // The project, once, in a folder only the person can read, as it holds the values they typed: outside any
     // repository's Directory.Build.props, package versions and feeds, on an SDK of this .NET or later, referencing what
     // the recorder runs on, as files.
-    private async Task<string> PrepareAsync(CancellationToken cancel)
+    private string Prepare()
     {
         if (_folder is not null) return _folder;
-        var folder = Directory.CreateTempSubdirectory("qaas-recorder-test-").FullName;
+        var folder = FileStore.Machine.OwnedFolder("recorder-test");
         var references = string.Join("\n", References().Select(path =>
             $"""    <Reference Include="{SecurityElement.Escape(path)}" Private="false" />"""));
         Dictionary<string, string> files = new()
@@ -252,7 +249,7 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
             ["Directory.Build.targets"] = "<Project />",
             ["Directory.Packages.props"] = "<Project />",
         };
-        foreach (var (name, text) in files) await File.WriteAllTextAsync(Path.Combine(folder, name), text, cancel);
+        foreach (var (name, text) in files) FileStore.Machine.Write(Path.Combine(folder, name), text);
         return _folder = folder;
     }
 
@@ -292,8 +289,8 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
         var assembly = Path.Combine(output, $"{ProjectName}.dll");
         var arguments = Path.Combine(folder, "csc.rsp");
         string[] sources = ["ImplicitUsings.cs", "Flow.cs", "Probe.cs"];
-        await File.WriteAllLinesAsync(arguments,
-            [.. compiler.Options, $"-out:{Quoted(assembly)}", .. sources.Select(name => Quoted(Path.Combine(folder, name)))], cancel);
+        FileStore.Machine.Write(arguments, string.Join(Environment.NewLine,
+            [.. compiler.Options, $"-out:{Quoted(assembly)}", .. sources.Select(name => Quoted(Path.Combine(folder, name)))]) + Environment.NewLine);
         int exitCode;
         string log;
         try
@@ -395,7 +392,9 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
         var start = new ProcessStartInfo(Dotnet(), arguments)
         {
             WorkingDirectory = folder, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
-            CreateNoWindow = true, StandardOutputEncoding = alone ? Encoding.UTF8 : null, StandardErrorEncoding = alone ? Encoding.UTF8 : null,
+            // The SDK writes UTF-8 on every platform; read with the console's code page, as on Windows by default, a path
+            // with an accent in a build's error would come out garbled.
+            CreateNoWindow = true, StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
         };
         // Set when the recorder itself runs from an SDK command, e.g. dotnet run: they would mix two SDKs.
         foreach (var inherited in (string[])["MSBuildExtensionsPath", "MSBuildSDKsPath", "MSBUILD_EXE_PATH", "MSBuildLoadMicrosoftTargetsReadOnly"])
@@ -449,13 +448,13 @@ internal sealed partial class FlowBuild(bool direct = true) : IDisposable
         }
     }
 
-    // The dotnet that runs the recorder, whose SDKs build for its .NET; else the one on the PATH.
-    private static string Dotnet()
-    {
-        var root = Path.GetFullPath(Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", ".."));
-        var host = Path.Combine(root, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
-        return File.Exists(host) ? host : "dotnet";
-    }
+    // The first dotnet that has an SDK for the recorder's .NET: the one that runs the recorder, else on PATH or installed
+    // for the person alone; else whichever "dotnet" is, which says there is no SDK.
+    private static readonly Lazy<string> Host = new(() => SdkHost.Find(
+        SdkHost.Candidates(RuntimeEnvironment.GetRuntimeDirectory(), Environment.GetEnvironmentVariable, OperatingSystem.IsWindows()),
+        Environment.Version.Major, FileStore.Machine.Files).Host ?? "dotnet");
+
+    private static string Dotnet() => Host.Value;
 
     private static FlowBuildException Failed(int exitCode, string log)
     {

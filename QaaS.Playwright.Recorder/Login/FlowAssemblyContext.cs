@@ -4,6 +4,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 using System.Text.Json;
+using QaaS.Playwright.Files;
 using QaaS.Playwright.Flows;
 
 namespace QaaS.Playwright.Recorder.Login;
@@ -91,11 +92,17 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
     /// <exception cref="FileLoadException">It, or an assembly it needs, could not be loaded.</exception>
     public static FlowAssemblies LoadWithFlows(string path)
     {
-        var fullPath = Path.GetFullPath(path);
+        // From a copy of the build, so Windows locks no file of it, and the person can build it again while recording;
+        // what was looked through is said where it is in the build.
+        var original = Path.GetFullPath(path);
+        var fullPath = ShadowOf(original);
+        string Shown(string file) => file.StartsWith(Path.GetDirectoryName(fullPath)!, StringComparison.Ordinal)
+            ? Path.Combine(Path.GetDirectoryName(original)!, Path.GetRelativePath(Path.GetDirectoryName(fullPath)!, file))
+            : file;
         var context = Contexts.GetOrAdd(fullPath, root => new FlowAssemblyContext(root));
         var root = context.LoadFromAssemblyName(AssemblyName.GetAssemblyName(fullPath));
         List<Assembly> loaded = [root];
-        List<ScannedDll> scanned = [new(fullPath, "the build", BuiltAgainst(fullPath), null)];
+        List<ScannedDll> scanned = [new(original, "the build", BuiltAgainst(fullPath), null)];
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.GetFileNameWithoutExtension(fullPath) };
         var candidates = context._closure.Select(entry => (Name: entry.Key, Path: entry.Value, Why: "a dependency of it"))
             .Concat(Directory.EnumerateFiles(context._folder, "*.dll")
@@ -106,23 +113,49 @@ internal sealed class FlowAssemblyContext : AssemblyLoadContext
             var builtAgainst = BuiltAgainst(file);
             if (builtAgainst is null)
             {
-                scanned.Add(new ScannedDll(file, why, null, null));
+                scanned.Add(new ScannedDll(Shown(file), why, null, null));
                 continue;
             }
 
             try
             {
                 loaded.Add(context.LoadFromAssemblyName(new AssemblyName(name)));
-                scanned.Add(new ScannedDll(file, why, builtAgainst, null));
+                scanned.Add(new ScannedDll(Shown(file), why, builtAgainst, null));
             }
             catch (Exception failure) when (failure is FileLoadException or FileNotFoundException or BadImageFormatException)
             {
                 // Its flows cannot run either; the one asked for may be elsewhere.
-                scanned.Add(new ScannedDll(file, why, builtAgainst, failure.Message));
+                scanned.Add(new ScannedDll(Shown(file), why, builtAgainst, failure.Message));
             }
         }
 
         return new FlowAssemblies(loaded, scanned);
+    }
+
+    // Each copy's folder, and the build's it was copied from.
+    private static readonly ConcurrentDictionary<string, string> Originals = new(StringComparer.Ordinal);
+
+    /// <summary>Where <paramref name="location"/>, an assembly loaded from a build's copy, is in the build itself.</summary>
+    public static string Original(string location)
+    {
+        var folder = Path.GetDirectoryName(location) ?? "";
+        return Originals.TryGetValue(folder, out var original) ? Path.Combine(original, Path.GetFileName(location)) : location;
+    }
+
+    // The build's copy; the build itself when it cannot be copied (no room), as before copies.
+    private static string ShadowOf(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return path;
+            var copy = ShadowCopy.Of(path, FileStore.Machine);
+            Originals[Path.GetDirectoryName(copy)!] = Path.GetDirectoryName(path)!;
+            return copy;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return path;
+        }
     }
 
     /// <summary>The flows of <paramref name="assemblies"/>, as the probe finds them by name.</summary>
