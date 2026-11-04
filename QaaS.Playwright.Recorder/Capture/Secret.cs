@@ -6,11 +6,12 @@ namespace QaaS.Playwright.Recorder.Capture;
 /// <summary>
 /// What a person typed into a password's or another secret's field, or checked it holds. It is no text: printed it is
 /// masked, it converts to no string, two are never compared by what they hold, and no JSON holds it, as writing one
-/// throws. Only the panel's test run reads it, through <see cref="Reveal"/>, to type it as the person did; every file,
-/// the console and the panel get <see cref="Masked"/>, or nothing.
+/// throws, and the file store refuses a file that would hold one. Only the panel's test run reads it, through
+/// <see cref="Reveal"/>, to type it as the person did; every file, the console and the panel get <see cref="Masked"/>,
+/// or nothing.
 /// </summary>
 [JsonConverter(typeof(NeverWritten))]
-internal sealed class Secret
+internal sealed class Secret : Files.ISecretValue
 {
     /// <summary>What a secret shows wherever it is shown.</summary>
     public const string Masked = "(hidden)";
