@@ -56,7 +56,7 @@ public class ProbeEndToEndTests
 
         Assert.That(session.SessionFailures.Single().Reason.Message, Is.EqualTo(
             "ProbeConfiguration has 2 problem(s):\n" +
-            "  - Flow: not a setting (known: BaseUrl, SetupFlows, Flows, ForEach, Parallelism, Headless, BlockAssets, " +
+            "  - Flow: not a setting (known: BaseUrl, SetupFlows, SetupFlowsBeforeBaseUrl, Flows, ForEach, Parallelism, Headless, BlockAssets, " +
             "DefaultTimeout, ViewportWidth, ViewportHeight, FullPageScreenshot, SlowMo, KeepOpen, SaveStorageStatePath, " +
             "LoadStorageStatePath, IsolateContext, EmulateDesktopPointer, BrowserUrl, BrowserExecutablePath, " +
             "FlowConfiguration)\n" +
@@ -118,6 +118,34 @@ public class ProbeEndToEndTests
 
         var assertion = run.RunAssertion(loggedIn, reused);
         Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void SetupFlowsBeforeBaseUrl_RunsALoginThatPlantsAToken_BeforeAnyPageOfTheAppLoads(bool first)
+    {
+        var run = new QaasRun();
+        var settings = Settings("GatedUserFlow");
+        settings["BaseUrl"] = $"{_site.Url}/gate";
+        settings["SetupFlows:0"] = "GatedLogInFlow";
+        settings["SetupFlowsBeforeBaseUrl"] = first ? "true" : "false";
+        settings["FlowConfiguration:GatedLogInFlow:User"] = "dana";
+        settings["FlowConfiguration:GatedUserFlow:User"] = "dana";
+        var blocked = _site.Blocked;
+
+        var assertion = run.RunAssertion(run.RunSession("Gate", settings));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(assertion.AssertionStatus, Is.EqualTo(AssertionOutcome.Passed), assertion.AssertionTrace);
+            // First, the app's first load has the token; else BaseUrl loads before it, and the gate sends it away.
+            Assert.That(_site.Blocked - blocked, first ? Is.Zero : Is.Positive);
+            // The login left the page under BaseUrl, on its home: BaseUrl is not opened again.
+            Assert.That(run.Log.Messages, first ? Has.None.StartsWith("Navigating to") : Has.Some.StartsWith("Navigating to"));
+            Assert.That((BrowserSession.IsUnder($"{_site.Url}/gate/home", $"{_site.Url}/gate"),
+                BrowserSession.IsUnder($"{_site.Url}/gateway", $"{_site.Url}/gate"), BrowserSession.IsUnder("about:blank", _site.Url)),
+                Is.EqualTo((true, false, false)));
+        });
     }
 
     private Dictionary<string, string?> Settings(params string[] flows)

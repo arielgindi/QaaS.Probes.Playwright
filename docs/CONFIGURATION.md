@@ -8,6 +8,7 @@ Everything `PlaywrightFlowProbe` and `PlaywrightFlowAssertion` can be told, and 
 |---|---|---|
 | `BaseUrl` | required | The site. The probe opens it before the first flow. |
 | `SetupFlows`, `Flows` | none | Flow class names, run in that order on one page. |
+| `SetupFlowsBeforeBaseUrl` | `false` | Run `SetupFlows` on a blank page, then open `BaseUrl`, unless they left the page on it or under it: for a login that plants a token with `AddInitScriptAsync` before any page loads. |
 | `FlowConfiguration` | none | One section per flow, bound to that flow's settings record. |
 | `ForEach` | none | A DataSource: run `Flows` once per item it generates. See below. |
 | `Parallelism` | `1` | With `ForEach`, how many workers go through the items at the same time. |

@@ -51,8 +51,7 @@ internal sealed class ForEachRun(FlowRunner runner, PlaywrightFlowConfig config,
         try
         {
             await using var browser = await BrowserSession.OpenAsync(config, logger);
-            await browser.OpenBaseUrlAsync(config.BaseUrl);
-            await runner.RunAsync(setupFlows, browser);
+            await browser.SetUpAsync(config, () => runner.RunAsync(setupFlows, browser));
             while (queue.TryDequeue(out var item))
             {
                 try

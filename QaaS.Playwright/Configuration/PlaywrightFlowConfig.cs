@@ -18,6 +18,13 @@ public sealed class PlaywrightFlowConfig
     /// <summary>Flows that run first, e.g. a login. Class names of IPlaywrightFlow implementations.</summary>
     public string[]? SetupFlows { get; set; }
 
+    /// <summary>
+    /// Run SetupFlows on a blank page, before BaseUrl is opened: for a login that plants what the app needs before any
+    /// page of it loads, e.g. a token with <c>AddInitScriptAsync</c>. BaseUrl opens after them, unless they left the page
+    /// on it or on a page under it.
+    /// </summary>
+    public bool SetupFlowsBeforeBaseUrl { get; set; }
+
     /// <summary>Flows that run after SetupFlows, in order, on the same page.</summary>
     public string[]? Flows { get; set; }
 

@@ -2,6 +2,12 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.1.0
+
+- **`SetupFlowsBeforeBaseUrl`**, a probe setting: `true` runs `SetupFlows` on a blank page before `BaseUrl` is opened,
+  for a login that plants a token with `AddInitScriptAsync` before any page of the app loads, as one behind a proxy
+  must. `BaseUrl` opens after them, unless they left the page on it or on a page under it.
+
 ## 2.0.4
 
 - The release's source zip leaves out what building does not need, the panel's UI sources (its built `panel.html` is
