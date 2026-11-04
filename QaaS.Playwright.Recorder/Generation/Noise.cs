@@ -239,7 +239,8 @@ internal static partial class Noise
         if (click.Kind != "click" || HasResult(click) || RemoveWord().Match(click.Source.Target?.Text ?? "") is not { Success: true } match)
             return null;
         var removed = match.Groups["value"].Value.Trim();
-        var choice = actions.FindLastIndex(index - 1, other => other.Kind == "choose" && other.Source.Value == removed);
+        // A "Remove ..." the recording starts with removes no choice of it.
+        var choice = index == 0 ? -1 : actions.FindLastIndex(index - 1, other => other.Kind == "choose" && other.Source.Value == removed);
         if (choice < 0 || actions.Skip(choice + 1).Take(index - choice - 1).Any(between => between.Checks.Count > 0 || HasResult(between)))
             return null;
         var kept = actions.Take(index).Where(other => other.Kind == "choose" && other.Key == actions[choice].Key && other != actions[choice])

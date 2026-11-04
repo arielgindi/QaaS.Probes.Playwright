@@ -102,8 +102,17 @@ internal sealed class Setting(string name, string? text, bool? flag = null)
     /// <summary>The default the person gave it, else null for <see cref="Text"/>; for a relative date, the days.</summary>
     public string? Default { get; set; }
 
+    /// <summary>
+    /// What was typed exactly, when it is not <see cref="Text"/>: with the bidi marks the field held, which the text a
+    /// page shows, and so <see cref="Text"/>, is compared without.
+    /// </summary>
+    public string? Exact { get; set; }
+
+    /// <summary>For a secret, what was typed, which only a test run's values hold.</summary>
+    public Secret? Hidden { get; init; }
+
     /// <summary>The default as the flow's YAML and record hold it.</summary>
-    public string? Value => Default ?? Text;
+    public string? Value => Default ?? Exact ?? Text;
 
     /// <summary>The person named it: other settings give way to it.</summary>
     public bool Named { get; set; }

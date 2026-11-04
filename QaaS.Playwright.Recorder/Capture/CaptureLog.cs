@@ -94,7 +94,8 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null, Ca
             }
 
             if (message.Type != "action" || message.Id is null) return null;
-            var action = message.ToAction(page);
+            // Read as every recording is, once, as it comes: a secret typed or checked is a Secret from here on.
+            var action = RecordingReader.ReadAction(message.ToAction(page));
             if (_indexById.TryGetValue(action.Id, out var index))
             {
                 var previous = _actions[index];
@@ -428,7 +429,13 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null, Ca
     {
         lock (_gate)
         {
-            var actions = _actions.Select(Copy).ToList();
+            // A copy of each, with its secret, which no JSON copy holds.
+            var actions = _actions.Select(action =>
+            {
+                var copy = Copy(action);
+                copy.Secret = action.Secret;
+                return copy;
+            }).ToList();
             foreach (var action in actions)
             {
                 if (_retargeted.TryGetValue(action.Id, out var retargeted)) Retarget(action, retargeted);

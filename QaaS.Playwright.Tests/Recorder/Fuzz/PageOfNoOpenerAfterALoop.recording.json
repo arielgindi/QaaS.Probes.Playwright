@@ -1,0 +1,273 @@
+{
+  "startUrl": "https://app.test/helpdesk",
+  "actions": [
+    {
+      "id": "a-0",
+      "t": 2000,
+      "kind": "click",
+      "page": "page",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Assign to me",
+        "interactive": true,
+        "row": {
+          "key": "TCK-1040",
+          "header": "Ticket"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1040"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Assign to me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Assigned"
+        }
+      ]
+    },
+    {
+      "id": "a-1",
+      "t": 2001,
+      "kind": "click",
+      "page": "page",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Assign to me",
+        "interactive": true,
+        "row": {
+          "key": "TCK-1040",
+          "header": "Ticket"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1040"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Assign to me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Assigned"
+        }
+      ]
+    },
+    {
+      "id": "a-2",
+      "t": 2002,
+      "kind": "click",
+      "page": "page",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Assign to me",
+        "interactive": true,
+        "row": {
+          "key": "TCK-1040",
+          "header": "Ticket"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1040"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Assign to me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Assigned"
+        }
+      ]
+    },
+    {
+      "id": "a-3",
+      "t": 2003,
+      "kind": "click",
+      "page": "page",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Assign to me",
+        "interactive": true,
+        "row": {
+          "key": "TCK-1040",
+          "header": "Ticket"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1040"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Assign to me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Assigned"
+        }
+      ]
+    },
+    {
+      "id": "a-4",
+      "t": 2004,
+      "kind": "click",
+      "page": "page",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Assign to me",
+        "interactive": true,
+        "row": {
+          "key": "TCK-1040",
+          "header": "Ticket"
+        },
+        "candidates": [
+          {
+            "kind": "row",
+            "parts": [
+              {
+                "m": "role",
+                "role": "row"
+              },
+              {
+                "m": "filter",
+                "hasText": "TCK-1040"
+              },
+              {
+                "m": "role",
+                "role": "button",
+                "name": "Assign to me",
+                "exact": true
+              }
+            ],
+            "count": 1,
+            "matches": true
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Assigned"
+        }
+      ]
+    },
+    {
+      "id": "p1-9",
+      "t": 3000,
+      "kind": "click",
+      "page": "page1",
+      "url": "https://app.test/helpdesk",
+      "target": {
+        "tag": "button",
+        "role": "button",
+        "text": "Probe",
+        "interactive": true,
+        "candidates": [
+          {
+            "kind": "id",
+            "parts": [
+              {
+                "m": "css",
+                "css": "[id='fuzz-probe']"
+              }
+            ],
+            "count": 1,
+            "matches": true,
+            "value": "fuzz-probe"
+          }
+        ]
+      },
+      "watched": true,
+      "effects": [
+        {
+          "kind": "changed"
+        }
+      ]
+    }
+  ]
+}

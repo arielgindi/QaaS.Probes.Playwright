@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using QaaS.Playwright.Browser;
-using QaaS.Playwright.Configuration;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.Login;
@@ -186,7 +185,7 @@ internal sealed class Autosave
     public static IReadOnlyList<string> Unkept(Recording recording, string flow, string? yaml = null)
     {
         var unkept = FlowPlanner.Plan(recording, flow).Steps.SelectMany(step => step.Actions)
-            .Where(action => action.Kind == "fill" && action.Source.Value is null && action.Value is { Items: null })
+            .Where(action => action.Kind == "fill" && action.Source is { Value: null, Secret: null } && action.Value is { Items: null })
             .ToList();
         if (unkept.Count > 0 && File.Exists(yaml))
         {
@@ -203,7 +202,7 @@ internal sealed class Autosave
             }
         }
 
-        return [.. unkept.Where(action => action.Source.Value is null).Select(action => action.Value!.Name).Distinct()];
+        return [.. unkept.Where(action => action.Source is { Value: null, Secret: null }).Select(action => action.Value!.Name).Distinct()];
     }
 
     // The recording as kept: of the flow the request names, without the values the recorder hides.
@@ -220,20 +219,11 @@ internal sealed class Autosave
     /// </summary>
     internal static Recording WithoutSecrets(Recording recording)
     {
+        // Read as the generator reads it, each secret a Secret, which no JSON holds; every action kept, as recorded.
         var copy = Recording.FromJson(recording.ToJson());
-        foreach (var action in copy.Actions.Where(HoldsSecret))
-        {
-            (action.Value, action.Raw) = (null, null);
-            if (action.Edit?.Values?.GetValueOrDefault("value") is { } edit) edit.Value = null;
-        }
-
+        RecordingReader.Read(copy);
         return copy;
     }
-
-    private static bool HoldsSecret(CapturedAction action) =>
-        action.Kind == "fill"
-        && (action.Element?.Type == "password" || Secrets.IsSecretKey(FlowPlanner.SettingName(action.Element))
-            || action.Edit?.Values?.GetValueOrDefault("value")?.Name is { } named && Secrets.IsSecretKey(named));
 
     private static string PathOf(string folder, string flow, bool saved)
     {

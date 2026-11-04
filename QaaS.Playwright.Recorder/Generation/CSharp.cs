@@ -4,9 +4,28 @@ using System.Text.RegularExpressions;
 
 namespace QaaS.Playwright.Recorder.Generation;
 
-/// <summary>Writing C#: string literals and identifiers.</summary>
+/// <summary>
+/// Writing C#, the one way generated code is written: string literals, doc text, regex patterns and identifiers, each
+/// escaped or checked by one rule here, never by hand where it is used.
+/// </summary>
 internal static partial class CSharp
 {
+    /// <summary>The members every record has, which none of its properties may be named.</summary>
+    public static readonly string[] RecordMembers =
+        ["Equals", "GetHashCode", "ToString", "GetType", "EqualityContract", "Deconstruct", "PrintMembers", "Finalize"];
+
+    /// <summary>
+    /// Names a flow's code uses or has, which a flow, a setting or a step of that name would hide or clash with: the
+    /// types its code names, its own members and those of every flow, and the members every record has.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Reserved = new HashSet<string>(
+    [
+        "Task", "IPage", "ILocator", "IDialog", "IBrowserContext", "BasePlaywrightFlow", "Expect", "Assertions", "AriaRole",
+        "Regex", "CultureInfo", "SelectOptionValue", "DateTime", "Uri", "NotImplementedException", "StringComparison",
+        "Console", "Array", "RunAsync", "FileToUpload", "AcceptBrowserDialog", "CssText", "LoadAndValidateConfiguration",
+        .. RecordMembers,
+    ], StringComparer.Ordinal);
+
     private static readonly HashSet<string> Keywords =
     [
         .. """
@@ -62,6 +81,20 @@ internal static partial class CSharp
         return char.IsDigit(identifier[0]) ? "Field" + identifier : identifier;
     }
 
+    /// <summary>
+    /// An identifier in PascalCase from the text (<see cref="Pascal"/>), else <paramref name="fallback"/>: never null, as
+    /// a text of no ASCII letter or digit (underscores, marks, another script) makes none.
+    /// </summary>
+    public static string Identifier(string? text, string fallback) => Pascal(text) ?? fallback;
+
+    /// <summary>A text in an XML doc comment, on one line: a line break or another control character in it is a space.</summary>
+    public static string Doc(string text) =>
+        LineBreak().Replace(text, " ").Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
+
+    /// <summary>A regex pattern that matches the text as it is, in the syntax .NET and JavaScript share.</summary>
+    public static string Pattern(string text) => RegexSpecial().Replace(text, @"\$0");
+
     /// <summary>The identifier in camelCase, made safe as a local variable name.</summary>
     public static string Camel(string pascal)
     {
@@ -84,14 +117,10 @@ internal static partial class CSharp
 
     [GeneratedRegex("[A-Za-z0-9]+")]
     private static partial Regex AsciiWord();
-}
 
-/// <summary>The invisible marks that order right-to-left and left-to-right text, which a typed value must not hold.</summary>
-internal static partial class Bidi
-{
-    public static string Strip(string text) => Marks().Replace(text, "");
+    [GeneratedRegex(@"[\p{Cc}\u2028\u2029]")]
+    private static partial Regex LineBreak();
 
-    // Escaped in the C# string, so the pattern itself holds the characters.
-    [GeneratedRegex("[\x200B\x200E\x200F\x202A-\x202E\x2066-\x2069\x061C]")]
-    private static partial Regex Marks();
+    [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
+    private static partial Regex RegexSpecial();
 }

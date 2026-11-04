@@ -32,7 +32,7 @@ internal static partial class LocatorPolicy
     {
         if (target is null) return null;
         byName |= IsNumberedToggle(target);
-        if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked) return picked;
+        if (target.Chosen is { } chosen && target.Candidates.ElementAtOrDefault(chosen) is { } picked && Writable(picked)) return picked;
         // A field named only by its placeholder, a prompt (Type for hints...) or an example of a value (yyyy-dd-mm), is
         // found by its group's label when it has one, and never by an example.
         var grouped = target.Candidates.Any(candidate => candidate is { Kind: "group", Matches: true } && IsUsable(candidate));
@@ -46,7 +46,7 @@ internal static partial class LocatorPolicy
         // Nothing good found the element alone: Playwright's own, which finds it, with what is wrong with it to check by
         // hand; else the closest miss, which the flow's reader must fix.
         // Never one by a title or a text no person wrote, nor by a generated id, while another comes close.
-        var generated = target.Candidates.FirstOrDefault(candidate => candidate is { Kind: "generator", Matches: true } && !string.IsNullOrWhiteSpace(candidate.Csharp));
+        var generated = target.Candidates.FirstOrDefault(candidate => candidate is { Kind: "generator", Matches: true } && Writable(candidate));
         var closest = target.Candidates.Where(IsUsable).OrderBy(candidate => candidate.Count <= 0 ? int.MaxValue : candidate.Count).FirstOrDefault();
         return generated is not null && (closest is null || !Unfit(generated)) ? generated : closest ?? generated;
     }
@@ -163,7 +163,9 @@ internal static partial class LocatorPolicy
 
     /// <summary>The role's member of <see cref="AriaRole"/>, e.g. <c>Menuitem</c>; null for a role it does not have.</summary>
     public static string? AriaRoleName(string? role) =>
-        role is not null && Enum.TryParse<AriaRole>(role, ignoreCase: true, out var value) ? value.ToString() : null;
+        role is { Length: > 0 } && role.All(char.IsAsciiLetter) && Enum.TryParse<AriaRole>(role, ignoreCase: true, out var value)
+            ? value.ToString()
+            : null;
 
     // A dialog found by its heading is the first part of a locator, so its root is a page; so is a group found by its label.
     private static string RenderPart(LocatorPart part, string? name, string root, string breakBefore) => part.M switch
@@ -226,12 +228,27 @@ internal static partial class LocatorPolicy
     /// </summary>
     public static bool IsJunk(string? text) => text is not null && JunkText().IsMatch(text);
 
-    private static string PatternOf(string text) => RegexSpecialCharacter().Replace(text, @"\$0");
+    private static string PatternOf(string text) => CSharp.Pattern(text);
 
     /// <summary>Whether the candidate is stable enough to be a locator at all, whatever it found.</summary>
     public static bool CanUse(CapturedCandidate candidate) => IsUsable(candidate);
 
-    private static bool IsUsable(CapturedCandidate candidate) => !WholeRow(candidate) && candidate.Kind switch
+    // The kinds of a locator's parts that Render writes.
+    private static readonly HashSet<string> PartKinds = ["css", "testid", "text", "title", "filter", "has", "role"];
+
+    // A locator that can be written as C#: of parts Render knows, each role one of AriaRole's; Playwright's own, its C#.
+    // A recording of another version, or from a file, may hold one of neither.
+    // The first part finds elements, as a filter of none cannot.
+    private static bool Writable(CapturedCandidate candidate) => candidate.Kind == "generator"
+        ? candidate.Csharp is { } csharp && GeneratedCall().IsMatch(csharp)
+        : candidate.Parts is [{ M: not ("filter" or "has") }, ..]
+          && candidate.Parts.All(part => PartKinds.Contains(part.M) && (part.M != "role" || AriaRoleName(part.Role) is not null));
+
+    // Playwright's C# of a locator: a call of a page's, GetByRole(...), Locator(...), and the calls after it.
+    [GeneratedRegex(@"^[A-Z]\w*\(.*\)$", RegexOptions.Singleline)]
+    private static partial Regex GeneratedCall();
+
+    private static bool IsUsable(CapturedCandidate candidate) => Writable(candidate) && !WholeRow(candidate) && candidate.Kind switch
     {
         "name" or "nameValue" or "id" or "select" or "testid" or "within" => !UnstableId.IsUnstable(candidate.Value) && CssIsStable(candidate),
         "role" or "roleInGroup" or "row" or "group" or "section" or "item" or "icon" or "title" or "structure" =>
@@ -288,6 +305,7 @@ internal static partial class LocatorPolicy
             return candidate.Kind switch
             {
                 "generator" => "none",
+                _ when !Writable(candidate) => "not a locator the recorder can write",
                 _ when WholeRow(candidate) => "finds the row by all it says",
                 _ when candidate.Parts.Any(part => IsJunk(part.Text) || IsJunk(part.Name)) => "a text no person wrote",
                 "role" or "roleInGroup" or "row" when candidate.Parts.FirstOrDefault(part => part.M == "role" && AriaRoleName(part.Role) is null) is { } unknown =>
@@ -331,8 +349,6 @@ internal static partial class LocatorPolicy
     [GeneratedRegex(@"""\[object \w+\]""|""undefined""")]
     private static partial Regex JunkInCode();
 
-    [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
-    private static partial Regex RegexSpecialCharacter();
 
     // A price, a date, a time, a percentage; a weekday or a month's day, as a calendar's event names its time.
     [GeneratedRegex(@"[-+]?(\p{Sc}|\b[A-Z]{1,3}\$)\s?\d|\d[\d.,]*\s?\p{Sc}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}|\b\d{1,2}:\d{2}|\b\d+([.,]\d+)?\s?%" +

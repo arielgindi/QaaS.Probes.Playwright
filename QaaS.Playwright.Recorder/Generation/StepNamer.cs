@@ -37,7 +37,8 @@ internal static partial class StepNamer
     public static void Name(FlowPlan plan)
     {
         var subjects = new Dictionary<string, string>();
-        var used = new HashSet<string>(StringComparer.Ordinal) { "RunAsync", "FileToUpload" };
+        // Never a name of the flow's own members, nor the flow's own name.
+        var used = new HashSet<string>(CSharp.Reserved.Append(plan.ClassName), StringComparer.Ordinal);
         var given = plan.Steps.Select(GivenName).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var flowNameTaken = false;
         var openers = new Dictionary<string, string?>();
@@ -498,7 +499,9 @@ internal static partial class StepNamer
         }
     }
 
-    private static string Sentence(string text) => char.ToUpperInvariant(text[0]) + text[1..] + ".";
+    // Of an action of a kind the recorder does not know, and so of nothing to say, what is said of every step.
+    private static string Sentence(string text) =>
+        text.Length == 0 ? "Does what was recorded." : char.ToUpperInvariant(text[0]) + text[1..] + ".";
 
     private static string Join(IEnumerable<string> phrases)
     {

@@ -1,0 +1,11 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "id": "fuzz-368901"
+    },
+    {
+      "id": "fuzz-368901"
+    }
+  ]
+}

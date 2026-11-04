@@ -96,12 +96,20 @@ internal sealed partial class FlowWriter
                 throw new NotImplementedException($"Return the full path of the file recorded as '{recordedName}'.");
         """;
 
+    // A setting read into a CSS selector's quotes is escaped there as the selector reads it, whatever it holds.
+    private const string CssTextMethod = """
+            // A value as the quotes of a CSS selector hold it, whatever it holds.
+            private static string CssText(string value) =>
+                value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal)
+                    .Replace("\n", "\\a ", StringComparison.Ordinal).Replace("\r", "\\d ", StringComparison.Ordinal);
+        """;
+
     private readonly FlowPlan _plan;
     private readonly bool _autoChecks;
     private readonly List<Line> _run = [];
     private readonly List<(Step Step, string Signature, List<Line> Body)> _methods = [];
     private readonly Dictionary<string, string> _dialogVariables = [];
-    private readonly HashSet<string> _runVariables = ["page"];
+    private readonly Symbols _runSymbols = new(["page"]);
     private readonly Dictionary<string, HashSet<string>> _dropped = [];
     private readonly Dictionary<string, List<Expectation>> _expects = [];
     private readonly HashSet<Setting> _settings;
@@ -114,6 +122,9 @@ internal sealed partial class FlowWriter
     // the same ones.
     private List<Setting> _seen = [];
     private List<Setting> _typed = [];
+
+    // What a loop's last round typed, as later steps read it: from the list's last item, by the text it is.
+    private readonly Dictionary<string, string> _afterLoops = new(StringComparer.Ordinal);
 
     // The flow's properties that type a date relative to the day it runs, by the setting of its days.
     private readonly Dictionary<Setting, string> _dates = [];
@@ -168,7 +179,8 @@ internal sealed partial class FlowWriter
 
         public Dictionary<string, int> Counted { get; } = [];
         public Dictionary<string, HashSet<string>> RowsCounted { get; } = [];
-        public HashSet<string> Locals { get; } = new(StringComparer.Ordinal) { scope.Root, "page" };
+        /// <summary>The step's names: its parameter, and <c>page</c>, which a dialog's step has not but must not declare.</summary>
+        public Symbols Symbols { get; } = new([scope.Root], ["page"]);
         public Dictionary<string, string> Declared { get; } = [];
         public List<Line> Lines { get; } = [];
 
@@ -201,10 +213,6 @@ internal sealed partial class FlowWriter
 
     private void WriteStep(Step step)
     {
-        // A dialog no step before opened is found in RunAsync, written in RunAsync's own state: not the step before's,
-        // whose loop item RunAsync has not, nor none, as for a flow whose first step is in a dialog.
-        _step = new StepState(new Scope("page", "page", null, "page"), counted: null);
-        var argument = step.Dialog is { } title ? DialogVariable(step, title) : step.Page;
         var scope = step.Dialog is not null
             ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
             : new Scope(step.Page, step.Page, null, step.Page);
@@ -215,12 +223,23 @@ internal sealed partial class FlowWriter
         (_seen, _typed, _acceptsDialogs) = (seen, typed, accepts);
         _step = new StepState(scope, _step);
         WriteBody(step, last: true);
+        var body = _step;
+        // A step that writes nothing, of actions the recorder does not know, is no method: they are to redo by hand.
+        if (body.Lines.Count == 0) return;
+
+        // A page or a dialog no step before opened is found in RunAsync, as the step before it: from what was read
+        // before it, written in RunAsync's own state, not the step before's, whose loop item RunAsync has not.
+        (var seenAfter, var typedAfter, _seen, _typed) = (_seen, _typed, seen, typed);
+        _step = new StepState(new Scope("page", "page", null, "page"), counted: null);
+        var argument = PageVariable(step);
+        if (step.Dialog is { } title) argument = DialogVariable(step, title);
+        (_seen, _typed) = (seenAfter, typedAfter);
 
         var returns = step.Opens is not null ? "Task<ILocator>" : step.OpensPage is not null ? "Task<IPage>" : "Task";
         var parameter = step.Dialog is not null ? "ILocator dialog" : $"IPage {step.Page}";
-        _methods.Add((step, $"private {(_step.UsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", _step.Lines));
+        _methods.Add((step, $"private {(body.UsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", body.Lines));
 
-        // What a step opens is kept when a later step works in it.
+        // What a step opens is kept when a later step works in it; a tab of a name opened before is the one opened now.
         var call = $"{step.Name}({argument})";
         var later = _plan.Steps.Skip(_plan.Steps.IndexOf(step) + 1).ToList();
         if (step.Opens is { } opened && later.Any(other => other.Dialog == opened.Title))
@@ -230,9 +249,22 @@ internal sealed partial class FlowWriter
             _run.Add(new Line($"var {variable} = await {call};"));
         }
         else if (step.OpensPage is { } page && later.Any(other => other.Page == page))
-            _run.Add(new Line($"var {page} = await {call};"));
+            _run.Add(new Line($"{_runSymbols.Assign(page)} = await {call};"));
         else
             _run.Add(new Line($"await {call};"));
+    }
+
+    // A page no step before opened, as a pop-up whose opening click was left out, is opened in RunAsync: in a new tab, at
+    // the address its first action was at.
+    private string PageVariable(Step step)
+    {
+        if (_runSymbols.IsDeclared(step.Page)) return step.Page;
+        var url = step.Actions.Select(action => action.Source.Url).FirstOrDefault(url => !string.IsNullOrEmpty(url));
+        _run.Add(new Line($"{_runSymbols.Assign(step.Page)} = await page.Context.NewPageAsync();",
+            $"nothing the flow does opens {step.Page}, as what opened it was left out or not recorded: the flow opens it here, " +
+            $"in a new tab{(url is null ? "" : " at the address it was at")}; check that the flow acts on the page it should"));
+        if (url is not null) _run.Add(new Line($"await {step.Page}.GotoAsync({Address(url)});"));
+        return step.Page;
     }
 
     private void WriteBody(Step step, bool last)
@@ -247,7 +279,7 @@ internal sealed partial class FlowWriter
         {
             var action = step.Actions[index];
             _step.Actions = [action.Source.Id];
-            WriteAction(action, step, index == step.Actions.Count - 1, last);
+            WriteIsolated(action, step, index == step.Actions.Count - 1, last);
         }
     }
 
@@ -255,7 +287,7 @@ internal sealed partial class FlowWriter
     private string DialogVariable(Step step, string title)
     {
         if (_dialogVariables.TryGetValue(title, out var variable)) return variable;
-        variable = Unique("dialog", _runVariables);
+        variable = _runSymbols.New("dialog");
         _dialogVariables[title] = variable;
         var info = step.Actions.Select(action => action.Source.Dialog).FirstOrDefault(dialog => dialog?.Title == title);
         var (locator, check) = DialogLocator(step.Page, info);
@@ -267,7 +299,7 @@ internal sealed partial class FlowWriter
     {
         var opensMany = _plan.Steps.Count(other => other.Opens is not null) > 1;
         var subject = step.Name.StartsWith("Open", StringComparison.Ordinal) ? step.Name[4..^5] : "";
-        return Unique(opensMany && subject.Length > 0 ? CSharp.Camel(subject) + "Dialog" : "dialog", _runVariables);
+        return _runSymbols.New(opensMany && subject.Length > 0 ? CSharp.Camel(subject) + "Dialog" : "dialog");
     }
 
     // ── Loops ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -283,7 +315,7 @@ internal sealed partial class FlowWriter
         if (loop.List is { } list)
         {
             var item = list.ItemType is { } type ? CSharp.Camel(type) : LoopVariable(LoopFinder.Singular(list.Fields![0].Name));
-            item = Unique(item, _step.Locals);
+            item = _step.Symbols.New(item);
             var values = LoopFinder.ValuesOf(template);
             for (var index = 0; index < values.Count; index++)
                 _step.LoopValues[values[index]] = list.ItemType is null ? item : $"{item}.{list.Fields![index].Name}";
@@ -293,7 +325,7 @@ internal sealed partial class FlowWriter
         }
         else
         {
-            var counter = Unique("i", _step.Locals);
+            var counter = _step.Symbols.New("i");
             header = $"for (var {counter} = 0; {counter} < {FromSettings(loop.Count!)}; {counter}++)";
         }
 
@@ -302,7 +334,7 @@ internal sealed partial class FlowWriter
                      .Select(effect => effect.Dialog).OfType<CapturedDialog>().DistinctBy(dialog => dialog.Title))
         {
             var (locator, check) = DialogLocator(_step.Scope.Page, opened);
-            var variable = Unique(CSharp.Camel(CSharp.Pascal(opened.Title) is { } subject && CSharp.IsAsciiText(opened.Title) ? subject + "Dialog" : "dialog"), _step.Locals);
+            var variable = _step.Symbols.New(CSharp.Camel(CSharp.Pascal(opened.Title) is { } subject && CSharp.IsAsciiText(opened.Title) ? subject + "Dialog" : "dialog"));
             _step.BeforeLoop.Add(new Line($"var {variable} = {locator};", check) { Actions = [template[0].Source.Id] });
             _step.LoopDialogs[opened.Title] = variable;
         }
@@ -313,7 +345,7 @@ internal sealed partial class FlowWriter
         {
             _step.Actions = [.. repeats.Select(repeat => repeat[index].Source.Id)];
             _step.Repeats = (repeats, index);
-            WriteAction(template[index], step, isLast: false, last);
+            WriteIsolated(template[index], step, isLast: false, last);
         }
 
         _step.Repeats = null;
@@ -346,7 +378,12 @@ internal sealed partial class FlowWriter
         {
             var values = LoopFinder.ValuesOf(lastRepeat);
             for (var index = 0; index < values.Count; index++)
-                _step.LoopValues[values[index]] = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
+            {
+                var code = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
+                _step.LoopValues[values[index]] = code;
+                // A later step that shows what the last round typed, as a link to the item it added, reads it there too.
+                if (values[index] is { Type: "string", Text.Length: >= 3 } value) _afterLoops[value.Text!] = code;
+            }
         }
 
         _step.Actions = [lastRepeat[^1].Source.Id];
@@ -365,6 +402,29 @@ internal sealed partial class FlowWriter
             var alerts = repeats.Select(repeat => FirstAlert(repeat[index])).ToList();
             if (alerts.All(alert => alert is not null) && alerts.Select(alert => alert!.Text).Distinct().Count() == 1)
                 yield return (index, alerts[^1]!);
+        }
+    }
+
+    /// <summary>What to check by hand starts with this for an action the writer could not write, which it left out.</summary>
+    public const string NotWritten = "could not write action";
+
+    // An action the writer cannot write is left out, its lines taken back, and said to redo by hand: the rest of the
+    // flow is written still, as a recording the recorder cannot write whole must still be saved.
+    private void WriteIsolated(PlannedAction action, Step step, bool isLast, bool last)
+    {
+        var (lines, beforeLoop, declared) = (_step.Lines.Count, _step.BeforeLoop.Count, _step.Declared.Keys.ToHashSet());
+        try
+        {
+            WriteAction(action, step, isLast, last);
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            _step.Lines.RemoveRange(lines, _step.Lines.Count - lines);
+            _step.BeforeLoop.RemoveRange(beforeLoop, _step.BeforeLoop.Count - beforeLoop);
+            foreach (var local in _step.Declared.Keys.Where(key => !declared.Contains(key)).ToList()) _step.Declared.Remove(local);
+            if (last)
+                _plan.NotRecorded.Add($"{NotWritten} {action.Source.Id} (a '{action.Kind}') in {step.Name}, as {failure.GetType().Name}: " +
+                                      $"{failure.Message} Redo it by hand.");
         }
     }
 
@@ -396,6 +456,7 @@ internal sealed partial class FlowWriter
         var problem = source.HoverMenu == true && opener is null
             ? "the menu it is in opened on hover: hover what opens it first (HoverAsync)"
             : null;
+        var from = _step.Lines.Count;
         switch (action.Kind)
         {
             case "click" or "dblclick":
@@ -404,7 +465,7 @@ internal sealed partial class FlowWriter
                 if (action.Effects.FirstOrDefault(effect => effect.Kind == "popup") is { Page: { } popup })
                 {
                     var locator = Locate(action, ref problem);
-                    _step.Add($"var {popup} = await {scope.Page}.RunAndWaitForPopupAsync(() => {locator}.{method}());",
+                    _step.Add($"{Declared(popup)} = await {scope.Page}.RunAndWaitForPopupAsync(() => {locator}.{method}());",
                         Join(problem, "a pop-up opened here: check what the flow does in it"));
                 }
                 else
@@ -420,7 +481,7 @@ internal sealed partial class FlowWriter
                 break;
             }
             case "fill":
-                _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({Text(action.Value)});", problem);
+                _step.Add($"await {Locate(action, ref problem)}{Break}.FillAsync({AsText(action.Value)});", problem);
                 // A picker that keeps a date only once its OK commits it, as antd's, takes Enter as its OK.
                 if (source.Committed == true) _step.Add($"await {Locate(action, ref problem)}{Break}.PressAsync(\"Enter\");");
                 break;
@@ -478,7 +539,7 @@ internal sealed partial class FlowWriter
                         : null);
                 break;
             case "newTab":
-                _step.Add($"var {source.Page} = await {scope.Page}.Context.NewPageAsync();",
+                _step.Add($"{Declared(source.Page)} = await {scope.Page}.Context.NewPageAsync();",
                     source.AfterPause == true
                         ? "a tab that opened while the recording was paused: the flow opens it here"
                         : "a tab you opened yourself: the flow opens it here");
@@ -493,9 +554,35 @@ internal sealed partial class FlowWriter
                 break;
         }
 
+        if (action.Kind is not ("click" or "dblclick") && action.Effects.FirstOrDefault(effect => effect.Kind == "popup") is { Page: { } opensPopup })
+            WaitForPopup(opensPopup, from);
         Saw(action);
         WriteEffects(action, step, isLast);
     }
+
+    // A pop-up that what is no click opened, as Enter in a field does: the statement last written for the action is run
+    // and waited for, as a click is; else, when nothing was written for it, the pop-up is the page opened last.
+    private void WaitForPopup(string popup, int from)
+    {
+        var page = _step.Scope.Page;
+        if (_step.Lines.Count > from && _step.Lines[^1] is { Depth: 0, Mark.Length: 0, Text: var text } line
+                                     && text.StartsWith("await ", StringComparison.Ordinal) && text.EndsWith(';'))
+        {
+            _step.Lines[^1] = line with
+            {
+                Text = $"{Declared(popup)} = await {page}.RunAndWaitForPopupAsync(() => {text["await ".Length..^1]});",
+                Check = Join(line.Check, "a pop-up opened here: check what the flow does in it"),
+            };
+            return;
+        }
+
+        _step.Add($"{Declared(popup)} = {page}.Context.Pages[^1];",
+            "a pop-up opened here, by what the recorder did not understand: the flow takes the page opened last; check that it is the pop-up");
+    }
+
+    // A page the action opens, as a variable of the step: the step's own, when the page it is on has that name, as a
+    // tab opened again of a name opened before.
+    private string Declared(string page) => _step.Symbols.Assign(page);
 
     // What the action read is known to what follows it: a text that shows it, or a locator that shows what was typed.
     // Not a loop's item, which only its repeat knows.
@@ -525,7 +612,7 @@ internal sealed partial class FlowWriter
             ? $"{scope.Page}.Locator({CSharp.Literal(optionCss + ":visible")}){Break}.GetByText({Setting(action.OptionValue ?? action.Value)}, new() {{ Exact = true }})"
             : $"{scope.Page}{inList}.GetByRole(AriaRole.Option, new() {{ Name = {Setting(action.OptionValue ?? action.Value)}, Exact = true }})";
         var optionProblem = source.Option is null || source.OptionCss is not null || source.Option.Candidates.Any(candidate =>
-            candidate is { Kind: "role", Matches: true } && candidate.Parts[^1] is { Exact: true } part && part.Name == source.Value)
+            candidate is { Kind: "role", Matches: true, Parts: [.., { Exact: true } part] } && part.Name == source.Value)
             ? null
             : "the option's name did not find it alone when recorded";
         switch (source.Widget)
@@ -602,13 +689,17 @@ internal sealed partial class FlowWriter
 
         var alerts = action.Effects.Where(IsAlert).DistinctBy(effect => effect.Text).ToList();
         var shownElsewhere = action.Has("dialogOpened") || action.Has("tabSelected") || (closed.Count > 0 && alerts.Count > 0);
-        // A change of address the recording does not say, as one edited by hand may not, is no address to check.
-        var changes = action.Effects.Where(effect => _autoChecks && effect is { Kind: "urlChanged", Url: not null });
+        // An address change the recorder did not see the address of is no check.
+        var changes = action.Effects.Where(effect => _autoChecks && effect is { Kind: "urlChanged", Url.Length: > 0 });
         // Not one the address before the action matched already, as a sort's query does: it would check nothing.
         foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
                      .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))
         {
-            var page = changed.Page is { } alias && alias != action.Source.Page ? alias : scope.Page;
+            // On the pop-up the action opened, when it went there; else on the page the step is on, as no other is known in it.
+            var page = changed.Page is { } alias && alias != action.Source.Page
+                                                 && action.Effects.Any(effect => effect.Kind == "popup" && effect.Page == alias)
+                ? alias
+                : scope.Page;
             AddCheck("url", $"URL {StepNamer.Route(changed.Url) ?? changed.Url}",
                 $"await Expect({page}){Break}.ToHaveURLAsync(new Regex({CSharp.Literal(UrlPattern(changed.Url!))}));");
         }
@@ -640,7 +731,7 @@ internal sealed partial class FlowWriter
                 return;
             }
 
-            var variable = Unique(scope.Dialog is null ? "dialog" : "opened", _step.Locals);
+            var variable = _step.Symbols.New(scope.Dialog is null ? "dialog" : "opened");
             _step.Add($"var {variable} = {locator};", check);
             _step.Opened = (opened.Title, variable);
             if (shows) _step.Add($"await Expect({variable}){Break}.ToBeVisibleAsync();", mark: AutoCheck);
@@ -789,6 +880,12 @@ internal sealed partial class FlowWriter
     // from run to run, so the words around it are expected, as a message is found.
     private void WriteCheck(CapturedAction check)
     {
+        if (check.Check is "value" or "text" or "contains" && (check.Secret is not null || SecretField.Is(check.Target)))
+        {
+            WriteSecretCheck(check);
+            return;
+        }
+
         var expected = check.Value ?? "";
         string? problem = null;
         string Element() => Located(check, check.Target, ref problem);
@@ -839,6 +936,28 @@ internal sealed partial class FlowWriter
         Expect(new Expectation(check.Id, said, Auto: false)
         {
             Of = check.Check is "url" or "row" ? null : LocatorPolicy.Describe(LocatorPolicy.Choose(check.Group ?? check.Target)),
+        });
+    }
+
+    // What a secret's field holds is checked against the secret's setting the flow typed into that field, never against
+    // its text, which no file keeps; with none, that the field is not empty.
+    private void WriteSecretCheck(CapturedAction check)
+    {
+        string? problem = null;
+        var element = Located(check, check.Target, ref problem);
+        var key = LocatorPolicy.Choose(check.Target) is { } found
+            ? found.Kind == "generator" ? found.Csharp : LocatorPolicy.Render("page", found.Parts)
+            : null;
+        var typed = _plan.Steps.SelectMany(step => step.Actions)
+            .LastOrDefault(action => action is { Kind: "fill", Value.Secret: true } && action.Key == key && _seen.Contains(action.Value!))?.Value;
+        var line = typed is null
+            ? $"await Expect({element}){Break}.Not.ToBeEmptyAsync();"
+            : $"await Expect({element}){Break}.ToHaveValueAsync({Setting(typed)});";
+        _step.Add(line, Join(problem, typed is null ? "a secret's value is never kept: the flow checks only that its field is not empty" : null),
+            mark: ChosenCheck);
+        Expect(new Expectation(check.Id, typed is null ? "is not empty" : $"holds {typed.Name}", Auto: false)
+        {
+            Of = LocatorPolicy.Describe(LocatorPolicy.Choose(check.Target)),
         });
     }
 
@@ -903,7 +1022,7 @@ internal sealed partial class FlowWriter
             return Declare(expression, LocalName(action), why, changesWithItem);
         else if (row.Row is not null && _step.RowUses!.GetValueOrDefault(row.Row)?.Count >= 2)
         {
-            var header = CSharp.Pascal(action.Source.Target?.Row?.Header) is { } column ? CSharp.Camel(column) + "Row" : "row";
+            var header = CSharp.Pascal(action.Source.Element?.Row?.Header) is { } column ? CSharp.Camel(column) + "Row" : "row";
             expression = LocatorPolicy.Render(Declare(row.Row, header, null, changesWithItem), row.InIt, NameOf, Break);
         }
 
@@ -914,7 +1033,7 @@ internal sealed partial class FlowWriter
     private string Declare(string expression, string name, string? why, bool changesWithItem)
     {
         if (_step.Declared.TryGetValue(expression, out var local)) return local;
-        local = Unique(_step.Locals.Contains(name) ? name + "Field" : name, _step.Locals);
+        local = _step.Symbols.New(_step.Symbols.IsTaken(name) ? name + "Field" : name);
         _step.Declared[expression] = local;
         var declaration = new Line($"var {local} = {expression};", why) { Actions = _step.Actions };
         // Before the loop, it is the first repeat's.
@@ -985,7 +1104,7 @@ internal sealed partial class FlowWriter
         if (part.M == "filter" && action.RowKey is { } row && part.HasText == row.Text) return Setting(row);
         if (part.M == "css" && action.Locator?.Kind == "nameValue" && action.Value is { Text: { } value } radio
             && part.Css is { } css && css.EndsWith(LocatorPolicy.CssValue(value), StringComparison.Ordinal))
-            return $"$\"{CSharp.Escape(css[..^LocatorPolicy.CssValue(value).Length], true)}[value='{{{Setting(radio)}}}']\"";
+            return $"$\"{CSharp.Escape(css[..^LocatorPolicy.CssValue(value).Length], true)}[value='{{CssText({Setting(radio)})}}']\"";
         if (part.M == "filter" && part.HasText is { } shown) return Linked(shown);
         if (part.M == "text" && part.Text is { } label) return Linked(label);
         if (part.M != "role" || part.Name is null) return null;
@@ -1037,8 +1156,8 @@ internal sealed partial class FlowWriter
     {
         _step.UsesFlow = true;
         if (_dates.TryGetValue(setting, out var member)) return member;
-        var taken = new HashSet<string>(_dates.Values.Concat(["Configuration", "BaseUrl", "Context", "Item", "ItemIndex",
-            "Unique", "RunAsync", "FileToUpload", AcceptBrowserDialog, "LoadAndValidateConfiguration", _plan.ClassName]), StringComparer.Ordinal);
+        var taken = new HashSet<string>(_dates.Values.Concat(CSharp.Reserved).Concat(["Configuration", "BaseUrl", "Context", "Item",
+            "ItemIndex", "Unique", _plan.ClassName]), StringComparer.Ordinal);
         return _dates[setting] = Unique(RelativeDate.Member(setting.Name), taken);
     }
 
@@ -1049,7 +1168,7 @@ internal sealed partial class FlowWriter
     }
 
     // A value as the text a field is filled with: a number in the invariant culture, as YAML writes it.
-    private string Text(Setting? setting) =>
+    private string AsText(Setting? setting) =>
         setting is { IsNumber: true, DateFormat: null } ? $"{Setting(setting)}.ToString(CultureInfo.InvariantCulture)" : Setting(setting);
 
     // A text as pieces: what it says, and the values read so far in it with the C# that reads them.
@@ -1057,7 +1176,8 @@ internal sealed partial class FlowWriter
 
     // The loop's item values long enough to be told in a text, with the C# that reads each.
     private IEnumerable<(string Text, string Code)> ItemValues() =>
-        _step.LoopValues.Where(value => value.Key.Text is { Length: >= 3 }).Select(value => (value.Key.Text!, value.Value));
+        _step.LoopValues.Where(value => value.Key.Text is { Length: >= 3 }).Select(value => (value.Key.Text!, value.Value))
+            .Concat(_afterLoops.Select(value => (value.Key, value.Value)));
 
     private List<(string Text, string? Code)> Pieces(string text, IEnumerable<(string Text, string Code)> items,
         IEnumerable<Setting> settings)
@@ -1076,6 +1196,7 @@ internal sealed partial class FlowWriter
     private void MarkItemRead(string code)
     {
         if (_step.LoopValues.ContainsValue(code)) _step.ReadsItem = true;
+        if (_afterLoops.ContainsValue(code)) _step.UsesFlow = true;
     }
 
     // The text around each place it shows the value, as a word of its own: "TradeCode 99" shows no "TradeCode 9", which
@@ -1083,15 +1204,11 @@ internal sealed partial class FlowWriter
     private static IEnumerable<(string, string?, Setting?)> Split(string text, (string Text, string Code, Setting? Setting) value)
     {
         var from = 0;
-        for (var at = text.IndexOf(value.Text, StringComparison.Ordinal); at >= 0; at = text.IndexOf(value.Text, at + 1, StringComparison.Ordinal))
+        foreach (var at in Generation.Text.WordsAt(text, value.Text))
         {
-            var end = at + value.Text.Length;
-            var whole = (at == 0 || !char.IsLetterOrDigit(text[at - 1]) || !char.IsLetterOrDigit(value.Text[0]))
-                        && (end == text.Length || !char.IsLetterOrDigit(text[end]) || !char.IsLetterOrDigit(value.Text[^1]));
-            if (!whole || at < from) continue;
             if (at > from) yield return (text[from..at], null, null);
             yield return (value.Text, value.Code, value.Setting);
-            from = end;
+            from = at + value.Text.Length;
         }
 
         if (from < text.Length) yield return (text[from..], null, null);
@@ -1113,7 +1230,7 @@ internal sealed partial class FlowWriter
     // fragment (#/orders/5), the route is the address; any other fragment (#top) is not checked.
     private static string UrlPattern(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return RegexEscape(url);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return CSharp.Pattern(url);
         var path = PathPattern(uri.AbsolutePath);
         var hasQuery = uri.Query.Length > 1;
         var fragment = uri.Fragment.TrimStart('#');
@@ -1125,12 +1242,14 @@ internal sealed partial class FlowWriter
         return path + (hasQuery ? @"\?[^#]*" : "") + "#" + route + (routeQuery < 0 ? "$" : @"\?");
     }
 
+    // A segment that is a record's id matches any; another matches as the page's address has it, percent-encoded as
+    // a browser shows a segment not in ASCII, or as typed. Told apart by what it says, decoded: an encoded segment
+    // holds digits ("%D7%94") that are no id.
     private static string PathPattern(string path) => string.Join('/', path.Split('/').Select(segment =>
-        segment.Any(char.IsDigit) || (segment.Length > 12 && UnstableId.IsGuidLike(segment))
+        Uri.UnescapeDataString(segment) is var said && (said.Any(char.IsDigit) || (said.Length > 12 && UnstableId.IsGuidLike(said)))
             ? "[^/]+"
-            : RegexEscape(Uri.UnescapeDataString(segment))));
+            : said == segment ? CSharp.Pattern(segment) : $"(?:{CSharp.Pattern(segment)}|{CSharp.Pattern(said)})"));
 
-    private static string RegexEscape(string text) => RegexSpecial().Replace(text, @"\$0");
 
     // Relative to BaseUrl, which the probe opens first, so the flow runs against every environment.
     private string Address(string url)
@@ -1207,6 +1326,7 @@ internal sealed partial class FlowWriter
         var dates = DateMembers().ToList();
         var all = _run.Concat(_methods.SelectMany(method => method.Body)).Select(line => line.Text).Concat(dates).ToList();
         var usesUpload = all.Any(text => text.Contains("FileToUpload(", StringComparison.Ordinal));
+        var usesCss = all.Any(text => text.Contains("CssText(", StringComparison.Ordinal));
         if (all.Any(text => text.Contains("CultureInfo.", StringComparison.Ordinal))) Append("using System.Globalization;");
         if (all.Any(text => text.Contains("Regex(", StringComparison.Ordinal))) Append("using System.Text.RegularExpressions;");
         Append("using Microsoft.Playwright;");
@@ -1217,9 +1337,9 @@ internal sealed partial class FlowWriter
         Append("");
         Append("/// <summary>");
         var recorded = _plan.After is { } after
-            ? $"Recorded on {XmlText(_plan.StartUrl)} after <c>{after}</c>. Run it in a PlaywrightFlowProbe after that flow, " +
+            ? $"Recorded on {CSharp.Doc(_plan.StartUrl)} after <c>{after}</c>. Run it in a PlaywrightFlowProbe after that flow, " +
               $"with <c>SetupFlows: [{after}]</c> and <c>Flows: [{className}]</c>;"
-            : $"Recorded on {XmlText(_plan.StartUrl)}. Run it in a PlaywrightFlowProbe with <c>Flows: [{className}]</c>;";
+            : $"Recorded on {CSharp.Doc(_plan.StartUrl)}. Run it in a PlaywrightFlowProbe with <c>Flows: [{className}]</c>;";
         var settings = $"each case sets its values under <c>FlowConfiguration:{className}</c>.";
         foreach (var text in WordWrap($"{recorded} {settings}", "/// ")) Append(text);
         Append("/// </summary>");
@@ -1232,12 +1352,12 @@ internal sealed partial class FlowWriter
         foreach (var (step, signature, body) in _methods)
         {
             Append("");
-            var summary = $"/// <summary>{XmlText(step.Summary)}</summary>";
+            var summary = $"/// <summary>{CSharp.Doc(step.Summary)}</summary>";
             if (4 + summary.Length <= MaxWidth) Append($"    {summary}");
             else
             {
                 Append("    /// <summary>");
-                foreach (var text in WordWrap(XmlText(step.Summary), "    /// ")) Append(text);
+                foreach (var text in WordWrap(CSharp.Doc(step.Summary), "    /// ")) Append(text);
                 Append("    /// </summary>");
             }
 
@@ -1261,6 +1381,12 @@ internal sealed partial class FlowWriter
         {
             Append("");
             foreach (var line in FileToUploadMethod.Split('\n')) Append(line);
+        }
+
+        if (usesCss)
+        {
+            Append("");
+            foreach (var line in CssTextMethod.Split('\n')) Append(line);
         }
 
         Append("}");
@@ -1433,14 +1559,6 @@ internal sealed partial class FlowWriter
 
         yield return line.ToString();
     }
-
-    // A text in an XML doc comment.
-    private static string XmlText(string text) =>
-        text.Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal)
-            .Replace(">", "&gt;", StringComparison.Ordinal);
-
-    [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
-    private static partial Regex RegexSpecial();
 
     [GeneratedRegex(@"^\s*(loading|please wait|saving|processing|working|uploading|submitting|fetching|refreshing)\b[^.!?]{0,30}(\.\.\.|…)?\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex Passing();

@@ -1,0 +1,29 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "effects": [
+        {
+          "kind": "popup",
+          "page": "page1"
+        }
+      ]
+    },
+    {
+      "effects": [
+        {
+          "kind": "dialogOpened",
+          "dialog": {}
+        },
+        {
+          "kind": "popup",
+          "page": "page1"
+        }
+      ]
+    },
+    {
+      "kind": "navigate",
+      "page": "page1"
+    }
+  ]
+}

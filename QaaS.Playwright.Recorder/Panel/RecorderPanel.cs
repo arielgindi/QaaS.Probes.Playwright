@@ -324,7 +324,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
             { Value: { } text } => ("Undo the value", value => value.Value = text),
             { Reset: true } => ("Undo the value", value => value.Value = value.DateFormat is null ? null : value.Value),
             { Unique: { } unique } => (unique ? "Type it as recorded" : "Make it unique again", value => value.Unique = unique ? true : null),
-            { Relative: true } when RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T)) is { } date =>
+            { Relative: true } when RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T), action.Source.Element?.Placeholder) is { } date =>
                 ("Type the date as recorded", value => (value.DateFormat, value.Value) = (date.Format, CSharp.Number(date.Days))),
             { Relative: false } => ("Type it relative to today again", value => (value.DateFormat, value.Value) = (null, null)),
             _ => null,

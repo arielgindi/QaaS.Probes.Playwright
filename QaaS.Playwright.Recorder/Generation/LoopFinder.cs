@@ -56,7 +56,9 @@ internal static class LoopFinder
         for (var length = 1; start + length * MinChoices <= actions.Count; length++)
         {
             var template = actions.GetRange(start, length);
-            if (!CanRepeat(template[^1], mayCheck: true) || !Balanced(template)) continue;
+            // The first round repeats as every other must: each of its actions, a check only after its last.
+            if (!CanRepeat(template[^1], mayCheck: true) || template.SkipLast(1).Any(action => !CanRepeat(action)) || !Balanced(template))
+                continue;
             var repeats = 1;
             while (start + (repeats + 1) * length <= actions.Count && template[^1].Checks.Count == 0)
             {
@@ -84,9 +86,12 @@ internal static class LoopFinder
         rounds[0].Any(action => LoopValues(action, rounds[0]).Any())
         || rounds.All(round => round.Any(action => action.Effects.Count > 0));
 
+    // Never a secret typed: a list's values are in its YAML, where a secret never is. Never a value the person made
+    // unique per run or a date from today, which an item of a list is not.
     private static bool CanRepeat(PlannedAction action, bool mayCheck = false) =>
         Repeatable.Contains(action.Kind) && action.Locator is not null && (mayCheck || action.Checks.Count == 0)
-        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind));
+        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind)) && action.Value?.Secret != true
+        && action.Source.Edit?.Values?.Values.Any(edit => edit.DateFormat is not null || edit.Unique == true) != true;
 
     // A round that opens a dialog closes it again, so the next round starts where it started.
     private static bool Balanced(List<PlannedAction> template)
@@ -164,7 +169,8 @@ internal static class LoopFinder
                                 || (value.Text is { Length: > 0 } && (value.Text == own || value.Text == action.Member?.Text
                                                                       || value.Text == action.RowKey?.Text)))
                 .OrderByDescending(value => value.Text!.Length);
-            foreach (var (value, index) in marked) text = text.Replace(value!, $"\u0001{index}\u0001", StringComparison.Ordinal);
+            // As a word of its own, as the writer reads a value into a locator: "TradeCode 9" is in no "TradeCode 99".
+            foreach (var (value, index) in marked) text = Text.ReplaceWords(text, value!, $"\u0001{index}\u0001");
             return text;
         }
 
@@ -218,7 +224,8 @@ internal static class LoopFinder
                     { Type = fields[0].Type + "[]", Items = items, Fields = fields },
             };
 
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Never a member every record has, as Equals.
+        var names = new HashSet<string>(CSharp.RecordMembers, StringComparer.OrdinalIgnoreCase);
         foreach (var field in fields)
         {
             var name = field.Name;

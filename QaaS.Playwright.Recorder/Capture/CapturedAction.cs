@@ -40,6 +40,13 @@ internal sealed class CapturedAction
     /// <summary>A fill's value as the field holds it, bidi marks included.</summary>
     public string? Raw { get; set; }
 
+    /// <summary>
+    /// What a password's or another secret's field was filled with, or checked to hold, in place of <see cref="Value"/>
+    /// and <see cref="Raw"/>, which then hold nothing (<see cref="RecordingReader"/>): never in a file.
+    /// </summary>
+    [JsonIgnore]
+    public Secret? Secret { get; set; }
+
     /// <summary>False while typing goes on; the recorder keeps the last report of each action.</summary>
     public bool? Final { get; set; }
 

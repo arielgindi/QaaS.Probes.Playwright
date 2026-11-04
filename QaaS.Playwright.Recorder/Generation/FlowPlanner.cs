@@ -16,21 +16,22 @@ internal static partial class FlowPlanner
     private static readonly HashSet<string> Boundaries = ["dialogOpened", "dialogClosed", "urlChanged", "popup"];
     private static readonly HashSet<string> ValueKinds = ["fill", "choose", "check", "uncheck", "upload"];
 
-    // Members every record has, which a setting must not hide.
-    private static readonly string[] RecordMembers =
-        ["Equals", "GetHashCode", "ToString", "GetType", "EqualityContract", "Deconstruct", "PrintMembers", "Finalize"];
-
     // A step of the values the person filled in keeps the click that sends them when it has this many at most, as a
     // search box or a login does.
     private const int ValuesKeptWithTheirClick = 2;
 
-    public static FlowPlan Plan(Recording recording, string className)
+    /// <summary>The plan of a recording as <see cref="RecordingReader"/> reads it, the one way the planner reads one.</summary>
+    public static FlowPlan Plan(Recording recording, string className) => Plan(RecordingReader.Read(recording), className);
+
+    public static FlowPlan Plan(ValidRecording valid, string className)
     {
+        var recording = valid.Recording;
         var plan = new FlowPlan
         {
             ClassName = className, StartUrl = recording.StartUrl, After = recording.After, AutoChecks = recording.AutoChecks,
         };
-        plan.NotRecorded.AddRange(recording.NotRecorded ?? []);
+        plan.NotRecorded.AddRange((recording.NotRecorded ?? []).Where(missing => !string.IsNullOrWhiteSpace(missing)));
+        plan.NotRecorded.AddRange(valid.Unrecorded);
         var prepared = recording.Actions.Select(Prepare).ToList();
         // A click on no control that only an id made anew on each load finds cannot replay: left out, and said.
         foreach (var lost in prepared.Where(OnlyByGeneratedId).ToList())
@@ -173,19 +174,22 @@ internal static partial class FlowPlanner
         kept.Remove(typed);
     }
 
-    // A check goes with the action before it that the flow does; one before every action is a step's action itself.
+    // A check goes with the action before it that the flow does; one before every action is a step's action itself, and
+    // so is one of another page than that action's, as after going back to a tab, which the step of the action has not.
+    // By where each is in the recording, as two actions of one id, an action copied, are two places still.
     private static List<PlannedAction> AttachChecks(List<PlannedAction> recorded, List<PlannedAction> kept)
     {
-        var at = recorded.Select((action, index) => (action.Source.Id, index)).ToDictionary(pair => pair.Id, pair => pair.index);
+        var at = recorded.Select((action, index) => (action, index)).ToDictionary(pair => pair.action, pair => pair.index);
         var leading = new List<PlannedAction>();
+        var after = new Dictionary<PlannedAction, List<PlannedAction>>();
         foreach (var check in recorded.Where(action => action.Kind == "expect"))
         {
-            if (kept.LastOrDefault(action => at[action.Source.Id] < at[check.Source.Id]) is { } before)
-                before.Checks.Add(check.Source);
-            else leading.Add(check);
+            if (kept.LastOrDefault(action => at[action] < at[check]) is not { } before) leading.Add(check);
+            else if (before.Source.Page == check.Source.Page) before.Checks.Add(check.Source);
+            else (after.TryGetValue(before, out var own) ? own : after[before] = []).Add(check);
         }
 
-        return [.. leading, .. kept];
+        return [.. leading, .. kept.SelectMany(action => after.TryGetValue(action, out var own) ? [action, .. own] : new[] { action })];
     }
 
     private static bool ChoiceFollows(List<PlannedAction> actions, int index, CapturedTarget? field)
@@ -308,7 +312,7 @@ internal static partial class FlowPlanner
                     // it was given to the user reads the same setting, so a case that changes one changes both. Never a
                     // password, nor what a secret's field holds: a demo's password may be its user name too ("demo"),
                     // and the flow would then type the user name as the password, with no setting for the password.
-                    var secret = IsSecretField(field, name);
+                    var secret = source.Secret is not null || IsSecretField(field, name);
                     if (!secret && source.Value is { Length: >= 4 } again && again.Any(char.IsLetter) && created.LastOrDefault(setting =>
                             setting is { Type: "string", Secret: false, Flag: null } && setting.Text == again && setting.Name != "Value"
                             && !Configuration.Secrets.IsSecretKey(setting.Name)) is { } earlier
@@ -319,8 +323,14 @@ internal static partial class FlowPlanner
                         break;
                     }
 
-                    action.Value = Typed(name, source.Value ?? "", field, qualified);
-                    action.Value.Secret = secret;
+                    // A secret is text, whatever its field takes, as its YAML reads it from the environment; it holds what was
+                    // typed as a Secret, no text a locator or a check could read.
+                    action.Value = secret
+                        ? new Setting(name, source.Secret is null ? source.Value ?? "" : null) { Secret = true, Hidden = source.Secret, Qualified = qualified }
+                        : Typed(name, source.Value ?? "", field, qualified);
+                    // What was typed exactly, marks and all, which is what the flow types; a date as its picker gave it.
+                    if (!secret && source.Widget != "date" && Text.Typed(source.Value, source.Raw) is var exact && exact != action.Value.Text)
+                        action.Value.Exact = exact;
                     // A date or a time input takes its value in one format, whatever the browser shows.
                     action.Value.Format = field?.Type switch
                     {
@@ -348,11 +358,13 @@ internal static partial class FlowPlanner
             }
 
             created.AddRange(action.Values);
-            if (action.Locator?.Kind == "row" || NameHoldsRowKey(action))
+            // The row of the element the action is located by, its field for a choice, as one chosen in the panel may be in
+            // a row its first target was not; a row's locator of an element that says nothing of its row reads no setting.
+            if ((action.Locator?.Kind == "row" || NameHoldsRowKey(action)) && source.Element?.Row is { Key.Length: > 0 } row)
             {
                 // Actions on one row read one setting, as does a value typed before that the row shows.
-                var key = source.Target!.Row!.Key;
-                var header = CSharp.Pascal(source.Target.Row.Header) ?? "RowKey";
+                var key = row.Key;
+                var header = CSharp.Pascal(row.Header) ?? "RowKey";
                 var verb = CSharp.Pascal(StepNamer.Label(action, without: key));
                 action.RowKey = created.FirstOrDefault(setting => setting.Text == key
                                                                   && setting.Name.StartsWith(header, StringComparison.Ordinal));
@@ -392,7 +404,7 @@ internal static partial class FlowPlanner
             new(name + suffix, text) { Qualified = qualified is null ? null : qualified + suffix };
         if (source.Widget == "autocomplete")
         {
-            var shown = settled?.Raw is { Length: > 0 } raw ? Bidi.Strip(raw) : option;
+            var shown = settled?.Raw is { Length: > 0 } raw ? Text.WithoutMarks(raw) : option;
             // What the person typed to find the option is the search, a setting of its own: the flow types it, as a site
             // may find nothing by the option's whole text (react-admin's customers by their first name only), then chooses
             // the option. A search the option's text is all of needs none.
@@ -404,6 +416,8 @@ internal static partial class FlowPlanner
         }
 
         action.Value = Add("", option);
+        // A native select's option by its label exactly, marks and asterisk too, which selecting it needs.
+        if (source.Widget == "native" && source.Raw is { } exact && exact != option) action.Value.Exact = exact;
         // What a select shows after the choice, when it shows more than the option's words; never of a multi-select,
         // whose other choices it shows too, the record's own (Regular as well as Returns).
         if (source.Widget == "select" && settled is { Value: { Length: > 0 } text, Multi: not true } && text != option && source.Field?.Tag != "input")
@@ -411,7 +425,7 @@ internal static partial class FlowPlanner
     }
 
     public static bool NameHoldsRowKey(PlannedAction action) =>
-        action.Locator is { Kind: "role" } role && action.Source.Target?.Row?.Key is { Length: >= 2 } key
+        action.Locator is { Kind: "role" } role && action.Source.Element?.Row?.Key is { Length: >= 2 } key
         && role.Parts.LastOrDefault()?.Name?.Contains(key, StringComparison.Ordinal) == true;
 
     /// <summary>
@@ -513,7 +527,9 @@ internal static partial class FlowPlanner
         {
             var last = step.Actions[^1];
             step.Opens = last.Effects.LastOrDefault(effect => effect.Kind == "dialogOpened")?.Dialog;
-            step.OpensPage = last.Kind == "newTab" ? last.Source.Page
+            // A step returns one thing: the dialog, of an action that opened a dialog and a pop-up too.
+            step.OpensPage = step.Opens is not null ? null
+                : last.Kind == "newTab" ? last.Source.Page
                 : last.Effects.FirstOrDefault(effect => effect.Kind == "popup")?.Page;
         }
     }
@@ -548,14 +564,17 @@ internal static partial class FlowPlanner
                 foreach (var (role, setting) in action.Parts)
                 {
                     if (action.Source.Edit?.Values?.GetValueOrDefault(role) is not { } edit) continue;
+                    // Never a secret, which stays text, as its YAML reads it from the environment.
                     if (edit is { DateFormat: { } format, Value: { } days } && WholeNumber().IsMatch(days) && step.Loop is null
-                        && setting.Type == "string")
+                        && setting is { Type: "string", Secret: false })
                     {
                         (setting.DateFormat, setting.Type, setting.Name) = (format, "int", RelativeDate.Name(setting.Name));
                         setting.Qualified = setting.Qualified is { } qualified ? RelativeDate.Name(qualified) : null;
                     }
 
-                    if (edit.Value is { } value && Fits(value, setting.Type)) setting.Default = value;
+                    // Days from today are a default only of a date typed so: never the text of one that could not be.
+                    if (edit.Value is { } value && (edit.DateFormat is null || setting.DateFormat is not null) && Fits(value, setting.Type))
+                        setting.Default = value;
                     if (step.Loop is not null) continue;
                     setting.Unique |= edit.Unique == true && setting is { Type: "string", Flag: null };
                     if (CSharp.Pascal(edit.Name) is { } name) (setting.Name, setting.Named) = (name, true);
@@ -593,7 +612,16 @@ internal static partial class FlowPlanner
     private static void CollectSettings(FlowPlan plan)
     {
         plan.Settings.AddRange(SettingsByStep(plan).Select(read => read.Setting));
-        var taken = new HashSet<string>(RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
+        var taken = new HashSet<string>(CSharp.RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
+        // A list of texts that holds an empty one, recorded or as the person changed it, is a list of records: QaaS reads
+        // an empty item of a list as none, so the list would lose it and the loop a round; an empty field it keeps.
+        foreach (var list in plan.Settings.Where(setting => setting is { ItemType: null, Items: { } items, Fields: [{ Type: "string" } field] }
+                                                            && items.Any(item => item[0].Value == "")))
+        {
+            var item = LoopFinder.Singular(list.Name);
+            list.ItemType = item.Equals(list.Fields![0].Name, StringComparison.OrdinalIgnoreCase) ? item + "Item" : item;
+        }
+
         foreach (var list in plan.Settings.Where(setting => setting.ItemType is not null))
             list.ItemType = Unique(list.ItemType!, taken);
         var named = plan.Settings.GroupBy(setting => setting.Name, StringComparer.OrdinalIgnoreCase);

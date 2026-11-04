@@ -1,0 +1,87 @@
+{
+  "startUrl": "https://app.test/start",
+  "actions": [
+    {
+      "openDialogs": []
+    },
+    {
+      "id": "a-25",
+      "kind": "click",
+      "target": {
+        "interactive": true
+      },
+      "dialog": {
+        "title": "line\nbreak"
+      }
+    },
+    {
+      "openDialogs": [],
+      "edit": {
+        "step": "AcceptBrowserDialog"
+      }
+    },
+    {
+      "id": "a-14",
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "Ticket deleted"
+        }
+      ],
+      "dialog": {
+        "title": "line\nbreak"
+      }
+    },
+    {
+      "kind": "upload",
+      "target": {
+        "section": "Attachments"
+      },
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "line\nbreak"
+        }
+      ]
+    },
+    {
+      "kind": "choose",
+      "dialog": {
+        "title": "Shipping"
+      }
+    },
+    {
+      "id": "9gp5sz-6",
+      "kind": "click",
+      "openDialogs": [
+        "Shipping"
+      ],
+      "target": {
+        "role": "button",
+        "text": "Confirm"
+      },
+      "effects": [
+        {
+          "kind": "alert",
+          "text": "line\nbreak"
+        }
+      ]
+    },
+    {
+      "kind": "click",
+      "target": {
+        "text": "line\nbreak",
+        "interactive": true
+      }
+    },
+    {
+      "id": "added-82c5f035356e46618cd61649cf9ff7c8",
+      "kind": "click",
+      "target": {
+        "role": "menuitem",
+        "text": "Archive",
+        "interactive": true
+      }
+    }
+  ]
+}
