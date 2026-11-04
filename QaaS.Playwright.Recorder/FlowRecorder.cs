@@ -43,42 +43,6 @@ internal sealed record SavedFlow(string CodePath, string YamlPath, string? Recor
 /// </summary>
 internal static class FlowRecorder
 {
-    /// <summary>Returns the process exit code: 0 when a flow was saved.</summary>
-    public static int Record(RecordRequest request) => RecordAsync(request).GetAwaiter().GetResult();
-
-    /// <summary>
-    /// Offers each recording that did not end in a save, newest first: saves it now, without a browser; continues it,
-    /// returning the request to; or discards it. Null when none is to continue.
-    /// </summary>
-    /// <exception cref="OperationCanceledException">The input ended.</exception>
-    public static RecordRequest? OfferNotSaved()
-    {
-        foreach (var (recording, changed, path) in Autosave.NotSaved())
-        {
-            var flow = recording.Autosave!;
-            var request = new RecordRequest(flow.Flow, recording.StartUrl, flow.Folder)
-            {
-                AutoChecks = flow.AutoChecks, Login = flow.Login, Replaces = flow.Replaces, KeepRecording = flow.KeepRecording,
-            };
-            switch (ConsoleUi.Choose($"Found a recording of {flow.Flow} that was never saved ({ActionsIn(recording, flow.Flow)}, " +
-                                     $"{ConsoleUi.Ago(changed)}): the recorder stopped before you saved it. What should it do with it?",
-                        ["Save it now as a flow", "Continue recording it: replay its steps, then record more", "Discard it for good"]))
-            {
-                case 0:
-                    SaveAsync(request, recording, new Autosave()).GetAwaiter().GetResult();
-                    break;
-                case 1:
-                    return request with { Continue = true };
-                default:
-                    FileStore.Machine.Delete(path);
-                    ConsoleUi.Info($"Discarded the unsaved recording of {flow.Flow}; nothing else changed.");
-                    break;
-            }
-        }
-
-        return null;
-    }
-
     /// <summary>
     /// Records in the recorder's window and Chrome, <paramref name="window"/>, which stay open after it; with none, in a
     /// Chrome of its own with a window of its own, which close as the recording ends. Returns the exit code.
@@ -149,7 +113,7 @@ internal static class FlowRecorder
             lifetime.Own("the recording's browser context", session.DisposeAsync);
             // The console numbers each action as the flow, the panel and a test do.
             ConsoleUi.Numbering = () => StepNumbers(session.Build(), (shown?.Request ?? request).ClassName);
-            var panel = shown = request.Panel ? await OpenPanelAsync(session, request, window?.Host) : null;
+            var panel = shown = await OpenPanelAsync(session, request, window?.Host);
             if (panel is not null) lifetime.Own("the panel", panel.DisposeAsync);
             using var stopWatching = new CancellationTokenSource();
             var watching = autosave.WatchAsync(session.Build, () => panel?.Request ?? request, stopWatching.Token);
@@ -178,12 +142,10 @@ internal static class FlowRecorder
                 return 1;
             }
 
-            // What ends the recording asks the lifetime to; so does Ctrl+C, which ends it as Enter does, and again stops it at
+            // What ends the recording asks the lifetime to; so does Ctrl+C, which ends it as Save does, and again stops it at
             // once, the recording kept.
             lifetime.Listening = true;
             _ = session.Closed.ContinueWith(_ => lifetime.RequestStop(StopReason.BrowserClosed), TaskScheduler.Default);
-            // In the recorder's window, Save there ends it; the console takes no input.
-            if (window is null) _ = ConsoleUi.EnterPressedAsync().ContinueWith(_ => lifetime.RequestStop(StopReason.Enter), TaskScheduler.Default);
             _ = panel?.SaveRequested.ContinueWith(_ => lifetime.RequestStop(StopReason.Saved), TaskScheduler.Default);
             await lifetime.Stopped;
             return await lifetime.ShutdownAsync(async forced =>
@@ -327,8 +289,8 @@ internal static class FlowRecorder
                             $"bug of the recorder; the recording is kept, under Recovered. Please report it with {CrashReport.LogPath}.";
             ConsoleUi.Error($"Could not write the flow {request.ClassName}: {failure.GetType().Name}: {failure.Message}\n" +
                             $"  This is a bug of the recorder, not of what you did. The recording is kept in {Autosave.Folder}: " +
-                            "update the recorder (dotnet tool update -g QaaS.Playwright.Recorder), then run qaas-playwright " +
-                            "to save it.\n" +
+                            "update the recorder (dotnet tool update -g QaaS.Playwright.Recorder), then run qaas-playwright: " +
+                            "it is offered under Recovered.\n" +
                             (logged
                                 ? $"  Please report it with {CrashReport.LogPath}, which says where it happened."
                                 : $"  Please report it, with where it happened:\n{failure.StackTrace}"));
@@ -349,7 +311,7 @@ internal static class FlowRecorder
                             $"another program. The recorded flow is kept in {kept}.";
             ConsoleUi.Error($"Could not save the flow: {failure.Message}\n  The folder may be read-only, or a file in it " +
                             $"open in another program. The recorded flow is kept in {kept}: copy it into your project, or " +
-                            "free the folder and run qaas-playwright, which offers to save it again.");
+                            "free the folder and save it from Recovered, on the start screen.");
             return 1;
         }
 
@@ -407,9 +369,8 @@ internal static class FlowRecorder
             if (flow?.Login?.Flow != after)
             {
                 ConsoleUi.Error($"{request.ClassName} was recorded after the login flow {after}, and the recorder cannot find " +
-                                $"{after} here, so its steps would replay signed out. Continue it with --login {after}, in your " +
-                                $"test project's folder, built (dotnet build); or add --login-assembly with the DLL in its bin " +
-                                $"folder that has {after}. To see where the recorder looked: qaas-playwright --login-why");
+                                $"{after} here, so its steps would replay signed out. Choose the test project that has {after}, " +
+                                "built (dotnet build), on the start screen; Why no login? there shows where the recorder looked.");
                 return null;
             }
 
@@ -472,19 +433,11 @@ internal static class FlowRecorder
             var question = $"{steps} not replayed: the page did not do what it did when you recorded {request.ClassName} (the " +
                            "panel and the lines above say why).";
             int choice;
+            // A test answers for the person; with no window to ask in, the flow stays as it is.
             if (choose is not null || panel is null)
-            {
-                try
-                {
-                    choice = (choose ?? ConsoleUi.Choose)($"{question} What should the recorder do?",
-                        [$"Keep recording from here, without {(first < report.Actions.Count ? "those steps" : "that step")}; the flow file stays as it is",
-                            $"Stop, and keep {request.ClassName} as it is"]);
-                }
-                catch (OperationCanceledException)
-                {
-                    choice = 1;
-                }
-            }
+                choice = choose?.Invoke($"{question} What should the recorder do?",
+                    [$"Keep recording from here, without {(first < report.Actions.Count ? "those steps" : "that step")}; the flow file stays as it is",
+                        $"Stop, and keep {request.ClassName} as it is"]) ?? 1;
             else
             {
                 // The panel asks: keep recording from here, or stop; saving, or Chrome closed, saves the flow as it was.
@@ -505,28 +458,17 @@ internal static class FlowRecorder
     }
 
     // The login flow runs first, on a page that loaded nothing yet, with the BaseUrl the tests give it, before anything is
-    // recorded; then the page goes to the URL. When it fails, or the person stops it (Esc here or in the page, or the
-    // panel) or it hangs, the recording stays paused for the person to log in by hand and resume it, or to close the
+    // recorded; then the page goes to the URL. When it fails, or the person stops it (Esc in the page, or the panel) or
+    // it hangs, the recording stays paused for the person to log in by hand and resume it, or to close the
     // browser. Returns why it did not log in, or null.
     internal static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
     {
         var login = request.Login!;
         var (baseUrl, baseUrlFrom) = login.BaseUrlFor(request.Url);
         ConsoleUi.LoggingIn(login, request.LoginRemembered, baseUrl, baseUrlFrom);
-        using var watching = new CancellationTokenSource();
-        var escape = ConsoleUi.EscapePressedAsync(watching.Token);
-        _ = escape.ContinueWith(pressed => { if (pressed.Result) session.LogInByHand(); }, TaskScheduler.Default);
-        LoginEnd? end;
-        try
-        {
-            end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, baseUrl, stopped, baseUrlFrom),
-                LoginRunner.Scrubber(login));
-        }
-        finally
-        {
-            await watching.CancelAsync();
-            await escape;
-        }
+        // Esc in the app, or Log in by hand in the window, stops it.
+        var end = await session.LogInAsync((page, stopped) => LoginRunner.RunAsync(login, page, baseUrl, stopped, baseUrlFrom),
+            LoginRunner.Scrubber(login));
 
         var continued = request.Continue ? request.ClassName : null;
         if (end is null) ConsoleUi.LoggedIn(login.Flow, request.Continue ? null : session.Page.Url, session.StartedAfterLogin);
@@ -567,7 +509,7 @@ internal static class FlowRecorder
         catch (PlaywrightException failure)
         {
             ConsoleUi.Warning($"The panel did not open ({failure.Message.Split('\n')[0]}), so this recording goes on without " +
-                              "it: each action shows here instead. To try the panel again, record again; --no-panel skips it.");
+                              "it: each action shows here instead. Save it by closing the app's window.");
             return null;
         }
     }

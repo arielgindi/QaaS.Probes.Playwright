@@ -1,7 +1,7 @@
 namespace QaaS.Playwright.Recorder.Login;
 
 /// <summary>
-/// What the search for the login flow looked at, step by step, for <c>--login-why</c>: the projects found, the build
+/// What the search for the login flow looked at, step by step, for the start screen's Why sheet: the projects found, the build
 /// used, the DLLs scanned, the flows found and why each was chosen or not. <see cref="Why"/> is the first reason it
 /// found none, said in one line.
 /// </summary>

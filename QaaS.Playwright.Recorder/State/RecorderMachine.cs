@@ -23,7 +23,7 @@ internal enum Mode
     /// <summary>A run of the flow (<see cref="RecorderState.Run"/>): a test, or a replay in the recorded window.</summary>
     Testing,
 
-    /// <summary>The steps of a flow continued did not all replay: the console asks whether to keep recording.</summary>
+    /// <summary>The steps of a flow continued did not all replay: the panel asks whether to keep recording.</summary>
     Asking,
 
     /// <summary>The recording ends: it is drained, kept and saved; nothing more is recorded.</summary>
@@ -211,7 +211,7 @@ internal sealed record LoginEnded(string? Failure, bool Continues = false) : Com
     public override bool ByThePerson => false;
 }
 
-/// <summary>The person's answer to the console's question once the steps of a flow continued did not all replay.</summary>
+/// <summary>The person's answer, in the panel, once the steps of a flow continued did not all replay.</summary>
 internal sealed record KeepRecording(bool Keep) : Command;
 
 /// <summary>

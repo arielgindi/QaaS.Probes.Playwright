@@ -83,7 +83,7 @@ internal enum RecordingState
 
 /// <summary>
 /// A recording in progress: Chrome with the capture script in every page, and the log of what the person does. It ends
-/// when the person closes the browser's last window, or when <see cref="StopAsync"/> is called (Enter in the console).
+/// when the person closes the browser's last window, or when <see cref="StopAsync"/> is called (Save in the panel).
 /// The person can pause it (F8, or the panel), freeze the page's elements for the panel (F4), choose checks of the page
 /// (F6), try things without recording them (F7), and test the flow so far, or replay it up to a part they record again.
 /// </summary>

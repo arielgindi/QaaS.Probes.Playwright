@@ -183,7 +183,7 @@ public class RecorderStateTests
         // However the recording ends, the lifetime ends the scopes still going.
         var lifetime = new RecorderLifetime(_ => { }, (_, _) => true, TimeSpan.FromSeconds(1));
         var going = new RunScope("a test run", lifetime);
-        lifetime.RequestStop(StopReason.Enter);
+        lifetime.RequestStop(StopReason.Saved);
         await lifetime.ShutdownAsync(_ => Task.FromResult(0));
 
         Assert.Multiple(() =>

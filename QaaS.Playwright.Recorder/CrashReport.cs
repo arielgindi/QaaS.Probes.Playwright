@@ -53,7 +53,7 @@ internal static class CrashReport
         Say(failure, $"stopped on an error: {Describe(failure)}", kept: RecorderLifetime.Current is not null);
 
     /// <summary>
-    /// Ctrl+C before the recording listens for its end (logging in, replaying, a question in the console): the recording
+    /// Ctrl+C before the recording listens for its end (logging in, replaying, the panel asking whether to keep recording): the recording
     /// kept as it is, said, and the end with the shell's code for Ctrl+C.
     /// </summary>
     public static void Stop(RecorderLifetime lifetime, StopReason reason) =>

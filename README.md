@@ -24,15 +24,17 @@ one failed, with a screenshot.
 
 ## Quick start
 
-1. **Record a flow.** Install the recorder once, then run it in your test project's folder:
+1. **Record a flow.** Install the recorder once, then run it, best in your test project's folder:
 
    ```bash
    dotnet tool install --global QaaS.Playwright.Recorder
-   qaas-playwright record login-flow https://my-app.com
+   qaas-playwright
    ```
 
-   Work through the site, then close the browser. The flow is saved as `Flows/LoginFlow.cs` with its values in
-   `Flows/LoginFlow.flow.yaml`, and the lines worth a second look are listed.
+   It takes no options: its window opens on the start screen, on your project. Name the flow (`login-flow`), give the
+   page to start on, and press **Start**. Work through the site, then press **Save**. The flow is saved as
+   `Flows/LoginFlow.cs` with its values in `Flows/LoginFlow.flow.yaml`, and the window shows what was saved, the
+   lines worth a second look, and **Record another**.
 
 2. **Reference the library** from the test project:
 

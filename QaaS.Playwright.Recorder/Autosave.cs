@@ -17,7 +17,7 @@ internal sealed record KeptRecording(Recording Recording, DateTime Changed, stri
 /// be continued. While recording, it is written after every change as <c>&lt;Flow&gt;-&lt;key&gt;.unsaved.json</c>, the
 /// key telling the folder the flow is saved in, so two projects' flows of one name do not meet; once the flow is saved,
 /// as <c>&lt;Flow&gt;-&lt;key&gt;.json</c>, of which the newest 30 are kept. Each file is the recording as
-/// <c>--keep-recording</c> writes it, with the flow it is of and the person's checks and edits, written atomically and
+/// Keep the raw recording writes it, with the flow it is of and the person's checks and edits, written atomically and
 /// for its owner's eyes only, without the values the recorder hides: a password typed, which the console never shows,
 /// and a value typed into a field whose setting is named as a secret (password, secret, token, API key, pwd), or that
 /// the person named so, which a test run hides; a default the person gave such a setting neither.
@@ -136,7 +136,7 @@ internal sealed class Autosave
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
             ConsoleUi.Warning($"The recording was not kept in {Folder} ({failure.Message}), so {request.ClassName} cannot be " +
-                              "continued with --continue later; the flow itself is saved. Check that you can write to that folder.");
+                              "continued later; the flow itself is saved. Check that you can write to that folder.");
         }
 
         return Task.CompletedTask;
@@ -162,7 +162,7 @@ internal sealed class Autosave
 
     /// <summary>
     /// The recording to continue <paramref name="flow"/> of <paramref name="folder"/> from: one not saved yet, else the
-    /// newer of the one kept here and the one <c>--keep-recording</c> saved beside the flow. Null when there is none.
+    /// newer of the one kept here and the raw recording kept beside the flow. Null when there is none.
     /// </summary>
     public static KeptRecording? Find(string folder, string flow) =>
         Read(PathOf(folder, flow, saved: false)) ?? ReadLegacy(PathOf(folder, flow, saved: false, legacy: true))
@@ -251,7 +251,7 @@ internal sealed class Autosave
 
     /// <summary>
     /// A copy of the recording without the values the recorder hides, a password and what is typed into a secret's field,
-    /// for any file it writes: its own copy, and the raw recording <c>--keep-recording</c> keeps beside the flow.
+    /// for any file it writes: its own copy, and the raw recording kept beside the flow.
     /// </summary>
     internal static Recording WithoutSecrets(Recording recording)
     {

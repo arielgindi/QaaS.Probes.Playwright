@@ -12,7 +12,7 @@ internal sealed record DeclinedLogin(DateTime? On, string? Flow);
 /// The login flow last recorded with in each project folder, in <c>~/.qaas/recorder-logins.json</c>, so a plain
 /// <c>record &lt;name&gt; &lt;url&gt;</c> there logs in the same way: the one given in the command, the one found in the
 /// tests and taken, or none, when the person said no to the one found, with the day they said it. The test project the
-/// person chose there, when several were found, is kept with it. <c>--no-login</c> forgets it.
+/// person chose there, when several were found, is kept with it. Turning Log in first off says no.
 /// </summary>
 internal static class RememberedLogin
 {

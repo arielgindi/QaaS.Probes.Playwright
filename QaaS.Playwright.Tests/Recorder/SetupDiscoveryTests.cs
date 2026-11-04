@@ -55,7 +55,7 @@ public class SetupDiscoveryTests
             Assert.That(look.Discovered.Files.SelectMany(file => LoginSettings.BaseUrls(file.Yaml)), Does.Contain("https://acme.test/app"),
                 "the probe's BaseUrl, its placeholder's default, for the start page's choices");
             Assert.That(why, Does.Contain("AcmeSignInFlow (Acme.Shared.dll): taken: the setup flow of 1 test file"));
-            Assert.That(why, Does.Contain("Result: recording here offers to log in first with AcmeSignInFlow"));
+            Assert.That(why, Does.Contain("Result: recording here logs in first with AcmeSignInFlow"));
         });
     }
 

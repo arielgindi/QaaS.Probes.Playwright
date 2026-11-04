@@ -24,7 +24,7 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
 
     /// <summary>
     /// Whether the flow checks after each action what it did, as the person turned it in the panel; null leaves it to
-    /// the command line (<c>--no-auto-checks</c>).
+    /// the start screen's Auto checks.
     /// </summary>
     public bool? AutoChecks { get; init; }
 
@@ -67,6 +67,6 @@ internal sealed record Recording(string StartUrl, IReadOnlyList<CapturedAction> 
 /// <param name="AutoChecks">Whether the flow checks what each action did.</param>
 /// <param name="Login">The login flow the recording ran after.</param>
 /// <param name="Replaces">The flow file that saving it replaces, by its hash (<see cref="RecordRequest.Replaces"/>).</param>
-/// <param name="KeepRecording">The raw recording is saved beside the flow too (<c>--keep-recording</c>).</param>
+/// <param name="KeepRecording">The raw recording is saved beside the flow too (Keep the raw recording).</param>
 internal sealed record AutosavedFlow(string Flow, string Folder, bool AutoChecks, LoginFlow? Login, string? Replaces,
     bool KeepRecording = false);
