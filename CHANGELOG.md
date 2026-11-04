@@ -46,6 +46,10 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
     `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
   - **The panel's status strip says when a part recorded again is paused, tried or checked**, with the key that
     leaves it: it went on saying `Re-recording … do it again, then press Done` while nothing was recorded.
+  - **Done, while trying or while a test runs, pauses the recording** once back from them, as Done always does when
+    the part is not the end of the flow: it recorded on at the end of the flow from where the part left the app.
+    **Keep it as it was**, while trying, ends trying too, and pausing or resuming while a test runs takes effect once
+    it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
 
 ## 2.0.2
 

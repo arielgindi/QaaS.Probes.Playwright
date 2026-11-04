@@ -29,6 +29,10 @@ public class StateFuzzTests
         new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
                          "key:F7 | key:F7 | key:F8 | key:F8 | key:F6 | key:F6 | key:F2 | save:enter")
             .SetName("PausedTriedOrCheckedInAPartRecordedAgain_TheStripSaysSo"),
+        // Done while trying, or while a test ran, recorded on at the end of the flow from where the part left the app.
+        new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
+                         "key:F7 | panel:F2 | key:F7 | key:F8 | edit:rerecord@1 | wait | !panel:F5 | panel:F2 | wait | save:enter")
+            .SetName("APartDoneWhileTryingOrTesting_PausesOnceBackFromThem"),
     ];
 
     [TestCaseSource(nameof(Regressions))]
@@ -56,7 +60,7 @@ public class StateFuzzTests
             if (Environment.GetEnvironmentVariable("QAAS_FUZZ_SEQUENCE") is { Length: > 0 } given)
             {
                 var once = await StateFuzz.RunAsync(given);
-                await File.WriteAllTextAsync(report, once?.ToString() ?? "passed\n");
+                await File.WriteAllTextAsync(report, once?.ToString() ?? $"passed\n  {string.Join("\n  ", StateFuzz.LastLog)}\n");
                 Assert.That(once, Is.Null, once?.ToString());
                 return;
             }

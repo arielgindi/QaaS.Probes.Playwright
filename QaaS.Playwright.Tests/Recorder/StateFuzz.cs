@@ -60,6 +60,9 @@ internal sealed class StateFuzz : IAsyncDisposable
         _random = new Random(seed);
     }
 
+    /// <summary>What the last sequence that passed did, step by step.</summary>
+    public static IReadOnlyList<string> LastLog { get; private set; } = [];
+
     /// <summary>The flows saved so far, by class name, for one strict build of them all.</summary>
     public static List<GeneratedFlow> Saved { get; } = [];
 
@@ -121,6 +124,7 @@ internal sealed class StateFuzz : IAsyncDisposable
             lock (fuzz._unhandled)
                 if (fuzz._unhandled.Count > 0)
                     throw new Broken("unhandled", fuzz._unhandled[0]);
+            LastLog = [.. fuzz._log];
             return null;
         }
         catch (Broken broken)

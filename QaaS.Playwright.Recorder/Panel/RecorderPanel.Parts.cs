@@ -174,10 +174,11 @@ internal sealed partial class RecorderPanel
 
         if (part.Phase is "replaying" or "failed") _session.EndTest(paused: !back);
         else if (back && part.WasRecording) _session.Resume();
-        else if (!atEnd && _session.State == RecordingState.Recording) _session.Pause();
+        // Trying or testing too: once back from them, as the app is not where the flow ends.
+        else if (!atEnd) _session.Pause();
         _session.Rerecording(null);
         if (part.Phase != "recording") _tester.Clear();
-        var paused = _session.State == RecordingState.Paused;
+        var paused = _session.AfterTest == RecordingState.Paused;
         ConsoleUi.Rerecorded(part.Part.Label, kept, paused, back ? part.ReturnTo!.Value.Url : null);
         _part = kept ? part with { Phase = "done", Paused = paused } : null;
     }
