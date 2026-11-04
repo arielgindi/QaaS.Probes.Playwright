@@ -38,6 +38,12 @@ internal sealed record RecordingOptions(string Url)
     public Recording? Continues { get; init; }
 }
 
+/// <summary>
+/// The person acted in the app while the recording was paused, which recorded nothing: told once a pause, the first
+/// time. <paramref name="What"/> is what they did: <c>click</c>, <c>typing</c> or <c>choice</c>.
+/// </summary>
+internal sealed record NotRecordedWhilePaused(string What);
+
 /// <summary>How a login flow ended when it did not log in: why, and whether it was stopped for the person to log in by hand.</summary>
 /// <param name="Why">Why it failed, as the probe says it; or why it was stopped.</param>
 /// <param name="ByHand">It was stopped (Esc, the panel, or it hung), rather than failing.</param>
@@ -99,6 +105,7 @@ internal sealed class RecordingSession : IAsyncDisposable
     private volatile LoginWatch? _login;
     private RecordingState _beforeTry;
     private string? _rerecording;
+    private bool _notRecordedTold;
 
     private RecordingSession(IPlaywright playwright, IBrowser browser, IBrowserContext context, RecordingOptions options,
         Action<object> onNews)
@@ -221,6 +228,9 @@ internal sealed class RecordingSession : IAsyncDisposable
             var browser = await playwright.Chromium.LaunchAsync(new()
             {
                 Channel = BrowserDefaults.ChromeChannel, Headless = false, Timeout = NavigationTimeoutMs,
+                // Ctrl+C in the console reaches the driver too, which would close Chrome: the recording ends on it as on
+                // Enter, with Chrome still open, so the login is saved as ever.
+                HandleSIGINT = false,
                 // Port 0: Chrome takes a free one, on this machine only, for the console API's driver below.
                 Args = [.. options.BrowserArgs, "--remote-debugging-port=0"],
             });
@@ -326,6 +336,7 @@ internal sealed class RecordingSession : IAsyncDisposable
 
         try
         {
+            await FlushTypingAsync();
             await Log.SettleAsync(SettleTimeout);
             var recording = Build();
             await SaveLoginAsync();
@@ -335,6 +346,15 @@ internal sealed class RecordingSession : IAsyncDisposable
         {
             await DisposeAsync();
         }
+    }
+
+    // What is being typed as the recording ends is told now, rather than once the person stops typing: it was typed. A
+    // page that does not answer (a browser dialog is open in it) keeps what it told.
+    private async Task FlushTypingAsync()
+    {
+        List<IPage> pages;
+        lock (_gate) pages = [.. _aliases.Keys.Where(page => !page.IsClosed)];
+        await Task.WhenAny(Task.WhenAll(pages.Select(page => PageElements.CallAsync(page, new { op = "flush" }))), Task.Delay(1000));
     }
 
     /// <summary>The recording so far, as <see cref="StopAsync"/> would return it.</summary>
@@ -368,7 +388,7 @@ internal sealed class RecordingSession : IAsyncDisposable
             }
 
             Log.Pause(Now());
-            (_state, Notice, Tried) = (RecordingState.Paused, notice, null);
+            (_state, Notice, Tried, _notRecordedTold) = (RecordingState.Paused, notice, null, false);
             WatchDialogs();
         }
 
@@ -808,6 +828,11 @@ internal sealed class RecordingSession : IAsyncDisposable
             case "pause":
                 TogglePause();
                 break;
+            case "ignored" when State == RecordingState.Paused && !_notRecordedTold:
+                _notRecordedTold = true;
+                // A page's own script may call it too: only what the capture script says.
+                _onNews(new NotRecordedWhilePaused(message.What is "click" or "typing" or "choice" ? message.What : "action"));
+                break;
             case "freeze" when message.Tree is { } tree:
                 Frozen = new FrozenElements(AliasOf(page), DateTimeOffset.Now, tree.GetRawText(), message.Described ?? []);
                 _onNews(Frozen);
@@ -1055,5 +1080,8 @@ internal sealed class RecordingSession : IAsyncDisposable
         public string? Role { get; set; }
 
         public string? Name { get; set; }
+
+        /// <summary>For what was done while paused: <c>click</c>, <c>typing</c> or <c>choice</c>.</summary>
+        public string? What { get; set; }
     }
 }

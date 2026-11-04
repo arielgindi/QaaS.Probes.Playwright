@@ -2,6 +2,26 @@
 
 Notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 2.1.0
+
+- **The recorder's modes hold in every order you press their keys**, as a test that drives a recording through random
+  sequences of them showed:
+  - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as
+    `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
+  - **The panel's status strip says when a part recorded again is paused, tried or checked**, with the key that
+    leaves it: it went on saying `Re-recording … do it again, then press Done` while nothing was recorded.
+  - **Done, while trying or while a test runs, pauses the recording** once back from them, as Done always does when
+    the part is not the end of the flow: it recorded on at the end of the flow from where the part left the app.
+    **Keep it as it was**, while trying, ends trying too, and pausing or resuming while a test runs takes effect once
+    it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
+  - **Saving, or closing Chrome, while the steps of a flow continued replay saves the flow as it was.** It asked why
+    its steps did not replay, as if the app had failed them, then saved nothing.
+  - **A tab you open yourself is a tab of its own, however soon after a click**: within 5 seconds, it was that click's
+    pop-up, so the flow waited for a pop-up the click never opens, and did not build when the click opened a dialog.
+    A page is a pop-up when a page opened it, `noopener` links included.
+  - **A recording you deleted every action of is not offered again** when the recorder starts next, after a crash or
+    Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
+
 ## 2.0.3
 
 - **The recorder finds your login flow as QaaS finds it when your tests run**, and never fails to say why it did not:
@@ -40,23 +60,34 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   its values only when no test gives them and the flow has any.
 - **Every question says what it asks, why, an example and what Enter does** (`(Enter = Flows)`, `(y/N, Enter = no)`),
   and every warning and error what happened, the likely cause, and what to do next, without jargon.
-- **The recorder's modes hold in every order you press their keys**, as a test that drives a recording through random
-  sequences of them showed:
-  - **In check or inspect mode, the pill at the top says so again** after a key that tells something for a moment, as
-    `F4` does (`Elements frozen`): it said that for good, in place of `Check · Esc` or `Inspect · Esc`.
-  - **The panel's status strip says when a part recorded again is paused, tried or checked**, with the key that
-    leaves it: it went on saying `Re-recording … do it again, then press Done` while nothing was recorded.
-  - **Done, while trying or while a test runs, pauses the recording** once back from them, as Done always does when
-    the part is not the end of the flow: it recorded on at the end of the flow from where the part left the app.
-    **Keep it as it was**, while trying, ends trying too, and pausing or resuming while a test runs takes effect once
-    it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
-  - **Saving, or closing Chrome, while the steps of a flow continued replay saves the flow as it was.** It asked why
-    its steps did not replay, as if the app had failed them, then saved nothing.
-  - **A tab you open yourself is a tab of its own, however soon after a click**: within 5 seconds, it was that click's
-    pop-up, so the flow waited for a pop-up the click never opens, and did not build when the click opened a dialog.
-    A page is a pop-up when a page opened it, `noopener` links included.
-  - **A recording you deleted every action of is not offered again** when the recorder starts next, after a crash or
-    Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
+- **An app whose fields and buttons are named in a non-Latin script is recorded and saved.** A click on a button
+  whose id has no Latin letter, or a fill of a field so named (or of an id of underscores alone), made the flow unwritable: saving said
+  `Could not write the flow …: ArgumentNullException: Value cannot be null`, the panel stopped showing what you did,
+  and the recorder's own copy stopped being kept at such a field. A name with no letter or digit a C# name can
+  have is now passed over, for the next thing that names the setting.
+- **Pausing, and stopping with Ctrl+C**:
+  - **What you do after a pause is recorded on an app that tests with a date of its own.** An app that replaces
+    `Date.now` (a fake date, the server's time) had every action after `F8` dropped, as done before you resumed: the
+    recorder now tells the time by the browser's own clock.
+  - **What you typed just before pausing from the panel is kept**, as with `F8`: the page learns of a pause the
+    panel makes (or Try, or Test) a moment later, and the text being typed then was dropped.
+  - **A pause cannot be missed.** The page's pill, the panel and the console say `Paused: nothing you do is recorded;
+    F8 resumes`; a click, typing or a choice while paused shows a toast beside it, `Paused: that click was not
+    recorded · F8 resumes`, and the first one in a pause prints that line in the console.
+  - **Resuming after a login flow that failed says the recording records**, in the console too: it said nothing, as
+    it had not seen the pause the failed login made.
+  - **`F8` pauses and resumes with the focus in a frame too**, as in an editor or a payment form: the frame never
+    told the recorder, so a pause could not be ended there, and nothing more was recorded. So do `F7` and `F2`.
+  - **Ctrl+C in the console saves what you recorded, as Enter does**, paused or not, and Chrome stays open meanwhile,
+    so your login is saved too. It stopped the recorder at once, saying the recording was not saved. Pressed again
+    before the flow is written, it stops at once, says so, and keeps the recording, to save next time.
+  - **What you were typing as the recording ended is kept**: Enter, Ctrl+C or **Save** within a moment of the last
+    key lost the field's value, which the page told only once you stopped typing.
+  - **A flow the recorder cannot write says where to find why**: `Could not write the flow …` now writes where it
+    happened, with its stack, to `~/.qaas/recorder-error.log`, and says where the recording is kept, rather than
+    printing the stack alone.
+  - **A recording with a change of address it does not give is written**, without checking that address, as one
+    edited by hand may have: saving it failed with `ArgumentNullException: Value cannot be null`.
 
 ## 2.0.2
 

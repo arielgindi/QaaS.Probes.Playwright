@@ -95,30 +95,48 @@ public class RecordingSessionTests
     [Test]
     public async Task Paused_RecordsNothing_AndResumesOnThePageTheAppWentTo()
     {
-        await File.WriteAllTextAsync(Path.Combine(_folder, "second.html"), "<!doctype html><body><button id=\"last\">Last</button>");
+        // An app that tests with a date of its own, a minute behind: what is done after the pause is still recorded.
+        await File.WriteAllTextAsync(Path.Combine(_folder, "second.html"),
+            "<!doctype html><script>const real = Date.now; Date.now = () => real() - 60000;</script><body><button id=\"last\">Last</button> <input name=\"later\"> <iframe srcdoc=\"<input name=inner>\"></iframe>");
+        var notRecorded = new List<string>();
         await using var session = await StartAsync("""
             <button id="first">First</button> <input name="note"> <a href="second.html">Second page</a>
-            """);
+            """, news => { if (news is NotRecordedWhilePaused ignored) lock (notRecorded) notRecorded.Add(ignored.What); });
         var page = session.Page;
 
         await page.Locator("#first").ClickAsync();
-        await page.Keyboard.PressAsync("F8");
+        // Typed just before the panel's Pause, which the page learns of a moment later: it was typed before the pause.
+        await page.Locator("[name='note']").FillAsync("typed before");
+        session.TogglePause();
         await UntilAsync(() => session.State == RecordingState.Paused);
         await page.Locator("[name='note']").FillAsync("not recorded");
+        var toast = await OverlayTextAsync(page, until: "was not recorded");
         await page.GetByText("Second page").ClickAsync();
-        var overlay = await OverlayTextAsync(page, until: "Recording paused");
+        var overlay = await OverlayTextAsync(page, until: "nothing you do is recorded");
         await page.Keyboard.PressAsync("F8");
         await UntilAsync(() => session.State == RecordingState.Recording);
         await page.Locator("#last").ClickAsync();
+        // With the focus in a frame, which records nothing, F8 pauses and resumes all the same.
+        await page.FrameLocator("iframe").Locator("[name='inner']").ClickAsync();
+        await page.Keyboard.PressAsync("F8");
+        await UntilAsync(() => session.State == RecordingState.Paused);
+        await page.Keyboard.PressAsync("F8");
+        await UntilAsync(() => session.State == RecordingState.Recording);
+        // Stopped as soon as it is typed, as Enter or Ctrl+C may: what is being typed is part of the recording.
+        await page.Locator("[name='later']").PressSequentiallyAsync("just typed");
         var recording = await session.StopAsync();
 
         var flow = FlowCodeGenerator.Generate(recording, "PausedFlow", "Flows");
         Assert.Multiple(() =>
         {
-            Assert.That(overlay, Does.Contain("Recording paused"), "the new page shows the pause too");
+            Assert.That(overlay, Does.Contain("Paused:\nnothing you do is recorded; F8 resumes"), "the new page shows the pause too");
+            Assert.That(toast, Does.Contain("Paused: that typing was not recorded · F8 resumes"));
+            Assert.That(notRecorded, Is.EqualTo(new[] { "typing" }), "the console says it once a pause");
             Assert.That(recording.Actions.Select(action => action.Target?.Id ?? action.Kind),
-                Is.EqualTo(new[] { "first", "navigate", "last" }), "what was done while paused is not recorded");
-            Assert.That(recording.Actions[1].Url, Does.EndWith("/second.html"));
+                Is.EqualTo(new[] { "first", "fill", "navigate", "last", "fill" }), "what was done while paused is not recorded");
+            Assert.That(recording.Actions[^1].Value, Is.EqualTo("just typed"));
+            Assert.That(recording.Actions[1].Value, Is.EqualTo("typed before"));
+            Assert.That(recording.Actions[2].Url, Does.EndWith("/second.html"));
             Assert.That(flow.Checks.Select(check => check.Message), Has.Some.StartWith("the recording was paused"));
         });
     }

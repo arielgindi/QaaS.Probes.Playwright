@@ -698,8 +698,8 @@ function Empty({ status }: { status: Status }) {
     );
   if (status === 'paused')
     return (
-      <EmptyState icon="pause" title="Recording paused" class="h-full pb-12">
-        Resume (<Kbd>F8</Kbd>) to record your first step.
+      <EmptyState icon="pause" title="Paused: nothing you do is recorded" class="h-full pb-12">
+        <Kbd>F8</Kbd> resumes, to record your first step.
       </EmptyState>
     );
   return (

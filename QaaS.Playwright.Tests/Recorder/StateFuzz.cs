@@ -935,12 +935,12 @@ internal sealed class StateFuzz : IAsyncDisposable
             var fits = pill switch
             {
                 _ when pill?.StartsWith("Inspect", StringComparison.Ordinal) == true => true,
-                _ when pill?.StartsWith("Not now", StringComparison.Ordinal) == true || pill?.StartsWith("Recording paused · resume first", StringComparison.Ordinal) == true
+                _ when pill?.StartsWith("Not now", StringComparison.Ordinal) == true || pill?.EndsWith(", then check", StringComparison.Ordinal) == true
                        || pill?.StartsWith("Trying · record again first", StringComparison.Ordinal) == true => false,
                 _ when pill?.StartsWith("Check", StringComparison.Ordinal) == true => checking,
                 _ => state switch
                 {
-                    RecordingState.Paused => pill?.StartsWith("Recording paused", StringComparison.Ordinal) == true,
+                    RecordingState.Paused => pill?.StartsWith("Paused", StringComparison.Ordinal) == true,
                     RecordingState.Testing => pill?.StartsWith("Testing the flow", StringComparison.Ordinal) == true,
                     RecordingState.Trying => pill?.StartsWith("Trying", StringComparison.Ordinal) == true,
                     RecordingState.LoggingIn => pill is null || pill.StartsWith("Logging in", StringComparison.Ordinal),

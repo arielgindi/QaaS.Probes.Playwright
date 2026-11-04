@@ -235,7 +235,7 @@ function modeOf(props: Props, now: number): Shown | null {
     return {
       name: 'Paused', tone: 'warn', label: 'Paused', tinted: true,
       message: state.notice ? `${state.notice} Log in by hand in the app, then resume.`
-        : part?.phase === 'recording' ? `Nothing you do in the app is recorded: resume to go on with ${part.part}` : 'Nothing you do in the app is recorded',
+        : part?.phase === 'recording' ? `Nothing you do is recorded; F8 resumes ${part.part}` : 'Nothing you do is recorded; F8 resumes',
       full: state.notice,
       actions: leave('Resume', 'F8', props.onPause, 'Record again, from the page the app is on'),
     };
