@@ -60,7 +60,10 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         Func<string, string, (LoginFlow? Found, string? Why)>? find = null)
     {
         var continuing = args is ["--continue", ..];
-        if (args is not ["record", ..] && !continuing) throw new ArgumentException($"Unknown command '{string.Join(' ', args)}'.");
+        if (args is not ["record", ..] && !continuing)
+            throw new ArgumentException($"'{string.Join(' ', args)}' is not a command of qaas-playwright. Run qaas-playwright alone " +
+                                        "to be asked what to record, or qaas-playwright record <name> <url>, e.g. " +
+                                        "qaas-playwright record new-order https://my-app.com/orders.");
 
         var outputDir = DefaultOutputDir;
         var keepRecording = false;
@@ -71,38 +74,46 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var positionals = new List<string>();
         for (var index = continuing ? 0 : 1; index < args.Count; index++)
         {
-            string ValueOf(string option, string what) =>
+            string ValueOf(string option, string what, string example) =>
                 index + 1 < args.Count && args[index + 1] is var value && value.Trim().Length > 0 && !value.StartsWith('-')
                     ? args[++index]
-                    : throw new ArgumentException($"{option} needs {what}.");
+                    : throw new ArgumentException($"{option} needs {what} after it, e.g. {option} {example}.");
 
             switch (args[index])
             {
-                case "--output-dir": outputDir = ValueOf("--output-dir", "a directory"); break;
+                case "--output-dir": outputDir = ValueOf("--output-dir", "the folder to save the flow in", "UiFlows"); break;
                 case "--keep-recording": keepRecording = true; break;
                 case "--no-panel": panel = false; break;
                 case "--no-auto-checks": autoChecks = false; break;
-                case "--login": loginFlow = ValueOf("--login", "the login flow's class name"); break;
+                case "--login": loginFlow = ValueOf("--login", "the class name of the flow your tests log in with", "LoginFlow"); break;
                 case "--login-assembly":
-                    loginAssembly = ValueOf("--login-assembly", "the DLL in your test project's bin folder that has the flow");
+                    loginAssembly = ValueOf("--login-assembly", "the DLL in your test project's bin folder that has the login flow",
+                        Path.Combine("bin", "Debug", "net10.0", "YourShared.dll"));
                     break;
-                case "--login-settings": loginSettings = ValueOf("--login-settings", "a YAML file"); break;
+                case "--login-settings":
+                    loginSettings = ValueOf("--login-settings", "the test YAML with the values your login flow needs",
+                        Path.Combine("Tests", "Smoke.qaas.yaml"));
+                    break;
                 case "--no-login": noLogin = true; break;
-                case "--continue": continued = ValueOf("--continue", "the flow's name, or its .cs file"); break;
-                case var option when option.StartsWith('-'): throw new ArgumentException($"Unknown option '{option}'.");
+                case "--continue": continued = ValueOf("--continue", "the name of the flow to go on from, or its .cs file", "new-order"); break;
+                case var option when option.StartsWith('-'):
+                    throw new ArgumentException($"'{option}' is not an option of qaas-playwright: check its spelling. " +
+                                                "qaas-playwright --help lists every option.");
                 default: positionals.Add(args[index]); break;
             }
         }
 
         if (continued is not null && positionals.Count > 0)
-            throw new ArgumentException("--continue takes the flow's name or its .cs file, without a name or a URL: the " +
-                                        "flow starts where it was recorded.");
+            throw new ArgumentException("--continue takes the flow's name or its .cs file, without a name or a URL, as the " +
+                                        "flow starts where it was recorded: e.g. qaas-playwright --continue new-order.");
         if (continued is null && positionals is not [_, _])
-            throw new ArgumentException("Expected: record <name> <url> [--output-dir Dir] [--keep-recording] [--no-panel] " +
-                                        "[--no-auto-checks] [--login Flow [--login-assembly Shared.dll] " +
-                                        "[--login-settings Flow.flow.yaml] | --no-login], or --continue <name> with them");
+            throw new ArgumentException("record needs a name for the flow and the address to start on, in that order, e.g. " +
+                                        "qaas-playwright record new-order https://my-app.com/orders. Options may follow: " +
+                                        "qaas-playwright --help lists them.");
         var given = loginFlow ?? loginAssembly ?? loginSettings;
-        if (noLogin && given is not null) throw new ArgumentException("--no-login cannot go with the other login options.");
+        if (noLogin && given is not null)
+            throw new ArgumentException("--no-login records without logging in, so it cannot go with --login, --login-assembly " +
+                                        "or --login-settings: keep either --no-login or the login options.");
         // --login alone: the flow's DLL and values as the tests have them, else why it was not found.
         var (named, whyNot) = loginFlow is not null && loginAssembly is null && find is not null ? find(loginFlow, outputDir) : (null, null);
         var login = noLogin ? null
@@ -329,7 +340,8 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         if (clash is not null)
             throw new ArgumentException($"A flow cannot be named {className}, {clash}. Try {className}Flow.");
         if (Encoding.UTF8.GetByteCount(className) > MaxNameBytes)
-            throw new ArgumentException($"The flow's name is too long to be a file name: '{className}'.");
+            throw new ArgumentException($"The flow's name is too long to be a file name: '{className}'. Choose a shorter " +
+                                        "name, e.g. new-order.");
         return className;
     }
 
@@ -341,6 +353,7 @@ internal sealed partial record RecordRequest(string ClassName, string Url, strin
         var isHttp = Uri.TryCreate(url, UriKind.Absolute, out var uri)
                      && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
         if (!isHttp)
-            throw new ArgumentException($"'{url}' is not an http(s) URL. Example: https://my-app.com/login");
+            throw new ArgumentException($"'{url}' is not an address the recorder can open: it must start with http:// or " +
+                                        "https://, e.g. https://my-app.com/login.");
     }
 }

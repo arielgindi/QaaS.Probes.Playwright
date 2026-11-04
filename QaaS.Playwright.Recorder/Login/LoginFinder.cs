@@ -427,7 +427,7 @@ internal static class LoginFinder
             case Told.AndAsked:
                 ConsoleUi.FoundLogin(flow, login.Settings, values);
                 if (ConsoleUi.Confirm($"Log in first with {flow.Name}? The recorder runs it before you record, so you start " +
-                                      "signed in, as your tests do. (Y/n, Enter = yes)")) break;
+                                      "signed in, as your tests do")) break;
                 return Declined(request, folder, flow.Name);
             case Told.Chosen:
                 ConsoleUi.LoginValuesOf(flow.Name, login.Settings, values);
@@ -453,7 +453,8 @@ internal static class LoginFinder
     private static RecordRequest Declined(RecordRequest request, string folder, string? flow)
     {
         Remembered(RememberedLogin.Decline(folder, flow));
-        ConsoleUi.Info($"Recording without logging in, here from now on. To log in first later, record with --login {flow ?? "<flow>"}.");
+        ConsoleUi.Info($"Recording without logging in, here from now on. To log in first later, record with --login {flow ?? "<flow>"}; " +
+                       "with --no-login, the next recording asks again.");
         return request;
     }
 

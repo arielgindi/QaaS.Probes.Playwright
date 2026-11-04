@@ -954,7 +954,8 @@ internal sealed class RecordingSession : IAsyncDisposable
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            LoginNotSaved = $"The login was not saved to {Path.GetFullPath(path)}: {failure.Message}";
+            LoginNotSaved = $"Your login was not saved to {Path.GetFullPath(path)} ({failure.Message}), so the next " +
+                            "recording starts signed out. Check that you can write to that folder.";
         }
     }
 

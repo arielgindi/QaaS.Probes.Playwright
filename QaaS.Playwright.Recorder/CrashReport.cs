@@ -85,7 +85,9 @@ internal static class CrashReport
         var kept = _keep is not null ? " The recording is kept: run qaas-playwright again to save it, continue it or discard it." : "";
         try
         {
-            ConsoleUi.Error($"The recorder {what}.{kept}" + (logged ? $"\n  What happened is in {LogPath}." : ""));
+            ConsoleUi.Error($"The recorder {what}.{kept}" + (logged
+                ? $"\n  What happened, with its stack, is in {LogPath}: if it happens again, report it with that file."
+                : ""));
         }
         catch (Exception unsaid) when (unsaid is IOException or ObjectDisposedException)
         {
