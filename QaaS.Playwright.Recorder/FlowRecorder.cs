@@ -220,7 +220,7 @@ internal static class FlowRecorder
     {
         try
         {
-            return FlowPlanner.Plan(recording, flow).Steps.SelectMany(step => step.Actions).Where(action => action.Kind != "expect")
+            return FlowCodeGenerator.PlanIsolated(recording, flow).Steps.SelectMany(step => step.Actions).Where(action => action.Kind != "expect")
                 .Select(action => action.Source.Id).Distinct().Select((id, index) => (id, index + 1)).ToDictionary();
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)

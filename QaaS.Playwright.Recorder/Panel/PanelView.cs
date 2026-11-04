@@ -398,8 +398,8 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
     public static PanelSnapshot Of(Recording recording, RecordRequest request, string namespaceName, string status, string? error,
         IReadOnlySet<string>? fresh = null)
     {
-        var plan = FlowPlanner.Plan(recording, request.ClassName);
-        var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
+        // An action the recorder cannot plan or write is left out and listed, never the whole panel.
+        var (plan, flow) = FlowCodeGenerator.PlanAndWrite(recording, request.ClassName, namespaceName, request.AutoChecks);
         var steps = plan.Steps.Select(step => new PanelStep(step.Name, step.Dialog, flow.StepLines.GetValueOrDefault(step.Name),
             [.. step.Actions.Select(action => Describe(action, flow, inLoop: step.Loop is not null) with
             {
@@ -552,8 +552,8 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
         {
             List<CapturedAction> actions = [.. recording.Actions];
             actions.Insert(at < 0 ? actions.Count : at, action);
-            var plan = FlowPlanner.Plan(recording with { Actions = actions }, request.ClassName);
-            var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
+            var (plan, flow) = FlowCodeGenerator.PlanAndWrite(recording with { Actions = actions }, request.ClassName, namespaceName,
+                request.AutoChecks);
             var step = plan.Steps.FirstOrDefault(step => step.Actions.Any(planned => planned.Source.Id == action.Id));
             var planned = step?.Actions.First(planned => planned.Source.Id == action.Id);
             var card = planned is null

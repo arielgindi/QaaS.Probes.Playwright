@@ -4,6 +4,11 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## 2.1.0
 
+- **One action the recorder cannot handle never takes the recording down.** An action it cannot plan or write is left
+  out of the flow and listed to redo by hand, and the rest is still written, shown in the panel, numbered in the
+  console, tested and saved. A command of the panel that fails says so there and the panel goes on; what a page tells
+  that the recorder cannot take is logged and the next is taken; the recording is kept as you go whatever it holds.
+
 - **The recorder writes a flow from any recording, and the flow builds.** A recording with data missing, empty,
   repeated or of a kind the recorder does not know, as one edited by hand, one of another version or one after a
   pause, no longer stops it with an exception such as `ArgumentNullException: Value cannot be null`: what it cannot

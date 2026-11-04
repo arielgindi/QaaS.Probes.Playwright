@@ -3,7 +3,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Recorder.Capture;
-using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -145,7 +144,7 @@ internal sealed partial class RecorderPanel
         string after;
         try
         {
-            after = FlowWriter.Write(FlowPlanner.Plan(changed, Request.ClassName), _namespace ?? "Flows", Request.AutoChecks).Code;
+            after = FlowCodeGenerator.PlanAndWrite(changed, Request.ClassName, _namespace ?? "Flows", Request.AutoChecks).Flow.Code;
         }
         catch (Exception)
         {

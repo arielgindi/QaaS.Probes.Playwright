@@ -140,8 +140,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
         IPage? front, bool replay, bool fromStart, CancellationToken stop)
     {
         var recording = session.Build();
-        var plan = FlowPlanner.Plan(recording, request.ClassName);
-        var flow = FlowWriter.Write(plan, namespaceName, request.AutoChecks);
+        var (plan, flow) = FlowCodeGenerator.PlanAndWrite(recording, request.ClassName, namespaceName, request.AutoChecks);
         // In the order the flow does them, as the panel lists them; a loop's repeat by repeat.
         var order = plan.Steps.SelectMany(step => step.Actions).Select(action => action.Source.Id)
             .Where(flow.ActionLines.ContainsKey).Distinct().ToList();

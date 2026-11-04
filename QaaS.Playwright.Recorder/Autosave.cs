@@ -105,6 +105,14 @@ internal sealed class Autosave
                                             "write to that folder.");
             _warned = true;
         }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            // A recorder bug in what it keeps: never the end of the recording, nor of the watch, which tries again.
+            if (!_warned && CrashReport.Log("Could not keep the recording as it went", failure))
+                ConsoleUi.Warning($"The recording is not kept as you go ({failure.GetType().Name}: {failure.Message}), a bug of the " +
+                                  $"recorder: recording goes on, and saving still writes the flow. What happened is in {CrashReport.LogPath}.");
+            _warned = true;
+        }
     }
 
     /// <summary>

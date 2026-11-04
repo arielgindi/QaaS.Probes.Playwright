@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
+using QaaS.Playwright.Recorder.Generation;
 
 namespace QaaS.Playwright.Tests.Recorder;
 
@@ -156,6 +157,29 @@ public class AutosaveTests
         var code = FlowCodeGenerator.Generate(kept, "Unnamed", "Flows").Code;
 
         Assert.That(code, Does.Contain(action.Kind == "fill" ? "FillAsync(Configuration." : "ClickAsync();").And.Not.Contain("ToHaveURLAsync"));
+    }
+
+    [Test]
+    public void AnActionThePlannerFailsOn_IsLeftOutAndSaid_AndTheRestIsWritten()
+    {
+        var token = Captured.Element("textbox", "Token", Captured.Css("name", "[name='apiToken']", "apiToken"));
+        var recording = Captured.Recording(
+            Captured.Action("click", Captured.Element("button", "Open", Captured.Role("button", "Open"))),
+            Captured.Action("click", Captured.Element("button", "Broken", Captured.Role("button", "Broken"))),
+            Captured.Action("fill", token),
+            Captured.Action("click", Captured.Element("button", "Save", Captured.Role("button", "Save"))));
+        var broken = recording.Actions[1].Id;
+        // A planner bug one action sets off, wherever it is in the recording.
+        FlowPlan Planner(ValidRecording valid, string name) =>
+            valid.Actions.Any(action => action.Id == broken) ? throw new InvalidOperationException("a bug") : FlowPlanner.Plan(valid, name);
+
+        var (plan, flow) = FlowCodeGenerator.PlanAndWrite(RecordingReader.Read(recording), "Isolated", "Flows", planner: Planner);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(flow.Code, Does.Contain("\"Open\"").And.Contain("\"Save\"").And.Not.Contain("\"Broken\""));
+            Assert.That(plan.NotRecorded, Has.One.StartWith($"{FlowCodeGenerator.NotPlanned} {broken} (a 'click'), as InvalidOperationException"));
+        });
     }
 
     private static string GoldenFolder([CallerFilePath] string here = "") => Path.Combine(Path.GetDirectoryName(here)!, "Golden");

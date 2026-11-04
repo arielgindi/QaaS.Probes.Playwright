@@ -168,12 +168,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 var commands = new List<PanelCommand>();
                 while (_commands.Reader.TryRead(out var command)) commands.Add(command);
                 foreach (var command in commands.Where(command => command.Type is not ("highlight" or "unhighlight")))
-                {
-                    if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
-                    else if (IsPartCommand(command)) await PartAsync(command);
-                    else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
-                    else await CarryAsync(command);
-                }
+                    await CarryOutAsync(command);
 
                 // A highlight replaces the one before, so only the last matters.
                 if (commands.LastOrDefault(command => command.Type is "highlight" or "unhighlight") is { } highlight)
@@ -194,6 +189,24 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
         // A panel closed while pointing at an element leaves no highlight in the app.
         await HighlightAsync(null);
+    }
+
+    // One command at a time; one that fails is said in the panel and logged, and the panel goes on with the next.
+    private async Task CarryOutAsync(PanelCommand command)
+    {
+        try
+        {
+            if (command.Type is "elements" or "pick" or "inspected") await ElementsAsync(command);
+            else if (IsPartCommand(command)) await PartAsync(command);
+            else if (command.Type == "checkMode" && !_saving) await _session.CheckModeAsync(command.On ?? !_session.Checking);
+            else await CarryAsync(command);
+        }
+        catch (Exception failure) when (failure is not (PlaywrightException or OutOfMemoryException))
+        {
+            CrashReport.Log($"The panel's {command.Type} failed", failure);
+            Refuse($"That did not work ({failure.GetType().Name}: {failure.Message}), a bug of the recorder: the recording goes on. " +
+                   $"What happened is in {CrashReport.LogPath}.");
+        }
     }
 
     private async Task NextAsync()

@@ -832,28 +832,28 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
 
     private async Task InstallAsync()
     {
-        await _context.ExposeBindingAsync(Binding, (BindingSource source, string json) =>
+        await _context.ExposeBindingAsync(Binding, (BindingSource source, string json) => Guarded("an action", () =>
         {
             var page = AliasOf(source.Page);
             var news = Log.Add(page, json);
             if (news is not null) _onNews(news);
             // What the person tries is told apart: the recording took only what it began before.
             else Tried?.Add(page, json);
-        });
+        }));
         await _context.ExposeBindingAsync(ExplainBinding, (BindingSource source, string json) =>
         {
             if (source.Page is { } page) _ = PageElements.CallAsync(page, OverlayLabel.Reply(json));
         });
-        await _context.ExposeBindingAsync(ControlBinding, (BindingSource source, string json) => Control(source.Page, json));
+        await _context.ExposeBindingAsync(ControlBinding, (BindingSource source, string json) => Guarded("a key or a mode", () => Control(source.Page, json)));
         await _context.AddInitScriptAsync(CaptureScript.For(BrowserDefaults.TestIdAttribute));
-        _context.Page += (_, page) =>
+        _context.Page += (_, page) => Guarded("a page opened", () =>
         {
             // The first page is the one the recording opens itself; any other is a pop-up or a tab.
             if (!Track(page)) return;
             var byThePerson = OpenedByThePersonAsync(page);
             Log.PageOpened(AliasOf(page), Now(), byThePerson);
             Tried?.PageOpened(AliasOf(page), Now(), byThePerson);
-        };
+        });
         _browser.Disconnected += (_, _) => _closed.TrySetResult();
 
         Page = await _context.NewPageAsync();
@@ -994,20 +994,20 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
             if (_state != RecordingState.LoggingIn) WatchDialogs(page);
         }
 
-        page.FrameNavigated += (_, frame) =>
+        page.FrameNavigated += (_, frame) => Guarded("a page that went elsewhere", () =>
         {
             if (frame != page.MainFrame) return;
             Log.Navigated(AliasOf(page), frame.Url, Now());
             _login?.Navigated(frame.Url);
             Tried?.Navigated(AliasOf(page), frame.Url, Now());
-        };
-        page.Request += (_, request) =>
+        });
+        page.Request += (_, request) => Guarded("a page's request", () =>
         {
             if (!request.IsNavigationRequest || request.RedirectedFrom is not null || request.Frame != page.MainFrame) return;
             var byThePerson = StartedByThePersonAsync(request);
             Log.NavigationRequested(AliasOf(page), byThePerson);
             Tried?.NavigationRequested(AliasOf(page), byThePerson);
-        };
+        });
         page.Close += (_, _) =>
         {
             if (_context.Pages.All(open => open.IsClosed)) _closed.TrySetResult();
@@ -1025,11 +1025,25 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain
     private void WatchDialogs(IPage page)
     {
         if (!_watchingDialogs.Add(page)) return;
-        page.Dialog += (_, dialog) =>
+        page.Dialog += (_, dialog) => Guarded("a browser dialog", () =>
         {
             Log.BrowserDialog(AliasOf(page), dialog.Message, Now());
             Tried?.BrowserDialog(AliasOf(page), dialog.Message, Now());
-        };
+        });
+    }
+
+    // What a page or Playwright tells is taken without ever failing Playwright's own dispatch, nor the page's call: a bug
+    // of the recorder's in taking one thing is logged, and the recording goes on with the next.
+    private static void Guarded(string what, Action take)
+    {
+        try
+        {
+            take();
+        }
+        catch (Exception failure) when (failure is not OutOfMemoryException)
+        {
+            CrashReport.Log($"The recording could not take {what}", failure);
+        }
     }
 
     private string AliasOf(IPage? page)
