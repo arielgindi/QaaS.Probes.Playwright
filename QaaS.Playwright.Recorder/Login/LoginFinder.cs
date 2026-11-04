@@ -37,6 +37,23 @@ internal sealed class Discovered
 
     /// <summary>The person chose none of the test projects found.</summary>
     public bool SaidNone { get; init; }
+
+    /// <summary>When the project's code, and the project itself, last changed: a build older is out of date.</summary>
+    public DateTime CodeChanged { get; set; }
+
+    public DateTime ProjectChanged { get; set; }
+}
+
+/// <summary>
+/// What the login search found, as the start screen shows it, without asking anything or building: the test projects to
+/// choose among when several use QaaS and none was chosen, what the search found in the one taken, why its build may be
+/// out of date and the command that builds it, and each step of the search.
+/// </summary>
+internal sealed record LoginLook(LoginSearch Search, IReadOnlyList<TestProject> Projects, Discovered? Discovered, string? Stale,
+    string? BuildCommand)
+{
+    /// <summary>The flow to log in with by default: the one remembered here, found again, else the likeliest.</summary>
+    public FoundFlow? Suggested => Discovered is { Problems.Count: 0 } found ? found.Again ?? found.Likely.FirstOrDefault() : null;
 }
 
 /// <summary>
@@ -130,7 +147,13 @@ internal static class LoginFinder
     /// Prints the whole search, for <c>--login-why</c>: the projects found, the build used, the DLLs scanned, the flows
     /// found and why each was chosen or not, and what recording here would do. Asks nothing and builds nothing.
     /// </summary>
-    public static void Explain(string outputDir, string folder)
+    public static void Explain(string outputDir, string folder) => ConsoleUi.LoginSearch(Explained(outputDir, folder));
+
+    /// <summary>
+    /// The whole search, as the start screen's Why sheet shows it: the projects found and why each was taken or not, the
+    /// build used, the DLLs looked through, the flows found and why each was chosen or not, and what recording here would do.
+    /// </summary>
+    public static LoginSearch Explained(string outputDir, string folder)
     {
         var search = new LoginSearch();
         search.Say($"Looking for the login flow of your tests, from {Path.GetFullPath(folder)}");
@@ -153,8 +176,43 @@ internal static class LoginFinder
         }
 
         if (!any) search.Say($"Result: {NoLoginFlow(search)}", 1);
-        ConsoleUi.LoginSearch(search);
+        return search;
     }
+
+    /// <summary>
+    /// What the search finds for the start screen, asking nothing and building nothing: the project, its newest build,
+    /// its flows, the likely ones, and whether the build is older than the project.
+    /// </summary>
+    public static LoginLook Look(string outputDir, string folder)
+    {
+        var search = new LoginSearch();
+        search.Say($"Looking for the login flow of your tests, from {Path.GetFullPath(folder)}");
+        var remembered = RememberedLogin.In(folder) is { Found: true } found ? found : null;
+        var (project, several, _) = FindProject(outputDir, folder, search, interactive: false);
+        if (project is null) return new LoginLook(search, several, null, null, null);
+        var discovered = SearchIn(project, search, interactive: false, remembered);
+        var expected = remembered?.Flow ?? discovered.SetupIn.OrderByDescending(pair => pair.Value).Select(pair => pair.Key).FirstOrDefault();
+        var build = discovered.Build;
+        var inProject = remembered is null || build is null || Same(remembered.Assembly, build.Dll);
+        var stale = expected is null && build is not null ? null
+            : build is null ? $"{project.Name} is not built yet, so its login flow cannot run."
+            : build.BuiltAt < discovered.ProjectChanged || inProject && build.BuiltAt < discovered.CodeChanged
+                ? $"{project.Name} changed since it was built, {ConsoleUi.Ago(build.BuiltAt.ToLocalTime())}: its login flow may be out of date."
+                : null;
+        return new LoginLook(search, [], discovered, stale, BuildCommand(project, build));
+    }
+
+    /// <summary>Builds the test project as its last build was built, for the start screen's Build now.</summary>
+    public static Task<(int ExitCode, string Log)> BuildAsync(TestProject project, ProjectBuild? build, CancellationToken stop) =>
+        FlowBuild.DotnetAsync(project.Folder, ["build", project.ProjectFile, "--nologo", "-v", "q", "-c", build?.Configuration ?? "Debug"], stop);
+
+    /// <summary>The files of the tests' YAML that give <paramref name="flow"/>'s values, the likeliest first.</summary>
+    public static IReadOnlyList<string> SettingsFilesOf(Discovered discovered, string flow) => [.. discovered.Files
+        .Where(file => LoginSettings.Find(file.Yaml, flow)?.GetChildren().Any() == true)
+        .OrderBy(file => file.SetupFlows.Contains(flow) ? 0 : 1)
+        .ThenBy(file => file.Path.Count(character => character == Path.DirectorySeparatorChar))
+        .ThenBy(file => file.Path, StringComparer.Ordinal)
+        .Select(file => file.Path)];
 
     // "Not logging in here (you said no on 2026-11-03). --login LoginFlow to log in, --no-login to ask again."
     private static string NotLoggingInHere(DeclinedLogin no) =>
@@ -268,6 +326,7 @@ internal static class LoginFinder
         var discovered = new Discovered { Project = project };
         var (files, codeChanged, projectChanged) = project.Look();
         discovered.Files = files;
+        (discovered.CodeChanged, discovered.ProjectChanged) = (codeChanged, projectChanged);
         discovered.SetupIn = files.SelectMany(file => file.SetupFlows).GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(names => names.Key, names => names.Count(), StringComparer.OrdinalIgnoreCase);
         search.Say(discovered.SetupIn.Count == 0
