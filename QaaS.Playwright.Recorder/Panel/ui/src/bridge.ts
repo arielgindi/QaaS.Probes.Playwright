@@ -1,3 +1,4 @@
+import type { SetupCommand, SetupView } from './setup/types';
 import type { Command, ElementsMessage, PanelState } from './types';
 
 // The panel talks to the recorder (Panel/RecorderPanel.cs) through functions on the window, so it needs no server: the
@@ -6,6 +7,8 @@ import type { Command, ElementsMessage, PanelState } from './types';
 declare global {
   interface Window {
     __qaasPanelShow?: (json: string) => boolean;
+    /** The start screen, or what was saved: the window shows it instead of a recording. */
+    __qaasSetupShow?: (json: string) => boolean;
     __qaasPanelElements?: (json: string) => boolean;
     __qaasPanelSend?: (json: string) => void;
     /** Opens the commands, as Ctrl+K pressed in the recorded app asks. */
@@ -21,9 +24,47 @@ let elementsListener: Listener<ElementsMessage> | null = null;
 
 window.__qaasPanelShow = (json) => {
   latest = JSON.parse(json) as PanelState;
+  screenListener?.('recording');
   listener?.(latest);
   return true;
 };
+
+// The window shows the start screen, a recording, or what was saved, as the recorder last said.
+export type Screen = 'setup' | 'recording' | 'done';
+let screenListener: Listener<Screen> | null = null;
+let setupListener: Listener<SetupView> | null = null;
+let setupLatest: SetupView | null = null;
+
+window.__qaasSetupShow = (json) => {
+  setupLatest = JSON.parse(json) as SetupView;
+  // The recording shown last is over: the next one starts afresh.
+  latest = null;
+  screenListener?.(setupLatest.screen);
+  setupListener?.(setupLatest);
+  return true;
+};
+
+/** Calls the listener with the screen the window shows now, and with each one after it. */
+export function subscribeScreen(next: Listener<Screen>): () => void {
+  screenListener = next;
+  if (setupLatest && !latest) next(setupLatest.screen);
+  else if (latest) next('recording');
+  return () => {
+    if (screenListener === next) screenListener = null;
+  };
+}
+
+export function subscribeSetup(next: Listener<SetupView>): () => void {
+  setupListener = next;
+  if (setupLatest) next(setupLatest);
+  return () => {
+    if (setupListener === next) setupListener = null;
+  };
+}
+
+export function sendSetup(command: SetupCommand): void {
+  window.__qaasPanelSend?.(JSON.stringify(command));
+}
 
 // A message that comes before the view listens, as a frozen tree may, waits for it.
 let unheard: ElementsMessage | null = null;

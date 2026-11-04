@@ -38,6 +38,8 @@ public static class Program
 
         ConsoleUi.CancelOnCtrlC();
         CrashReport.Install();
+        // Run alone, the recorder opens its window, the start screen, where each recording is set up.
+        if (args is [] or ["record"]) return Setup.RecorderApp.RunAsync(new Setup.RecorderHostOptions()).GetAwaiter().GetResult();
         RecordRequest request;
         // The login flow last used in this folder is used again, unless the command says otherwise; else the one the
         // tests run first, found, asked about once and remembered.

@@ -55,6 +55,22 @@ internal static class PanelWindow
         }
     }
 
+    /// <summary>Puts the window of <paramref name="page"/> in the middle of its screen, at the size given, or less where it has not that room.</summary>
+    public static async Task CentreAsync(IPage page, int width, int height)
+    {
+        try
+        {
+            var (window, _) = await WindowOfAsync(page);
+            var screen = await page.EvaluateAsync<int[]>("() => [screen.availLeft, screen.availTop, screen.availWidth, screen.availHeight]");
+            var (w, h) = (Math.Min(width, screen[2]), Math.Min(height, screen[3]));
+            await MoveAsync(page, window, new WindowBounds(screen[0] + (screen[2] - w) / 2, screen[1] + (screen[3] - h) / 2, w, h));
+        }
+        catch (Exception failure) when (failure is PlaywrightException or KeyNotFoundException or InvalidOperationException)
+        {
+            // Where it opened will do.
+        }
+    }
+
     private static async Task MoveAsync(IPage page, int window, WindowBounds bounds)
     {
         var session = await page.Context.NewCDPSessionAsync(page);

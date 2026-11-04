@@ -251,8 +251,32 @@ internal static class ConsoleUi
             pressed.Cancel = true;
             CtrlC(lifetime);
         }
+        // On the start screen, nothing to save: the recorder closes its window and ends; pressed again, at once.
+        else if (Interlocked.Exchange(ref _quit, null) is { } ending)
+        {
+            pressed.Cancel = true;
+            Cancelled();
+            ending();
+        }
         else Cancelled();
     };
+
+    private static Action? _quit;
+
+    /// <summary>What Ctrl+C does while no recording goes on: the start screen ends, the window closed.</summary>
+    public static void QuitOnCtrlC(Action? quit) => Volatile.Write(ref _quit, quit);
+
+    /// <summary>The window is open: the console says so, and that the recording is set up there.</summary>
+    public static void WindowOpen()
+    {
+        Out.WriteLine();
+        Status(Out, Margin, Out.Glyph("›", ">"), Tone.Accent, "The recorder's window is open: set up the recording there.", Tone.Bold);
+    }
+
+    /// <summary>Once a recording ended, the window is on what was saved, or on the start screen again.</summary>
+    public static void BackAtStart(bool saved) =>
+        Note(saved ? "The window shows what was saved: record another there, or close the window (or press Ctrl+C here) to quit."
+            : "Back at the start screen. Close the window, or press Ctrl+C here, to quit.");
 
     // Says what Ctrl+C does to the recording; before anything listens for its end, it stops it at once, the recording kept.
     internal static void CtrlC(RecorderLifetime lifetime)

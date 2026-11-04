@@ -11,7 +11,27 @@ using QaaS.Playwright.Recorder.TestRun;
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>The recorder's Chrome and its window, which recording after recording runs in.</summary>
-internal sealed record RecorderWindow(RecorderBrowser Browser, PanelHost Host);
+internal sealed record RecorderWindow(RecorderBrowser Browser, PanelHost Host)
+{
+    /// <summary>The recordings start from the login the recorder saved, and save it as they end; not in its tests.</summary>
+    public bool KeepsLogin { get; init; } = true;
+}
+
+/// <summary>
+/// How a recording ended, for the window to show: whether it started and was saved, the flow and its files, what the
+/// console said to do next, and the lines to check by hand; or why it was not saved.
+/// </summary>
+internal sealed class RecordingOutcome
+{
+    public bool Started { get; set; } = true;
+    public bool Saved { get; set; }
+    public string Flow { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public List<(string Path, string What)> Files { get; } = [];
+    public List<string> Notes { get; } = [];
+    public List<string> Checks { get; } = [];
+    public string? Error { get; set; }
+}
 
 /// <summary>The flow's saved files: its class, its recorded values, and the raw recording when it was kept.</summary>
 internal sealed record SavedFlow(string CodePath, string YamlPath, string? RecordingPath = null);
@@ -63,12 +83,14 @@ internal static class FlowRecorder
     /// Records in the recorder's window and Chrome, <paramref name="window"/>, which stay open after it; with none, in a
     /// Chrome of its own with a window of its own, which close as the recording ends. Returns the exit code.
     /// </summary>
-    public static async Task<int> RecordAsync(RecordRequest request, RecorderWindow? window = null)
+    public static async Task<int> RecordAsync(RecordRequest request, RecorderWindow? window = null, RecordingOutcome? outcome = null)
     {
         var lifetime = RecorderLifetime.Current = new RecorderLifetime();
+        outcome ??= new RecordingOutcome();
+        outcome.Flow = request.ClassName;
         try
         {
-            return await RecordInAsync(request, lifetime, window);
+            return await RecordInAsync(request, lifetime, window, outcome);
         }
         finally
         {
@@ -78,10 +100,14 @@ internal static class FlowRecorder
     }
 
     // Records until something asks the lifetime to stop, then ends as it says: saved, or kept to save next time.
-    private static async Task<int> RecordInAsync(RecordRequest request, RecorderLifetime lifetime, RecorderWindow? window)
+    private static async Task<int> RecordInAsync(RecordRequest request, RecorderLifetime lifetime, RecorderWindow? window, RecordingOutcome outcome)
     {
         KeptRecording? continued = null;
-        if (request.Continue && (continued = Continued(ref request)) is null) return 1;
+        if (request.Continue && (continued = Continued(ref request)) is null)
+        {
+            (outcome.Started, outcome.Error) = (false, $"There is no recording of {request.ClassName} to continue.");
+            return 1;
+        }
         ConsoleUi.Recording(request, continued is null ? null
             : $"{ActionsIn(continued.Recording, request.ClassName)}, recorded {ConsoleUi.Ago(continued.Changed)}");
         var autosave = new Autosave(continued?.Recording, request);
@@ -106,6 +132,7 @@ internal static class FlowRecorder
             var browser = window?.Browser ?? (ownBrowser = await RecorderBrowser.LaunchAsync([]));
             if (window is null) lifetime.Own("Chrome", browser.DisposeAsync);
             options = options with { Browser = browser };
+            if (window?.KeepsLogin == false) options = options with { LoadStorageStatePath = null, SaveStorageStatePath = null };
             if (continued?.Recording.LogsIn == true) options = options with { LoadStorageStatePath = null };
             var loggingIn = request.Login is not null;
             var session = await RecordingSession.StartAsync(options, news =>
@@ -147,6 +174,7 @@ internal static class FlowRecorder
                 if (panel is not null) await panel.DisposeAsync();
                 await session.DisposeAsync();
                 if (ownBrowser is not null) await ownBrowser.DisposeAsync();
+                outcome.Error = $"Stopped: {request.ClassName} stays as it is.";
                 return 1;
             }
 
@@ -154,7 +182,8 @@ internal static class FlowRecorder
             // once, the recording kept.
             lifetime.Listening = true;
             _ = session.Closed.ContinueWith(_ => lifetime.RequestStop(StopReason.BrowserClosed), TaskScheduler.Default);
-            _ = ConsoleUi.EnterPressedAsync().ContinueWith(_ => lifetime.RequestStop(StopReason.Enter), TaskScheduler.Default);
+            // In the recorder's window, Save there ends it; the console takes no input.
+            if (window is null) _ = ConsoleUi.EnterPressedAsync().ContinueWith(_ => lifetime.RequestStop(StopReason.Enter), TaskScheduler.Default);
             _ = panel?.SaveRequested.ContinueWith(_ => lifetime.RequestStop(StopReason.Saved), TaskScheduler.Default);
             await lifetime.Stopped;
             return await lifetime.ShutdownAsync(async forced =>
@@ -181,16 +210,17 @@ internal static class FlowRecorder
 
                 // Forced meanwhile, the recording is kept rather than written.
                 forced.ThrowIfCancellationRequested();
-                return await SaveEndedAsync(request, recording, autosave);
+                return await SaveEndedAsync(request, recording, autosave, outcome);
             });
         }
         catch (PlaywrightException failure) when (recorded?.Log.Build("").Actions.Count is not > 0)
         {
             if (recorded is not null) await recorded.DisposeAsync();
             if (ownBrowser is not null) await ownBrowser.DisposeAsync();
-            ConsoleUi.Error($"Could not record: {failure.Message.Split('\n')[0]}\nChrome did not open or the page did not load. " +
-                            "Check that Google Chrome is installed and the address answers in your browser, then run the same " +
-                            "command again.");
+            var why = $"Could not record: {failure.Message.Split('\n')[0]}. Chrome did not open, or the page did not load: check " +
+                      "that the address answers in your browser, then start again.";
+            ConsoleUi.Error(why);
+            (outcome.Started, outcome.Error) = (false, why);
             return 1;
         }
         catch (Exception failure) when (failure is not OutOfMemoryException)
@@ -211,24 +241,38 @@ internal static class FlowRecorder
             }
 
             CrashReport.Report(failure);
+            outcome.Error = $"The recorder stopped on an error ({failure.GetType().Name}: {failure.Message.Split('\n')[0]}). The " +
+                            "recording is kept: it is offered under Recovered.";
             return 1;
         }
     }
 
     // The recording ended as asked: nothing to save, or the flow written from it.
-    private static async Task<int> SaveEndedAsync(RecordRequest request, Recording recording, Autosave autosave)
+    private static async Task<int> SaveEndedAsync(RecordRequest request, Recording recording, Autosave autosave, RecordingOutcome outcome)
     {
         if (recording.Actions.Count == 0)
         {
             autosave.Forget();
-            ConsoleUi.Error("Nothing was recorded, so nothing was saved: Chrome was closed, or Enter pressed, before any " +
-                            "action. Run the same command again, then click and type in the page before you close it.");
+            outcome.Error = "Nothing was recorded, so nothing was saved: Chrome was closed, or Save pressed, before any action. " +
+                            "Start again, then click and type in the app before you save.";
+            ConsoleUi.Error(outcome.Error);
             return 1;
         }
 
         // On disk as it ended, in case saving it fails.
         await autosave.WriteAsync(recording, request);
-        return await SaveAsync(request, recording, autosave);
+        return await SaveAsync(request, recording, autosave, outcome);
+    }
+
+    /// <summary>Saves a recording that never ended in a save, now, without Chrome, as Save it now asks. Returns the exit code.</summary>
+    public static Task<int> SaveKeptAsync(KeptRecording kept, RecordingOutcome outcome)
+    {
+        var flow = kept.Recording.Autosave!;
+        outcome.Flow = flow.Flow;
+        return SaveAsync(new RecordRequest(flow.Flow, kept.Recording.StartUrl, flow.Folder)
+        {
+            AutoChecks = flow.AutoChecks, Login = flow.Login, Replaces = flow.Replaces, KeepRecording = flow.KeepRecording,
+        }, kept.Recording, new Autosave(), outcome);
     }
 
     // Each action the flow does by its step number, as the panel and a test number them: a click that only opened a
@@ -265,8 +309,9 @@ internal static class FlowRecorder
     }
 
     // Writes the flow and its values, says what was saved, and keeps the recording to continue it. Returns the exit code.
-    private static async Task<int> SaveAsync(RecordRequest request, Recording recording, Autosave autosave)
+    private static async Task<int> SaveAsync(RecordRequest request, Recording recording, Autosave autosave, RecordingOutcome? outcome = null)
     {
+        outcome ??= new RecordingOutcome();
         GeneratedFlow flow;
         try
         {
@@ -278,6 +323,8 @@ internal static class FlowRecorder
             // A recorder bug, not the person's: the recording stays kept, to save once the recorder is fixed, and where it
             // happened is logged, to report it.
             var logged = CrashReport.Log($"Could not write the flow {request.ClassName}", failure);
+            outcome.Error = $"Could not write the flow {request.ClassName}: {failure.GetType().Name}: {failure.Message}. This is a " +
+                            $"bug of the recorder; the recording is kept, under Recovered. Please report it with {CrashReport.LogPath}.";
             ConsoleUi.Error($"Could not write the flow {request.ClassName}: {failure.GetType().Name}: {failure.Message}\n" +
                             $"  This is a bug of the recorder, not of what you did. The recording is kept in {Autosave.Folder}: " +
                             "update the recorder (dotnet tool update -g QaaS.Playwright.Recorder), then run qaas-playwright " +
@@ -298,6 +345,8 @@ internal static class FlowRecorder
             // Recording it again would take as long as the first time; the recorder offers it again when it starts.
             var kept = Path.Combine(Path.GetTempPath(), $"{request.ClassName}-{Guid.NewGuid():N}.cs.txt");
             FileStore.Machine.Write(kept, flow.Code + "\n/*\n" + flow.Yaml + "*/\n");
+            outcome.Error = $"Could not save the flow: {failure.Message}. The folder may be read-only, or a file in it open in " +
+                            $"another program. The recorded flow is kept in {kept}.";
             ConsoleUi.Error($"Could not save the flow: {failure.Message}\n  The folder may be read-only, or a file in it " +
                             $"open in another program. The recorded flow is kept in {kept}: copy it into your project, or " +
                             "free the folder and run qaas-playwright, which offers to save it again.");
@@ -314,7 +363,31 @@ internal static class FlowRecorder
                               $"recording, so it could not fill {(unkept.Count == 1 ? "it" : "them")} in. Type the value there, " +
                               "or set its environment variable, before you run the flow.");
         if (request.Login is { } after) ConsoleUi.RunAfter(after.Flow);
+        Told(outcome, request, saved, flow, recording);
         return 0;
+    }
+
+    // What the window shows of a flow saved: its files, what to do next, and what to check by hand.
+    private static void Told(RecordingOutcome outcome, RecordRequest request, SavedFlow saved, GeneratedFlow flow, Recording recording)
+    {
+        outcome.Saved = true;
+        outcome.Flow = request.ClassName;
+        outcome.Summary = $"{ConsoleUi.Count(flow.StepLines.Count, "step")}, {ConsoleUi.Count(flow.ActionLines.Count, "action")}" +
+                          (flow.Checks.Count > 0 ? $", {flow.Checks.Count} to check by hand" : ", nothing to check by hand");
+        outcome.Files.Add((saved.CodePath, saved.CodePath.EndsWith(".cs", StringComparison.Ordinal) ? "the flow" : "the new recording, beside the flow"));
+        outcome.Files.Add((saved.YamlPath, "the values it types and chooses"));
+        if (saved.RecordingPath is { } raw) outcome.Files.Add((raw, "the raw recording"));
+        if (!saved.CodePath.EndsWith(".cs", StringComparison.Ordinal))
+            outcome.Notes.Add($"{request.ClassName}.cs was kept as it is, as it changed since it was recorded: merge the new recording, saved beside it, into it by hand.");
+        if (flow.Secrets.Count > 0)
+            outcome.Notes.Add($"{string.Join(", ", flow.Secrets.Select(setting => setting.Name))}: no file of the flow holds a secret. " +
+                              $"{Path.GetFileName(saved.YamlPath)} reads {string.Join(", ", flow.Secrets.Select(setting => FlowYaml.EnvironmentName(setting.Name)))} from the environment.");
+        if (Autosave.Unkept(recording, request.ClassName).Except(flow.Secrets.Select(setting => setting.Name)).ToList() is [_, ..] unkept)
+            outcome.Notes.Add($"{string.Join(", ", unkept)} {(unkept.Count == 1 ? "is" : "are")} empty in {Path.GetFileName(saved.YamlPath)}: " +
+                              "type the value there, or set its environment variable, before you run the flow.");
+        if (request.Login is { } after)
+            outcome.Notes.Add($"It runs after {after.Flow}: in your test YAML, SetupFlows: [{after.Flow}] goes before it.");
+        outcome.Checks.AddRange(flow.Checks.Select(check => check.Line is { } line ? $"Line {line}: {check.Message}" : check.Message));
     }
 
     // The recording to go on from, with the flow's login and its values the recording does not hold; null, told why,

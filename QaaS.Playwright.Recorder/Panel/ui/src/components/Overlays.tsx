@@ -62,7 +62,7 @@ export function ToastView() {
 }
 
 // A dialog over the panel, which Esc or a click outside closes, and which keeps the keys to itself.
-function Modal({ label, onClose, children, class: className }: { label: string; onClose(): void; children: ComponentChildren; class?: string }) {
+export function Modal({ label, onClose, children, class: className }: { label: string; onClose(): void; children: ComponentChildren; class?: string }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const was = document.activeElement as HTMLElement | null;
