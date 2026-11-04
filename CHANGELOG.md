@@ -65,6 +65,28 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
     Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
   - **Add to flow, clicked twice on a tried action, adds it once**: it added the same action twice, and from then on
     the flow could not be written, shown or kept.
+  - **One state, told the same everywhere.** The recorder's mode is one state with one table of what each key and
+    command may do in it: the console, the panel's status strip and the pill on the page all say it, and a key it
+    does not allow now is refused with why, never half done. A reload in check mode leaves check mode, in the panel
+    too; `F2` ends a part recorded again while it is paused or tried; once you click **Save**, nothing more is
+    recorded.
+  - **Stop, Log in by hand and the end end what runs, at once.** A test, a replay and the login flow each run in a
+    scope of their own, which leaving their mode ends: the recording goes on as soon as you press Stop, and the pages
+    a login flow opened close when you log in by hand, so it clicks nothing more in them.
+- **Your files are safe**, as every file is written in one place:
+  - **A flow and its YAML are replaced together, or not at all**: when one could not be written, as a YAML another
+    program holds on Windows, the flow kept its YAML, rather than new code with old settings; a pair left half
+    replaced by a crash is put back the next time.
+  - **A file Windows says another program holds** (an editor, a sync client, a scanner) is tried again for a moment
+    before the recorder gives up.
+  - **Renaming the flow in the panel** writes its new recovery copy before the old one goes, never the other way.
+  - **A folder written with another case** (`C:\Tests\Flows`, `c:\tests\flows`) is the same on Windows: a flow saved
+    in one continues from the other, and the login remembered for it is found.
+  - **A test's settings and login**, which hold its secrets, are deleted after it, file by file and again later when
+    a program still held one.
+- **You can build your tests while you record.** Your test project's build is loaded from a copy of it, so Windows
+  never locks its DLLs. **The .NET SDK is found where you installed it**: on PATH, or for you alone, when the runtime
+  the recorder runs on has none; and the messages of a build read right in a console of another code page.
 
 ## 2.0.4
 
