@@ -84,9 +84,10 @@ internal static class LoopFinder
         rounds[0].Any(action => LoopValues(action, rounds[0]).Any())
         || rounds.All(round => round.Any(action => action.Effects.Count > 0));
 
+    // Never a secret typed: a list's values are in its YAML, where a secret never is.
     private static bool CanRepeat(PlannedAction action, bool mayCheck = false) =>
         Repeatable.Contains(action.Kind) && action.Locator is not null && (mayCheck || action.Checks.Count == 0)
-        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind));
+        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind)) && action.Value?.Secret != true;
 
     // A round that opens a dialog closes it again, so the next round starts where it started.
     private static bool Balanced(List<PlannedAction> template)

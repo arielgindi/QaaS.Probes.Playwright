@@ -201,10 +201,6 @@ internal sealed partial class FlowWriter
 
     private void WriteStep(Step step)
     {
-        // A dialog no step before opened is found in RunAsync, written in RunAsync's own state: not the step before's,
-        // whose loop item RunAsync has not, nor none, as for a flow whose first step is in a dialog.
-        _step = new StepState(new Scope("page", "page", null, "page"), counted: null);
-        var argument = step.Dialog is { } title ? DialogVariable(step, title) : step.Page;
         var scope = step.Dialog is not null
             ? new Scope("dialog", "dialog.Page", step.Dialog, step.Page)
             : new Scope(step.Page, step.Page, null, step.Page);
@@ -215,12 +211,23 @@ internal sealed partial class FlowWriter
         (_seen, _typed, _acceptsDialogs) = (seen, typed, accepts);
         _step = new StepState(scope, _step);
         WriteBody(step, last: true);
+        var body = _step;
+        // A step that writes nothing, of actions the recorder does not know, is no method: they are to redo by hand.
+        if (body.Lines.Count == 0) return;
+
+        // A page or a dialog no step before opened is found in RunAsync, as the step before it: from what was read
+        // before it, written in RunAsync's own state, not the step before's, whose loop item RunAsync has not.
+        (var seenAfter, var typedAfter, _seen, _typed) = (_seen, _typed, seen, typed);
+        _step = new StepState(new Scope("page", "page", null, "page"), counted: null);
+        var argument = PageVariable(step);
+        if (step.Dialog is { } title) argument = DialogVariable(step, title);
+        (_seen, _typed) = (seenAfter, typedAfter);
 
         var returns = step.Opens is not null ? "Task<ILocator>" : step.OpensPage is not null ? "Task<IPage>" : "Task";
         var parameter = step.Dialog is not null ? "ILocator dialog" : $"IPage {step.Page}";
-        _methods.Add((step, $"private {(_step.UsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", _step.Lines));
+        _methods.Add((step, $"private {(body.UsesFlow ? "" : "static ")}async {returns} {step.Name}({parameter})", body.Lines));
 
-        // What a step opens is kept when a later step works in it.
+        // What a step opens is kept when a later step works in it; a tab of a name opened before is the one opened now.
         var call = $"{step.Name}({argument})";
         var later = _plan.Steps.Skip(_plan.Steps.IndexOf(step) + 1).ToList();
         if (step.Opens is { } opened && later.Any(other => other.Dialog == opened.Title))
@@ -230,9 +237,22 @@ internal sealed partial class FlowWriter
             _run.Add(new Line($"var {variable} = await {call};"));
         }
         else if (step.OpensPage is { } page && later.Any(other => other.Page == page))
-            _run.Add(new Line($"var {page} = await {call};"));
+            _run.Add(new Line($"{(_runVariables.Add(page) ? "var " : "")}{page} = await {call};"));
         else
             _run.Add(new Line($"await {call};"));
+    }
+
+    // A page no step before opened, as a pop-up whose opening click was left out, is opened in RunAsync: in a new tab, at
+    // the address its first action was at.
+    private string PageVariable(Step step)
+    {
+        if (!_runVariables.Add(step.Page)) return step.Page;
+        var url = step.Actions.Select(action => action.Source.Url).FirstOrDefault(url => !string.IsNullOrEmpty(url));
+        _run.Add(new Line($"var {step.Page} = await page.Context.NewPageAsync();",
+            $"nothing the flow does opens {step.Page}, as what opened it was left out or not recorded: the flow opens it here, " +
+            $"in a new tab{(url is null ? "" : " at the address it was at")}; check that the flow acts on the page it should"));
+        if (url is not null) _run.Add(new Line($"await {step.Page}.GotoAsync({Address(url)});"));
+        return step.Page;
     }
 
     private void WriteBody(Step step, bool last)
@@ -396,6 +416,7 @@ internal sealed partial class FlowWriter
         var problem = source.HoverMenu == true && opener is null
             ? "the menu it is in opened on hover: hover what opens it first (HoverAsync)"
             : null;
+        var from = _step.Lines.Count;
         switch (action.Kind)
         {
             case "click" or "dblclick":
@@ -404,7 +425,7 @@ internal sealed partial class FlowWriter
                 if (action.Effects.FirstOrDefault(effect => effect.Kind == "popup") is { Page: { } popup })
                 {
                     var locator = Locate(action, ref problem);
-                    _step.Add($"var {popup} = await {scope.Page}.RunAndWaitForPopupAsync(() => {locator}.{method}());",
+                    _step.Add($"{Declared(popup)} = await {scope.Page}.RunAndWaitForPopupAsync(() => {locator}.{method}());",
                         Join(problem, "a pop-up opened here: check what the flow does in it"));
                 }
                 else
@@ -478,7 +499,7 @@ internal sealed partial class FlowWriter
                         : null);
                 break;
             case "newTab":
-                _step.Add($"var {source.Page} = await {scope.Page}.Context.NewPageAsync();",
+                _step.Add($"{Declared(source.Page)} = await {scope.Page}.Context.NewPageAsync();",
                     source.AfterPause == true
                         ? "a tab that opened while the recording was paused: the flow opens it here"
                         : "a tab you opened yourself: the flow opens it here");
@@ -493,9 +514,35 @@ internal sealed partial class FlowWriter
                 break;
         }
 
+        if (action.Kind is not ("click" or "dblclick") && action.Effects.FirstOrDefault(effect => effect.Kind == "popup") is { Page: { } opensPopup })
+            WaitForPopup(opensPopup, from);
         Saw(action);
         WriteEffects(action, step, isLast);
     }
+
+    // A pop-up that what is no click opened, as Enter in a field does: the statement last written for the action is run
+    // and waited for, as a click is; else, when nothing was written for it, the pop-up is the page opened last.
+    private void WaitForPopup(string popup, int from)
+    {
+        var page = _step.Scope.Page;
+        if (_step.Lines.Count > from && _step.Lines[^1] is { Depth: 0, Mark.Length: 0, Text: var text } line
+                                     && text.StartsWith("await ", StringComparison.Ordinal) && text.EndsWith(';'))
+        {
+            _step.Lines[^1] = line with
+            {
+                Text = $"{Declared(popup)} = await {page}.RunAndWaitForPopupAsync(() => {text["await ".Length..^1]});",
+                Check = Join(line.Check, "a pop-up opened here: check what the flow does in it"),
+            };
+            return;
+        }
+
+        _step.Add($"{Declared(popup)} = {page}.Context.Pages[^1];",
+            "a pop-up opened here, by what the recorder did not understand: the flow takes the page opened last; check that it is the pop-up");
+    }
+
+    // A page the action opens, as a variable of the step: the step's own, when the page it is on has that name, as a
+    // tab opened again of a name opened before.
+    private string Declared(string page) => _step.Scope.Dialog is null && page == _step.Scope.Page ? page : $"var {page}";
 
     // What the action read is known to what follows it: a text that shows it, or a locator that shows what was typed.
     // Not a loop's item, which only its repeat knows.
@@ -608,7 +655,11 @@ internal sealed partial class FlowWriter
         foreach (var changed in changes.TakeLast(shownElsewhere ? 0 : 1)
                      .Where(changed => action.Source.Url is not { } before || !Regex.IsMatch(before, UrlPattern(changed.Url!))))
         {
-            var page = changed.Page is { } alias && alias != action.Source.Page ? alias : scope.Page;
+            // On the pop-up the action opened, when it went there; else on the page the step is on, as no other is known in it.
+            var page = changed.Page is { } alias && alias != action.Source.Page
+                                                 && action.Effects.Any(effect => effect.Kind == "popup" && effect.Page == alias)
+                ? alias
+                : scope.Page;
             AddCheck("url", $"URL {StepNamer.Route(changed.Url) ?? changed.Url}",
                 $"await Expect({page}){Break}.ToHaveURLAsync(new Regex({CSharp.Literal(UrlPattern(changed.Url!))}));");
         }
@@ -1434,10 +1485,13 @@ internal sealed partial class FlowWriter
         yield return line.ToString();
     }
 
-    // A text in an XML doc comment.
+    // A text in an XML doc comment, on its line: a line break or another control character in it is a space.
     private static string XmlText(string text) =>
-        text.Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal)
+        LineBreak().Replace(text, " ").Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal)
             .Replace(">", "&gt;", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"[\p{Cc}\u2028\u2029]")]
+    private static partial Regex LineBreak();
 
     [GeneratedRegex(@"[\\^$.|?*+()\[\]{}]")]
     private static partial Regex RegexSpecial();

@@ -324,7 +324,8 @@ internal static partial class FlowPlanner
                     }
 
                     action.Value = Typed(name, source.Value ?? "", field, qualified);
-                    action.Value.Secret = secret;
+                    // A secret is text, whatever its field takes, as its YAML reads it from the environment.
+                    if (secret) (action.Value.Secret, action.Value.Type) = (true, "string");
                     // A date or a time input takes its value in one format, whatever the browser shows.
                     action.Value.Format = field?.Type switch
                     {
@@ -518,7 +519,9 @@ internal static partial class FlowPlanner
         {
             var last = step.Actions[^1];
             step.Opens = last.Effects.LastOrDefault(effect => effect.Kind == "dialogOpened")?.Dialog;
-            step.OpensPage = last.Kind == "newTab" ? last.Source.Page
+            // A step returns one thing: the dialog, of an action that opened a dialog and a pop-up too.
+            step.OpensPage = step.Opens is not null ? null
+                : last.Kind == "newTab" ? last.Source.Page
                 : last.Effects.FirstOrDefault(effect => effect.Kind == "popup")?.Page;
         }
     }
@@ -553,8 +556,9 @@ internal static partial class FlowPlanner
                 foreach (var (role, setting) in action.Parts)
                 {
                     if (action.Source.Edit?.Values?.GetValueOrDefault(role) is not { } edit) continue;
+                    // Never a secret, which stays text, as its YAML reads it from the environment.
                     if (edit is { DateFormat: { } format, Value: { } days } && WholeNumber().IsMatch(days) && step.Loop is null
-                        && setting.Type == "string")
+                        && setting is { Type: "string", Secret: false })
                     {
                         (setting.DateFormat, setting.Type, setting.Name) = (format, "int", RelativeDate.Name(setting.Name));
                         setting.Qualified = setting.Qualified is { } qualified ? RelativeDate.Name(qualified) : null;
@@ -599,6 +603,15 @@ internal static partial class FlowPlanner
     {
         plan.Settings.AddRange(SettingsByStep(plan).Select(read => read.Setting));
         var taken = new HashSet<string>(RecordMembers.Append($"{plan.ClassName}Config"), StringComparer.OrdinalIgnoreCase);
+        // A list of texts that holds an empty one, recorded or as the person changed it, is a list of records: QaaS reads
+        // an empty item of a list as none, so the list would lose it and the loop a round; an empty field it keeps.
+        foreach (var list in plan.Settings.Where(setting => setting is { ItemType: null, Items: { } items, Fields: [{ Type: "string" } field] }
+                                                            && items.Any(item => item[0].Value == "")))
+        {
+            var item = LoopFinder.Singular(list.Name);
+            list.ItemType = item.Equals(list.Fields![0].Name, StringComparison.OrdinalIgnoreCase) ? item + "Item" : item;
+        }
+
         foreach (var list in plan.Settings.Where(setting => setting.ItemType is not null))
             list.ItemType = Unique(list.ItemType!, taken);
         var named = plan.Settings.GroupBy(setting => setting.Name, StringComparer.OrdinalIgnoreCase);
