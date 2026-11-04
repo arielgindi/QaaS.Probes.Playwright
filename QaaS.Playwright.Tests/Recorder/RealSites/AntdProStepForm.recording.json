@@ -13,9 +13,9 @@
         "role": "combobox",
         "type": "search",
         "id": "0_payAccount",
-        "text": "付款账户",
-        "label": "付款账户",
-        "groupLabel": "付款账户",
+        "text": "Payment account",
+        "label": "Payment account",
+        "groupLabel": "Payment account",
         "editable": false,
         "interactive": true,
         "candidates": [
@@ -37,11 +37,11 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "付款账户",
+                "name": "Payment account",
                 "exact": true
               }
             ],
-            "text": "付款账户"
+            "text": "Payment account"
           },
           {
             "kind": "role",
@@ -49,12 +49,12 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "付款账户"
+                "name": "Payment account"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "付款账户"
+            "text": "Payment account"
           },
           {
             "kind": "group",
@@ -65,17 +65,17 @@
               },
               {
                 "m": "has",
-                "text": "付款账户"
+                "text": "Payment account"
               },
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "付款账户"
+                "name": "Payment account"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "付款账户"
+            "text": "Payment account"
           },
           {
             "kind": "item",
@@ -91,7 +91,7 @@
               {
                 "m": "role",
                 "role": "combobox",
-                "name": "付款账户"
+                "name": "Payment account"
               }
             ],
             "count": 1,
@@ -103,8 +103,8 @@
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"* 付款账户\" })",
-            "selector": "internal:role=combobox[name=\"* 付款账户\"i]"
+            "csharp": "GetByRole(AriaRole.Combobox, new() { Name = \"* Payment account\" })",
+            "selector": "internal:role=combobox[name=\"* Payment account\"i]"
           }
         ]
       },
@@ -231,7 +231,7 @@
               },
               {
                 "m": "filter",
-                "hasText": "支付宝"
+                "hasText": "Mobile wallet"
               },
               {
                 "m": "role",
@@ -240,7 +240,7 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "支付宝"
+            "text": "Mobile wallet"
           },
           {
             "kind": "generator",
@@ -272,8 +272,8 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "银行账户",
-        "groupLabel": "支付宝",
+        "text": "Bank account",
+        "groupLabel": "Mobile wallet",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -286,7 +286,7 @@
               },
               {
                 "m": "has",
-                "text": "支付宝"
+                "text": "Mobile wallet"
               },
               {
                 "m": "css",
@@ -294,27 +294,27 @@
               }
             ],
             "count": 2,
-            "text": "支付宝"
+            "text": "Mobile wallet"
           },
           {
             "kind": "text",
             "parts": [
               {
                 "m": "text",
-                "text": "银行账户"
+                "text": "Bank account"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "银行账户"
+            "text": "Bank account"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"银行账户\")",
-            "selector": "internal:attr=[title=\"银行账户\"i]"
+            "csharp": "GetByTitle(\"Bank account\")",
+            "selector": "internal:attr=[title=\"Bank account\"i]"
           }
         ]
       },
@@ -376,7 +376,7 @@
               },
               {
                 "m": "filter",
-                "hasText": "银行账户"
+                "hasText": "Bank account"
               },
               {
                 "m": "role",
@@ -385,7 +385,7 @@
             ],
             "count": 1,
             "matches": true,
-            "text": "银行账户"
+            "text": "Bank account"
           },
           {
             "kind": "generator",
@@ -417,7 +417,7 @@
       "openDialogs": [],
       "target": {
         "tag": "div",
-        "text": "支付宝",
+        "text": "Mobile wallet",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -426,20 +426,20 @@
             "parts": [
               {
                 "m": "text",
-                "text": "支付宝"
+                "text": "Mobile wallet"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "支付宝"
+            "text": "Mobile wallet"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByTitle(\"支付宝\")",
-            "selector": "internal:attr=[title=\"支付宝\"i]"
+            "csharp": "GetByTitle(\"Mobile wallet\")",
+            "selector": "internal:attr=[title=\"Mobile wallet\"i]"
           }
         ]
       },
@@ -529,10 +529,10 @@
         "role": "textbox",
         "type": "text",
         "id": "0_receiverName",
-        "text": "收款人姓名",
-        "label": "收款人姓名",
-        "groupLabel": "收款人姓名",
-        "placeholder": "请输入收款人姓名",
+        "text": "Payee name",
+        "label": "Payee name",
+        "groupLabel": "Payee name",
+        "placeholder": "Enter the payee name",
         "editable": true,
         "interactive": true,
         "candidates": [
@@ -554,11 +554,11 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "收款人姓名",
+                "name": "Payee name",
                 "exact": true
               }
             ],
-            "text": "收款人姓名"
+            "text": "Payee name"
           },
           {
             "kind": "role",
@@ -566,12 +566,12 @@
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "收款人姓名"
+                "name": "Payee name"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "收款人姓名"
+            "text": "Payee name"
           },
           {
             "kind": "group",
@@ -582,17 +582,17 @@
               },
               {
                 "m": "has",
-                "text": "收款人姓名"
+                "text": "Payee name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "收款人姓名"
+                "name": "Payee name"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "收款人姓名"
+            "text": "Payee name"
           },
           {
             "kind": "item",
@@ -603,25 +603,25 @@
               },
               {
                 "m": "filter",
-                "hasText": "收款人姓名"
+                "hasText": "Payee name"
               },
               {
                 "m": "role",
                 "role": "textbox",
-                "name": "收款人姓名"
+                "name": "Payee name"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "收款人姓名"
+            "text": "Payee name"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"* 收款人姓名\" })",
-            "selector": "internal:role=textbox[name=\"* 收款人姓名\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"* Payee name\" })",
+            "selector": "internal:role=textbox[name=\"* Payee name\"i]"
           }
         ]
       },
@@ -642,10 +642,10 @@
         "tag": "input",
         "role": "spinbutton",
         "id": "0_amount",
-        "text": "转账金额",
-        "label": "转账金额",
-        "groupLabel": "转账金额",
-        "placeholder": "请输入金额",
+        "text": "Transfer amount",
+        "label": "Transfer amount",
+        "groupLabel": "Transfer amount",
+        "placeholder": "Enter an amount",
         "editable": true,
         "interactive": true,
         "candidates": [
@@ -667,11 +667,11 @@
               {
                 "m": "role",
                 "role": "spinbutton",
-                "name": "转账金额",
+                "name": "Transfer amount",
                 "exact": true
               }
             ],
-            "text": "转账金额"
+            "text": "Transfer amount"
           },
           {
             "kind": "role",
@@ -679,12 +679,12 @@
               {
                 "m": "role",
                 "role": "spinbutton",
-                "name": "转账金额"
+                "name": "Transfer amount"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "转账金额"
+            "text": "Transfer amount"
           },
           {
             "kind": "group",
@@ -695,17 +695,17 @@
               },
               {
                 "m": "has",
-                "text": "转账金额"
+                "text": "Transfer amount"
               },
               {
                 "m": "role",
                 "role": "spinbutton",
-                "name": "转账金额"
+                "name": "Transfer amount"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "转账金额"
+            "text": "Transfer amount"
           },
           {
             "kind": "item",
@@ -716,25 +716,25 @@
               },
               {
                 "m": "filter",
-                "hasText": "转账金额"
+                "hasText": "Transfer amount"
               },
               {
                 "m": "role",
                 "role": "spinbutton",
-                "name": "转账金额"
+                "name": "Transfer amount"
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "转账金额"
+            "text": "Transfer amount"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"* 转账金额\" })",
-            "selector": "internal:role=spinbutton[name=\"* 转账金额\"i]"
+            "csharp": "GetByRole(AriaRole.Spinbutton, new() { Name = \"* Transfer amount\" })",
+            "selector": "internal:role=spinbutton[name=\"* Transfer amount\"i]"
           }
         ]
       },
@@ -814,7 +814,7 @@
           "actionId": "8wwyqr-10",
           "sinceAction": 59,
           "t": 1793741004392,
-          "text": "确认转账后，资金将直接打入对方账户，无法退回。",
+          "text": "Once the transfer is confirmed, the funds go straight to the payee's account and cannot be returned.",
           "alertCount": 1
         }
       ]
@@ -965,7 +965,7 @@
           "actionId": "8wwyqr-12",
           "sinceAction": 82,
           "t": 1793741013493,
-          "text": "确认转账后，资金将直接打入对方账户，无法退回。",
+          "text": "Once the transfer is confirmed, the funds go straight to the payee's account and cannot be returned.",
           "alertCount": 1
         }
       ]
@@ -983,9 +983,9 @@
         "tag": "input",
         "type": "password",
         "id": "1_password",
-        "text": "支付密码",
-        "label": "支付密码",
-        "groupLabel": "支付密码",
+        "text": "Payment password",
+        "label": "Payment password",
+        "groupLabel": "Payment password",
         "placeholder": "Please enter",
         "editable": true,
         "interactive": true,
@@ -1011,7 +1011,7 @@
               },
               {
                 "m": "has",
-                "text": "支付密码"
+                "text": "Payment password"
               },
               {
                 "m": "css",
@@ -1020,15 +1020,15 @@
             ],
             "count": 3,
             "hidden": 2,
-            "text": "支付密码"
+            "text": "Payment password"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"支付密码\" })",
-            "selector": "internal:role=textbox[name=\"支付密码\"i]"
+            "csharp": "GetByRole(AriaRole.Textbox, new() { Name = \"Payment password\" })",
+            "selector": "internal:role=textbox[name=\"Payment password\"i]"
           }
         ]
       },
@@ -1117,7 +1117,7 @@
         "tag": "button",
         "role": "button",
         "type": "button",
-        "text": "再转一笔",
+        "text": "Make another transfer",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1127,21 +1127,21 @@
               {
                 "m": "role",
                 "role": "button",
-                "name": "再转一笔",
+                "name": "Make another transfer",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "再转一笔"
+            "text": "Make another transfer"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"再转一笔\" })",
-            "selector": "internal:role=button[name=\"再转一笔\"i]"
+            "csharp": "GetByRole(AriaRole.Button, new() { Name = \"Make another transfer\" })",
+            "selector": "internal:role=button[name=\"Make another transfer\"i]"
           }
         ]
       },
@@ -1343,7 +1343,7 @@
         "tag": "div",
         "role": "tab",
         "id": "rc-tabs-0-tab-rule",
-        "text": "规则",
+        "text": "Rules",
         "section": "Ant Design Pro",
         "interactive": true,
         "item": true,
@@ -1366,21 +1366,21 @@
               {
                 "m": "role",
                 "role": "tab",
-                "name": "规则",
+                "name": "Rules",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "规则"
+            "text": "Rules"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"规则\" })",
-            "selector": "internal:role=tab[name=\"规则\"i]"
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"Rules\" })",
+            "selector": "internal:role=tab[name=\"Rules\"i]"
           }
         ]
       },
@@ -1413,7 +1413,7 @@
         "tag": "div",
         "role": "tab",
         "id": "rc-tabs-0-tab-detail",
-        "text": "详情",
+        "text": "Details",
         "section": "Ant Design Pro",
         "interactive": true,
         "item": true,
@@ -1436,21 +1436,21 @@
               {
                 "m": "role",
                 "role": "tab",
-                "name": "详情",
+                "name": "Details",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "详情"
+            "text": "Details"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"详情\" })",
-            "selector": "internal:role=tab[name=\"详情\"i]"
+            "csharp": "GetByRole(AriaRole.Tab, new() { Name = \"Details\" })",
+            "selector": "internal:role=tab[name=\"Details\"i]"
           }
         ]
       },
@@ -1482,7 +1482,7 @@
       "target": {
         "tag": "li",
         "role": "menuitem",
-        "text": "选项三",
+        "text": "Option three",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1492,21 +1492,21 @@
               {
                 "m": "role",
                 "role": "menuitem",
-                "name": "选项三",
+                "name": "Option three",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "选项三"
+            "text": "Option three"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"选项三\" })",
-            "selector": "internal:role=menuitem[name=\"选项三\"i]"
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"Option three\" })",
+            "selector": "internal:role=menuitem[name=\"Option three\"i]"
           }
         ]
       },
@@ -1532,7 +1532,7 @@
       "target": {
         "tag": "li",
         "role": "menuitem",
-        "text": "skin 主题设置",
+        "text": "skin Theme settings",
         "interactive": true,
         "item": true,
         "candidates": [
@@ -1542,21 +1542,21 @@
               {
                 "m": "role",
                 "role": "menuitem",
-                "name": "skin 主题设置",
+                "name": "skin Theme settings",
                 "exact": true
               }
             ],
             "count": 1,
             "matches": true,
-            "text": "skin 主题设置"
+            "text": "skin Theme settings"
           },
           {
             "kind": "generator",
             "parts": [],
             "count": 1,
             "matches": true,
-            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin 主题设置\" })",
-            "selector": "internal:role=menuitem[name=\"skin 主题设置\"i]"
+            "csharp": "GetByRole(AriaRole.Menuitem, new() { Name = \"skin Theme settings\" })",
+            "selector": "internal:role=menuitem[name=\"skin Theme settings\"i]"
           }
         ]
       },
