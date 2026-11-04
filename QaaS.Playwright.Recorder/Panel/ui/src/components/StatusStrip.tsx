@@ -151,6 +151,21 @@ function modeOf(props: Props, now: number): Shown | null {
       };
     }
     case 'Replaying':
+      // The steps of the flow continued did not all replay: keep recording from where they stopped, or stop.
+      if (mode.label === 'Replay stopped')
+        return {
+          name: 'Replaying', tone: 'bad', label: mode.label, icon: 'cross', tinted: true, alert: true, message: mode.message,
+          actions: (
+            <>
+              <Button size="sm" variant="primary" keys="Enter" autoFocus onClick={() => sendKeepRecording(true)} title="Record on from where the app is; the flow file stays as it is">
+                Keep recording from here
+              </Button>
+              <Button size="sm" onClick={() => sendKeepRecording(false)} title="Stop, and keep the flow as it is">
+                Stop
+              </Button>
+            </>
+          ),
+        };
       return { name: 'Replaying', tone: mode.tone as Tone, label: mode.label, busy: true, tinted: true, message: state.continued?.banner ?? mode.message };
     case 'Re-recording':
       if (part?.phase === 'replaying')
@@ -382,5 +397,6 @@ function ResultMark({ tone, icon }: { tone: Tone; icon: IconName }) {
 
 // Commands the strip sends itself, as nothing else offers them.
 const sendLoginByHand = () => send({ type: 'loginByHand' });
+const sendKeepRecording = (on: boolean) => send({ type: 'keepRecording', on });
 const sendRerecordFrom = () => send({ type: 'rerecordFrom' });
 const sendDismissPart = () => send({ type: 'rerecordDismiss' });

@@ -41,6 +41,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     private readonly IPage _page;
     private readonly Channel<PanelCommand> _commands = Channel.CreateUnbounded<PanelCommand>(new() { SingleReader = true });
     private readonly TaskCompletionSource _saveRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<bool> _keepRecording = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _stop = new();
     private readonly FlowTester _tester;
     private PanelPrefs Prefs => _window.Prefs;
@@ -83,6 +84,12 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
 
     /// <summary>Completes when the person clicked Save: the recording ends and is saved as when the window closes.</summary>
     public Task SaveRequested => _saveRequested.Task;
+
+    /// <summary>
+    /// Completes with the person's answer once the steps of a flow continued did not all replay: true to keep recording
+    /// from where the app is, without them; false to stop, the flow kept as it is.
+    /// </summary>
+    public Task<bool> KeepRecordingAnswered => _keepRecording.Task;
 
     /// <summary>
     /// Shows the panel in the recorder's window, <paramref name="host"/>, moved beside the recorded window; with no window,
@@ -313,6 +320,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 break;
             case "loginByHand":
                 _session.LogInByHand();
+                break;
+            case "keepRecording" when _session.Snapshot.Mode == Mode.Asking:
+                _keepRecording.TrySetResult(command.On != false);
                 break;
             case "choosePicked" when _picked is { Description.Target: { } target }:
                 target.Chosen = command.Candidate;

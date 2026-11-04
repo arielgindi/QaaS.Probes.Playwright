@@ -396,18 +396,29 @@ internal static class FlowRecorder
             var notReplayed = report.NotReplayed(session.Build());
             var first = report.Actions.TakeWhile(action => report.Steps.GetValueOrDefault(action)?.State == StepState.Passed).Count() + 1;
             var steps = first < report.Actions.Count ? $"Steps {first} to {report.Actions.Count} were" : $"Step {first} was";
-            panel?.ShowBanner("The replay stopped: in the console, keep recording from here, or stop.");
+            var question = $"{steps} not replayed: the page did not do what it did when you recorded {request.ClassName} (the " +
+                           "panel and the lines above say why).";
             int choice;
-            try
+            if (choose is not null || panel is null)
             {
-                choice = (choose ?? ConsoleUi.Choose)($"{steps} not replayed: the page did not do what it did when you recorded " +
-                                          $"{request.ClassName} (the panel and the lines above say why). What should the recorder do?",
-                    [$"Keep recording from here, without {(first < report.Actions.Count ? "those steps" : "that step")}; the flow file stays as it is",
-                        $"Stop, and keep {request.ClassName} as it is"]);
+                try
+                {
+                    choice = (choose ?? ConsoleUi.Choose)($"{question} What should the recorder do?",
+                        [$"Keep recording from here, without {(first < report.Actions.Count ? "those steps" : "that step")}; the flow file stays as it is",
+                            $"Stop, and keep {request.ClassName} as it is"]);
+                }
+                catch (OperationCanceledException)
+                {
+                    choice = 1;
+                }
             }
-            catch (OperationCanceledException)
+            else
             {
-                choice = 1;
+                // The panel asks: keep recording from here, or stop; saving, or Chrome closed, saves the flow as it was.
+                ConsoleUi.Warning($"{question} In the window: keep recording from here, without them, or stop.");
+                var answered = await Task.WhenAny(panel.KeepRecordingAnswered, panel.SaveRequested, session.Closed);
+                if (answered != panel.KeepRecordingAnswered) return Replayed.All;
+                choice = await panel.KeepRecordingAnswered ? 0 : 1;
             }
 
             if (choice == 1) return Replayed.Stopped;

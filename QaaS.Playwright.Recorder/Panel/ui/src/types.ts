@@ -378,6 +378,7 @@ export type Command =
   | { type: 'save' }
   | { type: 'pause' }
   | { type: 'loginByHand' }
+  | { type: 'keepRecording'; on: boolean }
   | { type: 'rerecord'; action: string; step: boolean; after: boolean; label: string }
   | { type: 'rerecordDone' }
   | { type: 'rerecordCancel' }

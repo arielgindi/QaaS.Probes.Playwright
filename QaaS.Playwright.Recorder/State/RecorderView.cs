@@ -14,12 +14,13 @@ internal static class RecorderView
 {
     public static ModeView Of(RecorderState s) => s switch
     {
-        { Mode: Mode.Setup } => new("Setup", "accent", "Setup", "Say what to record", null),
+        { Mode: Mode.Setup, Run.Kind: RunKind.Build } => new("Building", "accent", "Building", "your test project, for its login flow…", "Esc"),
+        { Mode: Mode.Setup } => new("Setup", "muted", "Set up", "Choose what to record, then Start", "Ctrl+Enter"),
         { Mode: Mode.Saving or Mode.Ended } => new("Saving", "accent", "Saving", "the flow and its settings…", null),
-        { Mode: Mode.Done } => new("Done", "ok", "Saved", "The flow is saved", null),
+        { Mode: Mode.Done } => new("Done", "ok", "Saved", "The flow is saved: record another, or close the window", "Ctrl+Enter"),
         { Mode: Mode.Starting } => new("Starting", "accent", "Starting", "Chrome opens…", null),
         { Mode: Mode.LoggingIn } => new("Logging in", "info", "Logging in", "Nothing the login flow does is recorded", "Esc"),
-        { Mode: Mode.Asking } => new("Replaying", "bad", "Replay stopped", "In the console: keep recording from here, or stop", "Enter"),
+        { Mode: Mode.Asking } => new("Replaying", "bad", "Replay stopped", "Keep recording from here, without the steps that did not replay, or stop", "Enter"),
         { Part.Phase: PartPhase.Replaying } p => new("Re-recording", "rec", p.Part!.After ? "Record after" : "Re-record",
             $"Replaying the flow up to {(p.Part.After ? "the end of " : "")}{p.Part.Label}… nothing is recorded", "Esc"),
         { Part.Phase: PartPhase.Failed } p => new("Re-recording", "bad", "Replay failed", $"It did not get to {p.Part!.Label}", "Esc"),
