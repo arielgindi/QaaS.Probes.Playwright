@@ -782,8 +782,9 @@ internal sealed class RecordingSession : IAsyncDisposable
         {
             // The first page is the one the recording opens itself; any other is a pop-up or a tab.
             if (!Track(page)) return;
-            Log.PageOpened(AliasOf(page), Now());
-            Tried?.PageOpened(AliasOf(page), Now());
+            var byThePerson = OpenedByThePersonAsync(page);
+            Log.PageOpened(AliasOf(page), Now(), byThePerson);
+            Tried?.PageOpened(AliasOf(page), Now(), byThePerson);
         };
         _browser.Disconnected += (_, _) => _closed.TrySetResult();
 
@@ -944,6 +945,19 @@ internal sealed class RecordingSession : IAsyncDisposable
     private string AliasOf(IPage? page)
     {
         lock (_gate) return page is not null && _aliases.TryGetValue(page, out var alias) ? alias : "page";
+    }
+
+    // A pop-up has the page that opened it, even one that cannot reach it (noopener); a tab the person opened has none.
+    private static async Task<bool> OpenedByThePersonAsync(IPage page)
+    {
+        try
+        {
+            return await page.OpenerAsync() is null;
+        }
+        catch (PlaywrightException)
+        {
+            return false; // The page closed first.
+        }
     }
 
     // A document the person asked for themselves (the address bar, a bookmark) is requested with Sec-Fetch-Site: none;

@@ -344,7 +344,7 @@ internal sealed class StateFuzz : IAsyncDisposable
 
         if (roll < 94) return Pick("wait", "sleep:500", "sleep:1500", "edit:login-by-hand");
         return Pick("goto:/helpdesk", "goto:/orders", "goto:/todos", "goto:/order", "tab:/helpdesk", "tab:/order", "tab:close",
-            "tab:switch", "back", "confirm");
+            "tab:switch", "back", "confirm", "popup");
     }
 
     private string SaveStep() => _done.LastOrDefault(step => step.StartsWith("save:", StringComparison.Ordinal)) ?? Pick(
@@ -444,6 +444,8 @@ internal sealed class StateFuzz : IAsyncDisposable
         var codeBefore = Code(_session.Build());
         var versionBefore = _session.Log.Version;
         var partBefore = check ? PartOf(await PanelAsync()) : default;
+        // Check mode is the page's: a click is no action on the page that says Check.
+        var checkedHere = checkingBefore && verb == "click" && (await PillAsync(CurrentPage()))?.StartsWith("Check", StringComparison.Ordinal) == true;
         var acted = false;
         if (record) _done.Add(step);
         Log($"{_done.Count - 1,3} {step}   [{stateBefore}{(checkingBefore ? " checking" : "")}]");
@@ -472,7 +474,7 @@ internal sealed class StateFuzz : IAsyncDisposable
             if (stateBefore is not RecordingState.Recording && added.Count > 0)
                 throw new Broken("recorded-while-" + stateBefore.ToString().ToLowerInvariant(),
                     $"{step} was recorded while {stateBefore}: {string.Join(", ", added)}");
-            if (checkingBefore && verb == "click" && added.Any(id => KindOf(id) != "expect"))
+            if (checkedHere && added.Any(id => KindOf(id) != "expect"))
                 throw new Broken("recorded-while-checking", $"{step} was recorded in check mode: {string.Join(", ", added)}");
         }
 
@@ -595,6 +597,30 @@ internal sealed class StateFuzz : IAsyncDisposable
                         _current = $"page{alias}";
                 return false;
             }
+            case "popup" when page is not null:
+            {
+                // A link that opens its page in a pop-up, as a person clicks it.
+                await page.EvaluateAsync("""
+                    () => { if (!document.getElementById('fuzz-popup')) document.body.insertAdjacentHTML('beforeend',
+                      '<a id="fuzz-popup" href="/todos" target="_blank">Open the tasks</a>'); }
+                    """);
+                var before = page.Context.Pages.Count;
+                var box = await page.Locator("#fuzz-popup").BoundingBoxAsync();
+                if (box is null) return false;
+                await page.Mouse.ClickAsync(box.X + box.Width / 2, box.Y + box.Height / 2);
+                await UntilAsync(() => page.Context.Pages.Count > before, 3000);
+                var popup = page.Context.Pages.Last();
+                await popup.WaitForLoadStateAsync(LoadState.DOMContentLoaded, new() { Timeout = 5000 });
+                for (var alias = 1; alias < 8; alias++)
+                    if (_session.PageNamed($"page{alias}") == popup)
+                        _current = $"page{alias}";
+                return true;
+            }
+            case "code":
+                // What the flow says now, for a sequence to check it.
+                if (!Code(_session.Build()).Contains(argument, StringComparison.Ordinal))
+                    throw new Broken("code", $"The flow does not say {argument}:\n{Code(_session.Build())}");
+                return false;
             case "confirm" when page is not null:
                 await page.EvaluateAsync("""
                     () => { if (!document.getElementById('fuzz-confirm')) document.body.insertAdjacentHTML('beforeend',
@@ -694,6 +720,7 @@ internal sealed class StateFuzz : IAsyncDisposable
             await AutosaveAgreesAsync();
         }
 
+        if (!now) await AgreeAsync();
         var shownCode = now ? null : (await PanelAsync())?["code"]?.GetValue<string>();
         var before = _session.Build();
         Recording recording;
@@ -877,6 +904,9 @@ internal sealed class StateFuzz : IAsyncDisposable
             RecordingState.Trying => "trying", _ => "recording",
         };
         if (status != expected) return $"panel says {status}, the recorder is {state}";
+        // The panel shows the flow exactly as it will be saved.
+        if (shown["code"]?.GetValue<string>() is { } code && code != Code(_session.Build()) && shown["error"] is null)
+            return $"panel code is not the flow as it will be saved:\n{Diff(Code(_session.Build()), code)}";
         if ((shown["checking"]?.GetValue<bool>() ?? false) != checking) return $"panel says checking {!checking}, the recorder {checking}";
         var part = shown["rerecord"];
         var phase = part?["phase"]?.GetValue<string>();

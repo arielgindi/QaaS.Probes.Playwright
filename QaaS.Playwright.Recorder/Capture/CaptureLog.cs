@@ -122,8 +122,21 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
         _ = byThePerson.ContinueWith(_ => Changed(), TaskScheduler.Default);
     }
 
-    /// <summary>A page opened: a pop-up, or a tab the person opened.</summary>
-    public void PageOpened(string page, long at) => AddPageEvent("opened", page, null, at);
+    /// <summary>
+    /// A page opened: a pop-up, or a tab the person opened, as <paramref name="byThePerson"/> tells once it is known: a
+    /// tab of their own is no pop-up of the action before it, however soon after it.
+    /// </summary>
+    public void PageOpened(string page, long at, Task<bool>? byThePerson = null)
+    {
+        lock (_gate)
+        {
+            if (_paused) return;
+            _pageEvents.Add(new PageEvent("opened", page, null, at, _sequence++) { OpenedByThePerson = byThePerson });
+        }
+
+        Changed();
+        _ = byThePerson?.ContinueWith(_ => Changed(), TaskScheduler.Default);
+    }
 
     /// <summary>The page showed a browser dialog: an alert, a confirm or a prompt.</summary>
     public void BrowserDialog(string page, string message, long at) => AddPageEvent("jsDialog", page, message, at);
@@ -387,7 +400,9 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
     public async Task SettleAsync(TimeSpan timeout)
     {
         Task[] pending;
-        lock (_gate) pending = [.. _navigationRequests.Select(request => request.ByThePerson)];
+        lock (_gate)
+            pending = [.. _navigationRequests.Select(request => request.ByThePerson),
+                .. _pageEvents.Select(pageEvent => pageEvent.OpenedByThePerson).OfType<Task<bool>>()];
         try
         {
             await Task.WhenAll(pending).WaitAsync(timeout);
@@ -535,7 +550,11 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
             if (pageEvent.Kind == "opened")
             {
                 var first = ordered.FirstOrDefault(other => other.Kind == "navigated" && other.Page == pageEvent.Page);
-                yield return pageEvent with { Detail = first?.Detail is { } url && IsAddress(url) ? url : null };
+                yield return pageEvent with
+                {
+                    Detail = first?.Detail is { } url && IsAddress(url) ? url : null,
+                    ByThePerson = pageEvent.OpenedByThePerson is { IsCompletedSuccessfully: true, Result: true },
+                };
                 continue;
             }
 
@@ -626,6 +645,9 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null)
 
         /// <summary>Where a page was when the recording resumed, having changed while it was paused.</summary>
         public bool Resumed { get; init; }
+
+        /// <summary>For a page opened: whether the person opened it, a tab of their own, once it is known.</summary>
+        public Task<bool>? OpenedByThePerson { get; init; }
     }
 
     private sealed record NavigationRequest(string Page, long Sequence, Task<bool> ByThePerson);

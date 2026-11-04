@@ -36,6 +36,11 @@ public class StateFuzzTests
         // Saving, or closing Chrome, while a recording continued replayed asked why its steps did not replay, then saved nothing.
         new TestCaseData("start:continue | !sleep:50 | save:now-ctrl-s").SetName("SavedWhileAContinuedFlowReplays_SavesItAsItWas"),
         new TestCaseData("start:continue | !sleep:50 | save:now-close").SetName("ClosedWhileAContinuedFlowReplays_SavesItAsItWas"),
+        // A tab opened by hand within 5 s of a click was that click's pop-up: the flow waited for one, and did not build
+        // with the dialog the click opened.
+        new TestCaseData("start:/helpdesk | click:New ticket | tab:/orders | click:Actions | code:Context.NewPageAsync() | tab:switch | " +
+                         "popup | code:RunAndWaitForPopupAsync | save:enter")
+            .SetName("ATabOpenedByHandRightAfterAClick_IsATabOfItsOwn_AndAPopUpStaysOne"),
     ];
 
     [TestCaseSource(nameof(Regressions))]

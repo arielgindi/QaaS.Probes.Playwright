@@ -52,6 +52,9 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
     it ended: the tried actions stayed in the panel while recording, and the recording records while the test ran.
   - **Saving, or closing Chrome, while the steps of a flow continued replay saves the flow as it was.** It asked why
     its steps did not replay, as if the app had failed them, then saved nothing.
+  - **A tab you open yourself is a tab of its own, however soon after a click**: within 5 seconds, it was that click's
+    pop-up, so the flow waited for a pop-up the click never opens, and did not build when the click opened a dialog.
+    A page is a pop-up when a page opened it, `noopener` links included.
 
 ## 2.0.2
 
