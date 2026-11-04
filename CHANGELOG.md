@@ -55,6 +55,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   - **A tab you open yourself is a tab of its own, however soon after a click**: within 5 seconds, it was that click's
     pop-up, so the flow waited for a pop-up the click never opens, and did not build when the click opened a dialog.
     A page is a pop-up when a page opened it, `noopener` links included.
+  - **A recording you deleted every action of is not offered again** when the recorder starts next, after a crash or
+    Ctrl+C: its copy in `~/.qaas/recordings/` kept the actions deleted. Undo writes it again.
 
 ## 2.0.2
 

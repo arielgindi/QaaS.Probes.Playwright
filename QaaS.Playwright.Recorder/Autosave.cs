@@ -67,10 +67,23 @@ internal sealed class Autosave
         }
     }
 
-    /// <summary>Writes the recording as not saved yet, unless it is as last written, or has no action.</summary>
+    /// <summary>
+    /// Writes the recording as not saved yet, unless it is as last written. One of no action is not kept: the copy this
+    /// recording made goes, e.g. once the person deleted every action, so none is offered when the recorder starts next.
+    /// </summary>
     public async Task WriteAsync(Recording recording, RecordRequest request)
     {
-        if (recording.Actions.Count == 0) return;
+        if (recording.Actions.Count == 0)
+        {
+            if (_path is not null && _created)
+            {
+                Forget();
+                _written = null;
+            }
+
+            return;
+        }
+
         var path = PathOf(request.OutputDir, request.ClassName, saved: false);
         try
         {

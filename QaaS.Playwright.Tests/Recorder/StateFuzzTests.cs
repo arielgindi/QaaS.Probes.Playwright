@@ -41,6 +41,9 @@ public class StateFuzzTests
         new TestCaseData("start:/helpdesk | click:New ticket | tab:/orders | click:Actions | code:Context.NewPageAsync() | tab:switch | " +
                          "popup | code:RunAndWaitForPopupAsync | save:enter")
             .SetName("ATabOpenedByHandRightAfterAClick_IsATabOfItsOwn_AndAPopUpStaysOne"),
+        // Every action deleted, the autosave kept them, for the next start to offer again.
+        new TestCaseData("start:/helpdesk | click:New ticket | panel:Delete | panel:Control+z | save:ctrl-c")
+            .SetName("EveryActionDeleted_TheAutosaveGoes_AndComesBackWithUndo"),
     ];
 
     [TestCaseSource(nameof(Regressions))]

@@ -52,6 +52,8 @@ internal sealed class StateFuzz : IAsyncDisposable
     private string? _undoTo;
     private bool _ended;
     private bool _mustPause;
+    private string? _partStart;
+    private bool _editedInPart;
     private readonly List<string> _unhandled = [];
 
     private StateFuzz(int seed)
@@ -488,6 +490,15 @@ internal sealed class StateFuzz : IAsyncDisposable
         _undoTo = verb == "edit" && codeAfter != codeBefore && UndoesAs(argument) ? codeBefore : null;
         await AutosaveAgreesAsync();
         await DonePausesAsync(verb, argument, partBefore);
+
+        // A part done is undone whole: Undo right after Done brings the flow back as it was before the part, unless the
+        // person changed something else in the panel meanwhile.
+        var phase = PartOf(await PanelAsync()).Phase;
+        if (verb == "edit" && argument.Split('@')[0] is "rerecord" or "after" or "whole" && partBefore.Phase is null or "done" && phase == "replaying")
+            (_partStart, _editedInPart) = (codeBefore, false);
+        else if (verb == "edit") _editedInPart = true;
+        if (partBefore.Phase == "recording" && phase == "done" && !_editedInPart && _partStart is { } start) _undoTo = start;
+        if (phase is null) _partStart = null;
     }
 
     // A part recorded again and done, not at the end of the flow, pauses: the app is where it left it. While trying or
@@ -982,7 +993,17 @@ internal sealed class StateFuzz : IAsyncDisposable
             var built = _session.Build();
             var request = _panel.Request;
             var kept = Autosave.Find(request.OutputDir, request.ClassName);
-            if (built.Actions.Count == 0) return;
+            if (built.Actions.Count == 0)
+            {
+                // Nothing left of the recording: none is offered when the recorder starts next.
+                problem = _request.Continue || kept is null || !kept.Path.EndsWith(".unsaved.json", StringComparison.Ordinal) || kept.Recording.Actions.Count == 0
+                    ? null
+                    : $"the recording has no action, and its autosave {kept.Recording.Actions.Count}";
+                if (problem is null) return;
+                await Task.Delay(100);
+                continue;
+            }
+
             if (kept is null) problem = "no autosave";
             else
             {
