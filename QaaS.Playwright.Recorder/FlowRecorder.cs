@@ -304,13 +304,13 @@ internal static class FlowRecorder
     /// </summary>
     internal static RecordRequest LeftOut(RecordRequest request) => request with { Replaces = null };
 
-    private enum Replayed { All, LeftOut, Stopped }
+    internal enum Replayed { All, LeftOut, Stopped }
 
     // The steps of the recording continued replay in the recorded window, as a test runs them. When they cannot, or the
     // login flow before them failed, the person keeps recording from where they stopped, without the steps from there
-    // on, or stops.
-    private static async Task<Replayed> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
-        string? loginFailure)
+    // on, or stops. Saved, or Chrome closed, while they replay, which stops them, the flow is saved as it was.
+    internal static async Task<Replayed> ReplayAsync(RecordingSession session, RecorderPanel? panel, RecordRequest request,
+        string? loginFailure, Func<string, IReadOnlyList<string>, int>? choose = null)
     {
         if (loginFailure is not null) return Replayed.Stopped;
         var tester = panel?.Tester ?? new FlowTester(session);
@@ -325,7 +325,8 @@ internal static class FlowRecorder
             if (panel is null) await tester.DisposeAsync();
         }
 
-        if (report.Outcome != TestOutcome.Passed)
+        var ending = session.Closed.IsCompleted || session.Page.IsClosed || panel?.SaveRequested.IsCompleted == true;
+        if (report.Outcome != TestOutcome.Passed && !ending)
         {
             var notReplayed = report.NotReplayed(session.Build());
             var first = report.Actions.TakeWhile(action => report.Steps.GetValueOrDefault(action)?.State == StepState.Passed).Count() + 1;
@@ -334,7 +335,7 @@ internal static class FlowRecorder
             int choice;
             try
             {
-                choice = ConsoleUi.Choose($"{steps} not replayed: the page did not do what it did when you recorded " +
+                choice = (choose ?? ConsoleUi.Choose)($"{steps} not replayed: the page did not do what it did when you recorded " +
                                           $"{request.ClassName} (the panel and the lines above say why). What should the recorder do?",
                     [$"Keep recording from here, without {(first < report.Actions.Count ? "those steps" : "that step")}; the flow file stays as it is",
                         $"Stop, and keep {request.ClassName} as it is"]);
@@ -351,14 +352,14 @@ internal static class FlowRecorder
         panel?.ShowBanner(null);
         ConsoleUi.NumberAfter(session.Build());
         session.EndTest();
-        return report.Outcome == TestOutcome.Passed ? Replayed.All : Replayed.LeftOut;
+        return report.Outcome == TestOutcome.Passed || ending ? Replayed.All : Replayed.LeftOut;
     }
 
     // The login flow runs first, on a page that loaded nothing yet, with the BaseUrl the tests give it, before anything is
     // recorded; then the page goes to the URL. When it fails, or the person stops it (Esc here or in the page, or the
     // panel) or it hangs, the recording stays paused for the person to log in by hand and resume it, or to close the
     // browser. Returns why it did not log in, or null.
-    private static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
+    internal static async Task<string?> LogInAsync(RecordingSession session, RecordRequest request)
     {
         var login = request.Login!;
         var (baseUrl, baseUrlFrom) = login.BaseUrlFor(request.Url);

@@ -141,6 +141,12 @@ internal sealed class RecordingSession : IAsyncDisposable
         get { lock (_gate) return _state; }
     }
 
+    /// <summary>What the recording does once the test running ends; when none runs, what it does now.</summary>
+    public RecordingState AfterTest
+    {
+        get { lock (_gate) return _state == RecordingState.Testing ? _beforeTest : _state; }
+    }
+
     /// <summary>Why the recording is paused when the person did not pause it, e.g. the login flow failed; else null.</summary>
     public string? Notice { get; private set; }
 
@@ -367,15 +373,22 @@ internal sealed class RecordingSession : IAsyncDisposable
 
     /// <summary>
     /// Stops recording until <see cref="Resume"/>; <paramref name="notice"/> tells the person why when they did not
-    /// pause it themselves, e.g. the login flow failed.
+    /// pause it themselves, e.g. the login flow failed. Trying, it stops trying too; while the flow is tested, it pauses
+    /// once the test ended.
     /// </summary>
     public RecordingState Pause(string? notice = null)
     {
         lock (_gate)
         {
             if (_state == RecordingState.Paused && notice is null) return _state;
+            if (_state == RecordingState.Testing)
+            {
+                (_beforeTest, Notice) = (RecordingState.Paused, notice);
+                return _state;
+            }
+
             Log.Pause(Now());
-            (_state, Notice, _notRecordedTold) = (RecordingState.Paused, notice, false);
+            (_state, Notice, Tried, _notRecordedTold) = (RecordingState.Paused, notice, null, false);
             WatchDialogs();
         }
 
@@ -385,16 +398,22 @@ internal sealed class RecordingSession : IAsyncDisposable
     /// <summary>
     /// Records again, from the page the app is on now. After a pause, a page the app went to meanwhile is opened by its
     /// address, so the next step runs where the person left it; after the login flow, the recording starts where it
-    /// left the page.
+    /// left the page. Trying, it stops trying; while the flow is tested, it records once the test ended.
     /// </summary>
     public RecordingState Resume()
     {
         lock (_gate)
         {
             if (_state == RecordingState.Recording) return _state;
+            if (_state == RecordingState.Testing)
+            {
+                (_beforeTest, Notice) = (RecordingState.Recording, null);
+                return _state;
+            }
+
             var open = _aliases.Where(pair => !pair.Key.IsClosed).Select(pair => (pair.Value, pair.Key.Url)).ToList();
             Log.Resume(open, Now());
-            (_state, Notice) = (RecordingState.Recording, null);
+            (_state, Notice, Tried) = (RecordingState.Recording, null, null);
             WatchDialogs();
         }
 
@@ -431,6 +450,7 @@ internal sealed class RecordingSession : IAsyncDisposable
             if (_state != RecordingState.Testing) return _state;
             var to = paused && _beforeTest != RecordingState.Trying ? RecordingState.Paused : _beforeTest;
             if (to == RecordingState.Recording) Log.Resume(OpenPages(), Now());
+            if (to != RecordingState.Trying) Tried = null;
             state = _state = to;
         }
 
@@ -782,8 +802,9 @@ internal sealed class RecordingSession : IAsyncDisposable
         {
             // The first page is the one the recording opens itself; any other is a pop-up or a tab.
             if (!Track(page)) return;
-            Log.PageOpened(AliasOf(page), Now());
-            Tried?.PageOpened(AliasOf(page), Now());
+            var byThePerson = OpenedByThePersonAsync(page);
+            Log.PageOpened(AliasOf(page), Now(), byThePerson);
+            Tried?.PageOpened(AliasOf(page), Now(), byThePerson);
         };
         _browser.Disconnected += (_, _) => _closed.TrySetResult();
 
@@ -949,6 +970,19 @@ internal sealed class RecordingSession : IAsyncDisposable
     private string AliasOf(IPage? page)
     {
         lock (_gate) return page is not null && _aliases.TryGetValue(page, out var alias) ? alias : "page";
+    }
+
+    // A pop-up has the page that opened it, even one that cannot reach it (noopener); a tab the person opened has none.
+    private static async Task<bool> OpenedByThePersonAsync(IPage page)
+    {
+        try
+        {
+            return await page.OpenerAsync() is null;
+        }
+        catch (PlaywrightException)
+        {
+            return false; // The page closed first.
+        }
     }
 
     // A document the person asked for themselves (the address bar, a bookmark) is requested with Sec-Fetch-Site: none;

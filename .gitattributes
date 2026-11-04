@@ -8,4 +8,5 @@ QaaS.Playwright.Recorder/Panel/ui/** export-ignore
 QaaS.Playwright.Tests/Recorder/RealSites/** export-ignore
 QaaS.Playwright.Tests/Recorder/Sites/** export-ignore
 QaaS.Playwright.Tests/Recorder/Pickers/** export-ignore
+# The fuzzers, their harnesses and their corpora: tests of the recorder that building it does not need.
 QaaS.Playwright.Tests/Recorder/Fuzz/** export-ignore

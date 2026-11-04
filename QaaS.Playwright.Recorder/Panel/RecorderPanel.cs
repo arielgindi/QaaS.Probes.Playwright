@@ -276,8 +276,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 break;
             case "save":
                 _saving = _refresh = true;
-                _ = _tester.StopAsync();
+                // Before the test or the replay it stops ends, so the replay of a recording continued knows why.
                 _saveRequested.TrySetResult();
+                _ = _tester.StopAsync();
                 break;
             case "test":
                 _namespace ??= ProjectNamespace.Of(Request.OutputDir);
