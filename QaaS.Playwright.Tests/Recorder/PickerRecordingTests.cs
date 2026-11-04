@@ -1,6 +1,7 @@
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
+using QaaS.Playwright.Recorder.Setup;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.TestRun;
 using QaaS.Playwright.Tests.EndToEnd;
@@ -190,7 +191,7 @@ public class PickerRecordingTests
             try
             {
                 await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
-                var report = await tester.RunAsync(RecordRequest.Parse(["record", "new-order", url]), "Flows");
+                var report = await tester.RunAsync(SetupRules.For("new-order", url), "Flows");
                 return (picker, code, report);
             }
             finally

@@ -97,9 +97,9 @@ internal static partial class FlowCheck
         return built is not null && runs is not null && (built.Major, built.Minor, built.Build) != (runs.Major, runs.Minor, runs.Build)
             ? $"{flow} (in {file}) was built against QaaS.Playwright {built.ToString(3)}, and the recorder runs {RecorderVersion}: " +
               $"it can't load it ({gone}). Update that package to QaaS.Playwright {series}, then build your tests again. " +
-              "Until then, record with --no-login and log in by hand."
+              "Until then, turn Log in first off and log in by hand."
             : $"{flow} (in {file}) can't run in the recorder ({gone}): it needs something the recorder's packages do not " +
-              $"have. Build it again against QaaS.Playwright {RecorderVersion}, or record with --no-login and log in by hand.";
+              $"have. Build it again against QaaS.Playwright {RecorderVersion}, or turn Log in first off and log in by hand.";
     }
 
     private static bool IsGone(Exception failure) => failure is MissingMemberException or TypeLoadException or BadImageFormatException;

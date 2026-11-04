@@ -25,15 +25,15 @@ public class StateFuzzTests
         new TestCaseData("start:/helpdesk | click:New ticket | key:F8 | fill:Title=Printer jammed | key:F8 | save:ctrl-s")
             .SetName("Paused_RecordsNothing_AndRecordsAgainOnResume"),
         // F4 in check or inspect mode said "Elements frozen" in the pill for good, in place of the mode's.
-        new TestCaseData("start:/helpdesk | key:F6 | key:F4 | key:Control+Shift+C | key:F4 | save:enter")
+        new TestCaseData("start:/helpdesk | key:F6 | key:F4 | key:Control+Shift+C | key:F4 | save:end")
             .SetName("AKeyInCheckOrInspectMode_GivesTheModesPillBack"),
         // The status strip said "Re-recording: do it again, then press Done" while the part was paused, tried or checked.
         new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
-                         "key:F7 | key:F7 | key:F8 | key:F8 | key:F6 | key:F6 | key:F2 | save:enter")
+                         "key:F7 | key:F7 | key:F8 | key:F8 | key:F6 | key:F6 | key:F2 | save:end")
             .SetName("PausedTriedOrCheckedInAPartRecordedAgain_TheStripSaysSo"),
         // Done while trying, or while a test ran, recorded on at the end of the flow from where the part left the app.
         new TestCaseData("start:/helpdesk | click:New ticket | fill:Title=Printer jammed | click:Create ticket | edit:rerecord@1 | wait | " +
-                         "key:F7 | panel:F2 | key:F7 | key:F8 | edit:rerecord@1 | wait | !panel:F5 | panel:F2 | wait | save:enter")
+                         "key:F7 | panel:F2 | key:F7 | key:F8 | edit:rerecord@1 | wait | !panel:F5 | panel:F2 | wait | save:end")
             .SetName("APartDoneWhileTryingOrTesting_PausesOnceBackFromThem"),
         // Saving, or closing Chrome, while a recording continued replayed asked why its steps did not replay, then saved nothing.
         new TestCaseData("start:continue | !sleep:50 | save:now-ctrl-s").SetName("SavedWhileAContinuedFlowReplays_SavesItAsItWas"),
@@ -41,13 +41,13 @@ public class StateFuzzTests
         // A tab opened by hand within 5 s of a click was that click's pop-up: the flow waited for one, and did not build
         // with the dialog the click opened.
         new TestCaseData("start:/helpdesk | click:New ticket | tab:/orders | click:Actions | code:Context.NewPageAsync() | tab:switch | " +
-                         "popup | code:RunAndWaitForPopupAsync | save:enter")
+                         "popup | code:RunAndWaitForPopupAsync | save:end")
             .SetName("ATabOpenedByHandRightAfterAClick_IsATabOfItsOwn_AndAPopUpStaysOne"),
         // Every action deleted, the autosave kept them, for the next start to offer again.
         new TestCaseData("start:/helpdesk | click:New ticket | panel:Delete | panel:Control+z | save:ctrl-c")
             .SetName("EveryActionDeleted_TheAutosaveGoes_AndComesBackWithUndo"),
         // Add to flow sent twice, as a double-click does, put one action in twice, and no build of the recording worked after.
-        new TestCaseData("start:/helpdesk | key:F7 | click:New ticket | edit:tried-twice | key:F7 | save:enter")
+        new TestCaseData("start:/helpdesk | key:F7 | click:New ticket | edit:tried-twice | key:F7 | save:end")
             .SetName("ATriedActionAddedTwice_IsAddedOnce"),
         // A pop-up opened while the login flow ran ended Playwright's connection: its first request has no frame yet.
         new TestCaseData("start:hang | sleep:1500 | popup | save:enter").SetName("APopUpWhileTheLoginFlowRuns_EndsNothing"),

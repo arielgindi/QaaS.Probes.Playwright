@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
+using QaaS.Playwright.Recorder.Setup;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.TestRun;
@@ -503,7 +504,7 @@ public class RealSiteRecordingTests
     private static async Task<TestReport> TestAsync(RecordingSession session, string url)
     {
         await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 5000 });
-        return await tester.RunAsync(RecordRequest.Parse(["record", "real-site", url]), "Flows");
+        return await tester.RunAsync(SetupRules.For("real-site", url), "Flows");
     }
 
     // Each suggestion applied, as its one click in the panel does: its actions and what only led to them left out.

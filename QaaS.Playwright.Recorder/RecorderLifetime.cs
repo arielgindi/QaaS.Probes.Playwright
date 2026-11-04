@@ -6,10 +6,7 @@ internal enum StopReason
     /// <summary>Save in the panel.</summary>
     Saved,
 
-    /// <summary>Enter in the console, or a line on an input a script pipes in.</summary>
-    Enter,
-
-    /// <summary>Ctrl+C in the console, the first time: it ends the recording as Enter does.</summary>
+    /// <summary>Ctrl+C in the console, the first time: it ends the recording as Save does.</summary>
     CtrlC,
 
     /// <summary>The person closed Chrome, or it went away.</summary>
@@ -39,7 +36,7 @@ internal enum StopReason
 internal sealed record StopPlan(bool Save, int ExitCode, bool Logged);
 
 /// <summary>
-/// The one owner of how a recording ends. Ctrl+C, a signal, Chrome closed, Enter, the panel's Save and an error nothing
+/// The one owner of how a recording ends. Ctrl+C, a signal, Chrome closed, the panel's Save and an error nothing
 /// caught each become a <see cref="RequestStop"/> with its <see cref="StopReason"/>, and every end then takes the same
 /// ordered path (<see cref="ShutdownAsync"/>): what the pages hold back is drained into the recording, the recording is
 /// snapshotted, the flow is saved or the recording kept, the run scopes are disposed newest first, the child processes
@@ -90,15 +87,15 @@ internal sealed class RecorderLifetime
     public Task<StopReason> Stopped => _stopped.Task;
 
     /// <summary>
-    /// Whether a stop now ends the recording as Enter does. Before the recording records (logging in, replaying, a
-    /// question in the console), nothing waits for <see cref="Stopped"/>: Ctrl+C then stops at once, the recording kept.
+    /// Whether a stop now ends the recording as Save does. Before the recording records (logging in, replaying, a
+    /// question in the panel), nothing waits for <see cref="Stopped"/>: Ctrl+C then stops at once, the recording kept.
     /// </summary>
     public bool Listening { get; set; }
 
     /// <summary>What each stop does, as one table.</summary>
     public static StopPlan PlanFor(StopReason reason) => reason switch
     {
-        StopReason.Saved or StopReason.Enter or StopReason.CtrlC or StopReason.BrowserClosed => new(Save: true, ExitCode: 0, Logged: false),
+        StopReason.Saved or StopReason.CtrlC or StopReason.BrowserClosed => new(Save: true, ExitCode: 0, Logged: false),
         StopReason.Interrupted => new(Save: false, ExitCode: 130, Logged: false),
         StopReason.Terminated => new(Save: false, ExitCode: 143, Logged: true),
         StopReason.HungUp => new(Save: false, ExitCode: 129, Logged: true),
@@ -128,7 +125,7 @@ internal sealed class RecorderLifetime
         /// <summary>It was ending already: this request forces it.</summary>
         Forced,
 
-        /// <summary>It was ending already, and this request does not force it: Enter, Save or Chrome closed again.</summary>
+        /// <summary>It was ending already, and this request does not force it: Save or Chrome closed again.</summary>
         Ignored,
     }
 
@@ -147,7 +144,7 @@ internal sealed class RecorderLifetime
                 return Outcome.Ending;
             }
 
-            if (_forcedBy is not null || reason is StopReason.Saved or StopReason.Enter or StopReason.BrowserClosed) return Outcome.Ignored;
+            if (_forcedBy is not null || reason is StopReason.Saved or StopReason.BrowserClosed) return Outcome.Ignored;
             _forcedBy = reason == StopReason.CtrlC ? StopReason.Interrupted : reason;
         }
 

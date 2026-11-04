@@ -25,7 +25,7 @@ internal sealed class ValidRecording
 }
 
 /// <summary>
-/// The one way a recording reaches the generator, from a file (autosave, <c>--continue</c>, <c>--keep-recording</c>), the
+/// The one way a recording reaches the generator, from a file (autosave, a flow continued, the raw recording kept), the
 /// capture or the panel's edits. It repairs what another version of the recorder, a hand or a bug left: a list or a text
 /// null as empty, an item null left out, an id given twice made unique, a page of no name the page, one named otherwise
 /// a <c>pageN</c> of its own. A tab or pop-up of the page itself is a navigation, or nothing; a tab is opened before what is done in it. An action of a kind it

@@ -5,19 +5,41 @@ with the values you typed and chose as the flow's settings.
 
 ```bash
 dotnet tool install --global QaaS.Playwright.Recorder            # once; or as a local tool of your test repo
-
-qaas-playwright                                                  # asks for the URL, name and folder
-qaas-playwright record login-flow https://my-app.com             # the same, without questions
-qaas-playwright record login-flow https://my-app.com --output-dir UiFlows
-qaas-playwright record login-flow https://my-app.com --keep-recording    # also saves the raw recording
-qaas-playwright record login-flow https://my-app.com --no-panel          # without the panel beside the browser
-qaas-playwright record login-flow https://my-app.com --no-auto-checks    # without the Expect after each action
-qaas-playwright record new-order https://my-app.com --login LoginFlow   # logs in with that flow of your tests first
-qaas-playwright --continue new-order                             # replays a saved flow, then records more after it
+qaas-playwright                                                  # opens the recorder's window
 ```
 
-Run it in your test project's folder: the flow is saved in `Flows/` there, in the project's namespace. From a clone
-of this repository, `dotnet run --project QaaS.Playwright.Recorder -- record ...` does the same.
+It takes no options: everything is set up in its window. `qaas-playwright --version` prints the version and
+`--help` says where things are kept; anything else is said in one line, and the window opens anyway. From a clone of
+this repository, `dotnet run --project QaaS.Playwright.Recorder` does the same.
+
+### The start screen
+
+The recorder opens a window of Chrome on its start screen; the app's window opens only when you press **Start**,
+beside it, and the same window then becomes the [panel](#the-panel). From top to bottom:
+
+- **Project**: the test project the flows are saved in, found from where you started the recorder (the nearest
+  `.csproj` at or above that folder, else that folder), else the one you recorded in last. Started from a shortcut,
+  a double-click or your home folder, it asks for one. **Browse...** opens a folder browser of the window's own, which
+  marks the folders that hold a project or a solution; a path can be pasted too. **Save flows in** is the output
+  folder, `Flows` by default, with the namespace its flows get.
+- **What to record**:
+  - **New flow**: its **Name** (`new-order` becomes the class `NewOrder`, in `Flows/NewOrder.cs`), checked as you
+    type, and the **Start page**, which offers the pages you recorded on here and every probe `BaseUrl` of your test
+    YAML. When a flow of that name is there already, you choose: **Continue it**, **Replace it with a new
+    recording**, or another name.
+  - **Continue a saved flow**: the flows of the folder, each with when it was recorded, its start page and the login
+    it ran after ([continuing a flow](#continuing-a-flow)).
+  - **Recovered**: shown only when a recording never ended in a save ([nothing is lost](#nothing-is-lost)).
+- **Log in first**: the login flow of your tests, found by itself, with a switch to turn it off
+  ([logging in first](#logging-in-first)).
+- **Options**: **Auto checks**, on by default ([what each action expects](#what-each-action-expects)), and **Keep the
+  raw recording beside the flow**, with every locator tried, to continue it anywhere.
+- **Start** (`Ctrl+Enter`), which says what it will do, e.g. `Chrome opens https://shop.test/orders, logs in with
+  LoginFlow, then records NewOrder into Flows/NewOrder.cs.`, and is off, saying why, while a field is wrong.
+
+What you choose is remembered for each project in `~/.qaas/recorder-projects.json`: the output folder, the last five
+start pages, the switches, the login's values file, and the values you typed that are not secrets. The console asks
+nothing: it says what goes on, and prints each action as the panel shows it.
 
 Work through the site. Each action is printed as it is recorded: its number, what you did, the element's name and
 the value, then dimmer the locator the flow will use, and under it what the page did. The numbers are the step
@@ -122,14 +144,13 @@ not when an arrow is pressed with it, as here. On macOS, `Alt` is `Option`, and 
 Chrome's own `F7`, caret browsing, is kept from it: its prompt would take the focus and close the very menu being
 frozen, which is also why freezing is on `F4`. So is `Ctrl+Shift+C`, which would open Chrome's developer tools.
 
-When you are done, click **Save** in the [panel](#the-panel), close the browser, or press Enter in the console (or
-send it a line, when a script gives the console its input through a pipe; the input's end finishes nothing). Ctrl+C
-in the console saves too, as Enter does; pressed again before the flow is written, it stops at once, and the recording
-is kept, to save the next time the recorder starts. The
-recorder saves two files: `Flows/LoginFlow.cs`
-(the name `login-flow` in PascalCase) and `Flows/LoginFlow.flow.yaml`, the values it recorded. It then prints a
-summary: the files it wrote, how many actions, steps and settings the flow has, each line to check by hand as
-`Flows/LoginFlow.cs:42` with why, and the YAML to run the flow, with the page you started on as `BaseUrl`.
+When you are done, click **Save** in the [panel](#the-panel), or close the app's window. Ctrl+C in the console saves
+too; pressed again before the flow is written, it stops at once, and the recording is kept, to save from the start
+screen. The recorder saves two files: `Flows/LoginFlow.cs` (the name `login-flow` in PascalCase) and
+`Flows/LoginFlow.flow.yaml`, the values it recorded. The window then shows what was saved: the files, how many steps
+and actions the flow has, what to set before it runs, and each line to check by hand, with **Record another**,
+**Continue** it and **Open the folder**; closing the window ends the recorder. The console prints the same summary,
+with the YAML to run the flow and the page you started on as `BaseUrl`.
 
 - Your login is kept between recordings in `~/.qaas/auth.json`, so you log in once. It is saved when the recording
   ends, also when you closed the window. When it cannot be written (the folder is read-only, or the file is open
@@ -138,40 +159,29 @@ summary: the files it wrote, how many actions, steps and settings the flow has, 
 - Recording again under the same name never overwrites anything you may have edited: the new recording is saved
   beside the flow as `LoginFlow.recorded.txt` with `LoginFlow.recorded.flow.yaml`, then `LoginFlow.recorded-2.txt`
   and so on, to merge by hand. They are not `.cs` files, so the project still builds while they declare the same class.
-  Asked for the name (`qaas-playwright`), the recorder offers instead to [continue](#continuing-a-flow) the flow there,
-  overwrite it, or take another name.
+  The start screen offers instead to [continue](#continuing-a-flow) the flow there, replace it, or take another name.
 - The namespace follows the folder: `Flows/` in a project with root namespace `MyApp.Tests` gives `MyApp.Tests.Flows`
   (a folder named like a C# keyword gets an `@`, e.g. `@internal`). The project is the nearest one the flow can be
   built in, which references QaaS.Playwright; a project of something else above the folder, such as a tool's above a
   scratch folder, names nothing, and the namespace is `Flows`.
 - A name the flow cannot have is refused before Chrome opens: one of a type the flow's code uses (`task`, `i-page`), a
-  Windows device (`nul`, `com1`), or one too long for a file name. Asked for the name, the recorder says why and asks
-  again; so it does for a URL that is not http(s). Ctrl+C at a question stops without recording.
+  Windows device (`nul`, `com1`), or one too long for a file name. The start screen says why under the field; so it
+  does for an address that is not http(s), and offers it with `https://` when the scheme is missing.
 
 ### Nothing is lost
 
 While you record, the recording is written to `~/.qaas/recordings/` after every change: one file per flow and folder,
 so two projects' `LoginFlow`s do not meet, written whole or not at all, readable by you only (on Windows, as the
-folder allows), in the format `--keep-recording` writes. It never holds a password you typed, as the console never
+folder allows), in the format of the raw recording kept beside the flow. It never holds a password you typed, as the console never
 shows one, nor what you typed into a field whose setting is named as a secret (password, secret, token, API key,
 pwd), as a test run hides those, nor a value you gave such a setting in the panel. It keeps your checks and your
 edits in the panel, so a recording recovered or continued has them too. Once the flow is saved, the file stays, marked saved, for
 [continuing](#continuing-a-flow) the flow; the newest 30 are kept.
 
 When the recorder starts and finds a recording that did not end in a save (the recorder crashed or was stopped with
-Ctrl+C twice, or the flow could not be saved), it asks, before anything else:
-
-```text
-  ? Found a recording of NewTicket that was never saved (12 actions, 5 minutes ago): the recorder stopped before you
-    saved it. What should it do with it?
-      1  Save it now as a flow
-      2  Continue recording it: replay its steps, then record more
-      3  Discard it for good
-  ? Type 1, 2 or 3, or the start of a choice (Enter = 1) ›
-```
-
-Every question says what it asks, why, an example answer, and what Enter does; every warning and error says what
-happened, the likely cause, and what to do next.
+Ctrl+C twice, or the flow could not be saved), the start screen opens on its **Recovered** tab: `NewTicket · 12
+actions · 5 minutes ago`, this project's first, with **Save it now**, **Continue recording** and **Discard...**, which
+asks to confirm in place. Every warning and error says what happened, the likely cause, and what to do next.
 
 An end nobody asked for never goes unsaid: an error the recorder did not expect, Chrome or its driver going away, or a
 signal from outside (`kill`, a closed terminal: SIGTERM, SIGHUP, SIGQUIT) writes the recording as it is then, prints
@@ -179,18 +189,16 @@ signal from outside (`kill`, a closed terminal: SIGTERM, SIGHUP, SIGQUIT) writes
 stack, to `~/.qaas/recorder-error.log`. Only `kill -9` ends it with nothing said, as no program sees that one; the
 autosave of half a second before it is offered then.
 
-**Save it now** writes the flow and its YAML, and the raw recording when it was recorded with `--keep-recording`, as a
-save at the end of the recording would, without opening Chrome;
-**Continue recording** goes on from it as `--continue` does; **Discard** deletes it. Then the recorder does what you
-started it for. A file it cannot read is skipped with a warning. A flow saved from it types an empty password, as the
+**Save it now** writes the flow and its YAML, and the raw recording when it was recorded with Keep the raw recording
+on, as a save at the end of the recording would, without opening Chrome, and shows what was saved; **Continue
+recording** goes on from it as [continuing](#continuing-a-flow) a flow does; **Discard** deletes it. A file it cannot
+read is skipped with a warning. A flow saved from it types an empty password, as the
 recording holds none: the recorder says which setting to set in its YAML.
 
 ### Continuing a flow
 
-```bash
-qaas-playwright --continue new-ticket                            # Flows/NewTicket.cs
-qaas-playwright --continue UiFlows/NewTicket.cs --no-panel       # or the flow's file, with the options of record
-```
+On the start screen, **Continue a saved flow** lists the flows of the project's folder; pick one and press **Continue
+NewTicket**. The same choice is offered when you name a new flow like one that is there, and on what was saved.
 
 Chrome opens, your [login flow](#logging-in-first) runs first as usual, then the page the flow started on opens, and the flow's
 steps replay in the recorded window itself, as **Test** runs them: built as saved, through the probe's runner, with its
@@ -198,17 +206,18 @@ timeouts and the flow's values. Nothing is recorded meanwhile; the overlay says 
 goes on from where they left the app: what you do is added after them, numbered on, and the panel shows a divider
 `Continued from NewTicket.cs` in its steps.
 
-- **When a step fails**, the console and the panel show it as a test run does, and the console asks: keep recording
-  from there, without the steps from the failed one on (you record them again), or stop, which keeps the flow as it
-  is. When the login flow fails, nothing is replayed, and the recorder stops.
+- **When a step fails**, the console and the panel show it as a test run does, and the panel's status strip asks:
+  **Keep recording from here**, without the steps from the failed one on (you record them again), or **Stop**, which
+  keeps the flow as it is. When the login flow fails, nothing is replayed, and the recorder stops.
 - **Saving regenerates the whole flow** and replaces `NewTicket.cs` and its YAML, unless you changed the `.cs` since it
   was recorded, or you kept recording without steps that did not replay: then the flow stays as it is, the flow
   continued is saved beside it as `NewTicket.recorded.txt`, as a re-recording is, and the recorder says so.
 - **A flow that logs in itself**, its first actions typing a password, was recorded signed out: it is replayed, and
   tested, signed out too, never from the login the recorder saved for its Chrome, which would skip its login page.
 - **The recording** is the recorder's own copy in `~/.qaas/recordings/`, or `NewTicket.recording.json` beside the flow
-  (`--keep-recording`), whichever is newer. A flow recorded with an older version, on another machine, or before the
-  last 30 saved has none: the recorder says so. Record with `--keep-recording` to continue a flow anywhere.
+  (Keep the raw recording), whichever is newer. A flow recorded with an older version, on another machine, or before
+  the last 30 saved has none: the start screen says so. Record with Keep the raw recording on to continue a flow
+  anywhere.
 - The password and the secrets the recorder's copy does not hold come from the flow's YAML, so the replay types them.
   The flow keeps its auto checks, or their absence. One recorded after a login flow logs in with it again: as given,
   found or remembered for the folder, else as it was recorded.
@@ -217,16 +226,11 @@ goes on from where they left the app: what you do is added after them, numbered 
 ### Logging in first
 
 Your tests log in with a flow of their own, e.g. `LoginFlow`, which the probe runs before the others
-(`SetupFlows: [LoginFlow]`). The recorder runs it too, so the recording starts logged in. Run the recorder in your test
-project's folder, or in the repository or solution folder above it, and it finds the flow by itself, as QaaS finds it
-when the tests run, then asks once:
-
-```text
-    Your tests log in with LoginFlow, from bin/Debug/net10.0/YourShared.dll: the setup flow of 4 test files.
-    Its values (Username, Url) come from Tests/Smoke.qaas.yaml.
-  ? Log in first with LoginFlow? The recorder runs it before you record, so you start signed in, as your tests
-    do (Y/n, Enter = yes) ›
-```
+(`SetupFlows: [LoginFlow]`). The recorder runs it too, so the recording starts logged in. Choose your test project's
+folder, or the repository or solution folder above it, and the start screen's **Log in first** card finds the flow by
+itself, as QaaS finds it when the tests run, and shows it: `LoginFlow`, from `bin/Debug/net10.0/YourShared.dll`, the
+setup flow of 4 test files, its BaseUrl and where it comes from, and each of its values with where it comes from. Its
+switch turns it off; when the tests have more than one flow that may log in, a select chooses among them.
 
 **What the recorder does by itself:**
 
@@ -234,21 +238,21 @@ when the tests run, then asks once:
   folder, up. Run from a folder above it, e.g. the repository's root or a solution's folder, it looks up to 3 folders
   down (skipping `bin`, `obj`, `node_modules` and hidden folders) and in the `.sln` and `.slnx` files there, and takes
   the projects that use QaaS: those whose YAML runs `SetupFlows`, else those whose restore (`obj/project.assets.json`)
-  took a QaaS package. When several do, it asks which, once, and remembers the answer for the folder.
+  took a QaaS package. When several do, the card asks which, once, and remembers the answer for the folder.
 - **It finds its newest build**: `bin/Debug/<tfm>/<Project>.dll`, or `bin/Release/...`. When there is none there, or it
   is older than the project, it asks MSBuild where the project builds to (`dotnet msbuild <csproj>
   -getProperty:TargetPath`, in Debug and Release), so a `Directory.Build.props` with `OutputPath` or `BaseOutputPath`,
   a repository-level `bin/`, or `UseArtifactsOutput` (`artifacts/bin/<project>/<config>/`) are found too. MSBuild's
   answer is kept in `~/.qaas/recorder-builds.json` until the project, or a `Directory.Build.props` or `.targets` above
-  it, changes. When there is no build, or the project changed since, it offers to build it, saying the command
-  (`dotnet build`, or `dotnet build Tests/MyTests.csproj` from another folder), and shows one line while it builds and
-  the errors if it fails. Say no, and it says how to build it.
+  it, changes. When there is no build, or the project changed since, the card offers **Build now**, saying the command
+  (`dotnet build`, or `dotnet build Tests/MyTests.csproj` from another folder); the status strip says `Building` while
+  it builds, with **Stop**, and the card shows the errors if it fails.
 - **It finds the flow** as QaaS does: in your project's DLL and everything it uses, its dependency closure from its
   `.deps.json` (a package a library's build does not copy is found in your NuGet package folder) and the DLLs of its
   output folder; an `IPlaywrightFlow` matched by its class name, case-insensitively. A name two flows have is said, as
   QaaS refuses it too. It takes the one your test YAML files (`*.yaml`, `*.yml`, outside `bin` and `obj`) run in
-  `SetupFlows` most, else the one named like a login (`Login`, `LogIn`, `SignIn` or `Auth`). More than one: it asks
-  which.
+  `SetupFlows` most, else the one named like a login (`Login`, `LogIn`, `SignIn` or `Auth`). More than one: the card
+  offers them to choose.
 - **It says when your login flow cannot run in it.** A shared package of your team may be built against another
   QaaS.Playwright than the recorder's. When the flow uses what the recorder's has not, the recorder says so before
   Chrome opens, rather than failing in it:
@@ -256,40 +260,27 @@ when the tests run, then asks once:
   ```text
   ▲ LoginFlow (in Acme.Shared.dll) was built against QaaS.Playwright 1.15.1, and the recorder runs 2.0.3: it can't
     load it (BrowserDefaults.RemoteUrl is gone). Update that package to QaaS.Playwright 2.0.x, then build your tests
-    again. Until then, record with --no-login and log in by hand.
+    again. Until then, turn Log in first off and log in by hand.
   ```
 
 - **It finds its values** in the `FlowConfiguration: LoginFlow:` block of a test that runs it, and says whether it
   needs any (below), and **its BaseUrl** in the same test: the `BaseUrl` of the probe that runs it
   (`ProbeConfiguration: BaseUrl:`), with `${NAME ?? default}` resolved as QaaS resolves it. When no test gives one, it
   takes the address of the URL you record on, without its path.
-- **It asks once per folder**, and remembers the answer in `~/.qaas/recorder-logins.json`. Later runs only say
+- **It remembers the choice per folder**, in `~/.qaas/recorder-logins.json`, as you press Start. The console says
   `Logging in with LoginFlow, from bin/Debug/net10.0/YourShared.dll, its values from Tests/Smoke.qaas.yaml, BaseUrl
   https://my-app.com (from Tests/Smoke.qaas.yaml)…`, and find the flow again in the newest build.
-- **It never stays silent.** When it finds no login flow, one dim line says why and where it looked, e.g.
-  `No login flow: no test project in /home/me/repo, above it or up to 3 folders below it.`, until you answered once
-  there. Said no, it records without logging in there, and says so each time:
-  `Not logging in here (you said no on 2026-11-03). --login LoginFlow to log in, --no-login to ask again.`
-- **`qaas-playwright --login-why`** prints the whole search, and records nothing: the projects found and why each was
+- **It never stays silent.** When it finds no login flow, the card says why and where it looked, e.g.
+  `No login flow: no test project in /home/me/repo, above it or up to 3 folders below it.` Turned off, it stays off
+  in that folder until you turn it on.
+- **Why this flow?** (or **Why no login?**) on the card shows the whole search, with **Copy** for a bug report: the projects found and why each was
   taken or not, the build used and how it was found, the DLLs looked through and the QaaS.Playwright each was built
   against, the flows found and why each was chosen or not, and what recording here would do.
 
-**Asked for interactively** (`qaas-playwright` with no arguments), when nothing was found or you said no before:
-
-```text
-  ? Do your tests log in first with a flow, e.g. LoginFlow? The recorder can run that login flow before you record,
-    so you start recording already signed in (y/N, Enter = no) ›
-```
-
-Only on yes it asks `Its class name (the login flow, not the one you're recording)`, with the flows it found listed to
-pick by number, and the one found as the default. The name of the flow you record is refused, and a name is checked
-as QaaS finds it. It asks for the DLL only when it found none, and for the values (`Values LoginFlow needs (a YAML with
-FlowConfiguration: LoginFlow:), Enter if it needs none`) only when no test gives them and the flow has any.
-
 **Where the DLL is.** In your test project's bin folder, once built: `bin/Debug/net10.0/`, or where its
 `Directory.Build.props` builds it. Your project's own DLL is there, `MyTests.dll`, and the DLL of each package it
-references, e.g. a shared package of your team that has the login flow: `bin/Debug/net10.0/YourShared.dll`.
-`--login-assembly` takes either one.
+references, e.g. a shared package of your team that has the login flow: `bin/Debug/net10.0/YourShared.dll`. The
+recorder looks in both.
 
 **Whether it needs values.** Look for its block in your test YAML, under the probe's `ProbeConfiguration`:
 
@@ -305,19 +296,12 @@ ProbeConfiguration:
 
 No block: it needs no values, or keeps its defaults. The recorder says which: `It needs no values`, or
 `Its values (Username, Url) come from Tests/Smoke.qaas.yaml`. A value it needs that is set nowhere (a required one, or
-text that is empty unless set, as a user name is) is named, with the block to add and where: in your test YAML, under the
-probe's `ProbeConfiguration`, or in a `LoginFlow.flow.yaml` given with `--login-settings`. `${NAME}` reads an
-environment variable, and `${NAME ?? default}` has a default, as in QaaS, so a password need not be in the file.
-
-| Option | Is |
-|--------|----|
-| `--login <Flow>` | Logs in with that flow, by its class name as `SetupFlows` names it; its DLL, values and BaseUrl are found as above. When it is not found, it says why, as `--login-why` would. |
-| `--login-assembly <dll>` | The DLL that has the flow, e.g. `bin/Debug/net10.0/YourShared.dll`, when the recorder does not find it. |
-| `--login-settings <yaml>` | The YAML with its values: a test, e.g. `Tests/Smoke.qaas.yaml`, a probe's `ProbeConfiguration`, or the `FlowConfiguration: { LoginFlow: ... }` the recorder writes. Its first `FlowConfiguration:LoginFlow` is taken; a file of none, as `{}` is, keeps the flow's defaults. Its probe's `BaseUrl` is the login's. |
-| `--login-why` | Prints the whole search for the login flow, and records nothing. |
-| `--no-login` | Records without logging in, and forgets the answer for this folder, so the next recording asks again. |
-
-The options always win over what is found, and are remembered for the folder in its place.
+text that is empty unless set, as a user name is) gets a field on the card: type it there, or add the block to your
+test YAML, under the probe's `ProbeConfiguration`. A secret's field (a password, a token) is masked, and what you type
+in it is kept for this run of the recorder only, never written anywhere; other values typed there are remembered for
+the project. **Values from** chooses the YAML the values are read from, or none, for the flow's defaults. `${NAME}`
+reads an environment variable, and `${NAME ?? default}` has a default, as in QaaS, so a password need not be in the
+file.
 
 **How it runs.** As the probe runs a setup flow: created by its class name, given its `BaseUrl` (above) and a QaaS
 `Context` whose logger writes to the console, its values bound and checked as strictly as the probe checks them, then
@@ -326,7 +310,7 @@ when that probe sets `SetupFlowsBeforeBaseUrl: true`, on a page that has loaded 
 a login flow that plants what the app needs before its first page loads, e.g. a token with
 `page.AddInitScriptAsync(...)` that a proxy asks for, has it on every page after, while you record too. Once it logged in, the page goes to the URL you record on, unless it is there already; when that URL is
 the app's root and the login left the app on a page of its own, the recording starts there, and the console says so.
-The panel's **Test**, `--continue` and recording a part again run it in the same order. The DLLs load from their
+The panel's **Test**, a flow continued and recording a part again run it in the same order. The DLLs load from their
 folder and their dependency closure; QaaS.Playwright, Playwright and QaaS's SDK are the recorder's own, so the flow
 runs on the recorder's pages whatever versions your project was built with, unless it uses what the recorder's have
 not (above).
@@ -335,7 +319,7 @@ not (above).
   `Logging in with LoginFlow… 12 s, on /signin`, the page's address without its query, secrets hidden, and what it
   did last there (`typed in “Username”`, `clicked button “Sign in”`, never a value). After 5 seconds they add
   `Taking long? Press Esc to stop the login flow and log in by hand in the browser.`
-- **Esc stops it**, in the console or the page, as does **Log in by hand** in the panel: its page is replaced by a
+- **Esc stops it**, in the page, as does **Log in by hand** in the panel: its page is replaced by a
   fresh one at the same address, keeping the login so far, so whatever it waited for fails at once and it does nothing
   more. It also stops by itself after 2 minutes in which no page loaded and nothing went to the app or came back,
   saying what it waited for and the BaseUrl it was given, and when the app asks the browser to sign in (with Windows,
@@ -402,7 +386,7 @@ Beside the recorded window, the recorder opens its panel: the flow exactly as it
 | **Undo**, Ctrl+Z | Takes back your last change in the panel, or else leaves the last step out of the flow; the app stays as it is. Its tooltip says which. It also brings back a part [recorded again](#recording-a-part-again) as it was |
 | **Check**, F6 | [Checks something](#checking-what-the-page-shows) in the app: the next click there picks an element |
 | Ctrl+Shift+C | Picks an element in the app for the [Elements view](#the-elements-view) |
-| **Auto checks**, above the steps | Turns every [auto check](#what-each-action-expects) on or off, as `--no-auto-checks` |
+| **Auto checks**, above the steps | Turns every [auto check](#what-each-action-expects) on or off, as the start screen's switch |
 | ✕ on a check | Drops that auto check, or deletes a check you chose; ↺ brings a dropped one back |
 | The trash on a step, Delete | Deletes the action from the flow, with what led to it and its checks |
 | A step's name, a setting's name or value | [Changes it](#editing-the-steps) in place |
@@ -426,7 +410,8 @@ the theme, slow motion, the panes' sizes and **Interactive only**, is kept for t
 `~/.qaas/recorder-panel.json`. A change you make is told by a toast at the bottom, one at a time, with **Undo** where
 it can be undone; so is a command the panel refused, and why. On a screen with no room beside the
 recorded window, which has the size of the recording's 1920×1080 viewport, the panel opens over that window's right
-part: move it to another screen, or snap it aside. `--no-panel` records without it.
+part: move it to another screen, or snap it aside. Before a recording it is the start screen, and after it, what was
+saved.
 
 ### Picking an element
 
@@ -473,12 +458,12 @@ before). An element found by the very text it is checked to have is checked to s
 its text would pass whenever it is there. A number that is no recorded value, such as a new record's id, changes from
 run to run: a text with one is checked by the words around it (`ToContainTextAsync("created")` for "Ticket TCK-1043
 created"), as a message is, and a row's cell that is only one is left out. A row's cells are its texts as the filter
-matches them, and those that change from load to load or with an edit (a count, a price, a date) are off at first. `--no-auto-checks` and the **Auto checks** switch never remove these checks.
+matches them, and those that change from load to load or with an edit (a count, a price, a date) are off at first. The **Auto checks** switches never remove these checks.
 
 ### Editing the steps
 
 Everything you change here is kept in the recording, so the flow is planned again with it as you go on, and a
-recording [continued](#continuing-a-flow) or kept with `--keep-recording` has it. **Undo** takes back each change in
+recording [continued](#continuing-a-flow) or kept with Keep the raw recording has it. **Undo** takes back each change in
 turn, newest first, and a step recorded after it before it.
 
 - **Delete an action**: the trash on its card, or Delete. What only led to it (opening a select) and the checks after
@@ -623,7 +608,7 @@ after it, before the steps after it, which stay; nothing is replaced. It ends in
 - **When the replay does not get to the part**, the panel shows where it failed and why, as a test run does, and so
   does the console. The app is then where the replay stopped: **Re-record from step 3** records again from the step that
   failed to the end of the part, and **Cancel** keeps the flow as it is and takes the app back, as `Esc` does.
-- **It is in the recording**, so autosave, `--keep-recording` and [continuing](#continuing-a-flow) keep the flow as you
+- **It is in the recording**, so autosave, the raw recording kept and [continuing](#continuing-a-flow) keep the flow as you
   recorded it again, and a recording continued can be recorded again in part too. It needs the panel and the .NET SDK,
   as **Test** does.
 - A part that opens a pop-up or a tab that the steps after it act in: they act in the page the part opened when first
@@ -983,8 +968,8 @@ as an avatar's menu does, is clicked after the flow hovers that (`page.Locator("
 ### What each action expects
 
 Each check the recorder adds is an `Expect` right after the action, marked `// auto check`, and listed on the action's
-card in the panel, where its ✕ drops it; a check dropped stays dropped, as the recording keeps it. `--no-auto-checks`,
-or the **Auto checks** switch above the steps, writes none. Checks you [choose](#checking-what-the-page-shows)
+card in the panel, where its ✕ drops it; a check dropped stays dropped, as the recording keeps it. **Auto checks** off, on
+the start screen or above the steps, writes none. Checks you [choose](#checking-what-the-page-shows)
 yourself follow them.
 
 - A choice: the field shows it (`ToHaveTextAsync` for a select, `ToHaveValueAsync` for an autocomplete, which is typed
@@ -1006,7 +991,7 @@ yourself follow them.
 A busy indicator that came up within 5 seconds of an action and went away again is waited for after it, for up to 30
 seconds: a progress bar (`role="progressbar"`, as MUI's `CircularProgress` and `LinearProgress` are, also inside a
 loading backdrop), or an element with `aria-busy="true"`. One that stayed on the page, such as an upload's progress, is
-not. This is a wait, not a check, so `--no-auto-checks` keeps it:
+not. This is a wait, not a check, so Auto checks off keeps it:
 
 ```csharp
 await Expect(page.GetByRole(AriaRole.Progressbar)).ToHaveCountAsync(0, new() { Timeout = 30_000 });
@@ -1037,7 +1022,7 @@ When it saves a flow, the recorder lists the lines to look at, with their number
   presses Escape after the action that opened it, so the next step is not behind it; check that this closes it.
 
 When an element is located badly, hover it while recording: the overlay tells why each locator before the chosen one
-lost. To share the details, record with `--keep-recording`: the raw recording is saved beside the flow as
+lost. To share the details, record with Keep the raw recording on: the raw recording is saved beside the flow as
 `LoginFlow.recording.json` (`LoginFlow.recorded.recording.json` for a re-recording), with every locator tried for
 each element and what it found. It holds the values you typed, a password too, which the flow's YAML does not.
 

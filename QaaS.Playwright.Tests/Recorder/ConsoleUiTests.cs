@@ -58,7 +58,7 @@ public class ConsoleUiTests
     }
 
     [Test]
-    public void CtrlC_WhileRecording_EndsItAsEnterDoes_AndAgainStopsAtOnce()
+    public void CtrlC_WhileRecording_EndsItAsSaveDoes_AndAgainStopsAtOnce()
     {
         var lifetime = new RecorderLifetime(exit: _ => { }, log: (_, _) => true) { Listening = true };
 
@@ -67,8 +67,8 @@ public class ConsoleUiTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(lifetime.Stopped.IsCompletedSuccessfully && lifetime.Stopped.Result == StopReason.CtrlC, "the recording ends as on Enter");
-            Assert.That(said, Does.Contain("Ctrl+C: saving what you recorded, as Enter does"));
+            Assert.That(lifetime.Stopped.IsCompletedSuccessfully && lifetime.Stopped.Result == StopReason.CtrlC, "the recording ends as on Save");
+            Assert.That(said, Does.Contain("Ctrl+C: saving what you recorded, as Save does"));
             Assert.That(again, Does.Contain("at once: what is not saved yet is kept"));
         });
     }

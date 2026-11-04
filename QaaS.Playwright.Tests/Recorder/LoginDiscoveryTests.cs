@@ -1,5 +1,4 @@
 using QaaS.Playwright.Flows;
-using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Login;
 
 namespace QaaS.Playwright.Tests.Recorder;
@@ -7,20 +6,18 @@ namespace QaaS.Playwright.Tests.Recorder;
 /// <summary>
 /// The recorder finds the login flow of the tests as QaaS finds a setup flow when they run: from a folder above the
 /// test project, through a custom output path, in a referenced project or package, and says plainly why it did not,
-/// e.g. a flow built against another QaaS.Playwright. Its questions cannot be answered with the flow being recorded.
+/// e.g. a flow built against another QaaS.Playwright. It asks nothing: the start screen shows what it found.
 /// </summary>
 [TestFixture]
 public class LoginDiscoveryTests
 {
-    private TextReader _input = null!;
-    private TextWriter _output = null!;
     private string _logins = null!;
     private string _folder = null!;
 
     [SetUp]
     public void Remember()
     {
-        (_input, _output, _logins) = (Console.In, Console.Out, RememberedLogin.FilePath);
+        _logins = RememberedLogin.FilePath;
         _folder = Directory.CreateTempSubdirectory("qaas-recorder-discovery-").FullName;
         RememberedLogin.FilePath = Path.Combine(_folder, "recorder-logins.json");
     }
@@ -28,8 +25,6 @@ public class LoginDiscoveryTests
     [TearDown]
     public void Restore()
     {
-        Console.SetIn(_input);
-        Console.SetOut(_output);
         RememberedLogin.FilePath = _logins;
         Directory.Delete(_folder, recursive: true);
     }
@@ -42,24 +37,16 @@ public class LoginDiscoveryTests
         var built = Path.Combine(repo, "out", "Acme.Tests", "Debug", "net10.0");
         var smoke = Path.Combine(tests, "Tests", "Smoke.qaas.yaml");
 
-        var why = Said(() => LoginFinder.Explain(Path.Combine(repo, "Flows"), repo));
+        var why = Said(LoginFinder.Explained(Path.Combine(repo, "Flows"), repo));
         // No .csproj above the root: one below it, in the solution, that uses QaaS; built where MSBuild says.
-        var request = new RecordRequest("NewOrder", "https://acme.test/app/orders/42", Path.Combine(repo, "Flows"));
-        LoginFlow? found = null;
-        var offered = Said(() => found = LoginFinder.Offer(request, repo)?.Login, "\n");
+        var look = LoginFinder.Look(Path.Combine(repo, "Flows"), repo);
+        var found = LoginFinder.LoginOf(look.Suggested!, look.Discovered!);
 
-        // Never silent: no project at all, and a "no" said before.
+        // Never silent: no project at all, and a no said before.
         var empty = Directory.CreateDirectory(Path.Combine(_folder, "empty")).FullName;
-        var none = Said(() => LoginFinder.Offer(request with { OutputDir = Path.Combine(empty, "Flows") }, empty));
-        var inTests = request with { OutputDir = Path.Combine(tests, "Flows") };
-        Said(() => LoginFinder.Offer(inTests, tests), "n\n");
-        var saidNo = Said(() => LoginFinder.Offer(inTests, tests));
-
-        // Asked by hand: the flow being recorded is refused, the class name checked as QaaS finds it, and neither its
-        // DLL nor its values asked, as they were found.
-        RecordRequest? asked = null;
-        var questions = Said(() => asked = RecordRequest.Ask(find: _ => null, discover: LoginFinder.Discover),
-            $"https://acme.test/app/orders/42\nnew-order\n{Path.Combine(tests, "Flows")}\ny\nNewOrder\nNoSuchFlow\nacmesigninflow\n");
+        var none = LoginFinder.Look(Path.Combine(empty, "Flows"), empty);
+        RememberedLogin.Decline(tests, "AcmeSignInFlow");
+        var saidNo = Said(LoginFinder.Explained(Path.Combine(tests, "Flows"), tests));
 
         Assert.Multiple(() =>
         {
@@ -70,29 +57,18 @@ public class LoginDiscoveryTests
             Assert.That(why, Does.Contain("Acme.Shared.dll (a dependency of it, built against QaaS.Playwright"));
             Assert.That(why, Does.Contain("AcmeSignInFlow (Acme.Shared.dll): taken: the setup flow of 1 test file"));
             Assert.That(why, Does.Contain("OpenAcmeHomeFlow (Acme.Shared.dll): not taken: no test runs it first"));
-            Assert.That(why, Does.Contain("Result: recording here offers to log in first with AcmeSignInFlow"));
+            Assert.That(why, Does.Contain("Result: recording here logs in first with AcmeSignInFlow"));
 
-            Assert.That(offered, Does.Contain($"Your tests log in with AcmeSignInFlow, from {Path.Combine(built, "Acme.Shared.dll")}"));
             Assert.That(found, Is.EqualTo(new LoginFlow("AcmeSignInFlow", Path.Combine(built, "Acme.Shared.dll"), smoke, Found: true,
                 Path.Combine(tests, "Acme.Tests.csproj"), smoke)));
-            Assert.That(found?.BaseUrlFor(request.Url), Is.EqualTo(("https://acme.test/app", smoke)),
+            Assert.That(found.BaseUrlFor("https://acme.test/app/orders/42"), Is.EqualTo(("https://acme.test/app", smoke)),
                 "the BaseUrl of the probe that runs it, its placeholder's default, not the URL recorded on");
-            Assert.That(new LoginFlow("AcmeSignInFlow", "", null).BaseUrlFor(request.Url), Is.EqualTo(("https://acme.test", (string?)null)),
+            Assert.That(new LoginFlow("AcmeSignInFlow", "", null).BaseUrlFor("https://acme.test/app/orders/42"), Is.EqualTo(("https://acme.test", (string?)null)),
                 "with none, the address alone");
 
-            Assert.That(none.Trim(), Is.EqualTo($"No login flow: no test project in {empty}, above it or up to 3 folders below it. " +
-                                                "To log in first, run the recorder in your test project's folder, or give --login " +
-                                                "<flow>; qaas-playwright --login-why shows the search."));
-            Assert.That(saidNo.Trim(), Is.EqualTo($"Not logging in here (you said no on {DateTime.Now:yyyy-MM-dd}). " +
-                                                  "--login AcmeSignInFlow to log in, --no-login to ask again."));
-
-            Assert.That(asked?.Login?.Flow, Is.EqualTo("AcmeSignInFlow"));
-            Assert.That(asked?.Login?.Settings, Is.EqualTo(smoke));
-            Assert.That(questions, Does.Contain("Do your tests log in first with a flow, e.g. LoginFlow?"));
-            Assert.That(questions, Does.Contain("(y/N, Enter = no)"));
-            Assert.That(questions, Does.Contain("NewOrder is the flow you are recording now, so it cannot log you in first."));
-            Assert.That(questions, Does.Contain("There is no flow named NoSuchFlow in your tests' build"));
-            Assert.That(questions, Does.Not.Contain("The DLL that has").And.Not.Contain("Values AcmeSignInFlow needs"));
+            Assert.That(none.Discovered, Is.Null);
+            Assert.That(none.Search.Why, Is.EqualTo($"no test project in {empty}, above it or up to 3 folders below it"));
+            Assert.That(saidNo, Does.Contain($"Remembered here: Not logging in here (Log in first turned off on {DateTime.Now:yyyy-MM-dd})."));
         });
     }
 
@@ -100,19 +76,19 @@ public class LoginDiscoveryTests
     public async Task ALoginFromALocalPackage_IsFoundInItsPackageFolder_AndOneBuiltAgainstAnotherQaaSPlaywright_IsSaidPlainly()
     {
         var pkg = Path.Combine(await LoginFixtures.BuildAsync(), "pkg");
-        var request = new RecordRequest("NewOrder", "https://acme.test/orders", Path.Combine(pkg, "Flows"));
 
-        // Two test projects below: asked once which, then remembered.
-        var first = Said(() => Assert.That(LoginFinder.Offer(request, pkg), Is.Null), "1\n");
-        var again = Said(() => Assert.That(LoginFinder.Offer(request, pkg), Is.Null));
-        var (legacy, legacyWhy) = LoginFinder.Named("LegacyLoginFlow", Path.Combine(pkg, "Acme.LegacyTests", "Flows"));
-        var refused = Assert.Throws<ArgumentException>(() => RecordRequest.Parse(["record", "new-order", "https://acme.test", "--login", "LegacyLoginFlow"],
-            find: (flow, _) => LoginFinder.Named(flow, Path.Combine(pkg, "Acme.LegacyTests", "Flows"))));
+        // Two test projects below: chosen once on the start screen, then remembered.
+        var several = LoginFinder.Look(Path.Combine(pkg, "Flows"), pkg);
+        RememberedLogin.RememberProject(pkg, several.Projects.Single(project => project.Name == "Acme.LegacyTests").ProjectFile);
+        var chosen = LoginFinder.Look(Path.Combine(pkg, "Flows"), pkg);
+        var legacy = LoginFinder.Look(Path.Combine(pkg, "Acme.LegacyTests", "Flows"), Path.Combine(pkg, "Acme.LegacyTests"));
 
         // The package's DLL is not beside the library's build: its .deps.json says where it is.
         var portalTests = Path.Combine(pkg, "Acme.PortalTests");
-        var (portal, _) = LoginFinder.Named("portalloginflow", Path.Combine(portalTests, "Flows"));
-        FlowAssemblyContext.Load(portal!.Assembly);
+        var portalLook = LoginFinder.Look(Path.Combine(portalTests, "Flows"), portalTests);
+        var portal = LoginFinder.LoginOf(portalLook.Discovered!.Flows.Single(flow => flow.Name.Equals("portalloginflow", StringComparison.OrdinalIgnoreCase)),
+            portalLook.Discovered);
+        FlowAssemblyContext.Load(portal.Assembly);
         var runs = FlowDiscovery.Resolve("PortalLoginFlow").GetType();
 
         var plainly = $"LegacyLoginFlow (in Acme.Legacy.dll) was built against QaaS.Playwright 1.15.1, and the recorder runs " +
@@ -120,30 +96,18 @@ public class LoginDiscoveryTests
                       $"QaaS.Playwright {typeof(IPlaywrightFlow).Assembly.GetName().Version!.ToString(2)}.x";
         Assert.Multiple(() =>
         {
-            Assert.That(first, Does.Contain("2 test projects here use QaaS."));
-            Assert.That(first, Does.Contain("1  Acme.LegacyTests").And.Contain("2  Acme.PortalTests"));
-            Assert.That(first, Does.Contain(plainly));
-            Assert.That(again, Does.Not.Contain("test projects here use QaaS").And.Contain(plainly), "the project chosen is remembered");
-            Assert.That(legacy, Is.Null);
-            Assert.That(legacyWhy, Does.StartWith(plainly));
-            Assert.That(refused?.Message, Does.StartWith(plainly), "--login alone says it too");
+            Assert.That(several.Projects.Select(project => project.Name), Is.EquivalentTo(new[] { "Acme.LegacyTests", "Acme.PortalTests" }));
+            Assert.That(Said(several.Search), Does.Contain("2 of them use QaaS"));
+            Assert.That(chosen.Projects, Is.Empty, "the project chosen is remembered");
+            Assert.That(chosen.Discovered?.Problems, Has.Some.StartsWith(plainly));
+            Assert.That(legacy.Discovered?.Problems, Has.Some.StartsWith(plainly));
+            Assert.That(legacy.Suggested, Is.Null, "a login that cannot run is not offered");
             Assert.That(portal.Flow, Is.EqualTo("PortalLoginFlow"), "found by its name, case-insensitively, as QaaS finds it");
             Assert.That(portal.Assembly, Is.EqualTo(Path.Combine(portalTests, "bin", "Debug", "net10.0", "Acme.PortalTests.dll")));
             Assert.That(runs.Assembly.Location, Does.StartWith(Path.Combine(pkg, "packages", "acme.portal", "1.0.0")));
         });
     }
 
-    // What the recorder printed while it ran, given the lines of input; a question that has no answer left fails it.
-    private static string Said(Action run, string input = "")
-    {
-        var output = new StringWriter();
-        Console.SetOut(output);
-        Console.SetIn(new StringReader(input));
-        run();
-        return Unwrapped(output.ToString());
-    }
-
-    // The console wraps long lines: a sentence is checked whole.
-    private static string Unwrapped(string text) =>
-        System.Text.RegularExpressions.Regex.Replace(text, @"\n\s+(?=\S)", " ").Replace('\n', ' ');
+    // Every step of the search, as one text, a sentence checked whole.
+    private static string Said(LoginSearch search) => string.Join(" ", search.Lines.Select(line => line.Text));
 }

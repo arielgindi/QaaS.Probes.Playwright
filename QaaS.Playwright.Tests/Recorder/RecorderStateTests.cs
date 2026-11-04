@@ -19,7 +19,8 @@ public class RecorderStateTests
     [Test]
     public void EveryReachableState_HasAWayOut_SaysOneMode_AndHoldsOpenWhatItSays()
     {
-        var start = new Node(RecorderState.Initial, false, false, false, false);
+        // From the start screen, before any recording, through recording after recording.
+        var start = new Node(RecorderState.StartScreen, false, false, false, false);
         var seen = new Dictionary<RecorderState, Node> { [Key(start.State)] = start };
         var edges = new List<(RecorderState From, RecorderState To)>();
         var queue = new Queue<Node>([start]);
@@ -95,7 +96,21 @@ public class RecorderStateTests
         Case("A test from trying goes back to trying", Mode.Trying, new Started(false, false), new ToggleTry(), new Test(), Passed),
         Case("Log in by hand pauses with why", Mode.Paused, new Started(true, false), new LogInByHand()),
         Case("The end of an older run changes nothing", Mode.Testing, new Started(false, false), new Test(), new StopRun(), new Test(), new RunEnded(2, RunOutcome.Passed)),
+        Case("Start on the start screen opens Chrome", Mode.Starting, Setup, new Start()),
+        Case("A start that failed goes back to the start screen", Mode.Setup, Setup, new Start(), new StartFailed("The page did not load.")),
+        Case("Nothing starts while the project builds", Mode.Setup, Setup, new BuildProject(), new Start()),
+        Case("Stop ends the build on the start screen", Mode.Setup, Setup, new BuildProject(), new StopRun()),
+        Case("A build that ended leaves the start screen ready to start", Mode.Starting, Setup, new BuildProject(), Passed, new Start()),
+        Case("A recording saved shows what was saved", Mode.Done, Setup, new Start(), new Started(false, false), new Stop(StopReason.Saved), new Ended()),
+        Case("Record another goes back to the start screen", Mode.Setup, Setup, new Start(), new Started(false, false), new Stop(StopReason.Saved), new Ended(), new NewRecording()),
+        Case("A recording never saved is saved from the start screen", Mode.Done, Setup, new SaveRecovered(), new Ended()),
+        Case("Ctrl+C on the start screen ends the recorder at once", Mode.Ended, Setup, new Stop(StopReason.CtrlC)),
+        Case("Close while it builds ends the build too", Mode.Ended, Setup, new BuildProject(), new Quit()),
+        Case("No other recording starts while one goes on", Mode.Recording, Setup, new Start(), new Started(false, false), new Start()),
     ];
+
+    // The way to the start screen, from Chrome opening: a recording that did not start.
+    private static readonly Command Setup = new StartFailed("-");
 
     private static readonly RunEnded Passed = new(-1, RunOutcome.Passed);
 
@@ -168,7 +183,7 @@ public class RecorderStateTests
         // However the recording ends, the lifetime ends the scopes still going.
         var lifetime = new RecorderLifetime(_ => { }, (_, _) => true, TimeSpan.FromSeconds(1));
         var going = new RunScope("a test run", lifetime);
-        lifetime.RequestStop(StopReason.Enter);
+        lifetime.RequestStop(StopReason.Saved);
         await lifetime.ShutdownAsync(_ => Task.FromResult(0));
 
         Assert.Multiple(() =>
@@ -201,6 +216,8 @@ public class RecorderStateTests
                 case Effect.StopTrying: trying = false; break;
                 case Effect.OpenPart: part = true; break;
                 case Effect.KeepPart or Effect.DropPart: part = false; break;
+                // The recording is gone, and all it held open with it.
+                case Effect.ShowResult or Effect.CloseRecording: (log, run, trying, part) = (false, false, false, false); break;
             }
 
         return new Node(outcome.State, log, run, trying, part);

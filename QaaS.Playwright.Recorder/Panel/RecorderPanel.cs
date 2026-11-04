@@ -24,28 +24,27 @@ namespace QaaS.Playwright.Recorder.Panel;
 /// </summary>
 internal sealed partial class RecorderPanel : IAsyncDisposable
 {
-    private const string Resource = "QaaS.Playwright.Recorder.Panel.panel.html";
-
     // The page's side (Panel/ui/src/bridge.ts): it shows a state given as JSON, and sends each command as JSON.
     private const string ShowFunction = "json => typeof window.__qaasPanelShow === 'function' && window.__qaasPanelShow(json)";
     private const string ElementsFunction =
         "json => typeof window.__qaasPanelElements === 'function' && window.__qaasPanelElements(json)";
-    private const string SendFunction = "__qaasPanelSend";
 
     // The overlay boxes every element a locator finds, as the person's pointer on a step or a locator asks.
     private const string ShowInPage =
         "(elements, tag) => typeof window.__qaasRecorder === 'function' && !window.__qaasRecorder({ op: 'show', elements, tag })";
 
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(150);
-    private static readonly Lazy<string> Html = new(LoadHtml);
 
     private readonly RecordingSession _session;
+    private readonly PanelHost _window;
+    private bool _ownsWindow;
     private readonly IPage _page;
     private readonly Channel<PanelCommand> _commands = Channel.CreateUnbounded<PanelCommand>(new() { SingleReader = true });
     private readonly TaskCompletionSource _saveRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<bool> _keepRecording = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _stop = new();
     private readonly FlowTester _tester;
-    private readonly PanelPrefs _prefs = PanelPrefs.Load();
+    private PanelPrefs Prefs => _window.Prefs;
     private Task _worker = Task.CompletedTask;
 
     // The worker's own: what the panel shows, and what changes it besides the recording.
@@ -65,10 +64,11 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     private volatile string? _banner;
     private int _disposed;
 
-    private RecorderPanel(RecordingSession session, RecordRequest request, IPage page, TestOptions? testOptions)
+    private RecorderPanel(RecordingSession session, RecordRequest request, PanelHost window, TestOptions? testOptions)
     {
         _session = session;
-        _page = page;
+        _window = window;
+        _page = window.Page;
         Request = request;
         _tester = new FlowTester(session, testOptions);
         _continued = session.Options.Continues?.Actions.Select(action => action.Id).ToHashSet();
@@ -85,38 +85,38 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     /// <summary>Completes when the person clicked Save: the recording ends and is saved as when the window closes.</summary>
     public Task SaveRequested => _saveRequested.Task;
 
-    /// <summary>Opens the panel beside the recorded window; <paramref name="testOptions"/> are for its test runs.</summary>
+    /// <summary>
+    /// Completes with the person's answer once the steps of a flow continued did not all replay: true to keep recording
+    /// from where the app is, without them; false to stop, the flow kept as it is.
+    /// </summary>
+    public Task<bool> KeepRecordingAnswered => _keepRecording.Task;
+
+    /// <summary>
+    /// Shows the panel in the recorder's window, <paramref name="host"/>, moved beside the recorded window; with no window,
+    /// as a test opens a panel, in one of its own. <paramref name="testOptions"/> are for its test runs.
+    /// </summary>
     /// <exception cref="PlaywrightException">The browser could not open it.</exception>
-    public static async Task<RecorderPanel> OpenAsync(RecordingSession session, RecordRequest request, TestOptions? testOptions = null)
+    public static async Task<RecorderPanel> OpenAsync(RecordingSession session, RecordRequest request, TestOptions? testOptions = null,
+        PanelHost? host = null)
     {
         var browser = session.Page.Context.Browser ?? throw new PlaywrightException("The recording has no browser.");
-        // No viewport, so the page fills its window; no color scheme, so it follows the system's.
-        var context = await browser.NewContextAsync(new() { ViewportSize = ViewportSize.NoViewport, ColorScheme = ColorScheme.Null });
-        try
-        {
-            var page = await context.NewPageAsync();
-            var panel = new RecorderPanel(session, request, page, testOptions);
-            var beside = await PanelWindow.PlaceAsync(session.Page, page);
-            await page.ExposeFunctionAsync<string>(SendFunction, panel.Receive);
-            await page.SetContentAsync(panel._prefs.Into(Html.Value));
-            if (beside) await session.Page.BringToFrontAsync();
-            session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
-            session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
-            session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
-            session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
-            session.PartEffects = panel.PartEffectAsync;
-            session.PaletteAsked += () => panel._commands.Writer.TryWrite(new PanelCommand("palette", null, null, null));
-            session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
-            panel._worker = Task.Run(panel.RunAsync);
-            // In the background, so the first test compiles as fast as the next.
-            _ = panel._tester.WarmUp(request);
-            return panel;
-        }
-        catch
-        {
-            await context.CloseAsync();
-            throw;
-        }
+        var window = host ?? await PanelHost.OpenAsync(browser, owned: false);
+        var page = window.Page;
+        var panel = new RecorderPanel(session, request, window, testOptions) { _ownsWindow = host is null };
+        var beside = await PanelWindow.PlaceAsync(session.Page, page);
+        window.Route(panel.Receive);
+        if (beside) await session.Page.BringToFrontAsync();
+        session.ElementsChanged += () => Interlocked.Exchange(ref panel._elementsChanged, 1);
+        session.CheckingChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
+        session.LoginChanged += () => panel._commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
+        session.PartDone += () => panel._commands.Writer.TryWrite(new PanelCommand("rerecordDone", null, null, null));
+        session.PartEffects = panel.PartEffectAsync;
+        session.PaletteAsked += () => panel._commands.Writer.TryWrite(new PanelCommand("palette", null, null, null));
+        session.Inspected += (alias, json) => panel._commands.Writer.TryWrite(new PanelCommand("inspected", null, null, alias) { Query = json });
+        panel._worker = Task.Run(panel.RunAsync);
+        // In the background, so the first test compiles as fast as the next.
+        _ = panel._tester.WarmUp(request);
+        return panel;
     }
 
     /// <summary>The flow's test runs, started from the panel.</summary>
@@ -132,13 +132,18 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         _commands.Writer.TryWrite(new PanelCommand("refresh", null, null, null));
     }
 
-    /// <summary>Stops updating the panel, and a test run going on; the window closes with the browser.</summary>
+    /// <summary>
+    /// Stops updating the panel, and a test run going on; the window stays for the recorder to show what comes next, or
+    /// closes with the browser.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
         await _stop.CancelAsync();
         await _worker;
         await _tester.DisposeAsync();
+        _window.Route(null);
+        if (_ownsWindow) await _window.DisposeAsync();
         _stop.Dispose();
     }
 
@@ -235,7 +240,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 _refresh = true;
                 break;
             case "prefs":
-                _ = _prefs.SetAsync(command.Name, command.Value);
+                _ = Prefs.SetAsync(command.Name, command.Value);
                 break;
             case "choose" when command.Action is { } action:
                 _session.Log.Choose(action, command.Candidate);
@@ -315,6 +320,9 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 break;
             case "loginByHand":
                 _session.LogInByHand();
+                break;
+            case "keepRecording" when _session.Snapshot.Mode == Mode.Asking:
+                _keepRecording.TrySetResult(command.On != false);
                 break;
             case "choosePicked" when _picked is { Description.Target: { } target }:
                 target.Chosen = command.Candidate;
@@ -554,7 +562,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         var json = JsonSerializer.Serialize(_shown.View, PanelView.Json);
         if (await _page.EvaluateAsync<bool>(ShowFunction, json)) return;
         // The page lost the panel, e.g. it was reloaded: put it back.
-        await _page.SetContentAsync(_prefs.Into(Html.Value));
+        await _window.LoadAsync();
         await _page.EvaluateAsync<bool>(ShowFunction, json);
     }
 
@@ -628,14 +636,6 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
         }
 
         return locator;
-    }
-
-    private static string LoadHtml()
-    {
-        using var stream = typeof(RecorderPanel).Assembly.GetManifestResourceStream(Resource)
-            ?? throw new InvalidOperationException($"The embedded {Resource} is missing from the build.");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 
     /// <summary>What the panel's page asks for.</summary>

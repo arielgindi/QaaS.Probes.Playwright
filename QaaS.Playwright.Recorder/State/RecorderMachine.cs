@@ -23,7 +23,7 @@ internal enum Mode
     /// <summary>A run of the flow (<see cref="RecorderState.Run"/>): a test, or a replay in the recorded window.</summary>
     Testing,
 
-    /// <summary>The steps of a flow continued did not all replay: the console asks whether to keep recording.</summary>
+    /// <summary>The steps of a flow continued did not all replay: the panel asks whether to keep recording.</summary>
     Asking,
 
     /// <summary>The recording ends: it is drained, kept and saved; nothing more is recorded.</summary>
@@ -46,6 +46,9 @@ internal enum RunKind
 
     /// <summary>The steps of the recording continued, replayed in the recorded window.</summary>
     ContinueReplay,
+
+    /// <summary>The test project built from the start screen, for its login flow.</summary>
+    Build,
 }
 
 /// <summary>How a run ended.</summary>
@@ -116,6 +119,9 @@ internal sealed record RecorderState
 
     /// <summary>The start of every recording: Chrome opening.</summary>
     public static RecorderState Initial { get; } = new();
+
+    /// <summary>The start of the recorder: its window, on the start screen, before any recording.</summary>
+    public static RecorderState StartScreen { get; } = new() { Mode = Mode.Setup };
 }
 
 /// <summary>What the person or the recorder asks the state machine for.</summary>
@@ -205,7 +211,7 @@ internal sealed record LoginEnded(string? Failure, bool Continues = false) : Com
     public override bool ByThePerson => false;
 }
 
-/// <summary>The person's answer to the console's question once the steps of a flow continued did not all replay.</summary>
+/// <summary>The person's answer, in the panel, once the steps of a flow continued did not all replay.</summary>
 internal sealed record KeepRecording(bool Keep) : Command;
 
 /// <summary>
@@ -214,11 +220,32 @@ internal sealed record KeepRecording(bool Keep) : Command;
 /// </summary>
 internal sealed record Stop(StopReason Reason) : Command;
 
-/// <summary>The recording was saved, or kept, and every scope disposed.</summary>
+/// <summary>The recording was saved, or kept, and every scope disposed: the window shows what was saved.</summary>
 internal sealed record Ended : Command
 {
     public override bool ByThePerson => false;
 }
+
+/// <summary>Start, Ctrl+Enter, on the start screen: the recording it describes begins, and Chrome opens.</summary>
+internal sealed record Start : Command;
+
+/// <summary>The recording did not start (Chrome did not open, the page did not load): back to the start screen, saying why.</summary>
+internal sealed record StartFailed(string Why) : Command
+{
+    public override bool ByThePerson => false;
+}
+
+/// <summary>Build now, on the start screen: the test project is built, for its login flow.</summary>
+internal sealed record BuildProject : Command;
+
+/// <summary>Save it now, of a recording never saved, on the start screen: it is saved without Chrome.</summary>
+internal sealed record SaveRecovered : Command;
+
+/// <summary>Record another, on what was saved: the start screen again, on the same project.</summary>
+internal sealed record NewRecording : Command;
+
+/// <summary>Close, or the window closed, on the start screen or what was saved: the recorder ends.</summary>
+internal sealed record Quit : Command;
 
 /// <summary>What a transition does beside changing the state, in this order, after the pages were drained.</summary>
 internal enum Effect
@@ -261,6 +288,21 @@ internal enum Effect
 
     /// <summary>The steps of the flow continued that did not replay are left out.</summary>
     LeaveOutNotReplayed,
+
+    /// <summary>The recording the start screen describes begins: its context opens, the panel shows it, and it is remembered.</summary>
+    OpenRecording,
+
+    /// <summary>The recording that did not start closes what it opened.</summary>
+    CloseRecording,
+
+    /// <summary>The recording ended: what it held open is gone with it, and the window shows what was saved.</summary>
+    ShowResult,
+
+    /// <summary>The start screen looks again at the project: its flows, its build, its login.</summary>
+    Rediscover,
+
+    /// <summary>The recording never saved is written as a flow, without Chrome.</summary>
+    SaveKept,
 }
 
 /// <summary>What a request came to: accepted, with the state it led to and its effects, or refused, and why.</summary>
@@ -305,14 +347,25 @@ internal static class RecorderTable
             new RerecordFromFailure(), new PartDone(), new PartCancel(), new ReturnedToStart(true), new ReturnedToStart(false),
             new PartDismiss(), new LogInByHand(), new LoginEnded(null), new LoginEnded(null, Continues: true), new LoginEnded("It waited 30 s."),
             new KeepRecording(true), new KeepRecording(false), new Stop(StopReason.Saved), new Stop(StopReason.CtrlC), new Ended(),
+            new Start(), new StartFailed("The page did not load."), new BuildProject(), new SaveRecovered(), new NewRecording(), new Quit(),
         ];
     }
 
     private static (RecorderState? Next, Effect[] Effects, string? Refused) Decide(RecorderState s, Command command)
     {
         if (s.Mode == Mode.Ended) return Refuse("The recording ended.");
+        if (s.Mode is Mode.Setup or Mode.Done) return OnStartScreen(s, command);
         switch (command)
         {
+            case StartFailed failed when s.Mode == Mode.Starting:
+                return Go(RecorderState.StartScreen with { Notice = failed.Why }, Effect.CloseRecording);
+            case StartFailed:
+                return Refuse("The recording started already.");
+            case Start or BuildProject or SaveRecovered:
+                return Refuse("A recording goes on: save it first.");
+            case NewRecording or Quit:
+                return Refuse("A recording goes on: save it, or close Chrome, first.");
+
             case Started started when s.Mode == Mode.Starting:
                 return started.LogsIn ? Go(s with { Mode = Mode.LoggingIn, Run = NewRun(s, RunKind.Login) }, Effect.StartRun)
                     : started.Continues ? Go(s with { Mode = Mode.Testing, Run = NewRun(s, RunKind.ContinueReplay), Then = Mode.Recording }, Effect.StartRun)
@@ -468,13 +521,42 @@ internal static class RecorderTable
                     [.. Effects(s.Mode == Mode.Trying, Effect.StopTrying), .. Effects(s.Mode == Mode.Recording, Effect.PauseLog)]);
             case Stop:
                 return Refuse("The recording is being saved.");
+            // The window shows what was saved; what the recording held open is gone with it.
             case Ended when s.Mode == Mode.Saving:
-                return Go(s with { Mode = Mode.Ended, Run = null }, Effects(s.Run is not null, Effect.DisposeRun));
+                return Go(new RecorderState { Mode = Mode.Done, Stop = s.Stop }, [.. Effects(s.Run is not null, Effect.DisposeRun), Effect.ShowResult]);
             case Ended:
                 return Refuse("The recording is not being saved.");
         }
 
         return Refuse("Not a command of the recorder.");
+    }
+
+    // The start screen and what was saved: start, build, save a recording never saved, record another, or end.
+    private static (RecorderState? Next, Effect[] Effects, string? Refused) OnStartScreen(RecorderState s, Command command)
+    {
+        var building = s.Run is { Kind: RunKind.Build };
+        switch (command)
+        {
+            case Start when s.Mode == Mode.Setup && !building:
+                return Go(RecorderState.Initial with { Epoch = s.Epoch }, Effect.OpenRecording);
+            case BuildProject when s.Mode == Mode.Setup && !building:
+                return Go(s with { Run = NewRun(s, RunKind.Build), Notice = null }, Effect.StartRun);
+            case SaveRecovered when s.Mode == Mode.Setup && !building:
+                return Go(s with { Mode = Mode.Saving, Stop = StopReason.Saved, Notice = null }, Effect.SaveKept);
+            case Start or BuildProject or SaveRecovered when building:
+                return Refuse("The test project is building: wait for it, or stop it (Esc).");
+            case StopRun when s.Run is { } run:
+                return Stopped(s, run);
+            case RunEnded ended when s.Run is { } running && running.Id == ended.Id:
+                return RunEnd(s, running, ended.Outcome);
+            case NewRecording when s.Mode == Mode.Done:
+                return Go(RecorderState.StartScreen with { Epoch = s.Epoch }, Effect.Rediscover);
+            // Nothing to save here: Close, the window closed, Ctrl+C or a signal end the recorder at once.
+            case Quit or Stop:
+                return Go(s with { Mode = Mode.Ended, Run = null, Stop = (command as Stop)?.Reason ?? s.Stop }, Effects(s.Run is not null, Effect.DisposeRun));
+            default:
+                return Refuse(s.Mode == Mode.Setup ? "Start a recording first." : "The recording is saved: record another first.");
+        }
     }
 
     // A run stopped by the person: it ends at once, and the state goes on as when it ended stopped.
@@ -494,6 +576,8 @@ internal static class RecorderTable
                     : Go(ended with { Mode = Mode.Paused, Then = Mode.Paused, Notice = "The login flow did not log in: log in by hand, then resume." }, Effect.DisposeRun);
             case RunKind.Test:
                 return Go(ended with { Mode = s.Then, Then = Mode.Recording }, s.Then == Mode.Recording ? [Effect.DisposeRun, Effect.ResumeLog] : [Effect.DisposeRun]);
+            case RunKind.Build:
+                return Go(ended with { Mode = Mode.Setup }, Effect.DisposeRun, Effect.Rediscover);
             case RunKind.ContinueReplay:
                 return outcome == RunOutcome.Passed ? Go(ended with { Mode = Mode.Recording }, Effect.DisposeRun, Effect.ResumeLog)
                     : Go(ended with { Mode = Mode.Asking }, Effect.DisposeRun);
@@ -525,7 +609,7 @@ internal static class RecorderTable
         Mode.LoggingIn => $"The login flow runs: {what} once it logged in, or press Esc to log in by hand.",
         Mode.Testing => $"The flow runs: {what} once it ended, or press Esc to stop it.",
         Mode.Trying => $"Trying: press F7 to record again, then {what}.",
-        Mode.Asking => $"Answer in the console first: keep recording, or stop.",
+        Mode.Asking => $"Say first whether to keep recording from here, or stop.",
         Mode.Saving or Mode.Ended => "The recording is being saved.",
         _ => $"Not now: {what} later.",
     };

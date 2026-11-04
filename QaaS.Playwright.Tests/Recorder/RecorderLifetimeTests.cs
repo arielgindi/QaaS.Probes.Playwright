@@ -57,7 +57,7 @@ public class RecorderLifetimeTests
 
         var (stuck, _, _) = Lifetime(exits.Add);
         stuck.Listening = true;
-        stuck.RequestStop(StopReason.Enter);
+        stuck.RequestStop(StopReason.Saved);
         var stuckSaving = new TaskCompletionSource();
         _ = stuck.ShutdownAsync(_ => { stuckSaving.SetResult(); return new TaskCompletionSource<int>().Task; });
         await stuckSaving.Task;
@@ -70,7 +70,7 @@ public class RecorderLifetimeTests
             Assert.That((forced, laterExit), Is.EqualTo((RecorderLifetime.Outcome.Forced, 130)));
             Assert.That(laterSteps, Does.Contain("snapshot").And.Contain("session"), "kept, and disposed all the same");
             Assert.That(exits, Is.EqualTo(new[] { 143 }), "a save that never gives way is ended with the signal's code");
-            Assert.That(later.RequestStop(StopReason.Enter), Is.EqualTo(RecorderLifetime.Outcome.Ignored));
+            Assert.That(later.RequestStop(StopReason.Saved), Is.EqualTo(RecorderLifetime.Outcome.Ignored));
         });
     }
 
@@ -86,7 +86,7 @@ public class RecorderLifetimeTests
             : new ProcessStartInfo("sleep", "60"))!;
         using var owned = lifetime.Children.Own(child);
 
-        lifetime.RequestStop(StopReason.Enter);
+        lifetime.RequestStop(StopReason.Saved);
         var exit = await lifetime.ShutdownAsync(_ => Task.FromResult(0));
         child.WaitForExit(5000);
 

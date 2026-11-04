@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
+using QaaS.Playwright.Recorder.Setup;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Panel;
 using QaaS.Playwright.Recorder.TestRun;
@@ -29,7 +30,7 @@ public class TestRunTests
         var session = await StartAsync($"{site.Url}/helpdesk");
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", session.Options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("new-ticket", session.Options.Url));
             var app = session.Page;
             var view = app.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
@@ -87,7 +88,7 @@ public class TestRunTests
             for (var wait = 0; wait < 50 && Volatile.Read(ref actions) < 6; wait++) await Task.Delay(100);
 
             await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 1000 });
-            var request = RecordRequest.Parse(["record", "add-tasks", session.Options.Url]);
+            var request = SetupRules.For("add-tasks", session.Options.Url);
             var report = await tester.RunAsync(request, "Flows");
 
             var flow = FlowCodeGenerator.Generate(session.Build(), request.ClassName, "Flows");
@@ -122,7 +123,7 @@ public class TestRunTests
         var session = await StartAsync($"{site.Url}/helpdesk");
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", session.Options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("new-ticket", session.Options.Url));
             var app = session.Page;
             var view = app.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
@@ -214,7 +215,7 @@ public class TestRunTests
         {
             await using var tester = new FlowTester(session, new TestOptions { DefaultTimeout = 1000 });
             whileReplaying = session.State;
-            report = await tester.ReplayAsync(RecordRequest.Parse(["record", "new-ticket", recorded.StartUrl]), "Flows");
+            report = await tester.ReplayAsync(SetupRules.For("new-ticket", recorded.StartUrl), "Flows");
             // As the person keeps recording from where it stopped.
             notReplayed = report.NotReplayed(session.Build());
             session.Log.Remove(notReplayed);
@@ -251,7 +252,7 @@ public class TestRunTests
         var session = await StartAsync($"{site.Url}/helpdesk");
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", session.Options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("new-ticket", session.Options.Url));
             var app = session.Page;
             var view = app.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });

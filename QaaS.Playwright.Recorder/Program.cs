@@ -1,18 +1,14 @@
-using QaaS.Playwright.Recorder.Login;
+using QaaS.Playwright.Recorder.Setup;
 
 namespace QaaS.Playwright.Recorder;
 
 /// <summary>
-/// Records a browser flow in the installed Chrome and saves it as a C# flow class with its settings.
-/// <c>qaas-playwright</c> asks for the details; <c>qaas-playwright record &lt;name&gt; &lt;url&gt; [--output-dir Dir]
-/// [--no-panel] [--login Flow]</c> takes them; <c>qaas-playwright --continue &lt;flow&gt;</c> goes on from a flow saved.
-/// A recording that did not end in a save is offered first. The login flow of the tests is found by itself.
+/// Records a browser flow in the installed Chrome and saves it as a C# flow class with its settings. It takes no
+/// options: <c>qaas-playwright</c> opens its window, the start screen, where each recording is set up, and everything
+/// happens there. <c>--version</c> prints the version, and <c>--help</c> says where things are.
 /// </summary>
 public static class Program
 {
-    // What a shell returns for a program stopped by Ctrl+C.
-    private const int Cancelled = 130;
-
     public static int Main(string[] args)
     {
         if (args is ["--version"] or ["-v"])
@@ -24,50 +20,14 @@ public static class Program
         ConsoleUi.Header();
         if (args is ["help"] || args.Any(arg => arg is "--help" or "-h"))
         {
-            ConsoleUi.Usage();
+            ConsoleUi.Help();
             return 0;
         }
 
-        // The whole search for the login flow, and nothing else: where it looked, and why it chose what it chose.
-        if (args.Contains("--login-why"))
-        {
-            var outputDir = args.SkipWhile(arg => arg != "--output-dir").Skip(1).FirstOrDefault() ?? "Flows";
-            LoginFinder.Explain(outputDir, Environment.CurrentDirectory);
-            return 0;
-        }
-
+        // Anything else given is said, and left: the window is where a recording is set up.
+        if (args.Length > 0) ConsoleUi.NoOptions(args);
         ConsoleUi.CancelOnCtrlC();
         CrashReport.Install();
-        RecordRequest request;
-        // The login flow last used in this folder is used again, unless the command says otherwise; else the one the
-        // tests run first, found, asked about once and remembered.
-        var projectFolder = Environment.CurrentDirectory;
-        try
-        {
-            if (FlowRecorder.OfferNotSaved() is { } notSaved) return FlowRecorder.Record(notSaved);
-            var remembered = RememberedLogin.In(projectFolder);
-            RecordRequest? Find(RecordRequest asked) => LoginFinder.Offer(asked, projectFolder);
-            request = args is [] or ["record"]
-                ? RecordRequest.Ask(remembered, Find, LoginFinder.Discover)
-                : RecordRequest.Parse(args, remembered, LoginFinder.Named);
-            if (args is not ([] or ["record"]) && request is { Login: null, NoLogin: false }) request = Find(request) ?? request;
-        }
-        catch (ArgumentException invalid)
-        {
-            ConsoleUi.Error(ConsoleUi.Reason(invalid));
-            ConsoleUi.UsageHint();
-            return 1;
-        }
-        catch (OperationCanceledException)
-        {
-            ConsoleUi.Cancelled();
-            return Cancelled;
-        }
-
-        // The login found is remembered as it is found, and a no to it as said.
-        if ((request.NoLogin || request.Login is not null)
-            && RememberedLogin.Remember(projectFolder, request.Login) is { } notRemembered)
-            ConsoleUi.Warning(notRemembered);
-        return FlowRecorder.Record(request);
+        return RecorderApp.RunAsync(new RecorderHostOptions()).GetAwaiter().GetResult();
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
 using QaaS.Framework.Configurations.ConfigurationBuilderExtensions;
 
@@ -7,6 +8,18 @@ namespace QaaS.Playwright.Recorder.Login;
 internal static class LoginSettings
 {
     private const string FlowConfiguration = "FlowConfiguration";
+
+    // The values the person typed on the start screen for a login flow, by flow, then by setting; a secret's is kept for
+    // this run alone, as a Secret, and never written anywhere.
+    private static readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, Capture.Secret>> Typed = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The values typed on the start screen for <paramref name="flow"/>, which its YAML does not give: every reading of
+    /// its settings takes them over the file's, for the login run, a test and a replay. Each is held as a
+    /// <see cref="Capture.Secret"/>, so none reaches a file or the console, whatever its name.
+    /// </summary>
+    public static void TypeValues(string flow, IReadOnlyDictionary<string, string> values) =>
+        Typed[flow] = values.Where(pair => pair.Value.Length > 0).ToDictionary(pair => pair.Key, pair => Capture.Secret.Of(pair.Value), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// The <c>FlowConfiguration:&lt;flow&gt;</c> section of <paramref name="path"/>, wherever it is in the file: the
@@ -31,6 +44,9 @@ internal static class LoginSettings
             foreach (var (key, value) in section?.AsEnumerable(makePathsRelative: true) ?? [])
                 values[$"{FlowConfiguration}:{flow}:{key}"] = value;
         }
+
+        foreach (var (key, value) in Typed.GetValueOrDefault(flow) ?? new Dictionary<string, Capture.Secret>())
+            values[$"{FlowConfiguration}:{flow}:{key}"] = value.Reveal();
 
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build().GetSection(FlowConfiguration);
     }
@@ -110,6 +126,15 @@ internal static class LoginSettings
             if (ProbeOf(child, flow, setup) is { } deeper)
                 return deeper;
         return null;
+    }
+
+    /// <summary>Every <c>BaseUrl</c> a test's YAML gives a probe, its placeholders resolved, for the start page's choices.</summary>
+    public static IEnumerable<string> BaseUrls(IConfiguration node)
+    {
+        if (node.GetSection("BaseUrl").Value is { Length: > 0 } url) yield return url.Trim();
+        foreach (var child in node.GetChildren())
+        foreach (var deeper in BaseUrls(child))
+            yield return deeper;
     }
 
     private static bool HasFlowConfiguration(IConfiguration node) => node.GetChildren().Any(child =>

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Playwright;
 using QaaS.Playwright.Browser;
 using QaaS.Playwright.Recorder;
+using QaaS.Playwright.Recorder.Setup;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Panel;
 using QaaS.Playwright.Tests.EndToEnd;
@@ -100,7 +101,7 @@ public class RecorderPanelTests
         Recording recording;
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("new-ticket", options.Url));
             var app = session.Page;
             var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
@@ -151,7 +152,7 @@ public class RecorderPanelTests
         Recording recording;
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "new-ticket", options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("new-ticket", options.Url));
             var app = session.Page;
             var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });
@@ -199,7 +200,7 @@ public class RecorderPanelTests
         Recording recording;
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "archive-order", options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("archive-order", options.Url));
             var app = session.Page;
             var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
 
@@ -240,7 +241,7 @@ public class RecorderPanelTests
         Recording recording;
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "assign-ticket", options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("assign-ticket", options.Url));
             var app = session.Page;
             var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var assign = app.GetByRole(AriaRole.Row, new() { Name = "TCK-1041" }).GetByRole(AriaRole.Button);
@@ -290,7 +291,7 @@ public class RecorderPanelTests
         var session = await RecordingSession.StartAsync(options, _ => { });
         try
         {
-            await using var panel = await RecorderPanel.OpenAsync(session, RecordRequest.Parse(["record", "assign-ticket", options.Url]));
+            await using var panel = await RecorderPanel.OpenAsync(session, SetupRules.For("assign-ticket", options.Url));
             var app = session.Page;
             var view = session.Page.Context.Browser!.Contexts.Single(context => context != app.Context).Pages.Single();
             var code = view.GetByRole(AriaRole.Region, new() { Name = "Code" });

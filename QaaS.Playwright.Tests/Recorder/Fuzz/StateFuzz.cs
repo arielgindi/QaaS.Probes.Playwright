@@ -22,7 +22,7 @@ namespace QaaS.Playwright.Tests.Recorder.Fuzz;
 /// edit back, and that it never stays in a mode nobody can see or leave; at the end, that the flow saves as it was and
 /// builds. A sequence is a list of steps, each a short text (<see cref="Step"/>), written <c>a | b | c</c>; the first may
 /// say how the recording starts (<c>start:login</c>, <c>start:hang</c>, <c>start:continue</c>, <c>start:/orders</c>), and
-/// the last how it ends (<c>save:ctrl-s</c>, <c>save:enter</c>, <c>save:close</c>, <c>save:ctrl-c</c>). A step that
+/// the last how it ends (<c>save:ctrl-s</c>, <c>save:end</c> (the lifetime ends it, as a person ends it from the window), <c>save:close</c>, <c>save:ctrl-c</c>). A step that
 /// starts with <c>!</c> is followed at once by the next, without the checks, as when keys come fast.
 /// </summary>
 internal sealed class StateFuzz : IAsyncDisposable
@@ -120,7 +120,7 @@ internal sealed class StateFuzz : IAsyncDisposable
                 if (fuzz._ended) break;
             }
 
-            if (!fuzz._ended) await fuzz.DoAsync(generate > 0 ? fuzz.SaveStep() : "save:enter", check: true, record: true);
+            if (!fuzz._ended) await fuzz.DoAsync(generate > 0 ? fuzz.SaveStep() : "save:end", check: true, record: true);
             GC.Collect();
             GC.WaitForPendingFinalizers();
             lock (fuzz._unhandled)
@@ -352,8 +352,8 @@ internal sealed class StateFuzz : IAsyncDisposable
     }
 
     private string SaveStep() => _done.LastOrDefault(step => step.StartsWith("save:", StringComparison.Ordinal)) ?? Pick(
-        "save:ctrl-s", "save:ctrl-s", "save:ctrl-s", "save:enter", "save:close", "save:ctrl-c", "save:ctrl-s", "save:enter",
-        "save:now-ctrl-s", "save:now-enter", "save:now-close");
+        "save:ctrl-s", "save:ctrl-s", "save:ctrl-s", "save:end", "save:close", "save:ctrl-c", "save:ctrl-s", "save:end",
+        "save:now-ctrl-s", "save:now-end", "save:now-close");
 
     private string Pick(params string[] steps) => steps[_random.Next(steps.Length)];
 

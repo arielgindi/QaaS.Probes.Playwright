@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
+using QaaS.Playwright.Recorder.Setup;
 
 namespace QaaS.Playwright.Tests.Recorder;
 
@@ -97,8 +98,10 @@ public class AutosaveTests
     public void Continue_NamesTheFlowOrItsFile_AndSavingReplacesItOnlyWhileItIsAsRecorded()
     {
         var flows = Path.Combine(_folder, "Flows");
-        var byFile = RecordRequest.Parse(["--continue", Path.Combine(flows, "ScheduleMaintenance.cs"), "--no-panel"]);
-        var byName = RecordRequest.Parse(["--continue", "schedule-maintenance", "--output-dir", flows]);
+        // As the start screen's Continue tab chooses it: the flow of the folder, with its kept recording.
+        var kept = new KeptRecording(new Recording("https://fleet.test/vehicles", []), DateTime.Now, "ScheduleMaintenance.json");
+        var byName = SetupRules.Check(new SetupDraft { Project = _folder, Tab = SetupTab.Continue, ContinueFlow = "schedulemaintenance", LogIn = false },
+            new SetupFacts { ProjectExists = true, Flows = [new ProjectFlow("ScheduleMaintenance", Path.Combine(flows, "ScheduleMaintenance.cs"), "h", kept)] }).Request!;
         var recording = Recording.FromJson(File.ReadAllText(Path.Combine(GoldenFolder(), "ScheduleMaintenance.recording.json")));
         var whole = FlowCodeGenerator.Generate(recording, "ScheduleMaintenance", "Flows");
         var start = FlowCodeGenerator.Generate(recording with { Actions = [.. recording.Actions.Take(2)] }, "ScheduleMaintenance", "Flows");
@@ -122,7 +125,7 @@ public class AutosaveTests
 
         Assert.Multiple(() =>
         {
-            Assert.That((byFile.ClassName, byFile.OutputDir, byFile.Continue, byFile.Panel), Is.EqualTo(("ScheduleMaintenance", flows, true, false)));
+            Assert.That((byName.ClassName, byName.OutputDir, byName.Url), Is.EqualTo(("ScheduleMaintenance", flows, "https://fleet.test/vehicles")));
             Assert.That((byName.ClassName, byName.CodePath, byName.Continue), Is.EqualTo(("ScheduleMaintenance", created.CodePath, true)));
             Assert.That(replaced, Is.EqualTo(created), "the flow continued is replaced");
             Assert.That(beside.CodePath, Does.EndWith("ScheduleMaintenance.recorded.txt"), "a flow changed by hand never is");

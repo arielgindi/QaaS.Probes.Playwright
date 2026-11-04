@@ -4,6 +4,28 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
 
 ## 2.1.0
 
+- **Breaking: the recorder takes no options; everything is set up in its window.** `qaas-playwright` opens a window
+  of Chrome on a start screen, and the app's window opens only when you press **Start**. There you choose:
+  - **the project**, found from where you started the recorder, else the one you recorded in last, or chosen with a
+    folder browser of its own (started from a shortcut or a double-click, it asks for one);
+  - **what to record**: a new flow, named and checked as you type, with the pages you recorded on and your tests'
+    `BaseUrl`s offered; a saved flow to continue; or a recording never saved, to save now, continue or discard;
+  - **the login to run first**, found as before, with a switch, a choice among the flows that may log in or the test
+    projects that use QaaS, **Build now** when the build is out of date, the values it needs typed in place (a
+    secret masked and kept for that run only), and **Why this flow?**, the whole search, with **Copy**;
+  - **Auto checks** and **Keep the raw recording**.
+
+  Start says what it will do, and is off, saying why, while a field is wrong. What you choose is remembered per
+  project in `~/.qaas/recorder-projects.json`. `record`, `--continue`, `--output-dir`, `--keep-recording`,
+  `--no-panel`, `--no-auto-checks`, `--login`, `--login-assembly`, `--login-settings`, `--no-login` and `--login-why`
+  are gone; anything given is said in one line, and the window opens anyway. `--version` and `--help` stay.
+- **Once a flow is saved, the window shows what was saved**: its files, what to set before it runs, the lines to check
+  by hand, and **Record another**, **Continue** it, **Open the folder** or **Close**. Recording after recording runs
+  in the same window and Chrome.
+- **The console only reports; it asks nothing.** Enter no longer saves and Esc there no longer stops the login flow:
+  **Save** in the panel, closing the app's window and Ctrl+C save; Esc in the page and **Log in by hand** stop the
+  login flow. When a flow continued does not replay, the panel asks whether to keep recording, not the console.
+
 - **One action the recorder cannot handle never takes the recording down.** An action it cannot plan or write is left
   out of the flow and listed to redo by hand, and the rest is still written, shown in the panel, numbered in the
   console, tested and saved. A command of the panel that fails says so there and the panel goes on; what a page tells
@@ -19,8 +41,8 @@ Notable changes, newest first. Versions follow [Semantic Versioning](https://sem
   refused when you name it.
 - **No password or other secret is in any file, nor shown.** A "Has value" check of a password field never reads the
   password: the flow checks the field against the password it typed, else that it is not empty, said to check by hand.
-  A loop never goes over passwords, so no list in the YAML holds one. The recording autosave and `--keep-recording`
-  keep holds no secret, typed, checked or given as a setting's default.
+  A loop never goes over passwords, so no list in the YAML holds one. The recording autosave and the raw recording
+  kept beside the flow hold no secret, typed, checked or given as a setting's default.
 - **Values are typed exactly as recorded.** A value typed with bidi marks keeps them; a native select's option is
   chosen by its exact label, marks and asterisk too; a radio's value read from a setting is escaped in its CSS
   selector, quotes and backslashes too; a text holding `${...}` stays in the code, as QaaS would read it as a variable

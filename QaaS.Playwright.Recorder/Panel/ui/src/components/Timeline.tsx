@@ -617,7 +617,7 @@ function StepName({ name, disabled, onRename }: { name: string; disabled: boolea
   );
 }
 
-// Auto checks on or off for the whole flow, as --no-auto-checks.
+// Auto checks on or off for the whole flow, as the start screen's switch.
 function Switch({ on, disabled, onChange }: { on: boolean; disabled: boolean; onChange(on: boolean): void }) {
   return (
     <button
@@ -626,7 +626,7 @@ function Switch({ on, disabled, onChange }: { on: boolean; disabled: boolean; on
       aria-checked={on}
       disabled={disabled}
       onClick={() => onChange(!on)}
-      title={on ? 'Auto checks are on: after each action the flow checks what it did. Click to turn them all off, as --no-auto-checks.' : 'Auto checks are off. Click to have the flow check after each action what it did.'}
+      title={on ? 'Auto checks are on: after each action the flow checks what it did. Click to turn them all off.' : 'Auto checks are off. Click to have the flow check after each action what it did.'}
       class="-mr-1 inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta font-medium text-muted transition hover:bg-raised hover:text-fg disabled:pointer-events-none disabled:opacity-50"
     >
       Auto checks

@@ -4,6 +4,7 @@ using QaaS.Playwright.Flows;
 using QaaS.Playwright.Recorder;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Login;
+using QaaS.Playwright.Recorder.Setup;
 using QaaS.Playwright.Recorder.TestRun;
 using QaaS.Playwright.Tests.EndToEnd;
 using static Microsoft.Playwright.Assertions;
@@ -20,10 +21,10 @@ namespace QaaS.Playwright.Tests.Recorder;
 public class LoginFlowTests
 {
     [Test]
-    public async Task TheSetupFlowOfASharedPackage_IsFound_WithItsValues_AskedOnce_AndRunsFromTheProjectsDll()
+    public async Task TheSetupFlowOfASharedPackage_IsFound_WithItsValues_FoundAgainOnceRemembered_AndRunsFromTheProjectsDll()
     {
         var folder = Directory.CreateTempSubdirectory("qaas-recorder-found-").FullName;
-        var (input, logins) = (Console.In, RememberedLogin.FilePath);
+        var logins = RememberedLogin.FilePath;
         RememberedLogin.FilePath = Path.Combine(folder, "recorder-logins.json");
         try
         {
@@ -83,16 +84,16 @@ public class LoginFlowTests
             foreach (var other in (string[])[Path.Combine("Tests", "Home.qaas.yaml"), Path.Combine("bin", "Home.yaml"), Path.Combine("obj", "Home.yaml")])
                 await File.WriteAllTextAsync(Path.Combine(tests, other), "SetupFlows: [OpenTeamHomeFlow]\n");
 
-            // As --login-assembly gives it: the project's own DLL, which has no flow, beside the package's.
+            // The project's own DLL, which has no flow, beside the package's.
             FlowAssemblyContext.Load(Path.Combine(tests, "bin", "Debug", "net10.0", "Team.Tests.dll"));
             var flow = FlowDiscovery.Resolve("TeamSignInFlow").GetType();
 
-            var request = new RecordRequest("NewOrder", "https://my-app.test", Path.Combine(tests, "Flows"));
-            Console.SetIn(new StringReader("\n"));
-            var found = LoginFinder.Offer(request, tests)?.Login;
-            // Asked once: the next time, the same flow is found again, without a question to answer.
-            Console.SetIn(new StringReader(""));
-            var again = LoginFinder.Offer(request, tests)?.Login;
+            var look = LoginFinder.Look(Path.Combine(tests, "Flows"), tests);
+            var found = LoginFinder.LoginOf(look.Suggested!, look.Discovered!);
+            // Remembered as the start screen remembers it on Start: the next time, the same flow is found again.
+            RememberedLogin.Remember(tests, found);
+            var next = LoginFinder.Look(Path.Combine(tests, "Flows"), tests);
+            var again = LoginFinder.LoginOf(next.Discovered!.Again!, next.Discovered);
             var values = LoginValues.Of(flow, found?.Settings);
             Assert.Multiple(() =>
             {
@@ -111,7 +112,6 @@ public class LoginFlowTests
         }
         finally
         {
-            Console.SetIn(input);
             RememberedLogin.FilePath = logins;
             Directory.Delete(folder, recursive: true);
         }
@@ -252,9 +252,8 @@ public class LoginFlowTests
         var folder = Directory.CreateTempSubdirectory("qaas-recorder-login-").FullName;
         var settings = Path.Combine(folder, "LogInFlow.flow.yaml");
         await File.WriteAllTextAsync(settings, "FlowConfiguration:\n  LogInFlow:\n    User: 'alice'\n");
-        // As a person gives it: the flow by its class name, in the test project's built assembly.
-        var request = RecordRequest.Parse(["record", "submit-order", site.Url, "--login", "LogInFlow",
-            "--login-assembly", typeof(LogInFlow).Assembly.Location, "--login-settings", settings]);
+        // As the start screen gives it: the flow by its class name, in the test project's built assembly, with its values.
+        var request = SetupRules.For("submit-order", site.Url) with { Login = new LoginFlow("LogInFlow", typeof(LogInFlow).Assembly.Location, settings) };
         var session = await RecordingSession.StartAsync(new RecordingOptions(site.Url)
         {
             LoginFlow = request.Login!.Flow, LoadStorageStatePath = null, SaveStorageStatePath = null,

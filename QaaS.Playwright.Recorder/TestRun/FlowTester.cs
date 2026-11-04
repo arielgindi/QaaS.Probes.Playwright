@@ -373,7 +373,7 @@ internal sealed class FlowTester(RecordingSession session, TestOptions? options 
             var (baseUrl, from) = login.BaseUrlFor(startUrl);
             hints.Add(secrets.Scrub(LoginRunner.WhereItWas(inLogin, failure, outcome?.FailureUrl, baseUrl, from)));
             hints.Add($"{inLogin} is your tests' own flow, from {ConsoleUi.Relative(login.Assembly)}: check it, its values " +
-                      "and its build, or record with --no-login.");
+                      "and its build, or turn Log in first off.");
         }
 
         return new TestFailure(FlowReport.Summarize(message))

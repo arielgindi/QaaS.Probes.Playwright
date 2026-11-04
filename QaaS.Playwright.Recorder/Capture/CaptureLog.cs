@@ -365,7 +365,7 @@ internal sealed class CaptureLog(bool paused = false, Recording? from = null, Ca
         Changed();
     }
 
-    /// <summary>Turns every auto check on or off, as <c>--no-auto-checks</c> does; null leaves it to the command line.</summary>
+    /// <summary>Turns every auto check on or off, as the start screen's switch does; null leaves it to the switch.</summary>
     public void AutoChecks(bool? on)
     {
         lock (_gate)
