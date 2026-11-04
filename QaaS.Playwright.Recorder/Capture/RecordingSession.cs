@@ -466,13 +466,13 @@ internal sealed class RecordingSession : IAsyncDisposable, ICaptureDrain, IEffec
 
         CheckingChanged?.Invoke();
         // The end is the summary's to say.
-        if (state.Mode is not (Mode.Saving or Mode.Ended)) _onNews(Named(state.Mode));
+        if (state.Mode is not (Mode.Saving or Mode.Done or Mode.Ended)) _onNews(Named(state.Mode));
     }
 
     private static RecordingState Named(Mode mode) => mode switch
     {
-        Mode.Paused or Mode.Saving or Mode.Ended => RecordingState.Paused,
-        Mode.LoggingIn or Mode.Starting => RecordingState.LoggingIn,
+        Mode.Paused or Mode.Saving or Mode.Done or Mode.Ended => RecordingState.Paused,
+        Mode.LoggingIn or Mode.Starting or Mode.Setup => RecordingState.LoggingIn,
         Mode.Testing or Mode.Asking => RecordingState.Testing,
         Mode.Trying => RecordingState.Trying,
         _ => RecordingState.Recording,

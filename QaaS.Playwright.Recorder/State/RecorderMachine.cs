@@ -3,6 +3,9 @@ namespace QaaS.Playwright.Recorder.State;
 /// <summary>What the recorder is doing: the one main mode of a <see cref="RecorderState"/>.</summary>
 internal enum Mode
 {
+    /// <summary>The recorder's window asks what to record, before Chrome opens (the setup screen, to come).</summary>
+    Setup,
+
     /// <summary>Chrome is opening; nothing is recorded yet.</summary>
     Starting,
 
@@ -25,6 +28,9 @@ internal enum Mode
 
     /// <summary>The recording ends: it is drained, kept and saved; nothing more is recorded.</summary>
     Saving,
+
+    /// <summary>Saved, the window stays open on what was saved (the setup screen's, to come).</summary>
+    Done,
 
     Ended,
 }

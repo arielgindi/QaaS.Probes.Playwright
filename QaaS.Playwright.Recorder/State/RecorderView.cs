@@ -14,7 +14,9 @@ internal static class RecorderView
 {
     public static ModeView Of(RecorderState s) => s switch
     {
+        { Mode: Mode.Setup } => new("Setup", "accent", "Setup", "Say what to record", null),
         { Mode: Mode.Saving or Mode.Ended } => new("Saving", "accent", "Saving", "the flow and its settings…", null),
+        { Mode: Mode.Done } => new("Done", "ok", "Saved", "The flow is saved", null),
         { Mode: Mode.Starting } => new("Starting", "accent", "Starting", "Chrome opens…", null),
         { Mode: Mode.LoggingIn } => new("Logging in", "info", "Logging in", "Nothing the login flow does is recorded", "Esc"),
         { Mode: Mode.Asking } => new("Replaying", "bad", "Replay stopped", "In the console: keep recording from here, or stop", "Enter"),
@@ -26,6 +28,8 @@ internal static class RecorderView
         { Check: not null } => new("Check mode", "ok", "Check", "Click what the flow should check in the app, then choose the check", "Esc"),
         { Inspect: not null } => new("Inspect", "inspect", "Inspect", "Point at an element in the app; a click there picks it", "Esc"),
         { Mode: Mode.Trying } => new("Trying", "try", "Trying", "Nothing is recorded: each action shows as it would be written", "F7"),
+        { Mode: Mode.Paused, Part.Phase: PartPhase.Done } p => new("Re-recording", "warn", "Paused",
+            $"Re-recorded {p.Part!.Label}. The app is where that part left it, not at the end of the flow.", "F8"),
         { Mode: Mode.Paused, Notice: { } notice } => new("Paused", "warn", "Paused", $"{notice} Log in by hand in the app, then resume.", "F8"),
         { Mode: Mode.Paused, Part.Phase: PartPhase.Recording } p => new("Paused", "warn", "Paused", $"Nothing you do is recorded; F8 resumes {p.Part!.Label}", "F8"),
         { Mode: Mode.Paused } => new("Paused", "warn", "Paused", "Nothing you do is recorded; F8 resumes", "F8"),

@@ -527,6 +527,7 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
                 View = _shown.View with
                 {
                     Notice = _session.Notice,
+                    Mode = RecorderView.Of(_session.Snapshot),
                     LoginProgress = _session.LoginProgress is { } login ? new PanelLoginProgress(login.Text, login.Last, login.Slow) : null,
                     Element = _picked is { } picked ? PickedView(picked, _shown) : null,
                     Test = _tester.Report is { } test ? PanelTest.Of(test, _shown.View.Code) : null,
@@ -558,13 +559,13 @@ internal sealed partial class RecorderPanel : IAsyncDisposable
     }
 
     // Once saving, the recording is what it is: the panel changes nothing more.
-    private bool Ending => _session.Snapshot.Mode is Mode.Saving or Mode.Ended;
+    private bool Ending => _session.Snapshot.Mode is Mode.Saving or Mode.Done or Mode.Ended;
 
     private string Status() => _session.Snapshot.Mode switch
     {
-        Mode.Saving or Mode.Ended => "saving",
+        Mode.Saving or Mode.Done or Mode.Ended => "saving",
         Mode.Paused => "paused",
-        Mode.LoggingIn or Mode.Starting => "login",
+        Mode.LoggingIn or Mode.Starting or Mode.Setup => "login",
         Mode.Testing or Mode.Asking => "testing",
         Mode.Trying => "trying",
         _ => "recording",

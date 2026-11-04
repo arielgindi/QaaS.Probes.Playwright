@@ -1,6 +1,15 @@
 // The state the recorder shows the panel (Panel/PanelView.cs): the flow exactly as it will be saved. What is missing
 // from the JSON is undefined.
 
+/** The mode the recorder is in, as its state machine says it: the strip shows it, with its buttons. */
+export interface ModeView {
+  name: string;
+  tone: string;
+  label: string;
+  message: string;
+  key?: string;
+}
+
 export interface PanelState {
   /** The flow's class name. */
   flow: string;
@@ -10,6 +19,7 @@ export interface PanelState {
   kept?: boolean;
   /** Paused by the person, or while the login flow runs, nothing is recorded. */
   status: Status;
+  mode?: ModeView;
   /** Why the recording is paused when the person did not pause it, e.g. the login flow failed. */
   notice?: string;
   /** The login flow the recording runs after. */

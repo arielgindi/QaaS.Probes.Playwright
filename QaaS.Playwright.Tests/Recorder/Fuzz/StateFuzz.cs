@@ -270,6 +270,8 @@ internal sealed class StateFuzz : IAsyncDisposable
         var browser = _session.Page.Context.Browser!;
         _panel = await RecorderPanel.OpenAsync(_session, _request, new TestOptions { DefaultTimeout = 3000, SlowMotionMs = 100 });
         _view = browser.Contexts.Single(context => context != _session.Page.Context).Pages.Single();
+        // What breaks in the panel's page is said in the log.
+        _view.PageError += (_, error) => Log($"    panel error: {error}");
         await WrapPanelAsync();
         // A recording continued is one the recorder kept.
         if (continued is not null) await new Autosave().WriteAsync(continued, _request);
@@ -736,6 +738,8 @@ internal sealed class StateFuzz : IAsyncDisposable
 
         if (!now) await AgreeAsync();
         var shownCode = now ? null : (await PanelAsync())?["code"]?.GetValue<string>();
+        // What the pages hold back is the recording's too, as the end drains it.
+        await _session.DrainAsync(_session.Snapshot.Epoch, CancellationToken.None);
         var before = _session.Build();
         Recording recording;
         var request = _panel.Request;
@@ -910,7 +914,8 @@ internal sealed class StateFuzz : IAsyncDisposable
         if (announced is { } said && said != state)
             return $"console says {said}, the recorder is {state}";
         var shown = await PanelAsync();
-        if (shown is null) return "panel shows nothing";
+        if (shown is null)
+            return $"panel shows nothing ({(_view.IsClosed ? "closed" : await _view.EvaluateAsync<string>("() => `${location.href} wrapped ${!!window.__fuzzWrapped} show ${typeof window.__qaasPanelShow}`"))})";
         var status = shown["status"]?.GetValue<string>();
         var expected = state switch
         {

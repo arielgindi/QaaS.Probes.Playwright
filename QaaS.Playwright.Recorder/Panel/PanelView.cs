@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using QaaS.Playwright.Recorder.Capture;
 using QaaS.Playwright.Recorder.Generation;
 using QaaS.Playwright.Recorder.TestRun;
+using QaaS.Playwright.Recorder.State;
 
 namespace QaaS.Playwright.Recorder.Panel;
 
@@ -21,6 +22,9 @@ internal sealed record PanelView(
 
     /// <summary>Why the recording is paused when the person did not pause it, e.g. the login flow failed.</summary>
     public string? Notice { get; init; }
+
+    /// <summary>The mode the recorder is in, as its state machine says it, which the status strip shows.</summary>
+    public ModeView? Mode { get; init; }
 
     /// <summary>The login flow the recording runs after, by its class name.</summary>
     public string? Login { get; init; }

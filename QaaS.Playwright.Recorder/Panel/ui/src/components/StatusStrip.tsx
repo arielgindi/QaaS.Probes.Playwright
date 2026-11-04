@@ -126,120 +126,118 @@ export function StatusStrip(props: Props) {
 function modeOf(props: Props, now: number): Shown | null {
   const { state, actions } = props;
   const part = state.rerecord;
+  // The mode is the recorder's state machine's, most pressing first; here it gets its buttons.
+  const mode = state.mode;
+  const going = isGoing(state.test);
   const leave = (label: string, keys: string, onClick: () => void, title?: string) => (
     <Button size="sm" variant="secondary" keys={keys} onClick={onClick} title={title}>
       {label}
     </Button>
   );
-  if (state.status === 'saving') return { name: 'Saving', tone: 'accent', label: 'Saving', busy: true, message: `${state.flow}.cs and its settings…` };
-  if (state.status === 'login') {
-    const progress = state.loginProgress;
-    const text = progress?.text ?? `Logging in with ${state.login ?? 'the login flow'}…`;
-    const message = [text.replace(/^Logging in /, ''), progress?.last && `last: ${progress.last}`, progress?.slow && 'taking long?'].filter(Boolean).join(' · ');
-    return {
-      name: 'Logging in', tone: 'info', label: 'Logging in', busy: true, tinted: true, message, full: `${text} Nothing it does is recorded.`,
-      actions: (
-        <Button size="sm" variant={progress?.slow ? 'secondary' : 'ghost'} onClick={() => sendLoginByHand()} title="Stop the login flow, and log in in the app yourself (Esc there)">
-          Log in by hand
-        </Button>
-      ),
-    };
-  }
-  if (state.continued?.banner)
-    return { name: 'Replaying', tone: 'info', label: 'Replaying', busy: true, tinted: true, message: state.continued.banner };
-  if (part?.phase === 'replaying')
-    return {
-      name: 'Re-recording', tone: 'rec', label: part.after ? 'Record after' : 'Re-record', busy: true, tinted: true,
-      message: `Replaying the flow up to ${part.after ? 'the end of ' : ''}${part.part}… nothing is recorded`,
-      time: state.test && isGoing(state.test) ? `${(Math.max(0, now - state.test.started) / 1000).toFixed(1)} s` : undefined,
-      actions: leave('Cancel', 'Esc', props.onCancelPart),
-    };
-  if (part?.phase === 'failed') {
-    const at = numberOf(actions, part.failedAt);
-    return {
-      name: 'Re-recording', tone: 'bad', label: 'Replay failed', icon: 'cross', tinted: true, alert: true,
-      message: part.problem ?? (at ? `It did not get to ${part.part}: step ${at} failed, see why on its card` : `It did not get to ${part.part}`),
-      full: part.problem,
-      actions: (
-        <>
-          {at > 0 && (
-            <Button size="sm" variant="secondary" icon="rerecord" onClick={() => sendRerecordFrom()} title="The app is where the replay stopped: record again from there to the end of the part">
-              Re-record from step {at}
+  switch (mode?.name) {
+    case 'Saving':
+      return { name: 'Saving', tone: 'accent', label: 'Saving', busy: true, message: `${state.flow}.cs and its settings…` };
+    case 'Logging in': {
+      const progress = state.loginProgress;
+      const text = progress?.text ?? `Logging in with ${state.login ?? 'the login flow'}…`;
+      const message = [text.replace(/^Logging in /, ''), progress?.last && `last: ${progress.last}`, progress?.slow && 'taking long?'].filter(Boolean).join(' · ');
+      return {
+        name: 'Logging in', tone: 'info', label: 'Logging in', busy: true, tinted: true, message, full: `${text} Nothing it does is recorded.`,
+        actions: (
+          <Button size="sm" variant={progress?.slow ? 'secondary' : 'ghost'} onClick={() => sendLoginByHand()} title="Stop the login flow, and log in in the app yourself (Esc there)">
+            Log in by hand
+          </Button>
+        ),
+      };
+    }
+    case 'Replaying':
+      return { name: 'Replaying', tone: mode.tone as Tone, label: mode.label, busy: true, tinted: true, message: state.continued?.banner ?? mode.message };
+    case 'Re-recording':
+      if (part?.phase === 'replaying')
+        return {
+          name: 'Re-recording', tone: 'rec', label: part.after ? 'Record after' : 'Re-record', busy: true, tinted: true,
+          message: `Replaying the flow up to ${part.after ? 'the end of ' : ''}${part.part}… nothing is recorded`,
+          time: state.test && going ? `${(Math.max(0, now - state.test.started) / 1000).toFixed(1)} s` : undefined,
+          actions: leave('Cancel', 'Esc', props.onCancelPart),
+        };
+      if (part?.phase === 'failed') {
+        const at = numberOf(actions, part.failedAt);
+        return {
+          name: 'Re-recording', tone: 'bad', label: 'Replay failed', icon: 'cross', tinted: true, alert: true,
+          message: part.problem ?? (at ? `It did not get to ${part.part}: step ${at} failed, see why on its card` : `It did not get to ${part.part}`),
+          full: part.problem,
+          actions: (
+            <>
+              {at > 0 && (
+                <Button size="sm" variant="secondary" icon="rerecord" onClick={() => sendRerecordFrom()} title="The app is where the replay stopped: record again from there to the end of the part">
+                  Re-record from step {at}
+                </Button>
+              )}
+              <Button size="sm" onClick={props.onCancelPart}>
+                Cancel
+              </Button>
+            </>
+          ),
+        };
+      }
+      if (part?.phase === 'done') {
+        const paused = mode.label === 'Paused';
+        return {
+          name: 'Re-recording', tone: paused ? 'warn' : 'ok', label: paused ? 'Paused' : 'Re-recorded', icon: paused ? undefined : 'tick', tinted: paused,
+          message: mode.message,
+          actions: (
+            <>
+              <Button size="sm" variant="secondary" icon="play" disabled={!props.canTest} onClick={props.onTest} title="Run the flow as it will be saved">
+                Test
+              </Button>
+              {paused && leave('Resume', 'F8', props.onPause, 'Record again from the page the app is on')}
+              <Button size="sm" iconOnly icon="cross" label="Dismiss" onClick={() => sendDismissPart()} />
+            </>
+          ),
+        };
+      }
+      if (going || !part) return null;
+      return {
+        name: 'Re-recording', tone: 'rec', label: part.after ? 'Recording after' : 'Re-recording', pulse: true, tinted: true,
+        message: `${part.part}: ${part.after ? 'record what goes there' : 'do it again'}, then press Done${part.loop && !part.after ? ' · the whole loop' : ''}${part.fresh.length > 0 ? ` · ${plural(part.fresh.length, 'action')} so far` : ''}`,
+        actions: (
+          <>
+            <Button size="sm" variant="primary" icon="tick" keys="F2" onClick={props.onDone}>
+              Done
             </Button>
-          )}
-          <Button size="sm" onClick={props.onCancelPart}>
-            Cancel
-          </Button>
-        </>
-      ),
-    };
+            <Button size="sm" keys="Esc" onClick={props.onCancelPart} title="Keep the flow as it was">
+              Keep it as it was
+            </Button>
+          </>
+        ),
+      };
+    case 'Testing':
+      return going ? null : { name: 'Testing', tone: 'accent', label: 'Testing', busy: true, tinted: true, message: mode.message };
+    case 'Check mode':
+      return {
+        name: 'Check mode', tone: 'ok', label: 'Check', pulse: false, tinted: true,
+        message: 'Click what the flow should check in the app, then choose the check; nothing is clicked there',
+        actions: leave('Leave', 'Esc', props.onCheck, 'Leave check mode (F6, or Esc in the app)'),
+      };
+    case 'Inspect':
+      return {
+        name: 'Inspect', tone: 'inspect', label: 'Inspect', tinted: true,
+        message: 'Point at an element in the app; a click there picks it here, and nothing else',
+        actions: leave('Stop', 'Esc', props.onInspect, 'Stop picking in the app (Ctrl+Shift+C)'),
+      };
+    case 'Trying':
+      return {
+        name: 'Trying', tone: 'try', label: 'Trying', tinted: true, message: mode.message,
+        actions: leave('Stop trying', 'F7', props.onTry, 'Go back to recording (F7)'),
+      };
+    case 'Paused':
+      return {
+        name: 'Paused', tone: 'warn', label: 'Paused', tinted: true, message: mode.message, full: state.notice,
+        actions: leave('Resume', 'F8', props.onPause, 'Record again, from the page the app is on'),
+      };
+    default:
+      return null;
   }
-  const test = state.test;
-  if (test && isGoing(test)) return null;
-  // Only while it records: paused, trying or checking in the part says that, with the key that leaves it.
-  if (part?.phase === 'recording' && state.status === 'recording' && !state.checking && !props.inspecting) {
-    const so = part.fresh.length > 0 ? ` · ${plural(part.fresh.length, 'action')} so far` : '';
-    const loop = part.loop && !part.after ? ' · the whole loop' : '';
-    return {
-      name: 'Re-recording', tone: 'rec', label: part.after ? 'Recording after' : 'Re-recording', pulse: true, tinted: true,
-      message: `${part.part}: ${part.after ? 'record what goes there' : 'do it again'}, then press Done${loop}${so}`,
-      actions: (
-        <>
-          <Button size="sm" variant="primary" icon="tick" keys="F2" onClick={props.onDone}>
-            Done
-          </Button>
-          <Button size="sm" keys="Esc" onClick={props.onCancelPart} title="Keep the flow as it was">
-            Keep it as it was
-          </Button>
-        </>
-      ),
-    };
-  }
-  if (state.checking && state.status === 'recording')
-    return {
-      name: 'Check mode', tone: 'ok', label: 'Check', pulse: false, tinted: true,
-      message: 'Click what the flow should check in the app, then choose the check; nothing is clicked there',
-      actions: leave('Leave', 'Esc', props.onCheck, 'Leave check mode (F6, or Esc in the app)'),
-    };
-  if (props.inspecting)
-    return {
-      name: 'Inspect', tone: 'inspect', label: 'Inspect', tinted: true,
-      message: 'Point at an element in the app; a click there picks it here, and nothing else',
-      actions: leave('Stop', 'Esc', props.onInspect, 'Stop picking in the app (Ctrl+Shift+C)'),
-    };
-  if (state.status === 'trying')
-    return {
-      name: 'Trying', tone: 'try', label: 'Trying', tinted: true,
-      message: 'Nothing is recorded: each action shows under the steps as it would be written',
-      actions: leave('Stop trying', 'F7', props.onTry, 'Go back to recording (F7)'),
-    };
-  if (part?.phase === 'done') {
-    const paused = state.status === 'paused';
-    return {
-      name: 'Re-recording', tone: paused ? 'warn' : 'ok', label: paused ? 'Paused' : 'Re-recorded', icon: paused ? undefined : 'tick', tinted: paused,
-      message: `Re-recorded ${part.part}.${paused ? ' The app is where that part left it, not at the end of the flow.' : ' Test it to see it run as it will be saved.'}`,
-      actions: (
-        <>
-          <Button size="sm" variant="secondary" icon="play" disabled={!props.canTest} onClick={props.onTest} title="Run the flow as it will be saved">
-            Test
-          </Button>
-          {paused && leave('Resume', 'F8', props.onPause, 'Record again from the page the app is on')}
-          <Button size="sm" iconOnly icon="cross" label="Dismiss" onClick={() => sendDismissPart()} />
-        </>
-      ),
-    };
-  }
-  if (state.status === 'testing')
-    return { name: 'Testing', tone: 'accent', label: 'Testing', busy: true, tinted: true, message: 'Nothing is recorded while the flow runs' };
-  if (state.status === 'paused')
-    return {
-      name: 'Paused', tone: 'warn', label: 'Paused', tinted: true,
-      message: state.notice ? `${state.notice} Log in by hand in the app, then resume.`
-        : part?.phase === 'recording' ? `Nothing you do is recorded; F8 resumes ${part.part}` : 'Nothing you do is recorded; F8 resumes',
-      full: state.notice,
-      actions: leave('Resume', 'F8', props.onPause, 'Record again, from the page the app is on'),
-    };
-  return null;
 }
 
 // Only recording: what to do, and the modes a key away.
