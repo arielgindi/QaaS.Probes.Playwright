@@ -358,8 +358,9 @@ internal static partial class FlowPlanner
             }
 
             created.AddRange(action.Values);
-            // A row's locator of an element that says nothing of its row, as a field chosen in has none, reads no setting.
-            if ((action.Locator?.Kind == "row" || NameHoldsRowKey(action)) && source.Target?.Row is { Key.Length: > 0 } row)
+            // The row of the element the action is located by, its field for a choice, as one chosen in the panel may be in
+            // a row its first target was not; a row's locator of an element that says nothing of its row reads no setting.
+            if ((action.Locator?.Kind == "row" || NameHoldsRowKey(action)) && source.Element?.Row is { Key.Length: > 0 } row)
             {
                 // Actions on one row read one setting, as does a value typed before that the row shows.
                 var key = row.Key;
@@ -424,7 +425,7 @@ internal static partial class FlowPlanner
     }
 
     public static bool NameHoldsRowKey(PlannedAction action) =>
-        action.Locator is { Kind: "role" } role && action.Source.Target?.Row?.Key is { Length: >= 2 } key
+        action.Locator is { Kind: "role" } role && action.Source.Element?.Row?.Key is { Length: >= 2 } key
         && role.Parts.LastOrDefault()?.Name?.Contains(key, StringComparison.Ordinal) == true;
 
     /// <summary>
@@ -571,7 +572,9 @@ internal static partial class FlowPlanner
                         setting.Qualified = setting.Qualified is { } qualified ? RelativeDate.Name(qualified) : null;
                     }
 
-                    if (edit.Value is { } value && Fits(value, setting.Type)) setting.Default = value;
+                    // Days from today are a default only of a date typed so: never the text of one that could not be.
+                    if (edit.Value is { } value && (edit.DateFormat is null || setting.DateFormat is not null) && Fits(value, setting.Type))
+                        setting.Default = value;
                     if (step.Loop is not null) continue;
                     setting.Unique |= edit.Unique == true && setting is { Type: "string", Flag: null };
                     if (CSharp.Pascal(edit.Name) is { } name) (setting.Name, setting.Named) = (name, true);

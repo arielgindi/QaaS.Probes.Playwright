@@ -606,7 +606,7 @@ internal sealed record PanelSnapshot(PanelView View, IReadOnlyDictionary<string,
             Unique = typed && setting.DateFormat is null ? setting.Unique : null,
             Relative = setting.DateFormat is { } format ? new PanelDate(format, int.Parse(setting.Value ?? "0", CultureInfo.InvariantCulture)) : null,
             Suggest = typed && setting.DateFormat is null && !setting.Unique
-                      && RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T)) is { } date
+                      && RelativeDate.Of(setting.Text ?? "", RelativeDate.DayOf(action.Source.T), action.Source.Element?.Placeholder) is { } date
                 ? new PanelDate(date.Format, date.Days)
                 : null,
             Recorded = setting.Default is not null && setting.DateFormat is null && setting.Default != setting.Text ? setting.Text : null,

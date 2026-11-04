@@ -123,6 +123,9 @@ internal sealed partial class FlowWriter
     private List<Setting> _seen = [];
     private List<Setting> _typed = [];
 
+    // What a loop's last round typed, as later steps read it: from the list's last item, by the text it is.
+    private readonly Dictionary<string, string> _afterLoops = new(StringComparer.Ordinal);
+
     // The flow's properties that type a date relative to the day it runs, by the setting of its days.
     private readonly Dictionary<Setting, string> _dates = [];
 
@@ -375,7 +378,12 @@ internal sealed partial class FlowWriter
         {
             var values = LoopFinder.ValuesOf(lastRepeat);
             for (var index = 0; index < values.Count; index++)
-                _step.LoopValues[values[index]] = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
+            {
+                var code = $"{FromSettings(typed)}[^1]{(typed.ItemType is null ? "" : $".{typed.Fields![index].Name}")}";
+                _step.LoopValues[values[index]] = code;
+                // A later step that shows what the last round typed, as a link to the item it added, reads it there too.
+                if (values[index] is { Type: "string", Text.Length: >= 3 } value) _afterLoops[value.Text!] = code;
+            }
         }
 
         _step.Actions = [lastRepeat[^1].Source.Id];
@@ -991,7 +999,7 @@ internal sealed partial class FlowWriter
             return Declare(expression, LocalName(action), why, changesWithItem);
         else if (row.Row is not null && _step.RowUses!.GetValueOrDefault(row.Row)?.Count >= 2)
         {
-            var header = CSharp.Pascal(action.Source.Target?.Row?.Header) is { } column ? CSharp.Camel(column) + "Row" : "row";
+            var header = CSharp.Pascal(action.Source.Element?.Row?.Header) is { } column ? CSharp.Camel(column) + "Row" : "row";
             expression = LocatorPolicy.Render(Declare(row.Row, header, null, changesWithItem), row.InIt, NameOf, Break);
         }
 
@@ -1145,7 +1153,8 @@ internal sealed partial class FlowWriter
 
     // The loop's item values long enough to be told in a text, with the C# that reads each.
     private IEnumerable<(string Text, string Code)> ItemValues() =>
-        _step.LoopValues.Where(value => value.Key.Text is { Length: >= 3 }).Select(value => (value.Key.Text!, value.Value));
+        _step.LoopValues.Where(value => value.Key.Text is { Length: >= 3 }).Select(value => (value.Key.Text!, value.Value))
+            .Concat(_afterLoops.Select(value => (value.Key, value.Value)));
 
     private List<(string Text, string? Code)> Pieces(string text, IEnumerable<(string Text, string Code)> items,
         IEnumerable<Setting> settings)
@@ -1164,6 +1173,7 @@ internal sealed partial class FlowWriter
     private void MarkItemRead(string code)
     {
         if (_step.LoopValues.ContainsValue(code)) _step.ReadsItem = true;
+        if (_afterLoops.ContainsValue(code)) _step.UsesFlow = true;
     }
 
     // The text around each place it shows the value, as a word of its own: "TradeCode 99" shows no "TradeCode 9", which

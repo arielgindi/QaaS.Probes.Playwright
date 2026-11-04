@@ -14,10 +14,12 @@ internal static partial class RelativeDate
 
     /// <summary>
     /// The format of <paramref name="text"/> and its days from <paramref name="day"/>, when it is a date of a
-    /// four-digit year, day, month and year, or year, month and day, within a year of that day. Of a day and a month
-    /// that both read as either, the closer date.
+    /// four-digit year, day, month and year, or year, month and day, within a year of that day. A day and a month that
+    /// both read as either are told apart only by <paramref name="hint"/>, what the field says of its format
+    /// (<c>dd/mm/yyyy</c>): how close a date is to the day tells nothing of how the app reads it, and the flow would type
+    /// it the other way round from the next day on.
     /// </summary>
-    public static (string Format, int Days)? Of(string text, DateTime day)
+    public static (string Format, int Days)? Of(string text, DateTime day, string? hint = null)
     {
         if (Parts().Match(text) is not { Success: true } match) return null;
         var (first, separator, second, third) =
@@ -28,16 +30,18 @@ internal static partial class RelativeDate
                 ? [string.Join(separator, Pad(first, 'd'), Pad(second, 'M'), "yyyy"),
                     string.Join(separator, Pad(first, 'M'), Pad(second, 'd'), "yyyy")]
                 : [];
-        (string Format, int Days)? closest = null;
-        foreach (var format in formats)
-        {
-            if (!DateTime.TryParseExact(text, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) continue;
-            var days = (date.Date - day.Date).Days;
-            if (Math.Abs(days) <= MaxDays && (closest is null || Math.Abs(days) < Math.Abs(closest.Value.Days)))
-                closest = (format, days);
-        }
-
-        return closest;
+        var read = formats.Select(format => DateTime.TryParseExact(text, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+                ? ((string Format, int Days)?)(format, (date.Date - day.Date).Days)
+                : null)
+            .OfType<(string Format, int Days)>().ToList();
+        if (read.Count == 2 && read[0].Days != read[1].Days)
+            read = Hinted(hint) switch
+            {
+                'd' => [read[0]],
+                'M' => [read[1]],
+                _ => [],
+            };
+        return read.Where(date => Math.Abs(date.Days) <= MaxDays).Select(date => ((string, int)?)date).FirstOrDefault();
     }
 
     /// <summary>The day an action was done, from its time in Unix milliseconds, on this machine's clock.</summary>
@@ -50,6 +54,16 @@ internal static partial class RelativeDate
     /// <summary>The flow's property that types the date, named after the setting: <c>DueInDays</c> gives <c>DueDate</c>.</summary>
     public static string Member(string setting) =>
         (setting.Length > 6 && setting.EndsWith("InDays", StringComparison.Ordinal) ? setting[..^6] : setting) + "Date";
+
+    // Which comes first a field's placeholder or label says, as "dd/mm/yyyy" or "MM-DD-YYYY": 'd', 'M', or none.
+    private static char? Hinted(string? hint) =>
+        hint is null ? null : DayFirst().IsMatch(hint) ? 'd' : MonthFirst().IsMatch(hint) ? 'M' : null;
+
+    [GeneratedRegex(@"\bd{1,2}[./-]m{1,2}\b", RegexOptions.IgnoreCase)]
+    private static partial Regex DayFirst();
+
+    [GeneratedRegex(@"\bm{1,2}[./-]d{1,2}\b", RegexOptions.IgnoreCase)]
+    private static partial Regex MonthFirst();
 
     // A part with a leading zero, or of two digits, is written with two: "03" gives dd, "3" d.
     private static string Pad(string part, char letter) => part.Length == 1 ? $"{letter}" : $"{letter}{letter}";

@@ -56,7 +56,9 @@ internal static class LoopFinder
         for (var length = 1; start + length * MinChoices <= actions.Count; length++)
         {
             var template = actions.GetRange(start, length);
-            if (!CanRepeat(template[^1], mayCheck: true) || !Balanced(template)) continue;
+            // The first round repeats as every other must: each of its actions, a check only after its last.
+            if (!CanRepeat(template[^1], mayCheck: true) || template.SkipLast(1).Any(action => !CanRepeat(action)) || !Balanced(template))
+                continue;
             var repeats = 1;
             while (start + (repeats + 1) * length <= actions.Count && template[^1].Checks.Count == 0)
             {
@@ -84,10 +86,12 @@ internal static class LoopFinder
         rounds[0].Any(action => LoopValues(action, rounds[0]).Any())
         || rounds.All(round => round.Any(action => action.Effects.Count > 0));
 
-    // Never a secret typed: a list's values are in its YAML, where a secret never is.
+    // Never a secret typed: a list's values are in its YAML, where a secret never is. Never a value the person made
+    // unique per run or a date from today, which an item of a list is not.
     private static bool CanRepeat(PlannedAction action, bool mayCheck = false) =>
         Repeatable.Contains(action.Kind) && action.Locator is not null && (mayCheck || action.Checks.Count == 0)
-        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind)) && action.Value?.Secret != true;
+        && !action.Effects.Any(effect => Unrepeatable.Contains(effect.Kind)) && action.Value?.Secret != true
+        && action.Source.Edit?.Values?.Values.Any(edit => edit.DateFormat is not null || edit.Unique == true) != true;
 
     // A round that opens a dialog closes it again, so the next round starts where it started.
     private static bool Balanced(List<PlannedAction> template)
